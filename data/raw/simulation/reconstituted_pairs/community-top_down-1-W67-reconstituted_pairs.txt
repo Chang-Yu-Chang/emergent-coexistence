@@ -1,0 +1,13 @@
+exp_id,Transfer,Type,ID,Well,Abundance
+community-top_down-1-W67-reconstituted_pairs,0,consumer,6,W1,0.5
+community-top_down-1-W67-reconstituted_pairs,0,consumer,18,W1,0.5
+community-top_down-1-W67-reconstituted_pairs,0,consumer,6,W2,0.5
+community-top_down-1-W67-reconstituted_pairs,0,consumer,19,W2,0.5
+community-top_down-1-W67-reconstituted_pairs,0,consumer,18,W3,0.5
+community-top_down-1-W67-reconstituted_pairs,0,consumer,19,W3,0.5
+community-top_down-1-W67-reconstituted_pairs,0,resource,0,W1,1000
+community-top_down-1-W67-reconstituted_pairs,0,resource,0,W2,1000
+community-top_down-1-W67-reconstituted_pairs,0,resource,0,W3,1000
+community-top_down-1-W67-reconstituted_pairs,0,R0,0,W1,1000
+community-top_down-1-W67-reconstituted_pairs,0,R0,0,W2,1000
+community-top_down-1-W67-reconstituted_pairs,0,R0,0,W3,1000

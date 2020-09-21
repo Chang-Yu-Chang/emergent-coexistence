@@ -54,7 +54,7 @@ summarize_network_motif <- function(graph) {
 }
 
 # Plot the competitive network. Take output from make_network()
-plot_competitive_network <- function(graph, node_size = 10, layout = "example_motif") {
+plot_competitive_network <- function(graph, node_size = 10, layout = "circle") {
     # Layout
     if (layout == "hierarchy") {
         graph_layout <- create_layout(graph, layout = "")
@@ -85,14 +85,16 @@ plot_competitive_network <- function(graph, node_size = 10, layout = "example_mo
         scale_x_continuous(limits = nodex_axis_x*1.2) +
         scale_y_continuous(limits = nodex_axis_y*1.2) +
         theme_graph() +
-        theme(legend.position = "none",
+        theme(
+            legend.position = "none",
             legend.direction = "none",
             legend.title = element_blank(),
             strip.text = element_blank(),
             plot.margin=unit(c(3,3,3,3),"mm")
-        )
+        ) 
     
 }
+
 
 # Randomize the network
 randomize_network <- function(graph){

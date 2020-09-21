@@ -16,24 +16,6 @@ isolates <- read_csv("../data/output/isolates.csv")
 isolates_melted <- read_csv("../data/output/isolates_melted.csv")
 pairs <- read_csv("../data/output/pairs.csv")
 
-# Panel XX: diagram of motifs
-temp_list <- rep(list(NA), 7)
-temp_id <- c(11, 7, 8, 12, 13, 14, 15)
-
-for (i in 1:7) {
-    g <- as_tbl_graph(igraph::graph.isocreate(size = 3, temp_id[i]))
-    layout <- create_layout(g, layout = 'circle')
-    g <- activate(g, edges) %>% mutate(InteractionType = ifelse(edge_is_mutual(), "coexistence", "exclusion"))
-    temp_list[[i]] <- g %>% activate(nodes) %>% mutate(x = layout$x, y = layout$y, graph = paste0("motif", i))
-}
-
-merged_graph <- bind_graphs(temp_list)
-
-p2 <- plot_competitive_network(merged_graph, layout = "example_motif", node_size = 5) + 
-    facet_nodes(~graph, nrow = 1)
-
-ggsave("../plots/Fig2A.png", plot = p2, width = 10, height = 1.5)
-
 
 # Panel XX: Make networks
 graph_list <- rep(list(NA), length(community_names))
@@ -50,7 +32,7 @@ summary_network_pairs <- graph_list %>%
     lapply(summarize_network_pairs) %>%
     bind_rows()
 
-p3 <- summary_network_pairs %>%
+p1 <- summary_network_pairs %>%
     ggplot(aes(x = NumberNodes, y = FractionCoexistence)) +
     geom_jitter(size = 3, shape = 21) +
     geom_smooth(method = "lm", formula = y ~ x) +
@@ -59,7 +41,14 @@ p3 <- summary_network_pairs %>%
     panel_border(color = "black") +
     labs(x = "Community size", y = "Fraction of pairwise coexistence")
 
-ggsave("../plots/Fig2B.png", p3, width = 4, height = 4)
+ggsave("../plots/Fig2B.png", p1, width = 4, height = 4)
+
+# Panel XX: example of one netowkr and adjacent matrix 
+p_net <- plot_competitive_network(graph_list$C11R2, node_size = 4, layout = "circle")
+p_mat <- plot_adjacent_matrix(graph_list$C11R2)
+
+p_merged <- plot_grid(p_net, p_mat)
+ggsave("../plots/Fig_example.png", p_merged, width = 8, height = 4)
 
 
 # Panel XX: motif count as a function of community size
@@ -67,7 +56,7 @@ summary_network_motifs <- graph_list %>%
     lapply(summarize_network_motif) %>%
     bind_rows(.id = "Community")
 
-p4 <- summary_network_motifs %>%
+p2 <- summary_network_motifs %>%
     ggplot(aes(x = NumberNodes, y = RelativeMotifCount)) +
     geom_jitter(size = 3, shape = 21, width = 0.1) +
     geom_smooth(method = "lm", formula = y ~ x) +
@@ -130,7 +119,7 @@ p5 <- summary_network_motifs %>%
 ggsave("../plots/Fig2C.png", plot = p5, width = 10, height = 10)
 
 # Combining the plots
-p <- plot_grid(p2, p4, ncol = 1, align = "v", rel_heights = c(1, 2))
+p <- plot_grid(p2, p2, ncol = 1, align = "v", rel_heights = c(1, 2))
 
 ggsave("../plots/Fig2.png", plot = p, width = 10, height = 5)
 
