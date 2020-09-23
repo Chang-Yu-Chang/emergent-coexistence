@@ -69,9 +69,8 @@ make_input_csv <- function(...){
             
             # Parameters for reconstituting pairs and trios
             synthetic_community = F, # Whether the initial community is randomly drawn synthetic community
-            init_richness = 2, # If synthetic communtiy = T, what is the initial richness?
-            
-            
+            synthetic_community_size = 2, # If synthetic communtiy = T, what is the initial richness?
+            synthetic_community_isolate_list = F, # The isolate list used to build the synthetic community. Example is monoculture-culturable-1.txt
             
             #Paramaters for community simulator package, note that we have split up a couple of paramaters that are inputed as list (SA and SGen). In the mapping file
             #if paramater is set as NA it takes the default value in community_simulator package. Also some paramaters could actually be inputed as lists but this is beyond the scope of this structure of mapping file i.e m, w,g r
@@ -205,8 +204,7 @@ make_input_csv <- function(...){
 }
 
 
-i = 1
-
+# Random pairs from the pool
 input_random_pairs_wrapper <- function (i) {
     leakages <- seq(0, 0.9, by = 0.1)
     specialists <- c(0, 0.3, 0.8)
@@ -232,7 +230,7 @@ input_random_pairs_wrapper <- function (i) {
                 save_function = F,
                 output_dir = "../data/raw/simulation/",
                 l = l, q = q, 
-                synthetic_community = T, init_richness = 2,
+                synthetic_community = T, synthetic_community_size = 2,
                 sn = 50,
                 sf = 3,
                 rn = 30,
@@ -253,7 +251,6 @@ input_random_pairs_wrapper <- function (i) {
         return()
 }
 
-
 cat("\nMaking input_random_pairs.csv\n")
 input_random_pairs_list <- rep(list(NA), length(seeds))
 for (i in seeds) {
@@ -263,5 +260,24 @@ for (i in seeds) {
 
 input_random_pairs <- rbindlist(input_random_pairs_list)
 fwrite(input_random_pairs, paste0(mapping_file_directory, "/input_random_pairs.csv"))
+
+# Monoculture
+l = 0.5
+q = 0.8
+rich_medium = F
+
+i = 1
+
+experiment_monocultures <- make_input_csv(monoculture = T, seed = i, l = l, q = q, rich_medium = rich_medium, 
+    exp_id = paste0("monoculture-", i))
+experiment_culturable_pairs <- make_input_csv(seed = i, l = l, q = q, rich_medium = rich_medium, 
+    synthetic_community = T,
+    synthetic_community_size = 2,
+    synthetic_community_isolate_list = paste0(data_directory, "monoculture-culturable-", i, ".txt"),
+    exp_id = paste0("pair-culturable_isolates-", i))
+
+input_independent <- bind_rows(experiment_monocultures, experiment_culturable_pairs)
+fwrite(input_independent, paste0(mapping_file_directory, "/input_independent.csv"))#
+
 
 

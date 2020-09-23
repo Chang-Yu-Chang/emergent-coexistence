@@ -8,22 +8,27 @@ library(cowplot)
 source("network_functions.R")
 
 # Panel XX: diagram of motifs
-temp_list <- rep(list(NA), 7)
-temp_id <- c(11, 7, 8, 12, 13, 14, 15)
-
-for (i in 1:7) {
-    g <- as_tbl_graph(igraph::graph.isocreate(size = 3, temp_id[i]))
-    layout <- create_layout(g, layout = 'circle')
-    g <- activate(g, edges) %>% mutate(InteractionType = ifelse(edge_is_mutual(), "coexistence", "exclusion"))
-    temp_list[[i]] <- g %>% activate(nodes) %>% mutate(x = layout$x, y = layout$y, graph = paste0("motif", i))
+make_example_motifs <- function() {
+    temp_list <- rep(list(NA), 7)
+    temp_id <- c(11, 7, 8, 12, 13, 14, 15)
+    
+    for (i in 1:7) {
+        g <- as_tbl_graph(igraph::graph.isocreate(size = 3, temp_id[i]))
+        layout <- create_layout(g, layout = 'circle')
+        g <- activate(g, edges) %>% mutate(InteractionType = ifelse(edge_is_mutual(), "coexistence", "exclusion"))
+        temp_list[[i]] <- g %>% activate(nodes) %>% mutate(x = layout$x, y = layout$y, graph = paste0("motif", i))
+    }
+    
+    return(temp_list)
 }
 
-merged_graph <- bind_graphs(temp_list)
-
-p1 <- plot_competitive_network(merged_graph, layout = "example_motif", node_size = 5) + 
+example_motif_list <- make_example_motifs()
+p1 <- bind_graphs(example_motif_list)  %>% 
+    plot_competitive_network(layout = "example_motif", node_size = 5) + 
     facet_nodes(~graph, nrow = 1)
 
 ggsave("../plots/Ex1_motifs.png", plot = p1, width = 10, height = 1.5)
+save(example_motif_list, file = "../data/temp/example_motif_list.Rdata")
 
 # Panel XX: Make networks
 isolates <- read_csv("../data/output/isolates.csv")
