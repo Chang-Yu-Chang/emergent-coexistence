@@ -6,7 +6,7 @@ make_network <- function(isolates, pairs) {
     nodes <- isolates %>% select(Isolate, Rank, PlotRank) 
     
     # Edges
-    edges <- pairs %>% mutate(from=From, to=To) %>% select(from, to, InteractionType)
+    edges <- pairs %>% mutate(from=From, to=To) %>% select(from, to, InteractionType) #Isolate1, Isolate2, Isolate1Freq)
     edges_coext <- edges[edges$InteractionType == "coexistence",]
     edges_coext[,c("from", "to")] <- edges_coext[,c("to", "from")] # Add the mutual edges for coexistence links
     edges <- rbind(edges, edges_coext)
@@ -46,7 +46,7 @@ summarize_network_motif <- function(graph) {
     motif_counts <- count_motif(graph)
     
     tibble(
-        NumberNodes = number_nodes, 
+        CommunitySize = number_nodes, 
         Motif = factor(1:7), 
         Count = motif_counts, 
         TotalMotifCount = rep(sum(motif_counts)),
@@ -101,7 +101,6 @@ randomize_network <- function(graph){
     # Step1: remove the bidirection of coexistence
     graph1 <- graph %>% 
         activate(edges) %>%
-        #mutate(from_temp = ifelse(from < to, to, from), to_temp = ifelse(from < to, from, to)) %>% 
         reroute(from = to, to = from, subset = from > to) %>% 
         distinct()
     
@@ -111,25 +110,32 @@ randomize_network <- function(graph){
         mutate(InteractionType = InteractionType[order(runif(n=n()))])
     
     # Step3: for pairs that coexist, add back the reverse direction links
-    graph_coexistence <- graph2 %>%
+    pairs_coexistence_reversed <- graph2 %>%
         activate(edges) %>% 
         filter(InteractionType == "coexistence") %>% 
-        reroute(from = to, to = from)
+        reroute(from = to, to = from) %>% 
+        activate(nodes) %>% 
+        select(Isolate)
     
-    graph3 <- graph_join(graph2, graph_coexistence, by = "Isolate")
+    graph_coexistence <- graph_join(graph2, pairs_coexistence_reversed, by = "Isolate") %>%
+        filter(InteractionType == "coexistence")
     
     # Step4: for exclusionary pairs, 50% of those has a flip direction
-    n_exclusion_pairs <- graph3 %>% filter(InteractionType == "exclusion") %>% pull(InteractionType) %>% length()
-    
-    graph_exclusion <- graph3 %>%
+    n_exclusion_pairs <- graph2 %>% filter(InteractionType == "exclusion") %>% pull(InteractionType) %>% length()
+    graph_exclusion <- graph2 %>%
         activate(edges) %>% 
         filter(InteractionType == "exclusion") %>% 
-        reroute(from = to, to = from, subset = sample(c(T,F), n_exclusion_pairs, replace = T, prob = c(0.5,0.5)))
+        reroute(from = to, to = from, subset = sample(c(T,F), n_exclusion_pairs, replace = T, prob = c(0.5,0.5))) %>% 
+        activate(nodes) %>% 
+        select(Isolate)
     
-    graph4 <- graph_join(graph3, graph_exclusion, by = "Isolate")
+    graph3 <- graph_join(graph_coexistence, graph_exclusion, by = "Isolate") %>% 
+        arrange(from, to)
     
-    return(graph4)
+    return(graph3)
 }
+
+
 
 # Make a random network
 make_random_network <- function (
