@@ -1,6 +1,7 @@
 # Ignore R project
 *.Rproj
 data/raw/simulation/deprecated/*
+data/raw/*
 
 # History files
 .Rhistory
