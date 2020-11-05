@@ -28,7 +28,7 @@ summarize_network_pairs <- function(graph){
     number_coexistence <- graph %>% activate(edges) %>% 
         filter(InteractionType == "coexistence") %>%
         igraph::E() %>% length()
-    
+
     summary_stat <- tibble(
         NumberNodes = number_nodes, 
         FractionCoexistence = number_coexistence/number_pairs
@@ -54,93 +54,47 @@ summarize_network_motif <- function(graph) {
 }
 
 # Plot the competitive network. Take output from make_network()
-plot_competitive_network <- function(g, node_size = 10, g_layout = "circle") {
-    # g_layout
-    if (g_layout == "hierarchy") {
-        graph_layout <- create_layout(g, g_layout = "")
-    } else if (g_layout == "example_motif") {
-        g <- g 
+plot_competitive_network <- function(graph, node_size = 10, layout = "circle") {
+    # Layout
+    if (layout == "hierarchy") {
+        graph_layout <- create_layout(graph, layout = "")
+    } else if (layout == "example_motif") {
+        graph <- graph 
     } else {
-        graph_layout <- create_layout(g, g_layout)
-        mean_x_coord <- mean(graph_layout$x)
-        mean_y_coord <- mean(graph_layout$x)
-        g <- g %>% activate(nodes) %>% mutate(x = graph_layout$x - mean_x_coord, y = graph_layout$y - mean_y_coord)
-    }
-    
+        graph_layout <- create_layout(graph, layout)
+        graph <- graph %>% activate(nodes) %>% mutate(x = graph_layout$x, y = graph_layout$y)
+    }    
     
     # Nodes
-    nodex_axis_x <- activate(g, nodes) %>% pull(x) %>% range()
-    nodex_axis_y <- activate(g, nodes) %>% pull(y) %>% range()
+    nodex_axis_x <- activate(graph, nodes) %>% pull(x) %>% range()
+    nodex_axis_y <- activate(graph, nodes) %>% pull(y) %>% range()
     
     # Edges
     interaction_type <- c("exclusion", "coexistence", "lose", "bistability", "neutrality", "self", "undefined")
     interaction_color = c("#DB7469", "#557BAA", "#73C966", "#EECF6D", "#8650C4", "black", "grey80")
     names(interaction_color) <- interaction_type
     
-    if (g_layout == "linear" & length( activate(g, nodes) %>% pull(x)) == 2) {
-        g %>%
-            mutate(Isolate = factor(Isolate)) %>% 
-            ggraph(layout = "nicely") +
-            geom_node_point(aes(fill = Isolate), size = node_size, shape = 21, colour = "black", stroke = node_size/5) + 
-            geom_edge_link(aes(color = InteractionType), width = node_size/10,
-                arrow = arrow(length = unit(node_size/2, "mm"), type = "closed", angle = 30, ends = "last"), 
-                start_cap = circle(node_size/2+1, "mm"),
-                end_cap = circle(node_size/2+1, "mm")) +
-            scale_edge_color_manual(values = interaction_color) +
-            #scale_fill_manual(values = c("white", "grey40")) +
-            scale_x_continuous(limits = nodex_axis_x*1.2) +
-            theme_graph() +
-            theme(
-                legend.position = "none",
-                legend.direction = "none",
-                legend.title = element_blank(),
-                panel.background = element_blank(),
-                strip.text = element_blank(),
-                plot.margin=unit(c(3,3,3,3),"mm")
-            ) 
-    } else if (g_layout == "linear"){
-        g %>%
-            ggraph(layout = "nicely") +
-            geom_node_point(fill = "grey", size = node_size, shape = 21, colour = "black", stroke = node_size/5) + 
-            geom_edge_arc(aes(color = InteractionType), width = node_size/10,
-                arrow = arrow(length = unit(node_size/2, "mm"), type = "closed", angle = 30, ends = "last"), 
-                start_cap = circle(node_size/2+1, "mm"),
-                end_cap = circle(node_size/2+1, "mm")) +
-            scale_edge_color_manual(values = interaction_color) +
-            scale_x_continuous(limits = nodex_axis_x*1.2) +
-            #scale_y_continuous(limits = nodex_axis_y*1.2) +
-            theme_graph() +
-            theme(
-                legend.position = "none",
-                legend.direction = "none",
-                legend.title = element_blank(),
-                panel.background = element_blank(),
-                strip.text = element_blank(),
-                plot.margin=unit(c(3,3,3,3),"mm")
-            ) 
-    } else {
-        g %>%
-            ggraph(layout = "nicely") +
-            geom_node_point(fill = "grey", size = node_size, shape = 21, colour = "black", stroke = node_size/5) + 
-            geom_edge_link(aes(color = InteractionType), width = node_size/10,
-                arrow = arrow(length = unit(node_size/2, "mm"), type = "closed", angle = 30, ends = "last"), 
-                start_cap = circle(node_size/2+1, "mm"),
-                end_cap = circle(node_size/2+1, "mm")) +
-            scale_edge_color_manual(values = interaction_color) +
-            scale_x_continuous(limits = nodex_axis_x*1.3) +
-            scale_y_continuous(limits = nodex_axis_y*1.3) +
-            theme_graph() +
-            theme(
-                legend.position = "none",
-                legend.direction = "none",
-                legend.title = element_blank(),
-                panel.background = element_blank(),
-                strip.text = element_blank(),
-                plot.margin=unit(c(3,3,3,3),"mm")
-            ) 
-        
-    }
+    graph %>%
+        ggraph(layout = "nicely") +
+        geom_node_point(size = node_size, shape = 21, fill = "gray", colour = "black", stroke = node_size/5) +
+        geom_edge_link(aes(color = InteractionType), width = node_size/10,
+            arrow = arrow(length = unit(node_size/2, "mm"), type = "closed", angle = 30, ends = "last"), 
+            start_cap = circle(node_size/2+1, "mm"),
+            end_cap = circle(node_size/2+1, "mm")) +
+        scale_edge_color_manual(values = interaction_color) +
+        scale_x_continuous(limits = nodex_axis_x*1.2) +
+        scale_y_continuous(limits = nodex_axis_y*1.2) +
+        theme_graph() +
+        theme(
+            legend.position = "none",
+            legend.direction = "none",
+            legend.title = element_blank(),
+            strip.text = element_blank(),
+            plot.margin=unit(c(3,3,3,3),"mm")
+        ) 
+    
 }
+
 
 # Randomize the network
 randomize_network <- function(graph){
