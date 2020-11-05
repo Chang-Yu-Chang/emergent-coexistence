@@ -2,6 +2,7 @@
 *.Rproj
 data/raw/simulation/deprecated/*
 data/raw/*
+data/raw/simulation/*
 
 # History files
 .Rhistory

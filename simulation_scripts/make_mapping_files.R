@@ -1,10 +1,11 @@
 #' Make the input mapping files
 
-library(tidyverse)
-library(data.table)
+suppressWarnings(suppressMessages(library(tidyverse)))
+suppressWarnings(suppressMessages(library(data.table)))
 
 seeds = 1 # Random seed. Default 1:100
 cat("\nSeeds = ", seeds)
+cat("\nTotal seeds are ", seeds, "\n")
 data_directory = "../data/raw/simulation/"
 mapping_file_directory = "../data/raw/simulation/mapping_files/"
 
@@ -68,9 +69,9 @@ make_input_csv <- function(...){
             r_percent = NA, # Tunes the magnitude of resource pertubation if NA does not perform resource pertubation
             
             # Parameters for reconstituting pairs and trios
-            synthetic_community = F, # Whether the initial community is randomly drawn synthetic community
-            synthetic_community_size = 2, # If synthetic communtiy = T, what is the initial richness?
-            synthetic_community_isolate_list = F, # The isolate list used to build the synthetic community. Example is monoculture-culturable-1.txt
+            # synthetic_community = F, # Whether the initial community is randomly drawn synthetic community
+            # synthetic_community_size = 2, # If synthetic communtiy = T, what is the initial richness?
+            # synthetic_community_isolate_list = F, # The isolate list used to build the synthetic community. Example is monoculture-culturable-1.txt
             
             #Paramaters for community simulator package, note that we have split up a couple of paramaters that are inputed as list (SA and SGen). In the mapping file
             #if paramater is set as NA it takes the default value in community_simulator package. Also some paramaters could actually be inputed as lists but this is beyond the scope of this structure of mapping file i.e m, w,g r
@@ -203,81 +204,190 @@ make_input_csv <- function(...){
     return(output_row)
 }
 
-
-# Random pairs from the pool
-input_random_pairs_wrapper <- function (i) {
-    leakages <- seq(0, 0.9, by = 0.1)
-    specialists <- c(0, 0.3, 0.8)
-    n_experiments <- length(leakages) * length(specialists)
-    temp_list <- rep(list(NA), n_experiments)
+#
+input_independent_wrapper <- function(
+    i, 
+    n_top_down_communities=10,
+    l, 
+    q, 
+    rich_medium = T,
+    dilution = 0.001,
+    sn = 2100, #number of species per specialist family
+    sf = 1, #number of specialist families, # note SA = sn *np.ones(sf)
+    Sgen = 0, #number of generalist species
+    rn = 90, #number of resources per resource clas
+    rf = 1, #number of resource classes, #Note RA = rn*np.ones(rf)
+    sampling = "Binary_Gamma" #{'Gaussian','Binary','Gamma', 'Binary_Gamma'} specifies choice of sampling algorithm
+) {
+    # Grow monoculture 
+    experiment_monocultures <- make_input_csv(monoculture = T, seed = i,
+        exp_id = paste0("monoculture-", i))
     
-    counter = 1
+    # # Grow random pairs of culturable isolates
+    # experiment_culturable_pairs <- make_input_csv(seed = i,
+    #     overwrite_plate = paste0(data_directory, "pair-culturable-", i, ".txt"),
+    #     passage_overwrite_plate = F,
+    #     exp_id = paste0("pair-culturable_isolates-", i))
     
-    for (j in 1:length(leakages)) {
-        for (k in 1:length(specialists)) {
-            l = leakages[j]
-            q = specialists[k]
-            temp <- make_input_csv(
-                seed = 1, n_wells = 960, 
-                S = 1,
-                s_gen = 0,
-                n_transfer = 10, n_transfer_selection = 5,
-                dilution = 0.01,
-                response = "type I",
-                rich_medium = F,
-                save_composition = T,
-                composition_lograte = 1,
-                save_function = F,
-                output_dir = "../data/raw/simulation/",
-                l = l, q = q, 
-                synthetic_community = T, synthetic_community_size = 2,
-                sn = 50,
-                sf = 3,
-                rn = 30,
-                rf = 3,
-                muc = 10,
-                c1 = 1,
-                exp_id = paste0("pair-random_isolates-leakage", l*100, "-specialist", q*100, "-", i)) 
-            temp_list[[counter]] <- temp
-            counter = counter + 1
-        }
+    # Grow random trios of culturable isolates
+    experiment_culturable_trios <- make_input_csv(seed = i,
+        overwrite_plate = paste0(data_directory, "trio-culturable-", i, ".txt"),
+        passage_overwrite_plate = F,
+        exp_id = paste0("trio-culturable_isolates-", i))
+    
+    # Grow pairs from the trios
+    experiment_culturable_pair_from_trio <- make_input_csv(seed = i,
+        overwrite_plate = paste0(data_directory, "pair-culturable_from_trio-", i, ".txt"),
+        passage_overwrite_plate = F,
+        exp_id = paste0("pair-culturable_from_trio-", i))
+    
+    # Top-down assembly
+    experiment_top_down <- make_input_csv(seed = i,
+        passage_overwrite_plate = F,
+        exp_id = paste0("community-top_down-", i))
+    
+    # Grow pairs from the top-down assembled communities
+    experiment_pair_from_top_down <- rep(list(NA), n_top_down_communities)
+    for (j in 1:n_top_down_communities) {
+        experiment_pair_from_top_down[[j]] <- make_input_csv(seed = i,
+            overwrite_plate = paste0(data_directory, "pair-from_top_down_community-", i, "-community", j,".txt"),
+            passage_overwrite_plate = F,
+            exp_id = paste0("pair-from_top_down_community-", i, "-community", j))
     }
     
-    # temp_list %>%
-    #     rbindlist() %>%
-    #     select(exp_id, l, q)
-    temp_list %>%
-        rbindlist() %>%
-        return()
+    input_independent <- bind_rows(experiment_monocultures,
+        experiment_culturable_trios, experiment_culturable_pair_from_trio,
+        experiment_top_down, rbindlist(experiment_pair_from_top_down))
+    
+    input_independent$l <- l
+    input_independent$q <- q
+    input_independent$muc <- 10
+    input_independent$sparsity <- 0.2
+    input_independent$rich_medium <- rich_medium
+    input_independent$n_transfer <- 10
+    input_independent$n_transfer_selection <- 10
+    input_independent$dilution = dilution
+    input_independent$save_function <- F
+    input_independent$composition_lograte = 1
+    input_independent$response = "type I"
+    input_independent$output_dir <- data_directory
+    input_independent[is.na(input_independent)] <- "NA"
+    input_independent$sn <- sn #number of species per specialist family
+    input_independent$sf <- sf #number of specialist families, # note SA = sn *np.ones(sf)
+    input_independent$Sgen <- Sgen #number of generalist species
+    input_independent$rn <- rn #number of resources per resource clas
+    input_independent$rf <- rf #number of resource classes, #Note RA = rn*np.ones(rf)
+    input_independent$sampling <- sampling #number of resource classes, #Note RA = rn*np.ones(rf)
+    
+    temp_index <- grepl("community-top_down-", input_independent$exp_id)
+    input_independent$n_transfer[temp_index] <- 20
+    input_independent$n_transfer_selection[temp_index] <- 20
+    input_independent$n_wells[temp_index] <- 20
+    
+    return(input_independent)
 }
 
-cat("\nMaking input_random_pairs.csv\n")
-input_random_pairs_list <- rep(list(NA), length(seeds))
-for (i in seeds) {
-    cat(i, "\t")
-    input_random_pairs_list[[i]] <- input_random_pairs_wrapper(i = i)
+#temp_list <- rep(list(NA), length(seeds))
+#for (i in seeds) temp_list[[i]] <- input_independent_wrapper(i)
+temp_list <- rep(list(NA), 2)
+temp_list[[1]] <- input_independent_wrapper(1, n_top_down_communities = 10, rich_medium = T, l = 0.2, q = 0, sn = 600, sf = 3, Sgen = 0, rn = 90, rf = 3, sampling = "Gamma", dilution = 0.01)
+temp_list[[2]] <- input_independent_wrapper(2, n_top_down_communities = 10, rich_medium = F, l = 0.2, q = 0, sn = 600, sf = 3, Sgen = 0, rn = 90, rf = 3, sampling = "Gamma", dilution = 0.01)
+
+# temp_list[[2]] <- input_independent_wrapper(2, n_top_down_communities = 10, rich_medium = F, l = 0.5, q = 0, sn = 60, sf = 3, Sgen = 0, rn = 30, rf = 3, sampling = "Gamma", dilution = 0.01)
+# temp_list[[3]] <- input_independent_wrapper(3, n_top_down_communities = 10, rich_medium = F, l = 0.5, q = 0, sn = 600, sf = 3, Sgen = 0, rn = 90, rf = 3, sampling = "Gamma", dilution = 0.01)
+# temp_list[[5]] <- input_independent_wrapper(5, n_top_down_communities = 10, rich_medium = F, l = 0.5, q = 0.5, sn = 600, sf = 3, Sgen = 0, rn = 90, rf = 3, sampling = "Gamma", dilution = 0.01)
+
+# temp_list[[1]] <- input_independent_wrapper(1, l = 0.2, q = 0.8, sn = 300, sf = 1, Sgen = 0, rn = 20, rf = 1, sampling = "Gamma")
+# temp_list[[2]] <- input_independent_wrapper(2, l = 0.2, q = 0.8, sn = 100, sf = 3, Sgen = 0, rn = 20, rf = 3, sampling = "Gamma")
+# temp_list[[3]] <- input_independent_wrapper(3, l = 0.2, q = 0.2, sn = 100, sf = 3, Sgen = 0, rn = 20, rf = 3, sampling = "Gamma")
+
+#temp_list[[2]] <- input_independent_wrapper(1, l = 0, q = 0)
+#temp_list[[3]] <- input_independent_wrapper(3, l = 0, q = 0.8)
+#temp_list[[4]] <- input_independent_wrapper(4, l = 0.2, q = 0)
+# temp_list[[5]] <- input_independent_wrapper(5, l = 0.2, q = 0.8, rich_medium = T, sn = 500, sf = 2, Sgen = 0, rn = 10, rf = 2, sampling = "Gamma")
+# temp_list[[6]] <- input_independent_wrapper(6, l = 0, q = 0, rich_medium = T, sn = 500, sf = 2, Sgen = 0, rn = 10, rf = 2, sampling = "Gamma")
+# temp_list[[7]] <- input_independent_wrapper(7, l = 0, q = 0.8, rich_medium = T, sn = 500, sf = 2, Sgen = 0, rn = 10, rf = 2, sampling = "Gamma")
+# temp_list[[8]] <- input_independent_wrapper(8, l = 0.2, q = 0, rich_medium = T, sn = 500, sf = 2, Sgen = 0, rn = 10, rf = 2, sampling = "Gamma")
+input_independent <- rbindlist(temp_list)
+fwrite(input_independent, paste0(mapping_file_directory, "input_independent.csv"))
+
+
+
+if (FALSE) {
+    
+    
+    l = 0.5
+    q = 0.8
+    rich_medium = F
+    i = 1
+    
+    experiment_monocultures <- make_input_csv(monoculture = T, seed = i, l = l, q = q, rich_medium = rich_medium, 
+        exp_id = paste0("monoculture-", i))
+    experiment_culturable_pairs <- make_input_csv(seed = i, l = l, q = q, rich_medium = rich_medium, 
+        synthetic_community = T,
+        synthetic_community_size = 2,
+        synthetic_community_isolate_list = paste0(data_directory, "monoculture-culturable-", i, ".txt"),
+        exp_id = paste0("pair-culturable_isolates-", i))
+    
+    input_independent <- bind_rows(experiment_monocultures, experiment_culturable_pairs)
+    fwrite(input_independent, paste0(mapping_file_directory, "/input_independent.csv"))
+    
+    
+    # Random pairs from the pool
+    input_random_pairs_wrapper <- function (i) {
+        leakages <- seq(0, 0.9, by = 0.1)
+        specialists <- c(0, 0.3, 0.8)
+        n_experiments <- length(leakages) * length(specialists)
+        temp_list <- rep(list(NA), n_experiments)
+        
+        counter = 1
+        
+        for (j in 1:length(leakages)) {
+            for (k in 1:length(specialists)) {
+                l = leakages[j]
+                q = specialists[k]
+                temp <- make_input_csv(
+                    seed = 1, n_wells = 96, 
+                    S = 1,
+                    s_gen = 0,
+                    n_transfer = 10, n_transfer_selection = 5,
+                    dilution = 0.01,
+                    response = "type I",
+                    rich_medium = F,
+                    save_composition = T,
+                    composition_lograte = 1,
+                    save_function = F,
+                    output_dir = "../data/raw/simulation/",
+                    l = l, q = q, 
+                    synthetic_community = T, synthetic_community_size = 2,
+                    sn = 50,
+                    sf = 3,
+                    rn = 30,
+                    rf = 3,
+                    muc = 10,
+                    c1 = 1,
+                    exp_id = paste0("pair-random_isolates-leakage", l*100, "-specialist", q*100, "-", i)) 
+                temp_list[[counter]] <- temp
+                counter = counter + 1
+            }
+        }
+        
+        # temp_list %>%
+        #     rbindlist() %>%
+        #     select(exp_id, l, q)
+        temp_list %>%
+            rbindlist() %>%
+            return()
+    }
+    
+    cat("\nMaking input_random_pairs.csv\n")
+    input_random_pairs_list <- rep(list(NA), length(seeds))
+    for (i in seeds) {
+        cat(i, "\t")
+        input_random_pairs_list[[i]] <- input_random_pairs_wrapper(i = i)
+    }
+    
+    input_random_pairs <- rbindlist(input_random_pairs_list)
+    fwrite(input_random_pairs, paste0(mapping_file_directory, "/input_random_pairs.csv"))
+    
 }
-
-input_random_pairs <- rbindlist(input_random_pairs_list)
-fwrite(input_random_pairs, paste0(mapping_file_directory, "/input_random_pairs.csv"))
-
-# Monoculture
-l = 0.5
-q = 0.8
-rich_medium = F
-
-i = 1
-
-experiment_monocultures <- make_input_csv(monoculture = T, seed = i, l = l, q = q, rich_medium = rich_medium, 
-    exp_id = paste0("monoculture-", i))
-experiment_culturable_pairs <- make_input_csv(seed = i, l = l, q = q, rich_medium = rich_medium, 
-    synthetic_community = T,
-    synthetic_community_size = 2,
-    synthetic_community_isolate_list = paste0(data_directory, "monoculture-culturable-", i, ".txt"),
-    exp_id = paste0("pair-culturable_isolates-", i))
-
-input_independent <- bind_rows(experiment_monocultures, experiment_culturable_pairs)
-fwrite(input_independent, paste0(mapping_file_directory, "/input_independent.csv"))#
-
-
-
