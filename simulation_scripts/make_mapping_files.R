@@ -69,6 +69,8 @@ make_input_csv <- function(...){
             r_percent = NA, # Tunes the magnitude of resource pertubation if NA does not perform resource pertubation
             
             # Parameters for reconstituting pairs and trios
+            n_trios = NA,
+            n_pairs = NA,
             # synthetic_community = F, # Whether the initial community is randomly drawn synthetic community
             # synthetic_community_size = 2, # If synthetic communtiy = T, what is the initial richness?
             # synthetic_community_isolate_list = F, # The isolate list used to build the synthetic community. Example is monoculture-culturable-1.txt
@@ -230,13 +232,13 @@ input_independent_wrapper <- function(
     #     exp_id = paste0("pair-culturable_isolates-", i))
     
     # Grow random trios of culturable isolates
-    experiment_culturable_trios <- make_input_csv(seed = i,
+    experiment_culturable_trios <- make_input_csv(seed = i, n_trios = 200, n_wells = 200,
         overwrite_plate = paste0(data_directory, "trio-culturable-", i, ".txt"),
         passage_overwrite_plate = F,
         exp_id = paste0("trio-culturable_isolates-", i))
     
     # Grow pairs from the trios
-    experiment_culturable_pair_from_trio <- make_input_csv(seed = i,
+    experiment_culturable_pair_from_trio <- make_input_csv(seed = i, 
         overwrite_plate = paste0(data_directory, "pair-culturable_from_trio-", i, ".txt"),
         passage_overwrite_plate = F,
         exp_id = paste0("pair-culturable_from_trio-", i))
@@ -309,6 +311,7 @@ temp_list[[2]] <- input_independent_wrapper(2, n_top_down_communities = 10, rich
 # temp_list[[7]] <- input_independent_wrapper(7, l = 0, q = 0.8, rich_medium = T, sn = 500, sf = 2, Sgen = 0, rn = 10, rf = 2, sampling = "Gamma")
 # temp_list[[8]] <- input_independent_wrapper(8, l = 0.2, q = 0, rich_medium = T, sn = 500, sf = 2, Sgen = 0, rn = 10, rf = 2, sampling = "Gamma")
 input_independent <- rbindlist(temp_list)
+#input_independent <- temp_list[[1]]
 fwrite(input_independent, paste0(mapping_file_directory, "input_independent.csv"))
 
 

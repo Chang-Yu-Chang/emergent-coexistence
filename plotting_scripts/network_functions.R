@@ -1,5 +1,14 @@
 # R functions making, randomizing, plotting network
 
+# Assign interaction link colors
+assign_interaction_color <- function () {
+    interaction_type <- c("exclusion", "coexistence", "lose", "bistability", "neutrality", "self", "undefined")
+    interaction_color <- c("#DB7469", "#557BAA", "#73C966", "#EECF6D", "#8650C4", "black", "grey80")
+    names(interaction_color) <- interaction_type
+    return(interaction_color)
+}
+
+
 # Make network from pairs and isolates data 
 make_network <- function(isolates, pairs) {
     # Nodes

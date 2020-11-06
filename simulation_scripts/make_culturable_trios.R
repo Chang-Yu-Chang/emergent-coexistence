@@ -9,9 +9,9 @@ input_independent <- fread(args[[1]])
 input_independent_trios <- input_independent %>% filter(grepl("trio-culturable_isolates", exp_id))
 
 # Trio parameters
-frequency1 <- c(0.33, 0.8)
-frequency2 <- c(0.33, 0.1)
-frequency3 <- c(0.33, 0.1)
+frequency1 <- c(0.33)
+frequency2 <- c(0.33)
+frequency3 <- c(0.33)
 stopifnot(length(frequency1) == length(frequency2) & length(frequency1) == length(frequency3))
 n_initial_frequencies <- length(frequency1)
 

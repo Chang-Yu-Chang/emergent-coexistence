@@ -67,12 +67,16 @@ read_pair_from_trio_competition <- function(pair_from_trio_culturable_data, pair
 #pairs_consumer <- df_pair_from_trio_competition
 #pair_list<-df_pair_from_trio_list
 determine_pair_from_trio_outcome <- function(pairs_consumer, pair_list) {
+    n_trio_pair_freq <- nrow(pair_list)
+    n_transfer <- max(pairs_consumer$Transfer)
+
     frequency_changes <- pairs_consumer %>%
-        left_join(pair_list, by = c("Trio", "Pair", "InitialFrequency")) %>%
-        filter(ID == Isolate1) %>% select(-ID) %>% 
-        group_by(Trio, Pair) %>% 
-        pivot_wider(names_from = c(Transfer), names_prefix = "T", values_from = RelativeAbundance) %>% 
+        group_by(Trio, Pair, InitialFrequency) %>% 
+        pivot_wider(names_from = c(Transfer), names_prefix = "T", values_from = RelativeAbundance) %>%
+        replace_na(rep(list(0), n_transfer+1) %>% setNames(paste0("T", 0:n_transfer))) %>% 
         mutate(FrequencyChange = ifelse((T5 - T0)>0, "T", "F")) %>%  # TRUE = Isolate1 increases, FALSE = Isolate1 decreases
+        left_join(pair_list, by = c("Trio", "Pair", "InitialFrequency")) %>%
+        filter(ID == Isolate1) %>% 
         select(Trio, Pair, Isolate1, Isolate2, FrequencyChange) %>% 
         group_by(Trio, Pair, Isolate1, Isolate2) %>% 
         summarise(FrequencyChangePattern = paste0(FrequencyChange, collapse = "-"))
