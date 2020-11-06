@@ -6,12 +6,10 @@ library(tidyverse)
 library(data.table)
 library(cowplot)
 source("network_functions.R")
-whether_plot_supp <- F
 
 # Read data
 communities <- fread("../data/temp/communities.csv")
 community_names_ordered_by_size <- communities %>% arrange(CommunitySize) %>% pull(Community)
-community_abundance <- fread("../data/temp/communities_abundance.csv")
 simulated_motif_counts <- fread("../data/temp/simulated_motif_counts.txt")
 observed_motif_counts <- fread("../data/temp/observed_motif_counts.txt")
 random_motif_counts <- fread("../data/temp/random_motif_counts.txt")
@@ -26,13 +24,11 @@ load("../data/temp/example_motif_list.Rdata") # Load example motif graphs exampl
 ## Motif demo
 colors_grey <- grey(seq(1,0, length.out = length(example_motif_list)))
 names(colors_grey) = 1:7
-p_motif_list <- rep(list(NA), 7)
 for (i in 1:length(example_motif_list)) {
     p_motif_list[[i]] <- example_motif_list[[i]] %>% 
-        plot_competitive_network(node_size = 5) +
-        theme(panel.background = element_rect(fill = colors_grey[i], color = NA),
-            plot.margin = unit(c(0, 0, 0, 0), "cm"))
-}
+        plot_competitive_network(node_size = 3) +
+        theme(panel.background = element_rect(fill = colors_grey[i], color = NA))
+    }
 p_motifs <- plot_grid(plotlist = p_motif_list, nrow = 1)
 
 ## Motif count
@@ -54,13 +50,14 @@ p1 <- simulated_motif_counts %>%
     scale_fill_manual(values = colors_grey) +
     theme_cowplot() +
     panel_border(color = 1) +
-    theme(legend.title = element_blank(), legend.position = "none", legend.direction = "horizontal") +
+    theme(legend.title = element_blank(),
+        legend.position = "none", legend.direction = "horizontal") +
     labs(x = "Probability of pairwise coexistence", y = "Relative motif count")
 
 p_B <- plot_grid(p_motifs, p1, ncol = 1, rel_heights = c(1,5))
 ggsave("../plots/Fig1B.png", plot = p_B, width = 6, height = 6)
 
-if (whether_plot_supp) {
+if (FALSE) {
     ## 0-scored motif vs others
     p2 <- simulated_motif_counts %>% 
         mutate(MotifType = ifelse(Motif %in% c(1, 7), "0-scored", "others")) %>% 
@@ -128,8 +125,8 @@ if (whether_plot_supp) {
     
     p <- plot_grid(p_motifs, ps2, ncol = 1, axis = "rl", align = "hv", rel_heights = c(2,5))
     ggsave("../plots/FigS2.png", plot = p, width = 10, height = 4)
-    
-}
+
+ }
 
 # Panel C: fraction of pairwise coexistence as a function of community size
 summary_network_pairs <- graph_list %>% 
@@ -147,88 +144,21 @@ p_C <- summary_network_pairs %>%
 
 ggsave("../plots/Fig1C.png", p_C, width = 4, height = 4)
 
-if (whether_plot_supp) {
-    # Panel: relative abundance of communities
-    community_abundance_subset <- community_abundance %>% 
-        mutate(CommunityESVID = factor(CommunityESVID)) %>% 
-        filter(Community %in% community_names_ordered_by_size, Transfer == 12) %>% 
-        filter(!grepl("Glu-T12-X11-Rep1", SampleID), !grepl("Glu-T12-X1-Rep2-AA", SampleID),
-            !grepl("Glu-T12-X1-Rep4-AA", SampleID), !grepl("Glu-T12-X1-Rep6-AA", SampleID),
-            !grepl("Glu-T12-X4-Rep1", SampleID), !grepl("Glu-T12-X7-Rep1", SampleID)) %>% 
-        as_tibble()
-    
-    library(rRDPData)
-    predict_RDP_taxonomy <- function(sequence_set) {
-        pred <- predict(rdp(), sequence_set, confidence = 0) #  Predict 16s
-        conf_score <- attr(pred, "confidence") %>% as.data.frame()  # Confidence score
-        colnames(pred) <- c("Domain", "Phylum", "Class", "Order", "Family", "Genus")
-        colnames(conf_score) <- paste0(c("Domain", "Phylum", "Class", "Order", "Family", "Genus"), "Score")
-        pred$ID <- rownames(pred) %>% as.numeric()
-        conf_score$ID <- rownames(pred) %>% as.numeric()
-        return(pred)
-    }
-    esv_set <- DNAStringSet(community_abundance_subset$ESV)
-    names(esv_set) <- community_abundance_subset$CommunityESVID # Rename the sequence
-    esv_RDP <- predict_RDP_taxonomy(esv_set) %>% 
-        mutate(CommunityESVID = factor(ID)) %>%
-        select(CommunityESVID, Family, Genus)
-    
-    family_name <- c("Pseudomonadaceae", "Enterobacteriaceae", "Aeromonadaceae",  "Sphingobacteriaceae", "Xanthomonadaceae", "Moraxellaceae", "Other")
-#        "Enterococcaceae", "Alcaligenaceae", "Oxalobacteraceae", "Comamonadaceae", "Porphyromonadaceae", "Flavobacteriaceae", "Nocardiaceae", "Sphingomonadaceae", "Brucellaceae")
-    family_color <- c("#E21F27", "#397EB8", "#4fb049", "#984f9f", "#a94624", "#8fd1c6", "#989898")
-    names(family_color) <- family_name
-    genus_name <- c("Pseudomonas", "Klebsiella", "Citrobacter", "Enterobacter", "Raoultella", "Stenotrophomonas", "Aeromonas")
-     #, "Yersinia", "Buttiauxella", "Enterococcus", "Erwinia", "Sphingobacterium", "Bordetella", "Acinetobacter", "Salmonella", "Xanthomonas", "Pedobacter", "Pantoea", "Herbaspirillum", "Comamonas", "Dysgonomonas", "Delftia", "Flavobacterium", "Rhodococcus", "Novosphingobium", "Ochrobactrum", "Achromobacter", "Providencia"
-    genus_color <- c("#7d1416", "#3eb7c4", "#fdf8ce", "#225fa9", "#a2d6b3", "#f57e2d", "#8fd1c6")
-    names(genus_color) <- genus_name
-    
-    p_family <- left_join(community_abundance_subset, esv_RDP) %>% 
-        filter(RelativeAbundance >= 0.01) %>% 
-        mutate(Family = as.character(Family)) %>% 
-        select(Family, Genus, Community, Transfer, CommunityESVID, RelativeAbundance) %>% 
-        mutate(Family = ifelse(Family %in% family_name, Family, "Other") %>% ordered(family_name)) %>% 
-        mutate(Community = ordered(Community, community_names_ordered_by_size)) %>% 
-        ggplot() +
-        geom_bar(aes(x = Community, y = RelativeAbundance, fill = Family), stat = "identity", color = "grey20") +
-        scale_x_discrete(expand = c(0,0)) +
-        scale_y_continuous(expand = c(0,0), breaks = seq(0, 1, by = 0.2)) +
-        scale_fill_manual(values = family_color) +
-        theme_cowplot() +
-        theme(axis.text.x = element_text(angle = 90, vjust = 0.5)) +
-        labs(x = "community", y = "relative abundance")
-    
-    p_genus <- left_join(community_abundance_subset, esv_RDP) %>%
-        filter(RelativeAbundance >= 0.01) %>% 
-        mutate(Genus = as.character(Genus)) %>% 
-        select(Family, Genus, Community, Transfer, CommunityESVID, RelativeAbundance) %>% 
-        mutate(Genus = ifelse(Genus == "Salmonella", "Klebsiella", Genus)) %>% 
-        mutate(Genus = ifelse(Genus %in% genus_name, Genus, "Other") %>% ordered(genus_name)) %>% 
-        mutate(Community = ordered(Community, community_names_ordered_by_size)) %>% 
-        ggplot() +
-        geom_bar(aes(x = Community, y = RelativeAbundance, fill = Genus), stat = "identity", color = "grey20") +
-        scale_x_discrete(expand = c(0,0)) +
-        scale_y_continuous(expand = c(0,0), breaks = seq(0, 1, by = 0.2)) +
-        scale_fill_manual(values = genus_color) +
-        theme_cowplot() +
-        theme(axis.text.x = element_text(angle = 90, vjust = 0.5)) +
-        labs(x = "community", y = "relative abundance")
-    
-    ps0 <- plot_grid(p_family, p_genus, ncol = 1, axis = "lr", align = "hv")
-    ggsave("../plots/FigS0.png", plot = ps0, width = 6, height = 8)
+if (FALSE) {
+    # # Panel XX: example of one netowkr and adjacent matrix 
+    # p_net <- plot_competitive_network(graph_list$C11R2, node_size = 4, layout = "circle")
+    # p_mat <- plot_adjacent_matrix(graph_list$C11R2)
+    # p_merged <- plot_grid(p_net, p_mat)
+    # ggsave("../plots/Fig_example.png", p_merged, width = 8, height = 4)
     
     # Panel: adjacent matrix
     graph_list_ordered_by_size <- rep(list(NA), length(graph_list))
     for (i in 1:length(graph_list)) graph_list_ordered_by_size[[i]] <- graph_list[[community_names_ordered_by_size[i]]]
     names(graph_list_ordered_by_size) <- community_names_ordered_by_size
-    p_mats <- graph_list_ordered_by_size %>% lapply(function(x) {plot_adjacent_matrix(x) + ggtitle("")})
-    p_mats[[14]] <- (plot_adjacent_matrix(graph_list_ordered_by_size[[13]]) + 
-            theme(legend.position = "right", legend.title = element_blank(), legend.text = element_text(size = 25)) + 
-            guides(fill = guide_legend())) %>% 
-        ggpubr::get_legend() %>% 
-        ggpubr::as_ggplot()
-    ps3 <- plot_grid(plotlist = p_mats, nrow = 2)#, labels = community_names_ordered_by_size)
+    p_mats <- graph_list_ordered_by_size %>% lapply(plot_adjacent_matrix)
+    ps3 <- plot_grid(plotlist = p_mats, nrow = 2, labels = community_names_ordered_by_size)
     
-    ggsave("../plots/FigS3.png", plot = ps3, width = 18, height = 6)
+    ggsave("../plots/FigS3.png", plot = ps3, width = 20, height = 6)
     
 }
 
@@ -243,25 +173,23 @@ p_D <- observed_motif_counts %>%
     left_join(random_motif_counts_confidence_intervals) %>% 
     mutate(StandardizedCount = (Count - MeanCount)/SdCount) %>%
     mutate(CommunitySize = factor(CommunitySize)) %>% 
-    mutate(Motif = as.numeric(Motif)) %>% 
     ggplot() +
     # geom_rect(xmin = -Inf, xmax = Inf, ymin = 0.34, ymax = -0.34, fill = "grey", alpha = 0.5) +
     # geom_rect(xmin = -Inf, xmax = Inf, ymin = 0.475, ymax = -0.475, fill = NA, color = 1, linetype = 2) +
-    geom_ribbon(aes(x = Motif, ymin = -1, ymax = 1), ymax = 1, fill = "grey", alpha = 0.5) +
-    geom_ribbon(aes(x = Motif, ymin = -2, ymax = 2), fill = NA, color = 1, linetype = 2) +
+    geom_ribbon(aes(x = Motif,  ymin = 0.38, ymax = -0.38), fill = "grey", alpha = 0.5) +
+    geom_ribbon(aes(x = Motif,  ymin = 0.475, ymax = -0.475), fill = NA, color = 1, linetype = 2) +
     geom_point(aes(x = Motif, y = StandardizedCount, color = Community, size = CommunitySize), shape = 21) +
     scale_x_continuous(breaks = 1:7) +
-    scale_y_continuous(breaks = seq(-10,10,2)) +
     # facet_grid(.~Motif, scales = "free_x") +
     theme_cowplot() +
-    theme() + 
-    guides(color = F, size = guide_legend(ncol = 1, direction = "vertical")) +
-    labs(x ="Motif", y = "Normalized standard deviation", size = "Community size") 
-p_D
-#p <- plot_grid(p_motifs, p4, ncol = 1, axis = "lr", align = "v", rel_heights = c(1,5))
-ggsave("../plots/Fig1D.png", p_D, width = 6, height = 4)
+    theme(legend.position = "top") + 
+    guides(color = F, size = guide_legend(nrow = 1, title.position = "top")) +
+    labs(x ="Motif", y = "Standardized count") 
 
-if (whether_plot_supp) {
+#p <- plot_grid(p_motifs, p4, ncol = 1, axis = "lr", align = "v", rel_heights = c(1,5))
+ggsave("../plots/Fig1D.png", p_D, width = 4, height = 4)
+
+if (FALSE) {
     random_motif_counts_percentile <- random_motif_counts_percentile %>% 
         mutate(Motif = factor(Motif)) %>% 
         mutate(Community = ordered(Community, levels = community_names_ordered_by_size))
@@ -288,8 +216,8 @@ if (whether_plot_supp) {
 
 # Panel E: competitive hierarchy
 #graph 
-#example_motifs[[1]] %>%
-
+example_motifs[[1]] %>%
+    
 
 
 #
@@ -316,9 +244,9 @@ if (FALSE){
     
     
     ggraph(graph, layout = "linear", circular = T) +
-        geom_node_point() +
-        geom_edge_arc(aes(color = interaction), show.legend = T) +
-        theme_graph()
+    geom_node_point() +
+    geom_edge_arc(aes(color = interaction), show.legend = T) +
+    theme_graph()
     
     
     temp_list <- rep(list(rep(list(NA), b)), length(p_range))
