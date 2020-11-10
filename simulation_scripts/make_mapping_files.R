@@ -11,12 +11,12 @@ mapping_file_directory = "../data/raw/simulation/mapping_files/"
 
 make_input_csv <- function(...){
     args = list(...)
-    
+
     # List of parameters
     df_default <-
         data.frame(
             stringsAsFactors = FALSE,
-            
+
             selected_function = "f1_additive", #Function that is under selection
             protocol = "simple_screening", #protocol to implement
             seed = 1, #Seed for species poo l
@@ -29,9 +29,9 @@ make_input_csv <- function(...){
             save_plate = F, #Save initial plate
             function_lograte = 1, #How often do you save the function in transfers
             composition_lograte = 20, #How often do you save the compoistion in transfers
-            
+
             #Experiment Paramaters (applies to for all protocols)
-            
+
             scale = 1000000, # Number of cells when N_i = 1
             n_inoc = 1000000, # Number of cells sampled from the regional species at start
             rich_medium = T, #Whether to generate a rich medium sampled from a a random distribution or a minimal media with only a single resource
@@ -41,18 +41,18 @@ make_input_csv <- function(...){
             n_propagation = 1, # Incubation time
             n_transfer = 40, #Number of Transfers total number of transfers
             n_transfer_selection = 20, #Number of tranfers implementing selection regime
-            
+
             #Paramaters for community function, #paramaters that determine properties of function
-            
+
             sigma_func = 1, #Standard deviation for drawing specifc speices/interaction function
             alpha_func = 1, # Scaling factor between species- and interaction-specific function variances
             binary_threshold = 1, #Threshold for binary functions
             g0 = 1, # The baseline conversion factor of biomass per energy
             cost_mean = 0, # Mean fraction of cost feeded into a gamma distribution. Suggested up to 0.05
             cost_sd = 0, # Sd fraction of cost feeded into a gamma distribution. cost_sd = 0 if cost_mean = 0, cost_sd= 0.01 if cost_mean >0
-            
+
             #Paramaters for Directed Selection (for directed selection protocols that can't be coded up in experiment paramaters)
-            
+
             directed_selection = F, # If true whenever select_top is selected the highest performing Community is propagated asexually and some kind of pertubations can ne applied
             knock_out = F, #If True performs knock out pertubations
             knock_in = F, #If True performs knock in pertubation
@@ -67,17 +67,17 @@ make_input_csv <- function(...){
             resource_shift = F, #If true performs resource pertubations
             r_type = NA, # Type of resource pertubation. rescale_add, rescale_remove, add, remove, old. if NA defaults to resource swap
             r_percent = NA, # Tunes the magnitude of resource pertubation if NA does not perform resource pertubation
-            
+
             # Parameters for reconstituting pairs and trios
             n_trios = NA,
             n_pairs = NA,
             # synthetic_community = F, # Whether the initial community is randomly drawn synthetic community
             # synthetic_community_size = 2, # If synthetic communtiy = T, what is the initial richness?
             # synthetic_community_isolate_list = F, # The isolate list used to build the synthetic community. Example is monoculture-culturable-1.txt
-            
+
             #Paramaters for community simulator package, note that we have split up a couple of paramaters that are inputed as list (SA and SGen). In the mapping file
             #if paramater is set as NA it takes the default value in community_simulator package. Also some paramaters could actually be inputed as lists but this is beyond the scope of this structure of mapping file i.e m, w,g r
-            
+
             sampling = "Binary_Gamma", #{'Gaussian','Binary','Gamma', 'Binary_Gamma'} specifies choice of sampling algorithm
             sn = 2100, #number of species per specialist family
             sf = 1, #number of specialist families, # note SA = sn *np.ones(sf)
@@ -107,10 +107,10 @@ make_input_csv <- function(...){
             tau = NA, # external resource supply  rate (for chemostat)
             r = NA, #renewal rate for self renewing resources
             S = 100 # number of species in the initial community, legacy of the community-simulator
-            
-        ) 
-    
-    
+
+        )
+
+
     argument_names <- colnames(df_default)
     # If there is no change, output a line of default
     if (length(args) == 0) {
@@ -121,35 +121,35 @@ make_input_csv <- function(...){
         to_changed_args <- names(args)
         if (!all(to_changed_args %in% argument_names)) stop("Errors: arguments do not exist in the list")
         for (i in 1:length(to_changed_args)) output_row[,to_changed_args[i]] <- args[[i]][1]
-        
+
         # Dependency
         ## Set exp_id names by the seed, selected function, and protocol (and directed selection type if protocol is directed selection)
         output_row$exp_id = paste(output_row$selected_function, output_row$protocol, output_row$seed, sep = "-")
-        
+
         ## Monoculture
         if (output_row$monoculture == TRUE) {
             if (output_row$protocol != "simple_screening") stop("Errors: monoculture plate has to be simple_screening")
             #output_row$protocol = "monoculture"
             output_row$exp_id = paste(output_row$selected_function, "monoculture", output_row$seed, sep = "-")
         }
-        
-        ## Cost per function. Fixed sd of cost is specified 
+
+        ## Cost per function. Fixed sd of cost is specified
         if (output_row$cost_mean != 0) output_row$cost_sd <- 0.01
-        
+
         ## Check on the dependency of arguments on directed selection
         list_directed_selections <- c("knock_out", "knock_in", "bottleneck", "migration", "coalescence", "resource_shift")
-        
+
         if (any(unlist(output_row[,list_directed_selections]))) {
             # Set the flag TRUE
             #output_row$protocol <- "directed_selection"
             output_row$directed_selection <- TRUE
-            
+
             # Check on the dependency of arguments. For example, bottleneck_size is not NA when bottleneck is TRUE
             if (all(output_row[list_directed_selections] == FALSE)) stop("Errors: A directed selection approach must be speicified")
-            
+
             # exp_id
             if (!("exp_id" %in% names(args))) output_row$exp_id = paste(output_row$selected_function, output_row$protocol, list_directed_selections[unlist(output_row[,list_directed_selections])], output_row$seed, sep = "-")
-            
+
             if (output_row$knock_in == TRUE) {
                 temp1 <- output_row$knock_in_threshold
                 if (is.na(temp1)) temp1 <- 0.95
@@ -176,42 +176,42 @@ make_input_csv <- function(...){
                 output_row$exp_id = paste(output_row$selected_function, output_row$protocol, "resource_shift", temp1, paste0("p", temp2*100), output_row$seed, sep = "-")
             }
         }
-        
+
         # Check on the possible bug. For example, n_transfer must be larger than n_transfer_selection
         if (output_row$n_transfer < output_row$n_transfer_selection) stop("Errors: n_transfer must be greater than n_transfer_selection")
         if (output_row$n_transfer < output_row$function_lograte) stop("Errors: n_transfer must be greater than the function_lograte")
         if (output_row$n_transfer < output_row$composition_lograte) stop("Errors: n_transfer must be greater than the composition_lograte")
         #if (output_row$protocol != "directed_selection" & output_row$directed_selection == T) stop("protocol name needs to be changed to directed selection")
-        
+
         # Placeholder for checking whether the protocol is available
-        
+
     }
-    
+
     # Modify the parameter format so it's readible by python
     output_row[sapply(output_row, isTRUE)] <- "True"
     output_row[sapply(output_row, isFALSE)] <- "False"
-    
+
     # If exp_id speficied in the arguments, use it
     if ("exp_id" %in% names(args)) output_row$exp_id <- args$exp_id
-    
+
     # Turn off scientific notation printout for large / small fractions numeric paramters
     for (i in 1:length(output_row[1,])) if (is.numeric(output_row[1,i])) output_row[1,i] <- format(output_row[1,i], scientific = FALSE)
-    
-    # 
+
+    #
     output_row$seed <- as.numeric(output_row$seed)
     output_row$composition_lograte <- as.numeric(output_row$composition_lograte)
-    output_row$n_transfer <- as.numeric(output_row$n_transfer) 
+    output_row$n_transfer <- as.numeric(output_row$n_transfer)
     output_row$n_transfer_selection  <- as.numeric(output_row$n_transfer_selection)
-    
+
     return(output_row)
 }
 
 #
 input_independent_wrapper <- function(
-    i, 
+    i,
     n_top_down_communities=10,
-    l, 
-    q, 
+    l,
+    q,
     rich_medium = T,
     dilution = 0.001,
     sn = 2100, #number of species per specialist family
@@ -221,33 +221,33 @@ input_independent_wrapper <- function(
     rf = 1, #number of resource classes, #Note RA = rn*np.ones(rf)
     sampling = "Binary_Gamma" #{'Gaussian','Binary','Gamma', 'Binary_Gamma'} specifies choice of sampling algorithm
 ) {
-    # Grow monoculture 
+    # Grow monoculture
     experiment_monocultures <- make_input_csv(monoculture = T, seed = i,
         exp_id = paste0("monoculture-", i))
-    
+
     # # Grow random pairs of culturable isolates
     # experiment_culturable_pairs <- make_input_csv(seed = i,
     #     overwrite_plate = paste0(data_directory, "pair-culturable-", i, ".txt"),
     #     passage_overwrite_plate = F,
     #     exp_id = paste0("pair-culturable_isolates-", i))
-    
+
     # Grow random trios of culturable isolates
     experiment_culturable_trios <- make_input_csv(seed = i, n_trios = 200, n_wells = 200,
         overwrite_plate = paste0(data_directory, "trio-culturable-", i, ".txt"),
         passage_overwrite_plate = F,
         exp_id = paste0("trio-culturable_isolates-", i))
-    
+
     # Grow pairs from the trios
-    experiment_culturable_pair_from_trio <- make_input_csv(seed = i, 
+    experiment_culturable_pair_from_trio <- make_input_csv(seed = i,
         overwrite_plate = paste0(data_directory, "pair-culturable_from_trio-", i, ".txt"),
         passage_overwrite_plate = F,
         exp_id = paste0("pair-culturable_from_trio-", i))
-    
+
     # Top-down assembly
     experiment_top_down <- make_input_csv(seed = i,
         passage_overwrite_plate = F,
         exp_id = paste0("community-top_down-", i))
-    
+
     # Grow pairs from the top-down assembled communities
     experiment_pair_from_top_down <- rep(list(NA), n_top_down_communities)
     for (j in 1:n_top_down_communities) {
@@ -256,11 +256,11 @@ input_independent_wrapper <- function(
             passage_overwrite_plate = F,
             exp_id = paste0("pair-from_top_down_community-", i, "-community", j))
     }
-    
+
     input_independent <- bind_rows(experiment_monocultures,
         experiment_culturable_trios, experiment_culturable_pair_from_trio,
         experiment_top_down, rbindlist(experiment_pair_from_top_down))
-    
+
     input_independent$l <- l
     input_independent$q <- q
     input_independent$muc <- 10
@@ -280,20 +280,21 @@ input_independent_wrapper <- function(
     input_independent$rn <- rn #number of resources per resource clas
     input_independent$rf <- rf #number of resource classes, #Note RA = rn*np.ones(rf)
     input_independent$sampling <- sampling #number of resource classes, #Note RA = rn*np.ones(rf)
-    
+
     temp_index <- grepl("community-top_down-", input_independent$exp_id)
     input_independent$n_transfer[temp_index] <- 20
     input_independent$n_transfer_selection[temp_index] <- 20
     input_independent$n_wells[temp_index] <- 20
-    
+
     return(input_independent)
 }
 
 #temp_list <- rep(list(NA), length(seeds))
 #for (i in seeds) temp_list[[i]] <- input_independent_wrapper(i)
-temp_list <- rep(list(NA), 2)
+temp_list <- rep(list(NA), 3)
 temp_list[[1]] <- input_independent_wrapper(1, n_top_down_communities = 10, rich_medium = T, l = 0.2, q = 0, sn = 600, sf = 3, Sgen = 0, rn = 90, rf = 3, sampling = "Gamma", dilution = 0.01)
 temp_list[[2]] <- input_independent_wrapper(2, n_top_down_communities = 10, rich_medium = F, l = 0.2, q = 0, sn = 600, sf = 3, Sgen = 0, rn = 90, rf = 3, sampling = "Gamma", dilution = 0.01)
+temp_list[[3]] <- input_independent_wrapper(3, n_top_down_communities = 10, rich_medium = F, l = 0.2, q = 0, sn = 600, sf = 3, Sgen = 0, rn = 90, rf = 3, sampling = "Gamma", dilution = 0.01)
 
 # temp_list[[2]] <- input_independent_wrapper(2, n_top_down_communities = 10, rich_medium = F, l = 0.5, q = 0, sn = 60, sf = 3, Sgen = 0, rn = 30, rf = 3, sampling = "Gamma", dilution = 0.01)
 # temp_list[[3]] <- input_independent_wrapper(3, n_top_down_communities = 10, rich_medium = F, l = 0.5, q = 0, sn = 600, sf = 3, Sgen = 0, rn = 90, rf = 3, sampling = "Gamma", dilution = 0.01)
@@ -317,40 +318,40 @@ fwrite(input_independent, paste0(mapping_file_directory, "input_independent.csv"
 
 
 if (FALSE) {
-    
-    
+
+
     l = 0.5
     q = 0.8
     rich_medium = F
     i = 1
-    
-    experiment_monocultures <- make_input_csv(monoculture = T, seed = i, l = l, q = q, rich_medium = rich_medium, 
+
+    experiment_monocultures <- make_input_csv(monoculture = T, seed = i, l = l, q = q, rich_medium = rich_medium,
         exp_id = paste0("monoculture-", i))
-    experiment_culturable_pairs <- make_input_csv(seed = i, l = l, q = q, rich_medium = rich_medium, 
+    experiment_culturable_pairs <- make_input_csv(seed = i, l = l, q = q, rich_medium = rich_medium,
         synthetic_community = T,
         synthetic_community_size = 2,
         synthetic_community_isolate_list = paste0(data_directory, "monoculture-culturable-", i, ".txt"),
         exp_id = paste0("pair-culturable_isolates-", i))
-    
+
     input_independent <- bind_rows(experiment_monocultures, experiment_culturable_pairs)
     fwrite(input_independent, paste0(mapping_file_directory, "/input_independent.csv"))
-    
-    
+
+
     # Random pairs from the pool
     input_random_pairs_wrapper <- function (i) {
         leakages <- seq(0, 0.9, by = 0.1)
         specialists <- c(0, 0.3, 0.8)
         n_experiments <- length(leakages) * length(specialists)
         temp_list <- rep(list(NA), n_experiments)
-        
+
         counter = 1
-        
+
         for (j in 1:length(leakages)) {
             for (k in 1:length(specialists)) {
                 l = leakages[j]
                 q = specialists[k]
                 temp <- make_input_csv(
-                    seed = 1, n_wells = 96, 
+                    seed = 1, n_wells = 96,
                     S = 1,
                     s_gen = 0,
                     n_transfer = 10, n_transfer_selection = 5,
@@ -361,7 +362,7 @@ if (FALSE) {
                     composition_lograte = 1,
                     save_function = F,
                     output_dir = "../data/raw/simulation/",
-                    l = l, q = q, 
+                    l = l, q = q,
                     synthetic_community = T, synthetic_community_size = 2,
                     sn = 50,
                     sf = 3,
@@ -369,12 +370,12 @@ if (FALSE) {
                     rf = 3,
                     muc = 10,
                     c1 = 1,
-                    exp_id = paste0("pair-random_isolates-leakage", l*100, "-specialist", q*100, "-", i)) 
+                    exp_id = paste0("pair-random_isolates-leakage", l*100, "-specialist", q*100, "-", i))
                 temp_list[[counter]] <- temp
                 counter = counter + 1
             }
         }
-        
+
         # temp_list %>%
         #     rbindlist() %>%
         #     select(exp_id, l, q)
@@ -382,15 +383,15 @@ if (FALSE) {
             rbindlist() %>%
             return()
     }
-    
+
     cat("\nMaking input_random_pairs.csv\n")
     input_random_pairs_list <- rep(list(NA), length(seeds))
     for (i in seeds) {
         cat(i, "\t")
         input_random_pairs_list[[i]] <- input_random_pairs_wrapper(i = i)
     }
-    
+
     input_random_pairs <- rbindlist(input_random_pairs_list)
     fwrite(input_random_pairs, paste0(mapping_file_directory, "/input_random_pairs.csv"))
-    
+
 }
