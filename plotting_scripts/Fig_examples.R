@@ -47,6 +47,22 @@ p_bar <- bind_rows(t_coexist, t_exclusion) %>%
         strip.text = element_blank()) +
     labs(x = "Time")
 
+p_line <- bind_rows(t_coexist, t_exclusion) %>%
+    filter(ID == 2, Transfer %in% c(1,4)) %>%
+    mutate(Transfer = ifelse(Transfer == 1, "T1", "T8")) %>%
+    mutate(ID = factor(ID), Transfer = factor(Transfer)) %>%
+    ggplot(aes(x = Transfer, y = Abundance, group = InitialFrequency)) +
+    geom_line() +
+    geom_point() +
+    scale_y_continuous(limits = c(0,1), breaks = c(0, 0.5, 1)) +
+    scale_fill_manual(values = c("white", "grey40")) +
+    facet_grid(.~InteractionType) +
+    theme_bw() +
+    theme(legend.position = "none",
+        strip.background = element_blank(),
+        strip.text = element_blank()) +
+    labs(x = "Time", y = "Frequency")
+p_line
 
 isolates1 <- tibble(Isolate = 2:1, PlotRank = 2:1, Rank = 2:1)
 edges1 <- tibble(From = 1, To = 2, InteractionType = "coexistence")
@@ -62,8 +78,12 @@ p_coexistence <- plot_competitive_network(g1, g_layout = "linear", node_size = 1
 p_exclusion <- plot_competitive_network(g2, g_layout = "linear", node_size = 10) + theme(legend.position = "none", panel.background = element_blank())
 p_links <- plot_grid(p_coexistence, p_exclusion, nrow = 1)
 
-p1 <- plot_grid(p_links, p_bar, ncol = 1, rel_heights = c(2, 8), scale = c(1, 1), align = "hv", axis = "lr")
+
+#p1 <- plot_grid(p_links, p_bar, ncol = 1, rel_heights = c(2, 8), scale = c(1, 1), align = "hv", axis = "lr")
+p1 <- plot_grid(p_links, p_line, ncol = 1, rel_heights = c(2, 2), scale = c(1, 1), align = "hv", axis = "lr")
 ggsave("../plots/Ex1_mutual_invasion.png", plot = p1, width = 5, height = 5)
+ggsave("../plots/Ex1_mutual_invasion.pdf", plot = p1, width = 5, height = 5)
+
 
 
 # Figure: diagram of individual motifs ----
