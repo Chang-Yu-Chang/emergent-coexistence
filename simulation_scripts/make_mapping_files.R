@@ -3,12 +3,12 @@
 suppressWarnings(suppressMessages(library(tidyverse)))
 suppressWarnings(suppressMessages(library(data.table)))
 
-seeds = 1 # Random seed. Default 1:100
+seeds = 1:20 # Random seed. Default 1:100
 cat("\nSeeds = ", seeds)
 cat("\nTotal seeds are ", seeds, "\n")
-data_directory = "../data/raw/simulation/"
+# data_directory = "../data/raw/simulation/"
+data_directory = "/home/cc2553/project/invasion-network/data/"
 mapping_file_directory = "../data/raw/simulation/mapping_files/"
-
 make_input_csv <- function(...){
     args = list(...)
 
@@ -28,9 +28,9 @@ make_input_csv <- function(...){
             save_composition = T, # Save Composition Data
             save_plate = F, #Save initial plate
             function_lograte = 1, #How often do you save the function in transfers
-            composition_lograte = 20, #How often do you save the compoistion in transfers
+            composition_lograte = 20, #How often do you save the composition in transfers
 
-            #Experiment Paramaters (applies to for all protocols)
+            #Experiment Parameters (applies to for all protocols)
 
             scale = 1000000, # Number of cells when N_i = 1
             n_inoc = 1000000, # Number of cells sampled from the regional species at start
@@ -41,15 +41,31 @@ make_input_csv <- function(...){
             n_propagation = 1, # Incubation time
             n_transfer = 40, #Number of Transfers total number of transfers
             n_transfer_selection = 20, #Number of tranfers implementing selection regime
+            metacommunity_sampling = "Power", # {"Power", "Lognormal", "Default"} Sampling method for initial metacommunity
+            power_alpha = NA, # Default = 0.01
+            lognormal_mean = NA, # Default = 8
+            lognormal_sd = NA, # Default = 8
 
-            #Paramaters for community function, #paramaters that determine properties of function
 
-            sigma_func = 1, #Standard deviation for drawing specifc speices/interaction function
-            alpha_func = 1, # Scaling factor between species- and interaction-specific function variances
+            #Parameters for community function, #parameters that determine properties of function
+            phi_distribution = "Norm", # {"Norm", "Uniform"}
+            phi_mean = 0, #
+            phi_sd = 1, # Standard deviation for drawing specifc speices/interaction function
+            phi_lower = 0,
+            phi_upper = 1,
+            ruggedness = 0.8, # (1-ruggedness) percent of function are set to 0
+            function_ratio = 1, # Scaling factor between species- and interaction-specific function variances
             binary_threshold = 1, #Threshold for binary functions
             g0 = 1, # The baseline conversion factor of biomass per energy
+            cost_distribution = "Norm", # {"Norm", "Uniform"}
             cost_mean = 0, # Mean fraction of cost feeded into a gamma distribution. Suggested up to 0.05
             cost_sd = 0, # Sd fraction of cost feeded into a gamma distribution. cost_sd = 0 if cost_mean = 0, cost_sd= 0.01 if cost_mean >0
+            cost_lower = 0, # Lower bound for cost if cost_distribution="Uniform"
+            cost_upper = 1, # Upper bound for cost if cost_distribution="Uniform"
+            invader_index =  2,
+            invader_sampling = "Gamma",
+            invader_strength = 10,
+            target_resource = NA, # Target resource production when selected_function=f6_target_resourece
 
             #Paramaters for Directed Selection (for directed selection protocols that can't be coded up in experiment paramaters)
 
@@ -60,7 +76,7 @@ make_input_csv <- function(...){
             bottleneck = F, #If True perform bottleneck pertubations
             bottleneck_size = NA, #Magnitude of bottleneck. If not set it default to dilution
             migration = F, #If true perform migration pertubations
-            n_migration = NA, # Number of cells to migration in the directed selection
+            n_migration = 1e6, # Number of cells to migration in the directed selection
             s_migration = NA, # Number of species to migrate. If s_migration is NA defaults to power law migration (so this is normal).
             coalescence = F, #If true perform coalescence pertubation
             frac_coalescence = NA, # fraction of coalesced community that is champion. Defaults to 0.5 if NA
@@ -68,20 +84,13 @@ make_input_csv <- function(...){
             r_type = NA, # Type of resource pertubation. rescale_add, rescale_remove, add, remove, old. if NA defaults to resource swap
             r_percent = NA, # Tunes the magnitude of resource pertubation if NA does not perform resource pertubation
 
-            # Parameters for reconstituting pairs and trios
-            n_trios = NA,
-            n_pairs = NA,
-            # synthetic_community = F, # Whether the initial community is randomly drawn synthetic community
-            # synthetic_community_size = 2, # If synthetic communtiy = T, what is the initial richness?
-            # synthetic_community_isolate_list = F, # The isolate list used to build the synthetic community. Example is monoculture-culturable-1.txt
-
             #Paramaters for community simulator package, note that we have split up a couple of paramaters that are inputed as list (SA and SGen). In the mapping file
             #if paramater is set as NA it takes the default value in community_simulator package. Also some paramaters could actually be inputed as lists but this is beyond the scope of this structure of mapping file i.e m, w,g r
 
             sampling = "Binary_Gamma", #{'Gaussian','Binary','Gamma', 'Binary_Gamma'} specifies choice of sampling algorithm
             sn = 2100, #number of species per specialist family
             sf = 1, #number of specialist families, # note SA = sn *np.ones(sf)
-            s_gen = 0, #number of generalist species
+            Sgen = 0, #number of generalist species
             rn = 90, #number of resources per resource clas
             rf = 1, #number of resource classes, #Note RA = rn*np.ones(rf)
             R0_food = 1000, #Total amount of supplied food
@@ -206,224 +215,130 @@ make_input_csv <- function(...){
     return(output_row)
 }
 
-#
-input_independent_wrapper <- function(
-    i,
-    n_top_down_communities=10,
-    l,
-    q,
-    rich_medium = T,
-    dilution = 0.001,
-    sn = 2100, #number of species per specialist family
-    sf = 1, #number of specialist families, # note SA = sn *np.ones(sf)
-    Sgen = 0, #number of generalist species
-    rn = 90, #number of resources per resource clas
-    rf = 1, #number of resource classes, #Note RA = rn*np.ones(rf)
-    sampling = "Binary_Gamma" #{'Gaussian','Binary','Gamma', 'Binary_Gamma'} specifies choice of sampling algorithm
-) {
-    # Grow monoculture
-    experiment_monocultures <- make_input_csv(monoculture = T, seed = i,
-        exp_id = paste0("monoculture-", i))
+list_treatments <- tibble(
+    folder_id = c(rep("simple_medium", 8), rep("rich_medium", 8)),
+    exp_id = c(paste0("simple_medium", 1:8), paste0("rich_medium", 1:8)),
+    rich_medium = c(rep(F, 8), rep(T, 8)),
+    n_inoc = c(rep(10^3, 8), rep(10^6, 8)),
+    n_propagation = c(rep(20, 8), rep(1,8)),
+    dilution = c(rep(0.001, 16)),
+    l = rep(c(0, 0, 0, 0, 0.5, 0.5, 0.5, 0.5), 2),
+    q = rep(c(0, 0, 0.8, 0.8, 0, 0, 0.8, 0.8), 2),
+    sn = c(rep(c(2100, 700), 8)),
+    sf = c(rep(c(1, 3), 8)),
+    Sgen = 0,
+    rn = c(rep(c(90, 30), 8)),
+    rf = c(rep(c(1, 3), 8)),
+    n_wells = 10,
+    power_alpha = 0.01,
+    sampling = "Binary_Gamma",
+    n_transfer = 10,
+    n_transfer_selection = 10,
+    save_function = F,
+    composition_lograte = 1
+)
 
-    # # Grow random pairs of culturable isolates
-    # experiment_culturable_pairs <- make_input_csv(seed = i,
-    #     overwrite_plate = paste0(data_directory, "pair-culturable-", i, ".txt"),
-    #     passage_overwrite_plate = F,
-    #     exp_id = paste0("pair-culturable_isolates-", i))
+input_independent_wrapper <- function (i, treatment) {
+    df <- make_input_csv()
+    df <- df[rep(1,22),]; row.names(df) <- 1:nrow(df)
+    experiments <- c("monoculture", "top_down_community", paste0("pair_from_random_species_", 1:10), paste0("pair_from_top_down_community_", 1:10))
+    monoculture <- c(T, rep(F, 21))
+    df$exp_id <- paste0(treatment$exp_id, "-", experiments, "-", i)
+    df$monoculture <- monoculture
+    df$overwrite_plate <- c(NA, NA, paste0(treatment$output_dir, treatment$exp_id, "-", experiments[-c(1,2)], "-", i, ".txt"))
+    df$n_wells = c(NA, 10, rep(NA, 20))
 
-
-    # Top-down assembly
-    experiment_top_down <- make_input_csv(seed = i,
-        passage_overwrite_plate = F,
-        exp_id = paste0("community-top_down-", i))
-
-    input_independent <- bind_rows(experiment_monocultures, experiment_top_down)
-
-    input_independent$l <- l
-    input_independent$q <- q
-    input_independent$muc <- 10
-    input_independent$sparsity <- 0.2
-    input_independent$rich_medium <- rich_medium
-    input_independent$n_transfer <- 10
-    input_independent$n_transfer_selection <- 10
-    input_independent$dilution = dilution
-    input_independent$save_function <- F
-    input_independent$composition_lograte = 1
-    input_independent$response = "type I"
-    input_independent$output_dir <- data_directory
-    input_independent[is.na(input_independent)] <- "NA"
-    input_independent$sn <- sn #number of species per specialist family
-    input_independent$sf <- sf #number of specialist families, # note SA = sn *np.ones(sf)
-    input_independent$Sgen <- Sgen #number of generalist species
-    input_independent$rn <- rn #number of resources per resource clas
-    input_independent$rf <- rf #number of resource classes, #Note RA = rn*np.ones(rf)
-    input_independent$sampling <- sampling #number of resource classes, #Note RA = rn*np.ones(rf)
-
-    temp_index <- grepl("community-top_down-", input_independent$exp_id)
-    input_independent$n_transfer[temp_index] <- 20
-    input_independent$n_transfer_selection[temp_index] <- 20
-    input_independent$n_wells[temp_index] <- 20
-
-    return(input_independent)
+    for (j in 2:ncol(treatment)) df[,names(treatment)[j]] = treatment[,names(treatment)[j]]
+    df[is.na(df)] <- "NA"
+    return(df)
 }
 
-input_pairs_wrapper <- function(
-    i,
-    n_top_down_communities=10,
-    l,
-    q,
-    rich_medium = T,
-    dilution = 0.001,
-    sn = 2100, #number of species per specialist family
-    sf = 1, #number of specialist families, # note SA = sn *np.ones(sf)
-    Sgen = 0, #number of generalist species
-    rn = 90, #number of resources per resource clas
-    rf = 1, #number of resource classes, #Note RA = rn*np.ones(rf)
-    sampling = "Binary_Gamma" #{'Gaussian','Binary','Gamma', 'Binary_Gamma'} specifies choice of sampling algorithm
-) {
-    # Grow random trios of culturable isolates
-    experiment_culturable_trios <- make_input_csv(seed = i, n_trios = 200, n_wells = 200,
-        overwrite_plate = paste0(data_directory, "trio-culturable-", i, ".txt"),
-        passage_overwrite_plate = F,
-        exp_id = paste0("trio-culturable_isolates-", i))
-
-    # Grow pairs from the trios
-    experiment_culturable_pair_from_trio <- make_input_csv(seed = i,
-        overwrite_plate = paste0(data_directory, "pair-culturable_from_trio-", i, ".txt"),
-        passage_overwrite_plate = F,
-        exp_id = paste0("pair-culturable_from_trio-", i))
-
-    # Grow pairs from the top-down assembled communities
-    experiment_pair_from_top_down <- rep(list(NA), n_top_down_communities)
-    for (j in 1:n_top_down_communities) {
-        experiment_pair_from_top_down[[j]] <- make_input_csv(seed = i,
-            overwrite_plate = paste0(data_directory, "pair-from_top_down_community-", i, "-community", j,".txt"),
-            passage_overwrite_plate = F,
-            exp_id = paste0("pair-from_top_down_community-", i, "-community", j))
-    }
-
-    input_independent <- bind_rows(experiment_culturable_trios, experiment_culturable_pair_from_trio, rbindlist(experiment_pair_from_top_down))
-
-    input_independent$l <- l
-    input_independent$q <- q
-    input_independent$muc <- 10
-    input_independent$sparsity <- 0.2
-    input_independent$rich_medium <- rich_medium
-    input_independent$n_transfer <- 10
-    input_independent$n_transfer_selection <- 10
-    input_independent$dilution = dilution
-    input_independent$save_function <- F
-    input_independent$composition_lograte = 1
-    input_independent$response = "type I"
-    input_independent$output_dir <- data_directory
-    input_independent[is.na(input_independent)] <- "NA"
-    input_independent$sn <- sn #number of species per specialist family
-    input_independent$sf <- sf #number of specialist families, # note SA = sn *np.ones(sf)
-    input_independent$Sgen <- Sgen #number of generalist species
-    input_independent$rn <- rn #number of resources per resource clas
-    input_independent$rf <- rf #number of resource classes, #Note RA = rn*np.ones(rf)
-    input_independent$sampling <- sampling #number of resource classes, #Note RA = rn*np.ones(rf)
-
-    temp_index <- grepl("community-top_down-", input_independent$exp_id)
-    input_independent$n_transfer[temp_index] <- 20
-    input_independent$n_transfer_selection[temp_index] <- 20
-    input_independent$n_wells[temp_index] <- 20
-
-    return(input_independent)
+input_set_wrapper <- function (i, treatment) {
+    df <- make_input_csv()
+    df <- df[rep(1,2),]; row.names(df) <- 1:nrow(df)
+    experiments <- c("monoculture", "top_down_community")
+    monoculture <- c(T, F)
+    df$exp_id <- paste0(treatment$exp_id, "-", experiments, "-", i)
+    df$monoculture <- monoculture
+    df$overwrite_plate <- c(NA, NA)
+    df$n_wells = c(NA, 10)
+    df$output_dir <- paste0(data_directory, "set_", treatment$folder_id, "/")
+    for (j in 3:ncol(treatment)) df[,names(treatment)[j]] = treatment[,names(treatment)[j]]
+    df[is.na(df)] <- "NA"
+    return(df)
 }
 
-independent_list <- rep(list(NA), 3)
-independent_list[[1]] <- input_independent_wrapper(1, n_top_down_communities = 10, rich_medium = T, l = 0.2, q = 0, sn = 600, sf = 3, Sgen = 0, rn = 90, rf = 3, sampling = "Gamma", dilution = 0.01)
-independent_list[[2]] <- input_independent_wrapper(2, n_top_down_communities = 10, rich_medium = F, l = 0.2, q = 0, sn = 600, sf = 3, Sgen = 0, rn = 90, rf = 3, sampling = "Gamma", dilution = 0.01)
-independent_list[[3]] <- input_independent_wrapper(3, n_top_down_communities = 10, rich_medium = F, l = 0.2, q = 0, sn = 600, sf = 3, Sgen = 0, rn = 90, rf = 3, sampling = "Gamma", dilution = 0.01)
-input_independent <- rbindlist(independent_list)
-fwrite(input_independent, paste0(mapping_file_directory, "input_independent.csv"))
+input_synthetic_wrapper <- function (i, treatment) {
+    df <- make_input_csv()
+    df <- df[rep(1,20),]; row.names(df) <- 1:nrow(df)
+    experiments <- c(paste0("pair_from_random_species_", 1:10), paste0("pair_from_top_down_community_", 1:10))
+    monoculture <- c(rep(F, 20))
+    df$exp_id <- paste0(treatment$exp_id, "-", experiments, "-", i)
+    df$monoculture <- monoculture
+    df$overwrite_plate <- c(paste0(treatment$output_dir, treatment$exp_id, "-", experiments, "-", i, ".txt"))
+    df$n_wells = c(rep(NA, 20))
+    df$output_dir <- paste0(data_directory, "set_", treatment$folder_id, "/")
+    for (j in 3:ncol(treatment)) df[,names(treatment)[j]] = treatment[,names(treatment)[j]]
+    df[is.na(df)] <- "NA"
+    return(df)
 
-pairs_list <- rep(list(NA), 3)
-pairs_list[[1]] <- input_pairs_wrapper(1, n_top_down_communities = 10, rich_medium = T, l = 0.2, q = 0, sn = 600, sf = 3, Sgen = 0, rn = 90, rf = 3, sampling = "Gamma", dilution = 0.01)
-pairs_list[[2]] <- input_pairs_wrapper(2, n_top_down_communities = 10, rich_medium = F, l = 0.2, q = 0, sn = 600, sf = 3, Sgen = 0, rn = 90, rf = 3, sampling = "Gamma", dilution = 0.01)
-pairs_list[[3]] <- input_pairs_wrapper(3, n_top_down_communities = 10, rich_medium = F, l = 0.2, q = 0, sn = 600, sf = 3, Sgen = 0, rn = 90, rf = 3, sampling = "Gamma", dilution = 0.01)
-input_pairs <- rbindlist(pairs_list)
-fwrite(input_pairs, paste0(mapping_file_directory, "input_pairs.csv"))
+}
 
+#input_independent_list <- rep(list(rep(list(NA), length(seeds))), nrow(list_treatments))
+input_set_list <- rep(list(rep(list(NA), length(seeds))), nrow(list_treatments))
+input_synthetic_list <- rep(list(rep(list(NA), length(seeds))), nrow(list_treatments))
 
-
-
-if (FALSE) {
-
-
-    l = 0.5
-    q = 0.8
-    rich_medium = F
-    i = 1
-
-    experiment_monocultures <- make_input_csv(monoculture = T, seed = i, l = l, q = q, rich_medium = rich_medium,
-        exp_id = paste0("monoculture-", i))
-    experiment_culturable_pairs <- make_input_csv(seed = i, l = l, q = q, rich_medium = rich_medium,
-        synthetic_community = T,
-        synthetic_community_size = 2,
-        synthetic_community_isolate_list = paste0(data_directory, "monoculture-culturable-", i, ".txt"),
-        exp_id = paste0("pair-culturable_isolates-", i))
-
-    input_independent <- bind_rows(experiment_monocultures, experiment_culturable_pairs)
-    fwrite(input_independent, paste0(mapping_file_directory, "/input_independent.csv"))
-
-
-    # Random pairs from the pool
-    input_random_pairs_wrapper <- function (i) {
-        leakages <- seq(0, 0.9, by = 0.1)
-        specialists <- c(0, 0.3, 0.8)
-        n_experiments <- length(leakages) * length(specialists)
-        temp_list <- rep(list(NA), n_experiments)
-
-        counter = 1
-
-        for (j in 1:length(leakages)) {
-            for (k in 1:length(specialists)) {
-                l = leakages[j]
-                q = specialists[k]
-                temp <- make_input_csv(
-                    seed = 1, n_wells = 96,
-                    S = 1,
-                    s_gen = 0,
-                    n_transfer = 10, n_transfer_selection = 5,
-                    dilution = 0.01,
-                    response = "type I",
-                    rich_medium = F,
-                    save_composition = T,
-                    composition_lograte = 1,
-                    save_function = F,
-                    output_dir = "../data/raw/simulation/",
-                    l = l, q = q,
-                    synthetic_community = T, synthetic_community_size = 2,
-                    sn = 50,
-                    sf = 3,
-                    rn = 30,
-                    rf = 3,
-                    muc = 10,
-                    c1 = 1,
-                    exp_id = paste0("pair-random_isolates-leakage", l*100, "-specialist", q*100, "-", i))
-                temp_list[[counter]] <- temp
-                counter = counter + 1
-            }
-        }
-
-        # temp_list %>%
-        #     rbindlist() %>%
-        #     select(exp_id, l, q)
-        temp_list %>%
-            rbindlist() %>%
-            return()
-    }
-
-    cat("\nMaking input_random_pairs.csv\n")
-    input_random_pairs_list <- rep(list(NA), length(seeds))
+for (k in 1:nrow(list_treatments)) {
+    #input_independent_list[[k]][[1]] <- input_independent_wrapper(i = 1, treatment = list_treatments[k,])
+    input_set_list[[k]][[1]] <- input_set_wrapper(i = 1, treatment = list_treatments[k,])
+    input_synthetic_list[[k]][[1]] <- input_synthetic_wrapper(i = 1, treatment = list_treatments[k,])
     for (i in seeds) {
-        cat(i, "\t")
-        input_random_pairs_list[[i]] <- input_random_pairs_wrapper(i = i)
+        # input_independent_list[[k]][[i]] <- input_independent_list[[k]][[1]] %>%
+        #     mutate(seed = i, exp_id = sub("-\\d$", paste0("-", i), exp_id)) %>%
+        #     mutate(seed = i, overwrite_plate = sub("-\\d.txt", paste0("-", i, ".txt"), overwrite_plate))
+        input_set_list[[k]][[i]] <- input_set_list[[k]][[1]] %>%
+            mutate(seed = i, exp_id = sub("-\\d$", paste0("-", i), exp_id)) %>%
+            mutate(seed = i, overwrite_plate = sub("-\\d.txt", paste0("-", i, ".txt"), overwrite_plate))
+        input_synthetic_list[[k]][[i]] <- input_synthetic_list[[k]][[1]] %>%
+            mutate(seed = i, exp_id = sub("-\\d$", paste0("-", i), exp_id)) %>%
+            mutate(seed = i, overwrite_plate = sub("-\\d.txt", paste0("-", i, ".txt"), overwrite_plate))
+
     }
-
-    input_random_pairs <- rbindlist(input_random_pairs_list)
-    fwrite(input_random_pairs, paste0(mapping_file_directory, "/input_random_pairs.csv"))
-
+    #input_independent <- rbindlist(input_independent_list[[k]])
+    input_set <- rbindlist(input_set_list[[k]])
+    input_synthetic <- rbindlist(input_synthetic_list[[k]])
+    #fwrite(input_independent, paste0(mapping_file_directory, "input_independent.csv"))
+    #fwrite(input_independent, paste0(mapping_file_directory, paste0("input_independent_", list_treatments$exp_id[k],".csv")))
+    #fwrite(input_set, paste0(mapping_file_directory, paste0("input_set_", list_treatments$exp_id[k],".csv")))
+    #fwrite(input_synthetic, paste0(mapping_file_directory, paste0("input_synthetic_", list_treatments$exp_id[k],".csv")))
 }
+
+# cat("\nMaking pooled input_independent.csv\n")
+# input_independent <- input_independent_list %>% lapply(rbindlist) %>% rbindlist()
+# fwrite(input_independent, paste0(mapping_file_directory, "input_independent.csv"))
+
+# cat("\nMaking pooled input_set.csv\n")
+# input_set <- input_set_list %>% lapply(rbindlist) %>% rbindlist()
+# fwrite(input_set, paste0(mapping_file_directory, "input_set.csv"))
+#
+# cat("\nMaking pooled input_synthetic.csv\n")
+# input_synthetic <- input_synthetic_list %>% lapply(rbindlist) %>% rbindlist()
+# fwrite(input_synthetic, paste0(mapping_file_directory, "input_synthetic.csv"))
+
+bind_rows(input_set_list) %>%
+    filter(grepl("simple_medium", exp_id)) %>%
+    fwrite(paste0(mapping_file_directory, "input_set_simple_medium.csv"))
+
+bind_rows(input_synthetic_list) %>%
+    filter(grepl("simple_medium", exp_id)) %>%
+    fwrite(paste0(mapping_file_directory, "input_synthetic_simple_medium.csv"))
+
+
+bind_rows(input_set_list) %>%
+    filter(grepl("rich_medium", exp_id)) %>%
+    fwrite(paste0(mapping_file_directory, "input_set_rich_medium.csv"))
+
+bind_rows(input_synthetic_list) %>%
+    filter(grepl("rich_medium", exp_id)) %>%
+    fwrite(paste0(mapping_file_directory, "input_synthetic_rich_medium.csv"))
+
