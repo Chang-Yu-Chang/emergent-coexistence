@@ -237,6 +237,9 @@ list_treatments <- tibble(
     save_function = F,
     composition_lograte = 1
 )
+# 4 and 8 does no work
+list_treatments <- filter(list_treatments, !grepl("medium4", exp_id) & !grepl("medium8", exp_id))
+
 
 input_independent_wrapper <- function (i, treatment) {
     df <- make_input_csv()
@@ -277,7 +280,7 @@ input_synthetic_wrapper <- function (i, treatment) {
     df$monoculture <- monoculture
     df$overwrite_plate <- c(paste0(treatment$output_dir, treatment$exp_id, "-", experiments, "-", i, ".txt"))
     df$n_wells = c(rep(NA, 20))
-    df$output_dir <- paste0(data_directory, "set_", treatment$folder_id, "/")
+    df$output_dir <- paste0(data_directory, "synthetic_", treatment$folder_id, "/")
     for (j in 3:ncol(treatment)) df[,names(treatment)[j]] = treatment[,names(treatment)[j]]
     df[is.na(df)] <- "NA"
     return(df)

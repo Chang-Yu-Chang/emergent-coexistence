@@ -82,6 +82,16 @@ make_synthetic_communities() {
     Rscript ~/project/invasion-network/wrapper/make_pair_from_random_species.R $1
     Rscript ~/project/invasion-network/wrapper/make_pair_from_top_down_community.R $1
 }
+make_culturable_isolates() {
+    Rscript ~/project/invasion-network/wrapper/make_culturable_isolates.R $1
+}
+make_pair_from_random_species() {
+    Rscript ~/project/invasion-network/wrapper/make_pair_from_random_species.R $1 $2
+}
+make_pair_from_top_down_community() {
+    Rscript ~/project/invasion-network/wrapper/make_pair_from_top_down_community.R $1 $2
+}
+
 
 make_synthetic_communities2() {
     conda activate invnet

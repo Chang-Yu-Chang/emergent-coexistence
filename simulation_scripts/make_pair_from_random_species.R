@@ -4,11 +4,13 @@ suppressWarnings(suppressMessages(library(tidyverse)))
 suppressWarnings(suppressMessages(library(data.table)))
 
 args = commandArgs(trailingOnly = T)
-input_independent <- fread(args[[1]])
+input_set <- fread(args[1])
+input_synthetic <- fread(args[2])
 #input_independent <- fread("../data/raw/simulation/mapping_files/input_independent_simple_medium.csv")
-temp <- args[[1]] %>% strsplit("/") %>% `[[`(1)
-treatment <- sub("input_synthetic_", "", temp[length(temp)]) %>% sub(".csv", "", .) # simple_medium
-input_independent_random_species <- input_independent %>% filter(grepl("pair_from_random_species", exp_id))
+# temp <- args[2] %>% strsplit("/") %>% `[[`(1)
+# treatment <- sub("input_synthetic_", "", temp[length(temp)]) %>% sub(".csv", "", .) # simple_medium
+input_independent_monoculture <- input_set %>% filter(grepl("monoculture", exp_id))
+input_independent_random_species <- input_synthetic %>% filter(grepl("pair_from_random_species", exp_id))
 
 # Pair parameters
 frequency1 <- c(0.05, 0.5, 0.95)
@@ -22,13 +24,15 @@ list_species <- rep(list(NA), nrow(input_independent_random_species))
 cat("\nMaking random pairs from culturable isolates")
 for (i in 1:nrow(input_independent_random_species)) {
     seed1 <- input_independent_random_species$seed[i]
-    set1 <- sub(paste0(treatment, "-pair_from_random_species_"), "", input_independent_random_species$exp_id[i]) %>% strsplit("-") %>% unlist %>% `[`(1) %>% as.numeric()
+    treatment <- strsplit(input_independent_random_species$exp_id[i], split = "-") %>% unlist %>% `[`(1)
+    set1 <- sub(paste0(treatment, "-pair_from_random_species_"), "", input_independent_random_species$exp_id[i]) %>% strsplit("-") %>% unlist %>% `[`(1) %>% as.numeric() # simple_medium1
     scale <- input_independent_random_species$scale[i]
+    output_dir_set <- input_independent_monoculture$output_dir[1]
     output_dir <- input_independent_random_species$output_dir[i]
     cat("\nexp_id = ", input_independent_random_species$exp_id[i])
 
     #
-    df_monoculture_culturable <- fread(paste0("../data/raw/simulation/", treatment, "-monoculture_culturable-", seed1, ".txt"))
+    df_monoculture_culturable <- fread(paste0(output_dir_set, treatment, "-monoculture_culturable-", seed1, ".txt"))
     culturable_isolates = unique(df_monoculture_culturable$ID)
 
     # Consumer for one well
@@ -51,7 +55,7 @@ for (i in 1:nrow(input_independent_random_species)) {
         select(Well, Pair, InitialFrequency, Type, ID, Abundance)
 
     # Resource for one well
-    df_resource_one_well <- fread(paste0(output_dir, "synthetic_", sub("\\d+$", "", treatment), "/", treatment, "-monoculture-", seed1, "_composition.txt")) %>%
+    df_resource_one_well <- fread(paste0(output_dir_set, treatment, "-monoculture-", seed1, "_composition.txt")) %>%
         filter(Transfer == 0, Well == "W0", Type %in% c("resource", "R0")) %>%
         select(Type, ID, Abundance)
     df_resource <- df_culturable_pairs %>% select(Well, Pair, InitialFrequency) %>% distinct() %>%
@@ -59,11 +63,7 @@ for (i in 1:nrow(input_independent_random_species)) {
     df_culturable_pairs_resource <- bind_rows(df_culturable_pairs, df_resource) %>% mutate(Transfer = 0)
 
     #
-    fwrite(df_culturable_pairs_resource, file = paste0(output_dir, "synthetic_", sub("\\d+$", "", treatment), "/", input_independent_random_species$exp_id[i], ".txt"))
+    fwrite(df_culturable_pairs_resource, file = paste0(output_dir, input_independent_random_species$exp_id[i], ".txt"))
     cat("\t ", set1)
 
 }
-
-# list_species %>%
-#     rbindlist() %>%
-#     fwrite(file = paste0(output_dir, treatment, "-random_species.txt"))

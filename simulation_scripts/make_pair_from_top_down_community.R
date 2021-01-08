@@ -4,11 +4,14 @@ suppressWarnings(suppressMessages(library(tidyverse)))
 suppressWarnings(suppressMessages(library(data.table)))
 
 args = commandArgs(trailingOnly = T)
-input_independent <- fread(args[[1]])
+input_set <- fread(args[1])
+input_synthetic <- fread(args[2])
 #input_independent <- fread("../data/raw/simulation/mapping_files/input_independent_simple_medium.csv")
-temp <- args[[1]] %>% strsplit("/") %>% `[[`(1)
-treatment <- sub("input_synthetic_", "", temp[length(temp)]) %>% sub(".csv", "", .) # simple_medium
-input_independent_comm <- input_independent %>% filter(grepl("pair_from_top_down_community", exp_id))
+# temp <- args[[1]] %>% strsplit("/") %>% `[[`(1)
+# treatment <- sub("input_synthetic_", "", temp[length(temp)]) %>% sub(".csv", "", .) # simple_medium
+input_independent_monoculture <- input_set %>% filter(grepl("monoculture", exp_id))
+input_independent_comm <- input_synthetic %>% filter(grepl("pair_from_top_down_community", exp_id))
+
 
 
 # Read communities
@@ -29,17 +32,19 @@ list_species <- rep(list(NA), nrow(input_independent_comm))
 
 for (i in 1:nrow(input_independent_comm)) {
     seed1 <- input_independent_comm$seed[i]
+    treatment <- strsplit(input_independent_comm$exp_id[i], split = "-") %>% unlist %>% `[`(1)
     comm <- sub(paste0(treatment, "-pair_from_top_down_community_"), "", input_independent_comm$exp_id[i]) %>% strsplit("-") %>% unlist %>% `[`(1) %>% as.numeric()
     scale <- input_independent_comm$scale[i]
+    output_dir_set <- input_independent_monoculture$output_dir[1]
     output_dir <- input_independent_comm$output_dir[i]
     cat("\nexp_id = ", input_independent_comm$exp_id[i])
 
-    df_community_composition <- fread(paste0(output_dir, treatment, "-top_down_community-", seed1, "_composition.txt")) %>%
+    df_community_composition <- fread(paste0(output_dir_set, treatment, "-top_down_community-", seed1, "_composition.txt")) %>%
         prune_community_composition()
     comms <- unique(df_community_composition$Community)
 
     # Resource
-    df_resource_one_well <- fread(paste0(output_dir, treatment, "-monoculture-", seed1, "_composition.txt")) %>%
+    df_resource_one_well <- fread(paste0(output_dir_set, treatment, "-monoculture-", seed1, "_composition.txt")) %>%
         filter(Transfer == 0, Well == "W0", Type %in% c("resource", "R0")) %>%
         select(Type, ID, Abundance)
 

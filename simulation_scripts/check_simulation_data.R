@@ -31,8 +31,6 @@ simulation_file_directory <- "/home/cc2553/project/invasion-network/data/"
 for (i in 1:length(mapping_files)) {
     mfd <- paste0(mapping_file_directory, sub("input_", "", mapping_files[i]), "/")
     sfd <- paste0(simulation_file_directory, sub("input_", "", mapping_files[i]), "/")
-    cat("\t", mfd)
-    cat("\t", sfd)
 
     test_file_existence(#mapping_file_directory = paste0(mapping_file_directory, sub("input_", "", mapping_files[i]), "/"),
         mapping_file_directory = mfd,
