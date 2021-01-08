@@ -18,7 +18,8 @@ test_file_existence <- function (mapping_file_directory, mapping_file_name, simu
     }
 }
 
-mapping_files <- c("input_set_simple_medium", "input_set_rich_medium")
+mapping_files <- c("input_set_simple_medium", "input_set_rich_medium",
+                   "input_synthetic_simple_medium", "input_synthetic_rich_medium")
 
 # mapping_file_directory <- "/home/cc2553/project/community-selection/wrapper/"
 # simulation_file_directory <- "/home/cc2553/project/community-selection/data/"

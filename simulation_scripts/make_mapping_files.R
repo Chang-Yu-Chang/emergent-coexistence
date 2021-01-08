@@ -278,9 +278,9 @@ input_synthetic_wrapper <- function (i, treatment) {
     monoculture <- c(rep(F, 20))
     df$exp_id <- paste0(treatment$exp_id, "-", experiments, "-", i)
     df$monoculture <- monoculture
-    df$overwrite_plate <- c(paste0(treatment$output_dir, treatment$exp_id, "-", experiments, "-", i, ".txt"))
     df$n_wells = c(rep(NA, 20))
     df$output_dir <- paste0(data_directory, "synthetic_", treatment$folder_id, "/")
+    df$overwrite_plate <- c(paste0(df$output_dir, treatment$exp_id, "-", experiments, "-", i, ".txt"))
     for (j in 3:ncol(treatment)) df[,names(treatment)[j]] = treatment[,names(treatment)[j]]
     df[is.na(df)] <- "NA"
     return(df)
