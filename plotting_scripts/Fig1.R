@@ -6,98 +6,104 @@ library(ggraph)
 library(tidyverse)
 library(data.table)
 source("network_functions.R")
-source("analysis-pair-culturable_random.R")
-source("analysis-trio-culturable_random.R")
-source("analysis-pair-from_top_down_community.R")
+#source("analysis-pair-culturable_random.R")
+#source("analysis-trio-culturable_random.R")
+#source("analysis-pair-from_top_down_community.R")
 whether_save_temp_file <- T
 
 input_independent <- fread("../data/raw/simulation/mapping_files/input_independent.csv")
 input_independent_trios <- input_independent %>% filter(grepl("trio-culturable_isolates", exp_id)) %>% filter(seed == 2)
 interaction_color <- assign_interaction_color()
 
-# Panel A: cartoon and temporal dynamics of pairs and trios
-p1 <- ggdraw() + draw_image("../plots/cartoons/Fig1A.png")
 
-# Panel B: motif count of trios in the pool
-temp_list <- rep(list(NA), nrow(input_independent_trios))
-names(temp_list) <- unique(input_independent_trios$seed)
-for (i in 1:nrow(input_independent_trios)) {
-    cat("\nexp_id = ", input_independent_trios$exp_id[i])
-    cat(",\tseed = ", input_independent_trios$seed[i])
-    current_seed <- input_independent_trios$seed[i]
 
-    # Trio
-    df_trio_list <- fread(paste0("../data/raw/simulation/trio-culturable-", current_seed, ".txt")) %>%
-        read_trio_list()
-    df_trio_competition <- fread(paste0("../data/raw/simulation/trio-culturable_isolates-", current_seed, "_composition.txt")) %>%
-        read_trio_competition(df_trio_list)
-    df_trio_outcome <- determine_trio_outcome(df_trio_competition)
 
-    # Pairs from trios
-    df_pair_from_trio_list <- fread(paste0("../data/raw/simulation/pair-culturable_from_trio-", current_seed, ".txt")) %>%
-        read_pair_from_trio_list()
-    df_pair_from_trio_competition <- fread(paste0("../data/raw/simulation/pair-culturable_from_trio-", current_seed, "_composition.txt")) %>%
-        read_pair_from_trio_competition(df_pair_from_trio_list)
-    df_pair_from_trio_outcome <- determine_pair_from_trio_outcome(df_pair_from_trio_competition, df_pair_from_trio_list)
-    df_trio_motif <- df_pair_from_trio_outcome %>%
-        split.data.frame(f=.$Trio) %>%
-        lapply(determine_trio_motif) %>%
-        bind_rows(.id = "Trio") %>%
-        filter(Count != 0) %>%
-        select(Trio, Motif)
+if (FALSE) {
 
-    temp_list[[i]] <- df_trio_motif
+    # Panel A: cartoon and temporal dynamics of pairs and trios
+    p1 <- ggdraw() + draw_image("../plots/cartoons/Fig1A.png")
+
+    # Panel B: motif count of trios in the pool
+    temp_list <- rep(list(NA), nrow(input_independent_trios))
+    names(temp_list) <- unique(input_independent_trios$seed)
+    for (i in 1:nrow(input_independent_trios)) {
+        cat("\nexp_id = ", input_independent_trios$exp_id[i])
+        cat(",\tseed = ", input_independent_trios$seed[i])
+        current_seed <- input_independent_trios$seed[i]
+
+        # Trio
+        df_trio_list <- fread(paste0("../data/raw/simulation/trio-culturable-", current_seed, ".txt")) %>%
+            read_trio_list()
+        df_trio_competition <- fread(paste0("../data/raw/simulation/trio-culturable_isolates-", current_seed, "_composition.txt")) %>%
+            read_trio_competition(df_trio_list)
+        df_trio_outcome <- determine_trio_outcome(df_trio_competition)
+
+        # Pairs from trios
+        df_pair_from_trio_list <- fread(paste0("../data/raw/simulation/pair-culturable_from_trio-", current_seed, ".txt")) %>%
+            read_pair_from_trio_list()
+        df_pair_from_trio_competition <- fread(paste0("../data/raw/simulation/pair-culturable_from_trio-", current_seed, "_composition.txt")) %>%
+            read_pair_from_trio_competition(df_pair_from_trio_list)
+        df_pair_from_trio_outcome <- determine_pair_from_trio_outcome(df_pair_from_trio_competition, df_pair_from_trio_list)
+        df_trio_motif <- df_pair_from_trio_outcome %>%
+            split.data.frame(f=.$Trio) %>%
+            lapply(determine_trio_motif) %>%
+            bind_rows(.id = "Trio") %>%
+            filter(Count != 0) %>%
+            select(Trio, Motif)
+
+        temp_list[[i]] <- df_trio_motif
+
+    }
+    df_trio_motif_aggregate <- bind_rows(temp_list, .id = "Seed") %>%
+        left_join(df_trio_outcome) %>%
+        mutate(Coexistence = ifelse(Richness == 3, "trio coexists", "trio does not coexist"))
+    trio_counts <- df_trio_motif_aggregate %>%
+        group_by(Seed) %>% summarize(Count = n())
+
+    if (whether_save_temp_file) fwrite(df_pair_from_trio_outcome, "../data/temp/df_pair_from_trio_outcome.txt")
+    if (whether_save_temp_file) fwrite(df_trio_motif_aggregate, "../data/temp/df_trio_motif_aggregate.txt")
+
+    p_base <- df_trio_motif_aggregate %>%
+        filter(!is.na(Richness)) %>%
+        ggplot() +
+        geom_text(data = trio_counts, aes(label = paste0("n=", Count)), x = Inf, y = Inf, hjust = 1, vjust = 2) +
+        scale_x_continuous(limits = c(0,8), breaks = 1:7, expand = c(0,0)) +
+        scale_fill_manual(values = c("trio coexists" = "#557BAA", "trio does not coexist" = "#DB7469")) +
+        facet_wrap(Seed~., scales = "free", ncol = 1) +
+        theme_cowplot() +
+        theme(legend.position = c(.4, .8), strip.background = element_blank(), strip.text = element_blank()) +
+        guides(fill = guide_legend(title = ""))
+
+    p2 <- p_base + geom_bar(aes(x = Motif), stat = "count", fill = NA, color = 1)
+    p2_supp <- p_base + geom_bar(aes(x = Motif, fill = Coexistence), stat = "count", color = 1)
+    ggsave("../plots/Fig1B.png", plot = p2, width = 4, height = 4)
+    ggsave("../plots/Fig1B_supp.png", plot = p2_supp, width = 4, height = 4)
+    #p <- plot_grid(p1, p2, nrow = 1, rel_widths = c(4, 4), axis = "tblr", align = "h")
+    #ggsave("../plots/Fig1.png", plot = p, width = 8, height = 4)
+
+
+    ## Motif count of trios from pool
+    motif_counts <- df_trio_motif_aggregate %>%
+        group_by(Seed, Motif) %>%
+        summarise(Count = n()) %>%
+        group_by(Seed) %>%
+        mutate(RelativeMotifCount = Count / sum (Count))
+
+    df_trio_motif_counts <- df_trio_motif_aggregate %>%
+        filter(!is.na(Richness)) %>%
+        group_by(Seed, Motif, Coexistence) %>%
+        summarize(Count = n()) %>%
+        group_by(Seed, Motif) %>%
+        mutate(FractionTrioCoexistence = Count / sum(Count)) %>%
+        filter(Coexistence == "trio coexists") %>%
+        select(Seed, FractionTrioCoexistence) %>%
+        left_join(motif_counts) %>%
+        mutate(Experiment = "Species pool")
+
+
+    if (whether_save_temp_file)  fwrite(df_trio_motif_counts, "../data/temp/df_trio_motif_counts.txt")
 
 }
-df_trio_motif_aggregate <- bind_rows(temp_list, .id = "Seed") %>%
-    left_join(df_trio_outcome) %>%
-    mutate(Coexistence = ifelse(Richness == 3, "trio coexists", "trio does not coexist"))
-trio_counts <- df_trio_motif_aggregate %>%
-    group_by(Seed) %>% summarize(Count = n())
-
-if (whether_save_temp_file) fwrite(df_pair_from_trio_outcome, "../data/temp/df_pair_from_trio_outcome.txt")
-if (whether_save_temp_file) fwrite(df_trio_motif_aggregate, "../data/temp/df_trio_motif_aggregate.txt")
-
-p_base <- df_trio_motif_aggregate %>%
-    filter(!is.na(Richness)) %>%
-    ggplot() +
-    geom_text(data = trio_counts, aes(label = paste0("n=", Count)), x = Inf, y = Inf, hjust = 1, vjust = 2) +
-    scale_x_continuous(limits = c(0,8), breaks = 1:7, expand = c(0,0)) +
-    scale_fill_manual(values = c("trio coexists" = "#557BAA", "trio does not coexist" = "#DB7469")) +
-    facet_wrap(Seed~., scales = "free", ncol = 1) +
-    theme_cowplot() +
-    theme(legend.position = c(.4, .8), strip.background = element_blank(), strip.text = element_blank()) +
-    guides(fill = guide_legend(title = ""))
-
-p2 <- p_base + geom_bar(aes(x = Motif), stat = "count", fill = NA, color = 1)
-p2_supp <- p_base + geom_bar(aes(x = Motif, fill = Coexistence), stat = "count", color = 1)
-ggsave("../plots/Fig1B.png", plot = p2, width = 4, height = 4)
-ggsave("../plots/Fig1B_supp.png", plot = p2_supp, width = 4, height = 4)
-#p <- plot_grid(p1, p2, nrow = 1, rel_widths = c(4, 4), axis = "tblr", align = "h")
-#ggsave("../plots/Fig1.png", plot = p, width = 8, height = 4)
-
-
-## Motif count of trios from pool
-motif_counts <- df_trio_motif_aggregate %>%
-    group_by(Seed, Motif) %>%
-    summarise(Count = n()) %>%
-    group_by(Seed) %>%
-    mutate(RelativeMotifCount = Count / sum (Count))
-
-df_trio_motif_counts <- df_trio_motif_aggregate %>%
-    filter(!is.na(Richness)) %>%
-    group_by(Seed, Motif, Coexistence) %>%
-    summarize(Count = n()) %>%
-    group_by(Seed, Motif) %>%
-    mutate(FractionTrioCoexistence = Count / sum(Count)) %>%
-    filter(Coexistence == "trio coexists") %>%
-    select(Seed, FractionTrioCoexistence) %>%
-    left_join(motif_counts) %>%
-    mutate(Experiment = "Species pool")
-
-
-if (whether_save_temp_file)  fwrite(df_trio_motif_counts, "../data/temp/df_trio_motif_counts.txt")
-
 
 if (FALSE) {
     # Trio coexistence
@@ -126,12 +132,6 @@ if (FALSE) {
     ggsave("../plots/FigS2.png", plot = ps2, width = 4, height = 4)
 
 }
-
-
-
-
-
-
 
 if (FALSE){
     # pair and trio temporal?

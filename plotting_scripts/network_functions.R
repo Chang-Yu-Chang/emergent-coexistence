@@ -247,6 +247,7 @@ plot_adjacent_matrix <- function(graph, show.legend = F, show.axis = F) {
     graph_ranked %>%
         filter(fromRank <= toRank) %>%
         bind_edges(tibble(from = 1:n_nodes, to = 1:n_nodes, fromRank = 1:n_nodes, toRank = 1:n_nodes, InteractionType = "self")) %>%
+        as_tibble() %>%
         ggplot() +
         geom_tile(aes(x = toRank, y = fromRank, fill = InteractionType), width = 0.9, height = 0.9) +
         scale_x_continuous(position = "top", breaks = 1:n_nodes) +

@@ -4,22 +4,11 @@ suppressWarnings(suppressMessages(library(tidyverse)))
 suppressWarnings(suppressMessages(library(data.table)))
 #options(dplyr.summarise.inform = FALSE)
 suppressWarnings(suppressMessages(library(cowplot)))
+suppressWarnings(suppressMessages(library(ggpubr)))
 suppressWarnings(suppressMessages(library(tidygraph)))
 suppressWarnings(suppressMessages(library(ggraph)))
 suppressWarnings(suppressMessages(library(igraph)))
 source("network_functions.R")
-
-# input_independent <- fread("../data/raw/simulation/mapping_files/input_independent_simple_medium.csv")
-# input_independent_random_species <- input_independent %>% filter(grepl("pair_from_random_species", exp_id))
-#
-# Community
-# for (i in 0:9) {
-#     cat("\n\n")
-#     cat("\n\necoprospector ../data/raw/simulation/mapping_files/input_independent_simple_medium.csv ", i*22)
-#     cat("\necoprospector ../data/raw/simulation/mapping_files/input_independent_simple_medium.csv ", i*22 + 1)
-#     # cat("\n\n")
-#     # for (j in 1:20) cat("\necoprospector ../data/raw/simulation/mapping_files/input_independent_simple_medium.csv ", i*22 + j + 1)
-# }
 
 read_pair_data <- function (output_dir, pattern) {
     #output_dir <- "../data/raw/simulation/"
@@ -69,7 +58,7 @@ reshape_pair_data <- function(pair_data, pair_list) {
     return(df_pair_data2)
 }
 determine_pair_outcome <- function(pair_data_reshaped) {
-    df_frequency_change <- df_pair_data_reshaped %>%
+    df_frequency_change <- pair_data_reshaped %>%
         filter(Transfer %in% c(0, 10)) %>%
         select(-RelativeAbundance2, -Type) %>%
         group_by(exp_id, Well, Pair, InitialFrequency) %>%
@@ -173,59 +162,188 @@ plot_motif_count <- function(motif_count, normalize_sum = F) {
 }
 
 
+
+
 #
-input_independent <- fread("../data/raw/simulation/mapping_files/input_independent_simple_medium2.csv") %>%
-    mutate(Community = sub("simple_medium2-pair_from_random_species_", "", exp_id) %>% sub("-\\d+$", "", .))
+
+list_tt <- c("simple_medium1", "simple_medium2", "simple_medium3", "simple_medium5", "simple_medium6", "simple_medium7",
+             "rich_medium1", "rich_medium2", "rich_medium3", "rich_medium5", "rich_medium6", "rich_medium7")
+list_ss <- c("pair_from_random_species", "pair_from_top_down_community")
+list_df_pair <- rep(list(NA), length(list_tt) * length(list_ss))
+list_df_motif <- rep(list(NA), length(list_tt) * length(list_ss))
+
+aggregate_result <- function (tt, ss) {
+
+    # Random species
+    df_pair_data <- read_pair_data("../data/raw/simulation/", paste0(tt, "-", ss))
+    df_pair_list <- read_pair_list("../data/raw/simulation/", paste0(tt, "-", ss))
+    df_pair_data_reshaped <- reshape_pair_data(df_pair_data, df_pair_list)
+
+    df_pair_outcome <- determine_pair_outcome(df_pair_data_reshaped)
+    df_motif_count <- df_pair_outcome %>%
+        split.data.frame(f = .$exp_id) %>%
+        lapply(determine_community_motif) %>%
+        rbindlist(idcol = "exp_id")
+    return(list(df_pair_outcome=df_pair_outcome, df_motif_count=df_motif_count))
+}
+
+for (i in 1:length(list_tt)) {
+    for (j in 1:length(list_ss)) {
+        temp <- aggregate_result(list_tt[i], list_ss[j])
+        list_df_pair[[length(list_ss)*(i-1)+j]] <- temp$df_pair_outcome
+        list_df_motif[[length(list_ss)*(i-1)+j]] <- temp$df_motif_count
+        cat("\n", list_tt[i], "\t", list_ss[j])
+    }
+}
+
+#
+list_treatments <- tibble(
+    folder_id = c(rep("simple_medium", 8), rep("rich_medium", 8)),
+    #exp_id = c(paste0("simple_medium", 1:8), paste0("rich_medium", 1:8)),
+    Medium = c(paste0("simple_medium", 1:8), paste0("rich_medium", 1:8)),
+    rich_medium = c(rep(F, 8), rep(T, 8)),
+    n_inoc = c(rep(10^3, 8), rep(10^6, 8)),
+    n_propagation = c(rep(20, 8), rep(1,8)),
+    dilution = c(rep(0.001, 16)),
+    l = rep(c(0, 0, 0, 0, 0.5, 0.5, 0.5, 0.5), 2),
+    q = rep(c(0, 0, 0.8, 0.8, 0, 0, 0.8, 0.8), 2),
+    sn = c(rep(c(2100, 700), 8)),
+    sf = c(rep(c(1, 3), 8)),
+    Sgen = 0,
+    rn = c(rep(c(90, 30), 8)),
+    rf = c(rep(c(1, 3), 8)),
+    n_wells = 10,
+    power_alpha = 0.01,
+    sampling = "Binary_Gamma",
+    n_transfer = 10,
+    n_transfer_selection = 10,
+    save_function = F,
+    composition_lograte = 1
+)
 
 
-# Random species
-df_pair_data <- read_pair_data("../data/raw/simulation/", "simple_medium2-pair_from_random_species")
-df_pair_list <- read_pair_list("../data/raw/simulation/", "simple_medium2-pair_from_random_species")
-df_pair_data_reshaped <- reshape_pair_data(df_pair_data, df_pair_list)
+df_pair <- rbindlist(list_df_pair)
+df_motif <- rbindlist(list_df_motif)
 
-df_pair_outcome <- determine_pair_outcome(df_pair_data_reshaped)
-df_motif_count <- df_pair_outcome %>%
-    split.data.frame(f = .$exp_id) %>%
-    lapply(determine_community_motif) %>%
-    rbindlist(idcol = "exp_id")
+df_pair <- df_pair %>%
+    separate(col = exp_id, into = c("Medium", "temp", "Seed"), sep = "-") %>%
+    mutate(Treatment = ifelse(grepl("random", temp), "random_species", "top_down_community")) %>%
+    mutate(Community = sub("pair_from_random_species_", "", temp) %>% sub("pair_from_top_down_community_", "", .))
 
-p1 <- df_pair_outcome %>%
-    left_join(input_independent) %>%
-    #filter(Community %in% 1:3, seed %in% 1:6) %>%
-    plot_pair_outcome(normalize_sum = T)
+df_motif <- df_motif %>%
+    separate(col = exp_id, into = c("Medium", "temp", "Seed"), sep = "-") %>%
+    mutate(Treatment = ifelse(grepl("random", temp), "random_species", "top_down_community")) %>%
+    mutate(Community = sub("pair_from_random_species_", "", temp) %>% sub("pair_from_top_down_community_", "", .))
 
-p2 <- df_motif_count %>%
-    left_join(input_independent) %>%
-    #filter(Community %in% 1:3, seed %in% 1:6) %>%
-    plot_motif_count(normalize_sum = T)
+# input_synthetic <- fread(paste0("../data/raw/simulation/mapping_files/input_synthetic_simple_medium.csv")) %>%
+#     filter(grepl(tt, exp_id)) %>%
+#     filter(grepl(ss, exp_id)) %>%
+#     mutate(Community = sub(paste0(tt, "-", ss, "_"), "", exp_id) %>% sub("-\\d+$", "", .))
 
-p <- plot_grid(p1, p2, align = "h", axis = "lr", nrow = 1)
-ggsave("../plots/Fig1_random_species.png", width = 10, height = 5)
+df_pair_aggregated <- df_pair %>%
+    group_by(Medium, Treatment, Seed, Community, InteractionType) %>%
+    summarize(Count = n()) %>%
+    group_by(Medium, Treatment, Seed, Community) %>% mutate(Count = Count / sum(Count)) %>%
+    group_by(Medium, Treatment, Seed, InteractionType) %>%
+    summarize(MeanCount = mean(Count)) %>%
+    left_join(list_treatments)
+
+df_motif_aggregated <- df_motif %>%
+    group_by(Medium, Treatment, Seed, Community) %>% mutate(Count = Count / sum(Count)) %>%
+    group_by(Medium, Treatment, Seed, Motif) %>%
+    summarize(MeanCount = mean(Count)) %>%
+    left_join(list_treatments)
+
+
+p1 <- df_pair_aggregated %>%
+    ggplot(aes(x = InteractionType, y = MeanCount), color = 1) +
+    geom_boxplot() +
+    geom_jitter(shape = 21) +
+    facet_grid(Medium ~ Treatment) +
+    theme_cowplot()
+
+
+p2 <-  df_motif_aggregated %>%
+    ggplot(aes(x = Motif, y = MeanCount, group = Motif)) +
+    geom_boxplot() +
+    geom_jitter(shape = 21) +
+    scale_x_continuous(breaks = 1:7) +
+    guides(color = F) +
+    facet_grid(Medium ~ Treatment) +
+    theme_cowplot()
+
+p1
+p2
+ggsave("../plots/pairwise.png", plot = p1, width = 5, height = 10)
+ggsave("../plots/motif.png", plot = p2, width = 7, height = 10)
+
+
+# Side by sied
+p3 <- df_pair_aggregated %>%
+    filter(Medium %in% paste0("simple_medium", 5:6)) %>%
+    #filter(!is.na(InteractionType)) %>%
+    ggboxplot(x = "Treatment", y = "MeanCount",
+              color = "Treatment", palette = "jco",
+              add = "jitter",
+              facet.by = c("sf", "InteractionType"), short.panel.labs = FALSE) +
+    theme(axis.text.x = element_blank())  +
+    stat_compare_means(label = "p.format")
+
+p4 <- df_motif_aggregated %>%
+    filter(Medium %in% paste0("simple_medium", 5:6)) %>%
+    ggboxplot(x = "Treatment", y = "MeanCount",
+              color = "Treatment", palette = "jco",
+              add = "jitter",
+              facet.by = c("sf", "Motif"), short.panel.labs = FALSE) +
+    theme(axis.text.x = element_blank())  +
+    stat_compare_means(label = "p.format")
+
+ggsave("../plots/pairwise.png", plot = p3, width = 7, height = 7)
+ggsave("../plots/motif.png", plot = p4, width = 7, height = 7)
 
 
 
-# Top-down communities
-df_pair_data <- read_pair_data("../data/raw/simulation/", "simple_medium-pair_from_top_down_community")
-df_pair_list <- read_pair_list("../data/raw/simulation/", "simple_medium-pair_from_top_down_community")
-df_pair_data_reshaped <- reshape_pair_data(df_pair_data, df_pair_list)
+# p1 <- df_pair_outcome %>%
+#     left_join(input_synthetic) %>%
+#     #filter(Community %in% 1:10, seed %in% 1:20) %>%
+#     plot_pair_outcome(normalize_sum = T)
+#
+# p2 <- df_motif_count %>%
+#     left_join(input_synthetic) %>%
+#     #filter(Community %in% 1:3, seed %in% 1:6) %>%
+#     plot_motif_count(normalize_sum = T)
 
-df_pair_outcome <- determine_pair_outcome(df_pair_data_reshaped)
-df_motif_count <- df_pair_outcome %>%
-    split.data.frame(f = .$exp_id) %>%
-    lapply(determine_community_motif) %>%
-    rbindlist(idcol = "exp_id")
+#p <- plot_grid(p1, p2, align = "h", axis = "lr", nrow = 1)
+#p + ggtitle(paste0(tt, "-", ss))
 
-p1 <- df_pair_outcome %>%
-    left_join(input_independent) %>%
-    plot_pair_outcome(normalize_sum = T)
 
-p2 <- df_motif_count %>%
-    left_join(input_independent) %>%
-    plot_motif_count(normalize_sum = T)
 
-p <- plot_grid(p1, p2, align = "h", axis = "lr", nrow = 1)
-ggsave("../plots/Fig1_top_down.png", width = 10, height = 5)
+if(FALSE) {
 
+
+    # Top-down communities
+    df_pair_data <- read_pair_data("../data/raw/simulation/", paste0(tt, "-pair_from_top_down_community"))
+    df_pair_list <- read_pair_list("../data/raw/simulation/", paste0(tt, "-pair_from_top_down_community"))
+    df_pair_data_reshaped <- reshape_pair_data(df_pair_data, df_pair_list)
+
+    df_pair_outcome <- determine_pair_outcome(df_pair_data_reshaped)
+    df_motif_count <- df_pair_outcome %>%
+        split.data.frame(f = .$exp_id) %>%
+        lapply(determine_community_motif) %>%
+        rbindlist(idcol = "exp_id")
+
+    p1 <- df_pair_outcome %>%
+        left_join(input_synthetic) %>%
+        plot_pair_outcome(normalize_sum = T)
+
+    p2 <- df_motif_count %>%
+        left_join(input_synthetic) %>%
+        plot_motif_count(normalize_sum = T)
+
+    p <- plot_grid(p1, p2, align = "h", axis = "lr", nrow = 1)
+    ggsave("../plots/Fig1_top_down.png", width = 10, height = 5)
+
+}
 
 if (FALSE) {
     #

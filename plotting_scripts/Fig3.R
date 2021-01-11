@@ -6,7 +6,7 @@ library(tidyverse)
 library(data.table)
 library(cowplot)
 source("network_functions.R")
-whether_plot_supp <- F
+whether_plot_supp <- T
 
 # Read data
 communities <- fread("../data/temp/communities.csv")
@@ -58,7 +58,7 @@ p1 <- simulated_motif_counts %>%
     labs(x = "Probability of pairwise coexistence", y = "Relative motif count")
 
 p_B <- plot_grid(p_motifs, p1, ncol = 1, rel_heights = c(1,5))
-ggsave("../plots/Fig1B.png", plot = p_B, width = 6, height = 6)
+#ggsave("../plots/Fig1B.png", plot = p_B, width = 6, height = 6)
 
 if (whether_plot_supp) {
     ## 0-scored motif vs others
@@ -145,7 +145,7 @@ p_C <- summary_network_pairs %>%
     panel_border(color = "black") +
     labs(x = "Community size", y = "Fraction of pairwise coexistence")
 
-ggsave("../plots/Fig1C.png", p_C, width = 4, height = 4)
+#ggsave("../plots/Fig1C.png", p_C, width = 4, height = 4)
 
 if (whether_plot_supp) {
     # Panel: relative abundance of communities
@@ -259,7 +259,7 @@ p_D <- observed_motif_counts %>%
     labs(x ="Motif", y = "Normalized standard deviation", size = "Community size")
 p_D
 #p <- plot_grid(p_motifs, p4, ncol = 1, axis = "lr", align = "v", rel_heights = c(1,5))
-ggsave("../plots/Fig1D.png", p_D, width = 6, height = 4)
+#ggsave("../plots/Fig1D.png", p_D, width = 6, height = 4)
 
 if (whether_plot_supp) {
     random_motif_counts_percentile <- random_motif_counts_percentile %>%
