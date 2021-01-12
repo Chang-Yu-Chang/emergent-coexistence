@@ -166,7 +166,11 @@ plot_motif_count <- function(motif_count, normalize_sum = F) {
 
 # list_tt <- c("simple_medium1", "simple_medium2", "simple_medium3", "simple_medium5", "simple_medium6", "simple_medium7",
 #              "rich_medium1", "rich_medium2", "rich_medium3", "rich_medium5", "rich_medium6", "rich_medium7")
-list_tt <- c("rich_medium5", "rich_medium6", "rich_medium7")
+#list_tt <- c("rich_medium5", "rich_medium6", "rich_medium7")
+input <- fread("/Users/cychang/Desktop/Lab/invasion-network/data/raw/simulation/mapping_files/input_set_simple_medium.csv")
+)
+
+list_tt <- c("simple_medium7")
 
 list_ss <- c("pair_from_random_species", "pair_from_top_down_community")
 list_df_pair <- rep(list(NA), length(list_tt) * length(list_ss))

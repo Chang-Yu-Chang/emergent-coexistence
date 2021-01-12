@@ -231,14 +231,14 @@ list_treatments <- tibble(
     rf = c(rep(c(1, 3), 8)),
     n_wells = 10,
     power_alpha = 0.01,
-    sampling = "Binary_Gamma",
+    sampling = "Binary",
     n_transfer = 10,
     n_transfer_selection = 10,
     save_function = F,
     composition_lograte = 1
 )
 # 4 and 8 does no work
-list_treatments <- filter(list_treatments, !grepl("medium4", exp_id) & !grepl("medium8", exp_id))
+#list_treatments <- filter(list_treatments, !grepl("medium4", exp_id) & !grepl("medium8", exp_id))
 
 
 input_independent_wrapper <- function (i, treatment) {

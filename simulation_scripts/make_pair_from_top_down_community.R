@@ -6,11 +6,15 @@ suppressWarnings(suppressMessages(library(data.table)))
 args = commandArgs(trailingOnly = T)
 input_set <- fread(args[1])
 input_synthetic <- fread(args[2])
+treatment1 <- args[3]
 #input_synthetic <- fread("../data/raw/simulation/mapping_files/input_synthetic_simple_medium.csv")
 # temp <- args[[1]] %>% strsplit("/") %>% `[[`(1)
 # treatment <- sub("input_synthetic_", "", temp[length(temp)]) %>% sub(".csv", "", .) # simple_medium
 input_independent_monoculture <- input_set %>% filter(grepl("monoculture", exp_id))
 input_independent_comm <- input_synthetic %>% filter(grepl("pair_from_top_down_community", exp_id))
+input_independent_comm <- input_independent_comm %>%
+    filter(grepl(treatment1, exp_id))
+
 #input_independent_comm <- input_independent_comm %>% filter(grepl("medium1", exp_id))
 
 

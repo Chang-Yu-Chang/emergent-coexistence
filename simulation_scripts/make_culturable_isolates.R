@@ -4,11 +4,14 @@ suppressWarnings(suppressMessages(library(tidyverse)))
 suppressWarnings(suppressMessages(library(data.table)))
 
 args = commandArgs(trailingOnly = T)
-input_set <- fread(args[[1]])
+input_set <- fread(args[1])
+treatment1 <- args[2]
 #input_set <- fread("../data/raw/simulation/mapping_files/input_set_simple_medium.csv")
 temp <- args[[1]] %>% strsplit("/") %>% `[[`(1)
 treatment <- sub("input_set_", "", temp[length(temp)]) %>% sub(".csv", "", .) # simple_medium
 input_set_monoculture <- input_set %>% filter(grepl("monoculture", exp_id))
+input_set_monoculture <- input_set_monoculture %>%
+    filter(grepl(treatment1, exp_id))
 
 cat("\nMaking list of culturable isolates")
 for (i in 1:nrow(input_set_monoculture)) {
