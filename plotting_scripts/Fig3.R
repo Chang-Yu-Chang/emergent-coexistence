@@ -43,7 +43,7 @@ p_B <- network_pairs %>%
     guides(fill = F) +
     labs(x = "", y = "Number of pairwise competition")
 
-ggsave("../plots/Fig1B.png", plot = p_B, width = 3, height = 4)
+ggsave("../plots/Fig3B.png", plot = p_B, width = 3, height = 4)
 
 # Panel C: motif counts pooled
 p_motifs <- plot_grid(plotlist = lapply(example_motif_list, function(x)plot_competitive_network(x, node_size=3)), nrow = 1)
@@ -78,14 +78,14 @@ p_motif_counts <- observed_motif_counts_aggregated %>%
     labs(x = "", y = "Motif Count")
 p_C <- plot_grid(p_motifs, p_motif_counts, ncol = 1, axis = "tblr", align = "v", rel_heights = c(2,6))
 
-ggsave("../plots/Fig1C.png", p_C, width = 8, height = 4)
+ggsave("../plots/Fig3C.png", p_C, width = 8, height = 4)
 
 # Panel D: number of intransitive triad loops
 p_graph_list <- graph_list %>% lapply(function(x) plot_competitive_network(x, node_size = 2))
 p_motif1 <- plot_competitive_network(example_motif_list[[1]], node_size = 2)
-for (i in 1:13) p_graph_list[[i+1]] <- p_graph_list[[i]]
+for (i in 13:1) p_graph_list[[i+1]] <- p_graph_list[[i]]
 p_graph_list[[1]] <- p_motif1
-p_community_graph <- plot_grid(plotlist = p_graph_list, nrow = 1)
+p_community_graph <- plot_grid(plotlist = p_graph_list, nrow = 1, greedy = F, scale = 1.2)
 
 p_intransitivity <- observed_motif_counts %>%
     filter(Motif == 1) %>%
@@ -93,13 +93,15 @@ p_intransitivity <- observed_motif_counts %>%
     bind_rows(tibble(Community = "Motif1", Motif = 1, RelativeMotifCount = 1)) %>%
     mutate(Community = factor(Community, levels = c("Motif1", communities$Community))) %>%
     ggplot() +
-    geom_point(aes(x = Community, y = RelativeMotifCount)) +
+    geom_point(aes(x = Community, y = RelativeMotifCount), size = 2, shape = 21) +
     scale_y_continuous(limits = c(0,1)) +
     facet_grid(.~Community, scales = "free_x") +
     theme_cowplot() +
-    theme(axis.text.x = element_blank(), panel.spacing.x = unit(0, "cm"), strip.background = element_blank(), strip.text = element_blank())
+    theme(axis.text.x = element_blank(), panel.spacing.x = unit(0, "cm"), strip.background = element_blank(), strip.text = element_blank()) +
+    labs(x = "", y = "Intransitivity")
 
-plot_grid(p_community_graph, p_intransitivity, ncol = 1, axis = "tblr", align = "v", rel_heights = c(2,6))
+p_D <- plot_grid(p_community_graph, p_intransitivity, ncol = 1, axis = "tblr", align = "v", rel_heights = c(2,5))
+ggsave("../plots/Fig3D.png", p_D, width = 12, height = 3)
 
 # p <- plot_grid(p_B, p_C, ncol = 2, axis = "tblr", align = "hv")
 # ggsave("../plots/Fig1.png", p, width = 10, height = 10)
