@@ -162,12 +162,12 @@ plot_motif_count <- function(motif_count, normalize_sum = F) {
 }
 
 
-
-
 #
 
-list_tt <- c("simple_medium1", "simple_medium2", "simple_medium3", "simple_medium5", "simple_medium6", "simple_medium7",
-             "rich_medium1", "rich_medium2", "rich_medium3", "rich_medium5", "rich_medium6", "rich_medium7")
+# list_tt <- c("simple_medium1", "simple_medium2", "simple_medium3", "simple_medium5", "simple_medium6", "simple_medium7",
+#              "rich_medium1", "rich_medium2", "rich_medium3", "rich_medium5", "rich_medium6", "rich_medium7")
+list_tt <- c("rich_medium5", "rich_medium6", "rich_medium7")
+
 list_ss <- c("pair_from_random_species", "pair_from_top_down_community")
 list_df_pair <- rep(list(NA), length(list_tt) * length(list_ss))
 list_df_motif <- rep(list(NA), length(list_tt) * length(list_ss))
@@ -175,8 +175,8 @@ list_df_motif <- rep(list(NA), length(list_tt) * length(list_ss))
 aggregate_result <- function (tt, ss) {
 
     # Random species
-    df_pair_data <- read_pair_data("../data/raw/simulation/", paste0(tt, "-", ss))
-    df_pair_list <- read_pair_list("../data/raw/simulation/", paste0(tt, "-", ss))
+    df_pair_data <- read_pair_data("~/Dropbox/invasion-network/data/raw/simulation/", paste0(tt, "-", ss))
+    df_pair_list <- read_pair_list("~/Dropbox/invasion-network/data/raw/simulation/", paste0(tt, "-", ss))
     df_pair_data_reshaped <- reshape_pair_data(df_pair_data, df_pair_list)
 
     df_pair_outcome <- determine_pair_outcome(df_pair_data_reshaped)
@@ -272,15 +272,19 @@ p2 <-  df_motif_aggregated %>%
     facet_grid(Medium ~ Treatment) +
     theme_cowplot()
 
-p1
-p2
-ggsave("../plots/pairwise.png", plot = p1, width = 5, height = 10)
-ggsave("../plots/motif.png", plot = p2, width = 7, height = 10)
+# p1
+# p2
+# ggsave("../plots/pairwise.png", plot = p1, width = 5, height = 10)
+# ggsave("../plots/motif.png", plot = p2, width = 7, height = 10)
 
+# df <- fread("~/Downloads/pnas.1712211114.sd02.csv")
+# df %>%
+#     filter(species.id %in% c("l.conif", "p.rufa.acer", "s.comm")) %>%
+#     view
 
-# Side by sied
+# Side by side
 p3 <- df_pair_aggregated %>%
-    filter(Medium %in% paste0("simple_medium", 5:6)) %>%
+    #filter(Medium %in% paste0("simple_medium", 5:6)) %>%
     #filter(!is.na(InteractionType)) %>%
     ggboxplot(x = "Treatment", y = "MeanCount",
               color = "Treatment", palette = "jco",
@@ -290,7 +294,7 @@ p3 <- df_pair_aggregated %>%
     stat_compare_means(label = "p.format")
 
 p4 <- df_motif_aggregated %>%
-    filter(Medium %in% paste0("simple_medium", 5:6)) %>%
+    #filter(Medium %in% paste0("simple_medium", 5:6)) %>%
     ggboxplot(x = "Treatment", y = "MeanCount",
               color = "Treatment", palette = "jco",
               add = "jitter",
@@ -298,8 +302,8 @@ p4 <- df_motif_aggregated %>%
     theme(axis.text.x = element_blank())  +
     stat_compare_means(label = "p.format")
 
-ggsave("../plots/pairwise.png", plot = p3, width = 7, height = 7)
-ggsave("../plots/motif.png", plot = p4, width = 7, height = 7)
+ggsave("../plots/pairwise_rich.png", plot = p3, width = 7, height = 7)
+ggsave("../plots/motif_rich.png", plot = p4, width = 7, height = 7)
 
 
 
