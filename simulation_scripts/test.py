@@ -3,30 +3,31 @@
 import sys
 import os
 from community_selection.usertools import *
-import timeit
-import time
-import inspect
-
+import matplotlib.pyplot as plt
+from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 #input_csv = "~/Desktop/Lab/community-selection/Data/Mapping_Files/input_independent_f1d_additive_medium2.csv" 
 #input_csv = "~/Desktop/Lab/community-selection/Data/Mapping_Files/input_independent_f5_invader_suppression.csv"
 #input_csv = "~/Desktop/Lab/community-selection/Data/Mapping_Files/input_iteration_f5_invader_suppression.csv" 
-input_csv = "/Users/cychang/Desktop/Lab/invasion-network/data/raw/simulation/mapping_files/input_set_simple_medium.csv" 
-row_number = 191
+input_csv = "~/Desktop/Lab/invasion-network/data/raw/simulation/mapping_files/input_set_simple_medium.csv" ; row_number = 280
 
 assumptions = make_assumptions(input_csv, row_number)
-{i: assumptions[i] for i in ("l", "dilution", "n_propagation", "response", "sampling", "invader_strength")}
+{i: assumptions[i] for i in ("l", "q", "sampling", "SA", "sampling_D", "fww")}
 assumptions.update({
-    "rn": 3,
-    "rf": 3,
-    "SA": 4 * np.ones(3),
-    "MA": 3 * np.ones(3),
-    "muc": 1,
+#     "rn": 2,
+#     "rf": 2,
+     "SA": 100 * np.ones(2),
+     "MA": 10 * np.ones(2),
+#     "muc": 10,
 #    "c1": 1,
-    "q": 0.8, 
+     "q": 0.5, 
 #    "sf": 1,
 #   # "l": 0.5,
-    "sampling": "Binary"
+     "sampling": "Gamma",
+#    "fs": 0.49,
+#    "fw": 0.49,
+#    "sparsity": 0.01,
+    "sampling_D": "default"
     })
 assumptions["MA"]
 assumptions["SA"]
@@ -36,11 +37,33 @@ np.random.seed(assumptions['seed'])
 #plate.N.iloc[assumptions["invader_index"],:] = 0
 #plate = add_community_function(plate, assumptions, params)
 params, params_simulation , params_algorithm, plate = prepare_experiment(assumptions)
-params["c"].iloc[1,:]
-
+def plot_matrix(X):
+    fig, ax = plt.subplots()
+    im = ax.imshow(X, interpolation='nearest', cmap=plt.cm.gist_gray_r)
+    numrows, numcols = X.shape
+    
+    def format_coord(x, y):
+        col = int(x + 0.5)
+        row = int(y + 0.5)
+        if col >= 0 and col < numcols and row >= 0 and row < numrows:
+            z = X[row, col]
+            return 'x=%1.4f, y=%1.4f, z=%1.4f' % (x, y, z)
+        else:
+            return 'x=%1.4f, y=%1.4f' % (x, y)
+    ax.format_coord = format_coord
+    
+    divider = make_axes_locatable(ax)
+    cax = divider.append_axes("right", size="10%", pad=0.1)
+    plt.colorbar(im, cax=cax)
+    plt.show()
+plot_matrix(params["D"])
+plot_matrix(params["c"])
 #plate.N.iloc[assumptions["invader_index"],:]
 
-i=0
+
+
+
+
 # community_function = globals()[params_algorithm["community_phenotype"][0]](plate, params_simulation = params_simulation) # Community phenotype
 # print(community_function)
 phenotype_algorithm = params_algorithm["community_phenotype"][i]

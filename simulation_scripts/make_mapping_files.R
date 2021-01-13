@@ -88,6 +88,16 @@ make_input_csv <- function(...){
             #if paramater is set as NA it takes the default value in community_simulator package. Also some paramaters could actually be inputed as lists but this is beyond the scope of this structure of mapping file i.e m, w,g r
 
             sampling = "Binary_Gamma", #{'Gaussian','Binary','Gamma', 'Binary_Gamma'} specifies choice of sampling algorithm
+            sampling_D = "default", # {'default', 'fermenter_respirator'}
+            fss = 0.1,
+            fsa = 0.8,
+            fsw = 0.1,
+            fas = 0.01,
+            faa = 0.2,
+            faw = 0.79,
+            fws = 0.01,
+            fwa = 0.01,
+            fww = 0.98,
             sn = 2100, #number of species per specialist family
             sf = 1, #number of specialist families, # note SA = sn *np.ones(sf)
             Sgen = 0, #number of generalist species
@@ -223,21 +233,22 @@ list_treatments <- tibble(
     n_propagation = c(rep(20, 8), rep(1,8)),
     dilution = c(rep(0.001, 16)),
     l = rep(c(0, 0, 0, 0, 0.5, 0.5, 0.5, 0.5), 2),
-    q = rep(c(0, 0, 0.8, 0.8, 0, 0, 0.8, 0.8), 2),
+    q = rep(c(0, 0, 0.5, 0.5, 0, 0, 0.5, 0.5), 2),
     sn = c(rep(c(2100, 700), 8)),
     sf = c(rep(c(1, 3), 8)),
     Sgen = 0,
-    rn = c(rep(c(90, 30), 8)),
+    rn = c(rep(c(30, 10), 8)),
     rf = c(rep(c(1, 3), 8)),
     n_wells = 10,
     power_alpha = 0.01,
-    sampling = "Binary",
+    sampling = "Gamma",
+    sampling_D = rep(c("default", "default"), 8),
     n_transfer = 10,
     n_transfer_selection = 10,
     save_function = F,
     composition_lograte = 1
 )
-# 4 and 8 does no work
+#
 #list_treatments <- filter(list_treatments, !grepl("medium4", exp_id) & !grepl("medium8", exp_id))
 
 
