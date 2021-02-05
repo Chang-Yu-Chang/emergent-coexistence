@@ -1,0 +1,194 @@
+---
+title: ""
+author: "Chang-Yu Chang"
+date: "`r Sys.Date()`" 
+output: 
+    pdf_document:
+      toc: false
+      number_sections: no
+header-includes:
+    - \usepackage{fancyhdr}
+    - \pagestyle{fancy}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(cache = FALSE, echo = FALSE)
+library(tidyverse)
+library(data.table)
+source("scripts/R4protocols.R")
+isolates_random <- fread(here::here("data/output/isolates_random.csv"))
+```
+
+# Pairwise competition
+
+
+Plate layout are as below
+
+## Simplicity communities
+
+```{r fig.width = 8, fig.height = 10}
+plates <- fread(here::here("data/output/plates.csv")) %>%
+  mutate(Experiment = sub("Transitivity_", "", Experiment)) %>%
+  unite("PlateName", Experiment, PlateLayout, Plate, remove = F, sep = " ") 
+  #mutate(Community = ifelse(Isolate1 == Isolate2 & Isolate1 != "blank", paste0(Community, "_isolates"), Community))
+
+set.seed(123); mycolor <- sample(colors(), size = length(unique(plates$Community)), replace = F)
+names(mycolor) <- unique(plates$Community)
+mycolor[names(mycolor) == "blank"] <- "white"
+
+
+plot_plate <- function(plate, mycolor, well_size=5) {
+  temp <- plate %>%
+    mutate(Row = match(str_sub(Well, 1, 1), LETTERS),
+           Column = as.integer(str_sub(Well, 2, 3)))
+  temp %>%
+    ggplot() +
+    geom_point(aes(x = Column, y = Row, fill = Community), shape = 21, size = well_size) +
+    geom_text(data = filter(temp, Community != "blank"), aes(x = Column, y = Row, label = paste0(Isolate1, "_", Isolate2)), size = 2) +
+    scale_x_continuous(name = "", breaks = 1:12, labels = 1:12, limits = c(1, 12), position = "top") +
+    scale_y_reverse(name = "", lim = c(8, 1), breaks = 1:8, labels = LETTERS[1:8]) +
+    scale_fill_manual(values = mycolor) +
+    theme_bw() +
+    theme(legend.position = "top", legend.title = element_blank()) +
+    ggtitle(plate$PlateName[1])
+}
+
+temp <- distinct(plates, Experiment, PlateLayout, Plate)
+p_list <- rep(list(NA), nrow(temp))
+for (i in 1:nrow(temp)) {
+  p_list[[i]] <- plates %>% filter(PlateLayout == temp$PlateLayout[i], Plate == temp$Plate[i]) %>% plot_plate(mycolor)
+}
+p <- ggpubr::ggarrange(plotlist = p_list, ncol = 2, nrow= 3, align = "hv")
+#ggsave(here::here("output/protocol/tab_fig/.csv"))
+```
+
+```{r fig.width = 10, fig.height = 10}
+p[[1]]
+```
+\newpage
+```{r fig.width = 10, fig.height = 10}
+p[[2]]
+```
+
+```{r fig.width = 6, fig.height = 5}
+p[[3]]
+```
+
+
+\newpage 
+## Random networks
+
+```{r fig.width = 10, fig.height = 8, fig.cap = "Random network plate AD, BD, and C, media: M9G on DW96. A = AcrAss1, B = AcrAss2, C = RanAss1, D = RandAss2.  \\label{T1}"}
+myColor <- c(AcrAss1 = "#ED6A5A", AcrAss2 = "#53A2BE", RanAss1 = "#FFD23F", RanAss2 = "#2CA58D", blank = "#BFBFBF", EP = "purple")
+
+# AD 
+plot_layout1 <- plate_layout_draw(
+  label = c(rep("AcrAss1", 64), rep("RanAss2", 32)),
+  row_position = c(rep(1:8, 8), rep(1:8, 4)),
+  col_position = c(rep(1:8, each = 8), rep(9:12, each = 8))
+) +
+  scale_fill_manual(values = myColor) +
+  # AcrAss2
+  annotate("text", 
+           x = c(rep(1:8, 8)),
+           y = c(rep(1:8, each = 8)),
+           label = paste0(c(rep(1:8, each = 8)), "_", 
+                          rep(1:8, 8)), 
+           size = 2) +
+  # RanAss2
+  annotate("text", 
+           x = c(rep(9:12, 8)),
+           y = c(rep(1:8, each = 4)),
+           label = paste0(c(rep(1:8, each = 4)), "_", 
+                          rep(1:4, 8)),
+           size = 2)
+
+# BD
+plot_layout2 <- plate_layout_draw(
+  label = c(rep("AcrAss2", 64), rep("RanAss2", 32)),
+  row_position = c(rep(1:8, 8), rep(1:8, 4)),
+  col_position = c(rep(1:8, each = 8), rep(9:12, each = 8))
+) +
+  scale_fill_manual(values = myColor) +
+  # AcrAss2
+  annotate("text", 
+           x = c(rep(1:8, 8)),
+           y = c(rep(1:8, each = 8)),
+           label = paste0(c(rep(1:8, each = 8)), "_", 
+                          rep(1:8, 8)), 
+           size = 2) +
+  # RanAss2
+  annotate("text", 
+           x = c(rep(9:12, 8)),
+           y = c(rep(1:8, each = 4)),
+           label = paste0(c(rep(1:8, each = 4)), "_", 
+                          rep(5:8, 8)),
+           size = 2)
+
+
+
+# C + EP 
+plot_layout3 <- plate_layout_draw(
+  label = c(rep("RanAss1", 64), rep("EP", 8)),
+  row_position = c(rep(1:8, 8), rep(1:4, 2)),
+  col_position = c(rep(1:8, each = 8), rep(11:12, each = 4))
+) +
+  scale_fill_manual(values = c(myColor, c(EP = "grey", E = "grey", P = "grey"))) +
+  # RanAss1
+  annotate("text", 
+           x = c(rep(1:8, 8)),
+           y = c(rep(1:8, each = 8)),
+           label = paste0(c(rep(1:8, each = 8)), "_", 
+                          rep(1:8, 8)), 
+           size = 2) +
+  # EP
+  annotate("text", 
+           x = c(rep(11:12, each = 4)),
+           y = c(rep(1:4, 2)),
+           label = c(rep("EP", 3), "E", rep("EP", 3), "P"),
+           size = 2)
+
+# C + isolates
+plot_layout4 <- plate_layout_draw(
+  label = c(rep("RanAss1", 64), rep(c("AcrAss1", "AcrAss2", "RanAss1", "RanAss2"), each = 8)),
+  row_position = c(rep(1:8, 8), rep(1:8, 4)),
+  col_position = c(rep(1:8, each = 8), rep(9:12, each = 8))
+) +
+  scale_fill_manual(values = myColor) +
+  # RanAss1
+  annotate("text", 
+           x = c(rep(1:8, 8)),
+           y = c(rep(1:8, each = 8)),
+           label = paste0(c(rep(1:8, each = 8)), "_", 
+                          rep(1:8, 8)), 
+           size = 2) +
+  # Isolates
+  annotate("text", 
+           x = c(rep(9:12, 8)),
+           y = c(rep(1:8, each = 4)),
+           label = rep(1:8, each = 4),
+           size = 2)
+
+
+  
+# Merge ----
+cowplot::plot_grid(plotlist = list(plot_layout1, plot_layout2, plot_layout3, plot_layout1, plot_layout2, plot_layout4, plot_layout1, plot_layout2, plot_layout4), 
+          ncol = 3, nrow = 3, 
+          labels = paste0(rep(c("AD", "BD", "C"), 3), " P", rep(1:3, each = 3)))
+```
+
+```{r tab-randomisolate}
+isolates_random %>%
+    select(-Assembly, -AssemblyIsolate) %>% 
+    group_by(AssemblyCommunity) %>%
+    group_split() %>%
+    knitr::kable(caption = "\\label{tab:tab-isolate} Isolates used in the random networks.", format = "latex")
+```
+
+
+
+
+
+
+
+

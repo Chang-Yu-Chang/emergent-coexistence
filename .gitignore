@@ -1,8 +1,6 @@
 # Ignore R project
 *.Rproj
-data/raw/simulation/deprecated/*
 data/raw/*
-data/raw/simulation/*
 .DS_Store
 
 # History files

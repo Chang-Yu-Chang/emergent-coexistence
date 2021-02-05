@@ -1,0 +1,336 @@
+---
+title: "Analysis on Sanger sequencing of mixed culture using CASEU"
+author: "Chang-Yu Chang"
+date: "`r Sys.Date()`"
+output:
+  html_notebook:
+    toc: yes
+  pdf_document:
+    toc: yes
+  bookdown::pdf_document2:
+    number_sections: no
+    toc: no
+linkcolor: red
+fontsize: 12pt
+urlcolor: blue
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  cache = TRUE, 
+  echo = FALSE, 
+	fig.align = "center",
+	fig.height = 4,
+	fig.width = 6)
+library(tidyverse)
+library(data.table)
+library(invnet)
+library(CASEU)
+root <- rprojroot::is_r_package # Package root
+write_all_csv <- T # Whether to write csv file in this analysis Rmd
+write_all_pdf <- T # Whether to write pdf file in this analysis Rmd
+```
+
+# Goal
+
+- To determine the relative abundance of of ambiguous pairs in competitive assays. 
+
+- Use CASEU packages to analyse the Sanger sequencing of mixture culture.
+
+- Sanger sequencing protocol preparation. Experimental protocol files are saved in folder `Google Drive/Protocol`
+
+```{r}
+list.files(root$find_file("output/protocol"), pattern = "Sanger")
+```
+
+- Once we got the mixture Sanger sequences back, we implement analysis by using `CASEU` (Compositional analysis by Sanger electropherogram unmixing), an R package desgined for quantifying relative abundance of Sanger sequences mixture. [source code](https://bitbucket.org/DattaManoshi/caseu). Install `CASEU` from bitbucket.
+
+```{r, echo = TRUE, eval = FALSE}
+devtools::install_bitbucket('dattamanoshi/caseu') # Install CASEU package
+library(CASEU)
+```
+
+```{r, eval = F}
+fitSangerMixtureGUI() # Run in the graphical interface
+```
+
+
+# Test on example data
+
+Test the example code and data.
+
+Fit Sanger sequences of a mixed culture of four strains. This step may take a few seconds.
+
+```{r echo = T, eval = F}
+data('fourStrainExpt') # load an example dataset
+results <-
+  fitSangerMixture(mixture=fourStrainExpt$mixture, # mixture
+  components = fourStrainExpt$components, # Four individual 16S sequences
+  verbose=TRUE)
+
+save(results, file = root$find_file("data/temp/CASEU_test_results1.Rdata"))
+```
+
+```{r}
+load(file = root$find_file("data/temp/CASEU_test_results1.Rdata"))
+```
+
+
+```{r}
+print(results)                      # view the results
+plot(results)                       # plot the fit
+sangerFitDiagnosticPlot(results)    # plot a bunch more diagnostics
+```
+
+Fitted mixture sanger electropherogram output
+
+```{r}
+names(results)
+```
+
+
+
+# CASEU pilot1
+
+The plate layout of PCR plate and list of samples are specified in `output/protocol/protocol_20190813_Sanger_seq_prep.pdf`. 
+
+```{r}
+fread(root$find_file("output/protocol/tab_fig/protocol_20190813_Sanger_seq_prep-genewiz_table.csv"))
+```
+
+The isolates used in this round is from the list below.
+
+Isolate         |  Code     |  Taxa
+----------------|-----------|-------
+C11R1 isolate 1 | A         | Pseudomonas
+C1R7 isolate 2  | B         | Pseudomonas
+C1R7 isolate 1  | C         | Enterobacter
+C1R7 isolate 7  | D         | Raoultella
+Table: isolates
+
+Read trace matrices for isolates and mixtures
+
+```{r}
+source("script/02B-CASEU_sanger_seq-01-pilot1.R")
+```
+
+
+```{r}
+CASEU_pilot1
+if (write_all_csv ) fwrite(CASEU_pilot1, root$find_file("data/temp/CASEU_pilot1.csv"))
+```
+
+
+Plot the expected isolate frequence vs. CASEU predicted frequency
+
+```{r fig.height = 3, fig.width=3}
+CASEU_pilot1 <- fread(root$find_file("data/temp/CASEU_pilot1.csv"))
+CASEU_pilot1_p1 <- 
+  CASEU_pilot1 %>%
+  filter(Isolate1 != "B", Isolate2 != "B") %>% # Without B and 
+  mutate(Treatment = ifelse(Treatment == "AM", "amplicon mixture", "OD mixture")) %>%
+  ggplot(aes(x = Isolate1Freq, y = Isolate1FreqPredicted, color = Treatment)) +
+  geom_jitter(size = 2) +
+  geom_abline(slope = 1, intercept = 0, color = "black") +
+  scale_x_continuous(limits = c(-.01, .6)) +
+  scale_y_continuous(limits = c(-.01, .6)) +
+  facet_grid(Isolate1 ~ Isolate2) +
+  theme_bw() +
+  theme(legend.position = "top") +
+  labs(x = "Expected isolate frequency", y = "CASEU predicted isolate frequency")
+
+CASEU_pilot1_p1
+if (write_all_pdf == T) pdf(root$find_file("output/figure/CASEU_pilot_result.pdf")); CASEU_pilot1_p1; dev.off()
+```
+
+
+
+
+# CASEU pilot2
+
+The plate layout of PCR plate and list of samples are specified in `output/protocol/protocol_20190813_Sanger_seq_prep.pdf`. There are 32 samples from pairwise competition and 16 samples from control. Also read Sylvie's data. 
+
+```{r include = F}
+genewiz_pilot2 <- fread(root$find_file("output/protocol/tab_fig/protocol_20190910_Sanger_seq_prep-genewiz_table_CYC.csv")) 
+genewiz_pilot2
+```
+
+Isolates A B C D in control are the isolates below. 
+
+Isolate         |  Code     |  Taxa
+----------------|-----------|-------
+C11R1 isolate 1 | A         | Pseudomonas
+C1R7 isolate 2  | B         | Pseudomonas
+C1R7 isolate 1  | C         | Enterobacter
+C1R7 isolate 7  | D         | Raoultella
+
+```{r eval = F}
+# Each script takes ~10 mins to run
+source("script/02B-CASEU_sanger_seq-02-pilot2.R")
+source("script/02B-CASEU_sanger_seq-03-pilot2_Sylvie.R") # Run Sylvie's sequence
+```
+
+Write the CASEU prediction in a csv file
+
+```{r}
+if (write_all_csv) fwrite(CASEU_pilot2, root$find_file("data/temp/CASEU_pilot2.csv"))
+```
+
+
+## Control pairs
+
+In the 12 control synthetic pairs that were made of 4 isolates, compate these pairs' OD frequencies, colony counts, and CASEU predictions.
+
+Read CASEU predicted frequencies and colony count frequencies in the 12 control pairs.
+
+```{r}
+# Read data
+CASEU_pilot2 <- fread(root$find_file("data/temp/CASEU_pilot2.csv"))
+CASEU_pilot2_plating <- fread(root$find_file("data/raw/Sanger/CASEU_pilot2/CASEU_pilot2_plating.csv")) %>%
+  mutate(Isolate1ColonyFreq = Isolate1Colony / (Isolate1Colony + Isolate2Colony),
+    Isolate2ColonyFreq = Isolate2Colony / (Isolate1Colony + Isolate2Colony))
+```
+
+Join the CASEU predicted result of control pairs in `CASEU_pilot2` with the plating result in `CASEU_pilot2_plating`. The pair CYC_control_50_50_CD has a lot colonies and the colony count of C is just approximaton (n=300)
+
+```{r}
+CASEU_pilot2_control <- CASEU_pilot2 %>%
+  filter(Treatment == "control") %>%
+  left_join(CASEU_pilot2_plating, by = c("MixtureName", "User", "Treatment", "Isolate1Freq", "Isolate2Freq", "Isolate1", "Isolate2"))
+```
+
+Plot the CASEU predictio vs. colony counts and CASEU prediction vs. OD frequencies
+
+```{r warning=F}
+CASEU_pilot2_p1 <- 
+  CASEU_pilot2_control %>%
+  ggplot(aes(x = Isolate1ColonyFreq, y = Isolate1FreqPredicted, color = Treatment)) +
+  geom_point(size = 2) +
+  geom_abline(slope = 1, intercept = 0, color = "black") +
+  scale_x_continuous(limits = c(-.01, 1.01)) +
+  scale_y_continuous(limits = c(-.01, 1.01)) +
+  facet_grid(Isolate1 ~ Isolate2) +
+  theme_bw() +
+  theme(legend.position = "top") +
+  labs(x = "Expected isolate frequency by colony counting", 
+    y = "CASEU predicted isolate frequency") +
+  ggtitle("CASEU prediction vs. Colony counts")
+
+CASEU_pilot2_p2 <- 
+  CASEU_pilot2_control %>%
+  ggplot(aes(x = Isolate1Freq, y = Isolate1FreqPredicted, color = Treatment)) +
+  geom_point(size = 2) +
+  geom_abline(slope = 1, intercept = 0, color = "black") +
+  scale_x_continuous(limits = c(-.01, 1.01)) +
+  scale_y_continuous(limits = c(-.01, 1.01)) +
+  facet_grid(Isolate1 ~ Isolate2) +
+  theme_bw() +
+  theme(legend.position = "top") +
+  labs(x = "Expected isolate frequency by OD", 
+    y = "CASEU predicted isolate frequency") +
+  ggtitle("CASEU prediction vs. OD frequencies")
+```
+
+
+```{r warning=F}
+CASEU_pilot2_p1
+CASEU_pilot2_p2
+
+pdf(root$find_file("output/figure/CASEU_pilot2_control.pdf")); CASEU_pilot2_p1; CASEU_pilot2_p2; invisible(dev.off())
+#CASEU_pilot2_p1
+
+```
+
+```{r}
+if(write_all_csv) fwrite(CASEU_pilot2_control, root$find_file("data/temp/CASEU_pilot2_control.csv"))
+```
+
+
+## Outcome of pairwise competition
+
+There are 24 pairs of C11R1 been sequenced in CASEU pilot2.
+
+```{r}
+CASEU_pilot2 <- fread(root$find_file("data/temp/CASEU_pilot2.csv")) %>% 
+  filter(Treatment == "C11R1") %>%
+  mutate(Community = Treatment) %>%
+  select(Community, Isolate1, Isolate2, Isolate1Freq, Isolate2Freq, Isolate1FreqPredicted, Isolate2FreqPredicted) %>%
+  invnet::switch_pairwise_column()
+```
+
+
+```{r}
+CASEU_pilot2 %>% 
+  mutate(Pair = paste0(Isolate1, "_", Isolate2)) %>%
+  ggplot(aes(x = Isolate1Freq, y = Isolate1FreqPredicted, color = Pair, Group = Pair)) +
+  geom_point() + geom_line() +
+#  geom_abline(slope = 1, intercept = 0, color = "black") +
+  facet_wrap(.~Community) +
+  theme_bw()
+```
+
+
+
+
+# CASEU pilot3
+
+The plate layout of PCR plate and list of samples are specified in `output/protocol/protocol_20190923_SequalPrep_Sanger_prep.pdf`. 
+
+```{r}
+fread(root$find_file("output/protocol/tab_fig/protocol_20190924_Sanger_seq_prep-genewiz_table_CYC.csv"))
+```
+
+Read trace matrices for isolates and mixtures
+
+```{r eval = F}
+# It takes about ~15 mins to run 
+source("script/02B-CASEU_sanger_seq-04-pilot3.R")
+```
+
+```{r}
+CASEU_pilot3 <- CASEU_pilot3 %>% arrange(Community, Isolate1, Isolate2, Isolate1Freq)
+if (write_all_csv ) fwrite(CASEU_pilot3, root$find_file("data/temp/CASEU_pilot3.csv"))
+```
+
+```{r}
+CASEU_pilot3 %>%
+  mutate(Isolate1 = factor(Isolate1)) %>%
+  ggplot(aes(x = Isolate1Freq, y = Isolate1FreqPredicted, color = Isolate1, group = paste0(Isolate1, "_", Isolate2))) +
+  geom_point() + geom_line() +
+#  geom_abline(slope = 1, intercept = 0, color = "black") +
+  facet_wrap(.~Community) +
+  theme_bw()
+```
+
+
+# CASEU pilot4
+
+The plate layout of PCR plate and list of samples are specified in `output/protocol/protocol_20191007_Sanger_seq_prep.pdf`. 
+
+```{r}
+fread(root$find_file("output/protocol/tab_fig/protocol_20191007_Sanger_seq_prep-genewiz_table_CYC.csv"))
+```
+
+Read trace matrices for isolates and mixtures
+
+```{r eval = F}
+# It takes about ~15 mins to run
+source("script/02B-CASEU_sanger_seq-05-pilot4.R")
+```
+
+```{r}
+CASEU_pilot4 <- CASEU_pilot4 %>% arrange(Community, Isolate1, Isolate2, Isolate1Freq)
+if (write_all_csv) fwrite(CASEU_pilot4, root$find_file("data/temp/CASEU_pilot4.csv"))
+```
+
+```{r}
+CASEU_pilot4 %>%
+  mutate(Isolate1 = factor(Isolate1)) %>%
+  ggplot(aes(x = Isolate1Freq, y = Isolate1FreqPredicted, color = Isolate1, group = paste0(Isolate1, "_", Isolate2))) +
+  geom_point() + geom_line() +
+#  geom_abline(slope = 1, intercept = 0, color = "black") +
+  facet_wrap(.~Community) +
+  theme_bw()
+```
+
+
