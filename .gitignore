@@ -3,6 +3,7 @@
 data/raw/simulation/deprecated/*
 data/raw/*
 data/raw/simulation/*
+.DS_Store
 
 # History files
 .Rhistory
