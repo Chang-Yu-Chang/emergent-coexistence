@@ -1,0 +1,80 @@
+---
+title: "DNA extraction protocol (Mag-Bind Environmental DNA)"
+author: "Maria Rebolleda-Gomez"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r echo=FALSE, results='hide',message=FALSE}
+#Load packages
+library(knitr)
+library(ggplot2)
+library(tidyr)
+```
+
+## Aim 
+Extract DNA of pellets from isolates using magnetic beads. 
+
+## Materials
+  - 96-plate magnetic rack
+  - Thermomixer (eppendorf)
+  - Water bath set to 70C
+  - Deep well plate 
+  - PCR 96 plate
+  - Mag-Bind Environmental DNA96 kit (Omega Bio-Tek)
+
+
+
+## Procedure
+
+### Preparation steps: 
+
+  - [ ] Take 10ml ($100 \mu l \times 100 samples$) of elution buffer into a falcon tube and warm it to 70C.
+  - [ ] Put **P2** buffer and samples on ice. 
+  - [ ] Prepare 70% ethanol ($1ml/sample \approx 100ml/plate$)
+  - [ ] Make sure VHB buffer has ethanol. Otherwise add 56ml per bottle. 
+  - [ ] Make mastermix of SLX-Mlus Buffer and RNase A.
+    - SLX-Mlus Buffer $525 \mu l \times 100 = 52.5 ml$
+    - RNase A $2 \mu l \times \times 100 = 200 \mu l$
+
+### Lysis
+
+  - [ ] Briefly centrifuge the E-Z disruptor plate (1 min at 2000 rpm)
+  - [ ] Re-suspend pellet samples in $527 \mu l$ of mastermix.
+  - [ ] Seal the plate with caps
+  - [ ] Shake a maximum speed in the thermomixer for 5min
+  - [ ] Centrifuge at **500rcf** for 10 seconds
+  - [ ] Add $53 \mu l$ of **DS Buffer**
+  - [ ] Shake a maximum speed in the thermomixer for 1min to mix. 
+  - [ ] Incubate at 70C shaking very slowly (300 rpm) for 10min. 
+  - [ ] Increase the temperature at 95C and incubate 2 more minutes. 
+  - [ ] Centrifuge **2500rcf** for **10 min**.
+  - [ ] Transfer $200 \mu l$ suppernatant to a new set of 96-well racked tubes. 
+  - [ ] Add $67 \mu l$ of pre-chilled P2 buffer and $100 \mu l$ of cHTR Reagent (shake before using).
+  - [ ] Seal the plate with new caps. 
+  - [ ] Centrifuge at **2500rcf** for **5 min**.
+
+### DNA extraction
+ - [ ] Transfer supernatant to a 96-well plate that fits in the magnetic rack. *Our normal plates do not work. I am using the ones from the QIAGEN kit*
+ - [ ] Add 1 volume XP1 buffer and $20 \mu l$ of Mag-bind partcles. Mix by pippetting up and down well. 
+ - [ ] Mix at room temperature at 500rpm for 10min. 
+ - [ ] Place plate on magnetic rack for 5 minutes, until particles migrate to the bottom. *If particles do not migrate, pipette up and down a little to move them closer to the magnetic field.*
+ - [ ] Aspirate and discard cleared supernatant. 
+ - [ ] Remove plate from magnetic rack and add $500 \mu l$ of VHB buffer (diluted with ethanol). 
+ - [ ] Mix for 1min at **2000rpm**. 
+ - [ ] Place plate in magnetic rack and let sit at room temerature until particles are cleared from solution. 
+ - [ ] Aspirate and discard the cleared supernatant without distrubing the magnetic beads. 
+ - [ ] Remove plate from magnetic rack and add $500 \mu l$ of 70% ethanol.
+ - [ ] Mix for 1min at **2000rpm**.
+ - [ ] Place plate in magnetic rack and let sit at room temerature until particles are cleared from solution.
+ - [ ] Aspirate and discard the cleared supernatant without distrubing the magnetic beads. 
+ - [ ] Repeat for a second ethanol wash. 
+ - [ ] Leave plate in magnetic rack for 1 min. Remove any residual liquid with a pipette.
+ - [ ] Leave the magnetic beads to dry for 10 minutes (in the magnetic rack) 
+ - [ ] Add $100 \mu l$ elution buffer preheated to 70C. 
+ - [ ] Mix for 5min at **2000rpm**.
+ - [ ] Place the plate into magnetic rack until beads are cleared from liquid. 
+ - [ ] Tranfer supernatant to a PCR skirted plate and seal with film. Store at -20C. 
+ 

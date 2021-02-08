@@ -1,24 +1,21 @@
 ---
-title: ""
+title: "CASEU protocol"
 author: "Chang-Yu Chang"
 date: "`r Sys.Date()`" 
 output: 
-    pdf_document:
-      toc: false
-      number_sections: no
+    pdf_document: default
 header-includes:
     - \usepackage{fancyhdr}
     - \pagestyle{fancy}
 ---
 
 ```{r setup, include = FALSE}
-knitr::opts_chunk$set(cache = FALSE, echo = FALSE)
+knitr::opts_chunk$set(echo = FALSE)
 library(tidyverse)
 library(data.table)
 ```
 
 
-# CASEU protocol
 `r date = "20191210"`
 `r n_plate = 1`
 
@@ -45,20 +42,20 @@ PCR plate            | save DNA                          | `r n_plate`
 
 Table: Materials. \label{material_table}
 
-- Thaw pellet plates at room temperature.
-- Dissolve pellets in 180 uL of PBS and transfer to DNeasy microtube plates.
-- Add 25 µl proteinase K and 200 µl Buffer AL. Seal the plate with caps and mix by vortexing. Incubate at 56C for 30 min.
-- Add 200 µl pure ethanol. Seal the plate with caps and mix thoroughly by vortexing. 
-- Assemble the DNeasy 96 plates on top of DW96s. Mark the DNeasy 96 plates.
-- Use mP1000 set at 625 uL to transfer the lysate of each sample from DW96s to each well of DNeasy96 plates (maximum 900 uL). 
-- Seal DNeasy96 with AirPore film. Use vacuum to collect the flow-through.
-- Add 500 uL of Buffer AW1 to each sample. 
-- Seal DNeasy96 with AirPore film. Use vacuum to collect the flow-through.
-- Add 500 uL of Buffer AW2 to each sample. 
-- Seal DNeasy96 with AirPore film. Use vacuum to collect the flow-through.
-- Label two PCR plates. Place DNeasy96s on these PCR plates.
-- Add 100 ul Buffer AE to each sample, and seal the DNeasy 96 plates with new AirPore Tape Sheets (provided). Incubate for 1 min at room temperature (15–25°C). Centrifuge for 2 min at 6000 rpm.
-- Cover the PCR plates with aluminum foil and save it in -20C freezer.
+- [ ] Thaw pellet plates at room temperature.
+- [ ] Dissolve pellets in $180 \mu L$ of PBS and transfer to DNeasy microtube plates.
+- [ ] Add $25 \mu L$ proteinase K and $200 \mu L$ Buffer AL. Seal the plate with caps and mix by vortexing. Incubate at 56C for 30 min.
+- [ ] Add $200 \mu L$ pure ethanol. Seal the plate with caps and mix thoroughly by vortexing. 
+- [ ] Assemble the DNeasy 96 plates on top of DW96s. Mark the DNeasy 96 plates.
+- [ ] Use mP1000 set at $625 \mu L$ to transfer the lysate of each sample from DW96s to each well of DNeasy96 plates (maximum $900 \mu L$). 
+- [ ] Seal DNeasy96 with AirPore film. Use vacuum to collect the flow-through.
+- [ ] Add $500 \mu L$ of Buffer AW1 to each sample. 
+- [ ] Seal DNeasy96 with AirPore film. Use vacuum to collect the flow-through.
+- [ ] Add $500 \mu L$ of Buffer AW2 to each sample. 
+- [ ] Seal DNeasy96 with AirPore film. Use vacuum to collect the flow-through.
+- [ ] Label two PCR plates. Place DNeasy96s on these PCR plates.
+- [ ] Add $100 \mu L$ Buffer AE to each sample, and seal the DNeasy 96 plates with new AirPore Tape Sheets (provided). Incubate for 1 min at room temperature (15–25°C). Centrifuge for 2 min at 6000 rpm.
+- [ ] Cover the PCR plates with aluminum foil and save it in -20C freezer.
 
 
 \newpage

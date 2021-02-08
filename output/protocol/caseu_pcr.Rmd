@@ -1,0 +1,64 @@
+---
+title: "PCR protocol for CASEU"
+author: "Chang-Yu Chang"
+date: "`r Sys.Date()`" 
+output: 
+    pdf_document: default
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+library(tidyverse)
+library(data.table)
+library(janitor)
+```
+
+## Aim
+
+PCR the extracted DNA for CASEU `r n_plate = 1`
+
+## Materials
+
+-   PCR plates `r n_plate * 2`
+
+## Procedures
+
+### Preparation steps:
+
+-   [ ] master mix in 96-well plate
+-   [ ] PCR plates `r n_plate * 2`
+-   [ ] Mastermix
+
+```{r}
+# Reagents required per well
+data.frame(
+  Reagent = c("ddH20", "5X HF buffer", "dNTPs (10mM)", "Phusion"),
+  WellVolume = c(23.5, 10, 1, 0.5),
+  stringsAsFactors = F
+) %>%
+  mutate(TotalVolume = WellVolume * n_plate * 108 * 2) %>%
+  janitor::adorn_totals() %>% 
+  knitr::kable(format = "pandoc", caption = "CASEU PCR master mix.")
+```
+
+```{r}
+# Reagents used with master mix
+data.frame(
+  Reagent = c("PCR master mix", "27F primer (3uM)", "1492R primer (3uM)", "teamplate DNA polymerase"),
+  WellVolume = c(35, 5, 5, 5), 
+  stringsAsFactors = F
+)  %>%
+  mutate(TotalVolume = WellVolume * n_plate * 108 * 2) %>% # Duplicate PCR
+#  mutate(ReservoirWellVolume = TotalVolume / 12) %>%
+#  janitor::adorn_totals() %>%  # Add total volume for each well and total reagent used 
+  knitr::kable(format = "pandoc", caption = "CASEU PCR reagents with master mix.")
+```
+
+-   [ ] Label `r n_plate * 2` PCR plates. For duplicated PCR.
+-   [ ] Make **`r total_primer_volume = n_plate * 5 * 108 * 2; total_primer_volume` uL** of 3uM of each primer (`r total_primer_volume * 0.03` uL 100 uM stock + `r total_primer_volume * 0.97` uL ddH2O).
+-   Premix the PCR reagents (total `r n_plate * 35 * 108 * 2 / 1000` mL) in a 50 mL falcon tube.
+-   Use mP200 set at **35 uL** to dispense 35 uL of PCR master mix into each well of `r n_plate * 2` PCR plates. This premix can stay at room temperature.
+-   Right before starting the PCR reaction, use mP20 set at **5 uL** to add primers.
+-   Use mP20 set at **5 uL** to add DNA. Cover the PCR plates with clear PCR films.
+-   Use the program "CASEU" in "16S" folder. See the table below for PCR cycle.
+-   Store PCR plates in -20C freezer.
