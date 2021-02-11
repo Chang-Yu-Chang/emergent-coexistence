@@ -93,7 +93,7 @@ p_temp
     - P1 (T0 C P2), tracking number 30-333649143
     - P2 (T0 AD P2), tracking number 30-333649365
     - P3 (T3 AD P2), tracking number 30-333649517
-- Description: AD plates have the isolates assmebled from the self-assembled communities but different
+- Description: AD plates have the isolates assembled from the self-assembled communities but different communities
 
 ```{r eval = F}
 source("script/05C-random_network_CASEU-03-batch3.R")
@@ -148,10 +148,8 @@ CASEU_RN3 %>%
 # Random network, caseu batch 4
 
 - Genewiz submisstion code: Caseu_RN_4
-- Plate layout: 
-    - P1 (T0 C P2), tracking number 
-    - P2 (T0 AD P2), tracking number
-    - P3 (T3 AD P2), tracking number 
+- Plate layout: T3 BD P3
+- Description: This plate has the full AcrAss2 (B) and half of RanAss2 (D) network.
 
 
 
