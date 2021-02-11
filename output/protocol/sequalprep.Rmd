@@ -1,0 +1,55 @@
+---
+title: "SeqaulPrep PCR cleanup and normalization"
+author: "Chang-Yu Chang"
+date: "`r Sys.Date()`" 
+output: 
+    pdf_document: default
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+library(tidyverse)
+library(data.table)
+```
+
+## Aim
+
+Clean up and normalized PCR product.
+
+## Materials
+
+- Duplicated PCR plates 
+
+## Procedures
+
+### Preparation steps:
+
+Output: 20 uL 1.25 ng/uL DNA in PCR plate clean_normalized_PCR
+
+
+Items                | Usage                             | Amount
+---------------------|-----------------------------------|------------
+PCR plate            | PCR_mix, unbound_DNA, chean_PCR   | `r n_plate * 3`
+SequalPrep plate     | PCR cleanup and normalization     | `r n_plate`
+SequalPrep binding buffer | binding                      | `r n_plate * 100 * 0.02` mL
+SequalPrep wash buffer    | wash                         | `r n_plate * 100 * 0.05` mL 
+SequalPrep elution buffer | elution                      | `r n_plate * 100 * 0.02` mL
+20uL tip box         | dispense                          | `r n_plate * 4`
+200uL tip box        | dispense                          | `r n_plate * 2`
+
+Table: Materials.
+
+- Thaw the `r n_plate * 2` PCR plates and spin down.
+- Label `r n_plate * 3` PCR plates with the naming convention like **XX PCR_mix**, **XX unbound_DNA**, and **XX chean_PCR**. Same for T3.
+- Mix 20uL of each replicate PCR into each well of a skirted PCR plate PCR_mix (40 uL in total).
+- Add 20uL SequalPrep Binding buffer to each well of SequalPrep plate.
+- Add 20uL mixed PCR product into each well of SequalPrep plate.
+- Cover with PCR lid, vortex 30 sec, and centrifuge briefly.
+- Incubate for 1 hour at room temperature. Note: extra incubation time will not improve yield but will not decrease it either.  Overnight incubations are fine if necessary.
+- Transfer unbound DNA to fresh skirted PCR plate unbound_DNA, being careful not to touch the sides of the wells. Discard or foil and save at -20C for up to 30 days and reuse for further SequalPrep.
+- Add 50 uL SequalPrep Wash buffer to the SequalPrep plate containing bound DNA and pipet up and down twice to mix. Vortex.
+- Remove buffer from wells by pipetting. Tap plate on paper towel gently to remove remaining buffer. Spin down the plate.
+- To elute, add 20 uL SequalPrep Elution buffer to each well.
+- Cover with lid, vortex 30 sec, and centrifuge briefly.
+- Incubate at room temperature for 5 minutes.
+- Elute DNA from each well into a new skirted PCR plate clean_normalized_PCR and store at -20C.
