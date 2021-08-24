@@ -9,6 +9,7 @@ library(tidyverse)
 library(data.table)
 library(CASEU)
 `%notin%` <- Negate(`%in%`)
+source(here::here("output/report/script/misc.R"))
 
 # Read plate layout ----
 plates_random <- fread(here::here("data/output/plates_random.csv")) %>% as_tibble()
@@ -75,7 +76,8 @@ CASEU_RN2 <- mixture_list %>%
   mutate(Transfer = "T3")
 
 #### Available sanger seuqencing result
-CASEU_RN2$DataAvailability <- CASEU_RN2$Community == "RanAss1" & !(CASEU_RN2$Isolate1 %in% 5 | CASEU_RN2$Isolate2 %in% 5 | CASEU_RN2$Isolate1 == CASEU_RN2$Isolate2)
+#CASEU_RN2$DataAvailability <- CASEU_RN2$Community == "RanAss1" & !(CASEU_RN2$Isolate1 %in% 5 | CASEU_RN2$Isolate2 %in% 5 | CASEU_RN2$Isolate1 == CASEU_RN2$Isolate2)
+CASEU_RN2$DataAvailability <- T
 
 ## Fit Sanger sequnece electorpheogram of mixture by using CASEU packages. This may take a few minutes.
 ### Keep raw CASEU outputs
@@ -84,6 +86,9 @@ names(caseu_prediction) <- mixture_list$Mixture
 tt <- proc.time()
 
 for (i in 1:length(caseu_prediction)) {
+#load(file = here::here("data/temp/CASEU_RN2_raw_output.Rdata"))
+#caseu_prediction <- CASEU_RN2_raw_output
+#for (i in which(is.na(CASEU_RN2_raw_output) & CASEU_RN2$Isolate1 != CASEU_RN2$Isolate2)) {
   community <- CASEU_RN2$Community[i]
   isolate1 <- CASEU_RN2$Isolate1[i]
   isolate2 <- CASEU_RN2$Isolate2[i]
@@ -117,39 +122,6 @@ temp <- caseu_prediction %>%
   rbindlist(idcol = "Mixture")
 
 ### Format the CASEU df
-switch_pairwise_column <- function (df, bypair = T) {
-  if (any(is.factor(df$Isolate1))) df$Isolate1 <- as.numeric(df$Isolate1); df$Isolate2 <- as.numeric(df$Isolate2)
-  if ("Isolate1FreqPredicted" %in% colnames(df)) {
-    if (bypair == T) {
-      temp_index <- df$Isolate1 > df$Isolate2
-      df[temp_index, c("Isolate1", "Isolate2", "Isolate1Freq", "Isolate2Freq", "Isolate1FreqPredicted", "Isolate2FreqPredicted")] <-
-        df[temp_index, c("Isolate2", "Isolate1", "Isolate2Freq", "Isolate1Freq", "Isolate2FreqPredicted", "Isolate1FreqPredicted")]
-
-      df %>% arrange(Isolate1, Isolate2, Isolate1Freq) %>% return()
-    } else if (bypair == F) {
-      temp_index <- df$Isolate1Freq == 5
-      df[temp_index, c("Isolate1", "Isolate2", "Isolate1Freq", "Isolate2Freq", "Isolate1FreqPredicted", "Isolate2FreqPredicted")] <-
-        df[temp_index, c("Isolate2", "Isolate1", "Isolate2Freq", "Isolate1Freq", "Isolate2FreqPredicted", "Isolate1FreqPredicted")]
-
-      df %>% arrange(Isolate1Freq, Isolate1, Isolate2) %>% return()
-    }
-  } else {
-
-    if (bypair == T) {
-      temp_index <- df$Isolate1 > df$Isolate2
-      df[temp_index, c("Isolate1", "Isolate2", "Isolate1Freq", "Isolate2Freq")] <-
-        df[temp_index, c("Isolate2", "Isolate1", "Isolate2Freq", "Isolate1Freq")]
-
-      df %>% arrange(Isolate1, Isolate2, Isolate1Freq) %>% return()
-    } else if (bypair == F) {
-      temp_index <- df$Isolate1Freq == 5
-      df[temp_index, c("Isolate1", "Isolate2", "Isolate1Freq", "Isolate2Freq")] <-
-        df[temp_index, c("Isolate2", "Isolate1", "Isolate2Freq", "Isolate1Freq")]
-
-      df %>% arrange(Isolate1Freq, Isolate1, Isolate2) %>% return()
-    }
-  }
-}
 CASEU_RN2 <- CASEU_RN2 %>%
   left_join(temp) %>%
   select(-Mixture, -DataAvailability, -Sample) %>%

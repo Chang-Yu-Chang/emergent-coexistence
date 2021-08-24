@@ -2,8 +2,9 @@
 library(tidyverse)
 library(data.table)
 
+
 # Read data ----
-communities_abundance <- fread(here::here("data/temp/communities_abundance.csv")) %>% as_tibble() # Data from Nanxi
+# communities_abundance <- fread(here::here("data/temp/communities_abundance.csv")) %>% as_tibble() # Data from Nanxi
 communities_abundance_syl <- fread(here::here("data/temp/communities_abundance_syl.csv")) %>% as_tibble() # Data from Sylvie
 isolates_ID_match <- fread(here::here("data/temp/isolates_ID_match.csv"))
 isolates_RDP <- fread(here::here("data/temp/isolates_RDP.csv")) %>% as_tibble()
@@ -34,12 +35,12 @@ isolates_ID_RDP <- isolates_ID_match %>% filter(!grepl("Ass", Community)) %>% le
 #' 1. Only use ESVs from transfer 12
 #' 2. Use the communities assembled in glucose media
 #' 3. Remove duplicates
-communities_abundance_align <- communities_abundance %>%
-  filter(!grepl("AA", SampleID)) %>%
-  filter(Transfer == 12) %>%
-  mutate(Community = ordered(Community, levels = c(paste0("C", 1:12, "Rpool"), paste0("C", rep(1:12, each = 8), "R", rep(1:8, 12))))) %>%
-  group_by(SampleID, Community) %>%
-  arrange(Community, SampleID)
+# communities_abundance_align <- communities_abundance %>%
+#   filter(!grepl("AA", SampleID)) %>%
+#   filter(Transfer == 12) %>%
+#   mutate(Community = ordered(Community, levels = c(paste0("C", 1:12, "Rpool"), paste0("C", rep(1:12, each = 8), "R", rep(1:8, 12))))) %>%
+#   group_by(SampleID, Community) %>%
+#   arrange(Community, SampleID)
 
 communities_abundance_syl_align <- communities_abundance_syl %>%
   filter(CarbonSource == "Glucose", Transfer == 12)

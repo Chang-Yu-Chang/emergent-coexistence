@@ -42,24 +42,25 @@ isolates_assembly_across <-
   bind_rows(temp_df2) %>%
   left_join(isolates, by = c("ExpID")) %>%
   mutate(Assembly = "across-community",
-    AssemblyCommunity = rep(paste0("AcrAss", 1:2), each = 8),
-    Community = ordered(Community, communities_name)) %>%
-  arrange(AssemblyCommunity, Community) %>%
-  mutate(AssemblyIsolate = rep(1:8, 2)) %>%
-  select(Assembly, AssemblyCommunity, AssemblyIsolate, ExpID, Community, Isolate, Family, Genus)
+    Community = rep(paste0("AcrAss", 1:2), each = 8)) %>%
+  mutate(Isolate = rep(1:8, 2)) %>%
+  select(Assembly, ExpID, Community, Isolate, Family, Genus)
 
 isolates_assembly_random <-
   temp_df3 %>%
   bind_rows(temp_df4) %>%
   mutate(Assembly = rep("random-assembly", 16),
-    AssemblyCommunity = rep(paste0("RanAss", 1:2), each = 8),
-    AssemblyIsolate = rep(1:8, 2)) %>%
-    select(Assembly, AssemblyCommunity, AssemblyIsolate, ExpID, Family, Genus)
+    Community = rep(paste0("RanAss", 1:2), each = 8),
+    Isolate = rep(1:8, 2)) %>%
+    select(Assembly, ExpID, Community, Isolate, Family, Genus)
 
-## Rbind
+#
 isolates_random <- isolates_assembly_across %>%
   bind_rows(isolates_assembly_random) %>%
   replace_na(replace = list(Isolate = ""))
+
+#
+isolates_random$Fermenter <- ifelse(isolates_random$Family %in% c("Pseudomonadaceae", "Moraxellaceae", "Xanthomonadaceae", "Alcaligenaceae", "Comamonadaceae"), F, ifelse(isolates_random$Family %in% c("Enterobacteriaceae", "Aeromonadaceae"), T, NA))
 
 fwrite(isolates_random, file = here::here("data/output/isolates_random.csv"))
 

@@ -59,8 +59,8 @@ networks_motif_randomized_percentile <-
   {.}
 
 fwrite(networks_motif, file = here::here("data/output/networks_motif.csv"))
-fwrite(networks_motif_randomized, file = here::here("data/temp/networks_motif_randomized.csv"))
-fwrite(networks_motif_randomized_percentile, here::here("data/temp/networks_motif_randomized_percentile.csv"))
+fwrite(networks_motif_randomized, file = here::here("data/output/networks_motif_randomized.csv"))
+#fwrite(networks_motif_randomized_percentile, here::here("data/temp/networks_motif_randomized_percentile.csv"))
 
 
 

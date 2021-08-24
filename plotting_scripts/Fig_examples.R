@@ -108,7 +108,7 @@ p2 <- bind_graphs(example_motif_list)  %>%
 
 ggsave("../plots/Ex2_motifs.png", plot = p2, width = 10, height = 1.5)
 ggsave("../plots/Ex2_motifs_enlarged.png", plot = p2, width = 8, height = 1.2)
-save(example_motif_list, file = "../data/temp/example_motif_list.Rdata")
+save(example_motif_list, file = "../data/output/example_motif_list.Rdata")
 
 
 # Figure: example competitive networks ----

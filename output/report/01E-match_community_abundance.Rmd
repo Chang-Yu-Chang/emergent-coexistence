@@ -198,18 +198,21 @@ communities_abundance_syl %>%
 ```{r}
 # This chunck is modified on 20200309 for Sylvie's paper
 sequences_abundance <- fread(here::here("data/temp/sequences_abundance.csv"))
+#sequences_abundance <- fread(("~/Desktop/Lab/invnet/data/temp/sequences_abundance.csv"))
 
 # Filter for the plot
 temp <- sequences_abundance %>%
   filter(AlignmentType == "local") %>%
-  filter(AllowMismatch == 2) %>%
-  mutate(AllowMismatch = paste0("AllowMismatch: ", AllowMismatch))
+  filter(AllowMismatch == Inf) %>%
+  filter(BasePairMismatch <= 4) %>%
+  #mutate(AllowMismatch = paste0("AllowMismatch: ", AllowMismatch))
+  {.}
 
 fwrite(temp, "data/01E-match_community_abundance-isolate_abundance.csv")
 
 # Color sets from Sylvie
-temp2 <- tibble(Color = c("yellow", "deepskyblue3", "blue", "darkorchid2", "firebrick", "orange2"),
-  Family = c("Aeromonadaceae", "Enterobacteriaceae", "Moraxellaceae", "Pseudomonadaceae","Comamonadaceae","Alcaligenaceae"))
+temp2 <- tibble(Color = c("yellow", "deepskyblue3", "blue", "darkorchid2", "firebrick", "orange2", "grey"),
+  Family = c("Aeromonadaceae", "Enterobacteriaceae", "Moraxellaceae", "Pseudomonadaceae","Comamonadaceae","Alcaligenaceae", "Sphingobacteriaceae"))
 
 p_temp <- temp %>%
   mutate(Community = ordered(Community,  communities_name)) %>%

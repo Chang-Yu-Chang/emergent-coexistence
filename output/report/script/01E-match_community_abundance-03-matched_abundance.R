@@ -2,7 +2,8 @@
 library(tidyverse)
 library(data.table)
 
-communities <- fread(here::here("data/temp/communities.csv"))
+isolates_ID_match <- fread(here::here("data/temp/isolates_ID_match.csv"))
+communities <- fread(here::here("data/output/communities.csv"))
 communities_name <- communities$Community
 communities_size <- communities$CommunitySize
 communities_name_pool <- c(paste0("C", 1:12, "Rpool"), paste0("C", rep(1:12, each = 8), "R", rep(1:8, 12)))
@@ -56,7 +57,8 @@ sequences_abundance <- sequences_abundance %>%
 # Isolate abundances
 isolates_abundance <-
   sequences_abundance %>%
-  filter(AlignmentType == "local", AllowMismatch == 2) %>%
+  #filter(AlignmentType == "local", AllowMismatch == 2) %>%
+  filter(AlignmentType == "local", AllowMismatch == "Inf") %>%
   select(Community, IsolateGenus, RelativeAbundance) %>%
   right_join(isolates_ID_match)
 

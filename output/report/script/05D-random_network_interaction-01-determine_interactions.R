@@ -22,6 +22,18 @@ reshape_df <- function(x, com, tim = NULL) {
            RawDataType, Contamination)
 }
 
+## AcrAss1 in T0 AD P2 and T3 AD P2
+AcrAss1 <- fread(here::here("data/temp/CASEU_RN3.csv")) %>% as_tibble() %>% # T3 AD P2
+  reshape_df(com = "AcrAss1", tim = NA)
+
+## AcrAss2 in T3 BD P2
+AcrAss2_T3 <- fread(here::here("data/temp/CASEU_RN4.csv")) %>% as_tibble() %>% # T3 BD P2
+  reshape_df(com = "AcrAss2", tim = NA)
+AcrAss2_T0 <- AcrAss2_T3 %>% # Remove this when T0 is sequenced
+  mutate(Isolate1MeasuredFreq = Isolate1InitialODFreq) %>%
+  mutate(Time = "T0", RawDataType = "OD")
+AcrAss2 <- bind_rows(AcrAss2_T0, AcrAss2_T3)
+
 ## RanAss1 in T0 C P2
 RanAss1_T0 <- fread(here::here("data/temp/CASEU_RN3.csv")) %>% as_tibble() %>%
   reshape_df(com = "RanAss1", tim = "T0")
@@ -31,29 +43,34 @@ RanAss1_T3 <- fread(here::here("data/temp/CASEU_RN2.csv")) %>% as_tibble() %>%
   reshape_df(com = "RanAss1", tim = "T3")
 RanAss1 <- bind_rows(RanAss1_T0, RanAss1_T3)
 
-## AcrAss1 in T0 AD P2 and T3 AD P2
-AcrAss1 <- fread(here::here("data/temp/CASEU_RN3.csv")) %>% as_tibble() %>% # T3 AD P2
-  reshape_df(com = "AcrAss1", tim = NA)
-
 ## RanAss2 in T0 AD P2 and T3 AD P2
-RanAss2 <- fread(here::here("data/temp/CASEU_RN3.csv")) %>% as_tibble() %>% # T3 AD P2
+RanAss2_half1 <- fread(here::here("data/temp/CASEU_RN3.csv")) %>% as_tibble() %>% # T3 AD P2
   reshape_df(com = "RanAss2", tim = NA)
+
+## RanAss2 in T3 BD P2
+RanAss2_half2_T3 <- fread(here::here("data/temp/CASEU_RN4.csv")) %>% as_tibble() %>% # T3 BD P2
+  reshape_df(com = "RanAss2", tim = NA)
+RanAss2_half2_T0 <- RanAss2_half2_T3 %>% # Remove this when T0 is sequenced
+  mutate(Isolate1MeasuredFreq = Isolate1InitialODFreq) %>%
+  mutate(Time = "T0", RawDataType = "OD")
+RanAss2 <- bind_rows(RanAss2_half1, RanAss2_half2_T0, RanAss2_half2_T3)
 
 ## Isolates
 isolates_random <- fread(here::here("data/output/isolates_random.csv")) %>%
-  select(Community = AssemblyCommunity, Isolate = AssemblyIsolate, ExpID, Family, Genus)
+  select(Community, Isolate = Isolate, ExpID, Family, Genus)
 
 "
 Combine the result I have for AcrAss1 T0 T3, RanAss T0 T3, half of RanAss2 T0 T3
 "
 
-
 # Save the relative abundance at T3; Reshape to the pairwise competition data format ----
-random_network_pairs_melted <- bind_rows(AcrAss1, RanAss1, RanAss2)
+pairs_random_melted <- bind_rows(AcrAss1, AcrAss2, RanAss1, RanAss2)
+#pairs_random_melted$Isolate1MeasuredFreq[pairs_random_melted$Time == "T0"] <- pairs_random_melted$Isolate1InitialODFreq[pairs_random_melted$Time == "T0"]
 
 # Sign of frequency changes ----
-random_network_pairs_frequency <-
-  random_network_pairs_melted %>%
+pairs_random_frequency <-
+  pairs_random_melted %>%
+  select(-RawDataType, -Contamination) %>% # Remove this when T0 BD P3 sequenced
   pivot_wider(names_from = Time, values_from = Isolate1MeasuredFreq) %>%
   select(Community, Isolate1, Isolate2, InitialFrequency = Isolate1InitialODFreq, T0, T3) %>%
   group_by(Community) %>%
@@ -68,17 +85,17 @@ interaction_type <- tibble(
   InteractionType = c("exclusion", "coexistence", "bistability", "exclusion")
 )
 
-random_network_pairs_fitness <-
-  random_network_pairs_frequency %>%
+pairs_random_fitness <-
+  pairs_random_frequency %>%
   pivot_wider(names_from = InitialFrequency, values_from = FrequencyChange) %>%
   filter(!is.na(`0.05`), !is.na(`0.95`)) %>%
   left_join(interaction_type, by = c("0.05", "0.95")) %>%
   mutate(From = Isolate1, To = Isolate2)
 
 # Switch arrow sign when isolate2 outcompetes isolate1
-temp_index <- random_network_pairs_fitness$`0.05` == F & random_network_pairs_fitness$`0.95` == F
-random_network_pairs_fitness[temp_index, c("From", "To")] <- random_network_pairs_fitness[temp_index, c("To", "From")]
-random_network_pairs_interaction <- random_network_pairs_fitness %>%
+temp_index <- pairs_random_fitness$`0.05` == F & pairs_random_fitness$`0.95` == F
+pairs_random_fitness[temp_index, c("From", "To")] <- pairs_random_fitness[temp_index, c("To", "From")]
+pairs_random_interaction <- pairs_random_fitness %>%
   select(Community, Isolate1, Isolate2, InteractionType, From, To) %>%
   mutate(Isolate1 = factor(Isolate1), Isolate2 = factor(Isolate2))
 
@@ -107,18 +124,16 @@ match_isolates_pairs <- function (pairs_df, isolates_df, variable_name = "Epsilo
     invisible() %>%
     return()
 }
-random_network_pairs <- random_network_pairs_interaction %>%
+pairs_random <- pairs_random_interaction %>%
   match_isolates_pairs(isolates_df = isolates_random, variable_name = "Family") %>%
   match_isolates_pairs(isolates_df = isolates_random, variable_name = "Genus")
 
-fwrite(random_network_pairs, file = here::here("data/output/random_network_pairs.csv"))
-fwrite(random_network_pairs_frequency, file = here::here("data/temp/random_network_pairs_frequency.csv"))
 
+pairs_random$Fermenter1 <- ifelse(pairs_random$Family1 %in% c("Pseudomonadaceae", "Moraxellaceae", "Xanthomonadaceae", "Alcaligenaceae", "Comamonadaceae"), F, ifelse(pairs_random$Family1 %in% c("Enterobacteriaceae", "Aeromonadaceae"), T, NA))
+pairs_random$Fermenter2 <- ifelse(pairs_random$Family2 %in% c("Pseudomonadaceae", "Moraxellaceae", "Xanthomonadaceae", "Alcaligenaceae", "Comamonadaceae"), F, ifelse(pairs_random$Family2 %in% c("Enterobacteriaceae", "Aeromonadaceae"), T, NA))
 
-
-
-
-
+fwrite(pairs_random, file = here::here("data/output/pairs_random.csv"))
+fwrite(pairs_random_melted, file = here::here("data/output/pairs_random_melted.csv"))
 
 
 

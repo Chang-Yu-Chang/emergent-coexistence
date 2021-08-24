@@ -84,6 +84,11 @@ p_temp <- CASEU_RN2 %>%
 
 p_temp
 ```
+```{r}
+load(here::here("data/temp/CASEU_RN2_raw_output.Rdata"))
+which(is.na(CASEU_RN2_raw_output))
+CASEU_RN2_mixture_list
+```
 
 
 # Random network, CASEU batch3
@@ -99,16 +104,13 @@ p_temp
 source("script/05C-random_network_CASEU-03-batch3.R")
 ```
 
+Use T0 OD frequencies
 
 ```{r}
 CASEU_RN3 <- fread(here::here("data/temp/CASEU_RN3.csv"))
-"
-Use T0 OD frequencies
-"
 temp <- CASEU_RN3 %>% 
   filter(Community == "AcrAss1") %>%
   mutate(InitialFrequency = factor(Isolate1Freq), Time = ordered(Time, c("T0", "T3")))
-#  select(-Sample, -Mixture, -RSquare, -Isolate2FreqPredicted) %>%
 
 temp$Isolate1FreqPredicted[temp$Time == "T0"] <- temp$Isolate1Freq[temp$Time == "T0"]
   
@@ -125,10 +127,9 @@ temp %>%
 ```
 
 
-```{r}
-"
 Use CASEU predicted frequencies
-"
+
+```{r}
 CASEU_RN3 %>% 
   filter(Community == "AcrAss1") %>%
   mutate(InitialFrequency = factor(Isolate1Freq), Time = ordered(Time, c("T0", "T3"))) %>%
@@ -152,7 +153,9 @@ CASEU_RN3 %>%
 - Description: This plate has the full AcrAss2 (B) and half of RanAss2 (D) network.
 
 
-
+```{r}
+source("script/05C-random_network_CASEU-02-batch4.R")
+```
 
 
 

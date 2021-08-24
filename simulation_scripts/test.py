@@ -9,15 +9,16 @@ from mpl_toolkits.axes_grid1 import make_axes_locatable
 #input_csv = "~/Desktop/Lab/community-selection/Data/Mapping_Files/input_independent_f1d_additive_medium2.csv" 
 #input_csv = "~/Desktop/Lab/community-selection/Data/Mapping_Files/input_independent_f5_invader_suppression.csv"
 #input_csv = "~/Desktop/Lab/community-selection/Data/Mapping_Files/input_iteration_f5_invader_suppression.csv" 
-input_csv = "~/Desktop/Lab/invasion-network/data/raw/simulation/mapping_files/input_set_simple_medium.csv" ; row_number = 280
+#input_csv = "~/Desktop/Lab/invasion-network/data/raw/simulation/mapping_files/input_set_simple_medium.csv" ; row_number = 280
+input_csv = "~/Desktop/Lab/invasion-network/data/raw/simulation/mapping_files/input_set_simple_medium.csv" ; row_number = 34
 
 assumptions = make_assumptions(input_csv, row_number)
 {i: assumptions[i] for i in ("l", "q", "sampling", "SA", "sampling_D", "fww")}
 assumptions.update({
 #     "rn": 2,
 #     "rf": 2,
-     "SA": 100 * np.ones(2),
-     "MA": 10 * np.ones(2),
+     "SA": 10 * np.ones(1),
+#     "MA": 10 * np.ones(2),
 #     "muc": 10,
 #    "c1": 1,
      "q": 0.5, 
@@ -59,7 +60,7 @@ def plot_matrix(X):
 plot_matrix(params["D"])
 plot_matrix(params["c"])
 #plate.N.iloc[assumptions["invader_index"],:]
-
+simulate_community(params = params, params_simulation = params_simulation, params_algorithm = params_algorithm, plate = plate)
 
 
 

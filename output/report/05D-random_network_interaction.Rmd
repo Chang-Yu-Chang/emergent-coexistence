@@ -27,12 +27,12 @@ source("script/05D-random_network_interaction-01-determine_interactions.R")
 
 
 ```{r}
-random_network_pairs
-random_network_pairs_frequency
+pairs_random
+pairs_random_frequency
 ```
 
 ```{r}
-random_network_pairs %>%
+pairs_random %>%
   group_by(Community, InteractionType) %>% 
   summarize(Count = n())
 ```
@@ -50,22 +50,28 @@ plot_frequency <- function(pairs_melted) {
     theme(legend.position = "top")
 } 
 
-p1 <- random_network_pairs_melted %>%
+p1 <- pairs_random_melted %>%
   filter(Community == "AcrAss1") %>%
   plot_frequency() +
   ggtitle("AcrAss1")
-p2 <- random_network_pairs_melted %>%
+p2 <- pairs_random_melted %>%
+  filter(Community == "AcrAss2") %>%
+  plot_frequency() +
+  theme(legend.position = "none") +
+  ggtitle("AcrAss2")
+p3 <- pairs_random_melted %>%
   filter(Community == "RanAss1") %>%
   plot_frequency() +
+  theme(legend.position = "none") +
   ggtitle("RanAss1")
-p3 <- random_network_pairs_melted %>%
+p4 <- pairs_random_melted %>%
   filter(Community == "RanAss2") %>%
   plot_frequency() +
   theme(legend.position = "none") +
   ggtitle("RanAss2") 
 
 
-p <- plot_grid(p1, p2, p3, nrow = 2)
+p <- plot_grid(p1, p2, p3, p4, nrow = 2)
 ggsave(here::here("output/report/figure/05D-random_network_interaction-frequency.png"), p, width = 12, height = 12)
 ```
 
@@ -81,6 +87,7 @@ source("script/05D-random_network_interaction-02-network_properties.R")
 Matrix
 
 ```{r}
+p_random_network_matrix_list <- net_random_list %>% lapply(plot_adjacent_matrix)
 p <- plot_grid(plotlist = p_random_network_matrix_list, nrow = 1)
 ggsave(here::here("output/report/figure/05D-random_network_interaction-adjacent_matrix.png"), p, width = 8, height = 4)
 
@@ -89,7 +96,7 @@ ggsave(here::here("output/report/figure/05D-random_network_interaction-adjacent_
 Network motif
 
 ```{r}
-ggsave(here::here("output/report/figure/05D-random_network_interaction-motif.png"), p_random_networks_motif_randomized, width = 8, height = 4)
+ggsave(here::here("output/report/figure/05D-random_network_interaction-motif.png"), p_net_random_motif_randomized, width = 8, height = 4)
 ```
 
 

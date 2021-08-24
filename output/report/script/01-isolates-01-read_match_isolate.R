@@ -24,13 +24,14 @@ isolates_tournament <- fread(here::here("data/temp/isolates_tournament.csv"))
 
 
 # Match isolates' information ----
-## 100 isolates. 84 from djordje, 16 from jean
+## 100 isolates. 68 from djordje, 16 from jean
 isolates <- isolates_ID_match %>%
   left_join(isolates_RDP, by = c("ID")) %>%
   left_join(isolates_epsilon, by = c("Community", "Isolate")) %>%
   left_join(isolates_tournament, by = c("Community", "Isolate")) %>%
   left_join(isolates_growth_rate_spread_ID, by = c("ExpID", "ID", "Community", "Isolate")) %>%
   mutate(Community = ordered(Community, levels = communities_name)) %>%
+  filter(!(!grepl("JVN", ExpID) & is.na(Community))) %>%
   as_tibble()
 
 # Melted isolates df for growth curve plot

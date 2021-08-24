@@ -14,6 +14,7 @@ library(tidyverse)
 library(data.table)
 library(CASEU)
 `%notin%` <- Negate(`%in%`)
+source(here::here("output/report/script/misc.R"))
 
 # Read plate layout ----
 plates_random <- fread(here::here("data/output/plates_random.csv")) %>% as_tibble()
@@ -138,39 +139,6 @@ temp <- caseu_prediction %>%
   mutate(Sample = c(1:64, 97:288))
 
 ### Format the CASEU df
-switch_pairwise_column <- function (df, bypair = T) {
-  if (any(is.factor(df$Isolate1))) df$Isolate1 <- as.numeric(df$Isolate1); df$Isolate2 <- as.numeric(df$Isolate2)
-  if ("Isolate1FreqPredicted" %in% colnames(df)) {
-    if (bypair == T) {
-      temp_index <- df$Isolate1 > df$Isolate2
-      df[temp_index, c("Isolate1", "Isolate2", "Isolate1Freq", "Isolate2Freq", "Isolate1FreqPredicted", "Isolate2FreqPredicted")] <-
-        df[temp_index, c("Isolate2", "Isolate1", "Isolate2Freq", "Isolate1Freq", "Isolate2FreqPredicted", "Isolate1FreqPredicted")]
-
-      df %>% arrange(Isolate1, Isolate2, Isolate1Freq) %>% return()
-    } else if (bypair == F) {
-      temp_index <- df$Isolate1Freq == 5
-      df[temp_index, c("Isolate1", "Isolate2", "Isolate1Freq", "Isolate2Freq", "Isolate1FreqPredicted", "Isolate2FreqPredicted")] <-
-        df[temp_index, c("Isolate2", "Isolate1", "Isolate2Freq", "Isolate1Freq", "Isolate2FreqPredicted", "Isolate1FreqPredicted")]
-
-      df %>% arrange(Isolate1Freq, Isolate1, Isolate2) %>% return()
-    }
-  } else {
-
-    if (bypair == T) {
-      temp_index <- df$Isolate1 > df$Isolate2
-      df[temp_index, c("Isolate1", "Isolate2", "Isolate1Freq", "Isolate2Freq")] <-
-        df[temp_index, c("Isolate2", "Isolate1", "Isolate2Freq", "Isolate1Freq")]
-
-      df %>% arrange(Isolate1, Isolate2, Isolate1Freq) %>% return()
-    } else if (bypair == F) {
-      temp_index <- df$Isolate1Freq == 5
-      df[temp_index, c("Isolate1", "Isolate2", "Isolate1Freq", "Isolate2Freq")] <-
-        df[temp_index, c("Isolate2", "Isolate1", "Isolate2Freq", "Isolate1Freq")]
-
-      df %>% arrange(Isolate1Freq, Isolate1, Isolate2) %>% return()
-    }
-  }
-}
 CASEU_RN3 <- CASEU_RN3 %>%
   left_join(temp, by = c("Sample", "Mixture")) %>%
   filter(Isolate1 != Isolate2) %>%
