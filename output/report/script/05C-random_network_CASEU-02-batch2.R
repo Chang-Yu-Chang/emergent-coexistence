@@ -11,7 +11,7 @@ library(CASEU)
 `%notin%` <- Negate(`%in%`)
 source(here::here("output/report/script/misc.R"))
 
-# Read plate layout ----
+# Read plate layout ---
 plates_random <- fread(here::here("data/output/plates_random.csv")) %>% as_tibble()
 plates_C_P2 <- plates_random %>% filter(PlateLayout == "C", MixPlate == "P2") %>% mutate(Sample = 1:96)
 

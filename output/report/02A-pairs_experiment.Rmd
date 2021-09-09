@@ -211,10 +211,14 @@ easy_plot_plate <- function(plate) {
     FillLabel = paste0(Community, ifelse(MixIsolate, "", "_single"))) %>%
     draw_plate_from_df()
 }
+
+```
+
+```{r}
 for (i in 1:7) assign(paste0("p", i), easy_plot_plate(eval(parse(text = plates_name[i]))))
 
-plot_grid(p1, p2, p3, NULL, p4, p5, p6, p7,
-labels = LETTERS[1:7], ncol = 2, nrow = 4)
+p <- plot_grid(p1, p2, p3, NULL, p4, p5, p6, p7, labels = c("B2_933", "B2_444", "C_C11R1", "", "C2_13A", "C2_13B", "D_75", "D_5543"), ncol = 2, nrow = 4)
+ggsave("figure/02A-pairs_experiment-plate_layout.pdf", plot = p, width = 12, height = 16)
 ```
 
 Output pdf `figure/CASEU_pilot2_pairs.pdf` that has the colony morphology ambiguous pairs on DW96 plates layout.
@@ -241,6 +245,5 @@ Write the ambiguous pairs location on 96 deep-well plates
 ```{r}
 if (write_all_csv) fwrite(pairs_ambiguous_on_DW96, file = here::here("data/temp/pairs_ambiguous_on_DW96.csv"))
 ```
-
 
 

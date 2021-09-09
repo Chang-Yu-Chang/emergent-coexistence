@@ -1,7 +1,4 @@
 ---
-title: "CASEU protocol"
-author: "Chang-Yu Chang"
-date: "`r Sys.Date()`" 
 output: 
     pdf_document: default
 header-includes:

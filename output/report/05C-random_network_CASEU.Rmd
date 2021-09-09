@@ -13,7 +13,7 @@ knitr::opts_chunk$set(cache = TRUE, echo = FALSE)
 library(tidyverse)
 library(data.table)
 library(cowplot)
-# 
+
 communities <- fread(here::here("data/output/communities.csv"))
 communities_name <- communities$Community
 communities_size <- communities$CommunitySize
@@ -158,11 +158,16 @@ source("script/05C-random_network_CASEU-02-batch4.R")
 ```
 
 
+# Random netwokr, caseu batch 5
 
+- Genewiz submisstion code: 
+- Plate layout: T3 BD P3
+    - T0 BD P2
+    - T3 C P3
+- Description: XX
 
-
-
-
+```{r}
+```
 
 
 
