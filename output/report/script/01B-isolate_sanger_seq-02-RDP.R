@@ -5,8 +5,8 @@ library(data.table)
 library(rRDPData)
 library(rRDP)
 
-isolates_ID_match <- fread(here::here("data/temp/", "isolates_ID_match.csv"))
-isolates_16S <- fread(here::here("data/temp/", "isolates_16S.csv"))
+isolates_ID_match <- fread(here::here("data/temp/isolates_ID_match.csv"))
+isolates_16S <- fread(here::here("data/temp/isolates_16S.csv"))
 
 # Djordje's isolates----
 # Use the default classifier
@@ -27,17 +27,20 @@ isolates_RDP <- left_join(isolates_16S, pred, "ID") %>% left_join(conf_score, "I
 #' Fermenter or non-fermenter based on literatures
 #' - Fermenter: Enterobacteriaceae, Aeromonadaceae
 #' - Non-fermenter: Pseudomonadaceae, Moraxellaceae, Xanthomonadaceae, Alcaligenaceae, Comamonadaceae
-isolates_RDP$Fermenter <- ifelse(isolates_RDP$Family %in% c("Pseudomonadaceae", "Moraxellaceae", "Xanthomonadaceae", "Alcaligenaceae", "Comamonadaceae"), F, ifelse(isolates_RDP$Family %in% c("Enterobacteriaceae", "Aeromonadaceae"), T, NA))
+isolates_RDP$Fermenter <- ifelse(isolates_RDP$Family %in% c("Pseudomonadaceae", "Moraxellaceae", "Xanthomonadaceae", "Alcaligenaceae", "Comamonadaceae"), F, ifelse(isolates_RDP$Family %in% c("Enterobacteriaceae", "Aeromonadaceae", "Bacillaceae 1"), T, NA))
 
 #' Gram-positive or gram-negative
 #' It takes additional step to lyse the cell wall of Fram-positive strains in DNA extraction.
-isolates_RDP$GramPositive <- ifelse(isolates_RDP$Family %in% c("Pseudomonadaceae", "Moraxellaceae", "Xanthomonadaceae", "Alcaligenaceae", "Comamonadaceae", "Enterobacteriaceae", "Aeromonadaceae"), F, ifelse(isolates_RDP$Family %in% c(""), T, NA))
+isolates_RDP$GramPositive <- ifelse(isolates_RDP$Family %in% c("Pseudomonadaceae", "Moraxellaceae", "Xanthomonadaceae", "Alcaligenaceae", "Comamonadaceae", "Enterobacteriaceae", "Aeromonadaceae", "Bacillaceae 1"), F, ifelse(isolates_RDP$Family %in% c(""), T, NA))
 
 # Remove contamination
 isolates_RDP <- isolates_RDP %>%
     select(ID, Fermenter, GramPositive, Family, Genus, GenusScore, Sequence) %>%
     filter(!Genus == "Staphylococcus")
 
+# Remove unassgined families
+isolates_RDP <- isolates_RDP %>%
+    filter(!is.na(Fermenter), !is.na(GramPositive))
 # Save 198 isolates with taxonomic information in a csv file `data/temp/isolates_RDP.csv`
 fwrite(isolates_RDP, here::here("data/temp/isolates_RDP.csv"))
 
@@ -75,7 +78,7 @@ jean_isolates_RDP$GramPositive <- ifelse(jean_isolates_RDP$Family %in% c("Pseudo
 jean_isolates_RDP <- jean_isolates_RDP %>%
     select(ExpID, ID, Fermenter, GramPositive, Family, Genus, GenusScore, Sequence) %>%
     filter(!Genus == "Staphylococcus")
-
+#
 fwrite(jean_isolates_RDP, here::here("data/temp/jean_isolates_RDP.csv"))
 
 

@@ -1,17 +1,15 @@
 #' Compute the pairwise distances between two branch tips
+library(tidyverse)
+library(data.table)
 
-# Read isolates ID match
-isolates_ID_match <- fread(root$find_file("data/temp/isolates_ID_match.csv"))
+isolates_ID_match <- read_csv(here::here("data/temp/isolates_ID_match.csv"))
+pairs_ID <- read_csv(here::here("data/temp/pairs_ID.csv"))
+load(here::here("data/temp/isolates_sanger_seq.Rdata"))
+communities <- read_csv(here::here("data/output/communities.csv"))
 
-# Read pairs ID
-pairs_ID <- fread(root$find_file("data/temp/pairs_ID.csv"))
-
-# Load the aligned tree
-load(root$find_file("data/temp/isolates_sanger_seq.Rdata"))
 
 # Read the pairwise distances between the pairs of tips from a phylogenetic tree using its branch lengths
 pairs_tree_distance_matrix <- ape::cophenetic.phylo(tree)
-
 
 # Extract the pairwise distances within community
 pairs_tree_distance <- pairs_tree_distance_matrix %>%
@@ -28,7 +26,7 @@ pairs_tree_distance <- pairs_tree_distance_matrix %>%
 pairs_tree_distance <- pairs_tree_distance %>%
   filter(Community1 == Community2, Isolate1 != Isolate2, Isolate1 < Isolate2) %>%
   # Configurate variables
-  mutate(Community = ordered(Community1, levels = communities_name),
+  mutate(Community = ordered(Community1, levels = communities$Community),
     Isolate1 = ordered(Isolate1, 1:12),
     Isolate2 = ordered(Isolate2, 1:12)) %>%
   select(Community, Isolate1, Isolate2, PairTreeDistance) %>%
@@ -37,8 +35,11 @@ pairs_tree_distance <- pairs_tree_distance %>%
 
 ## Match all pairs, including the 6 pairs that are missing because of 2 unsequenced isolates
 pairs_tree_distance <- pairs_ID %>%
-  mutate(Community = ordered(Community, levels = communities_name),
+  mutate(Community = ordered(Community, levels = communities$Community),
     Isolate1 = ordered(Isolate1, 1:12),
     Isolate2 = ordered(Isolate2, 1:12)) %>%
   left_join(pairs_tree_distance) %>%
   as_tibble()
+
+#
+fwrite(pairs_tree_distance, file = here::here("data/temp/pairs_tree_distance.csv"))

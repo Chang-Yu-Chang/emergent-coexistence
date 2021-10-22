@@ -6,10 +6,10 @@
 library(tidyverse)
 library(data.table)
 communities <- fread(here::here("data/output/communities.csv"))
-communities_name <- communities$Community
+
 # Frequency changes of pairs ----
-pairs_freq <- fread(here::here("data/temp/pairs_freq.csv")) %>%
-  mutate(Community = ordered(Community, levels = communities_name)) %>%
+pairs_freq <- fread(here::here("data/output/pairs_freq.csv")) %>%
+  mutate(Community = ordered(Community, levels = communities$Community)) %>%
   arrange(Time, Community, Isolate1, Isolate2, Isolate1InitialODFreq, Isolate2InitialODFreq) %>%
   as.data.table()
 
@@ -37,8 +37,8 @@ plot_frequency_change <- function (pairs_freq_comm) {
 }
 
 ## Plot frequencies changes
-p_pairs_freq_change_list <- rep(list(NA), length(communities_name)) %>% setNames(communities_name)
-for (i in 1:length(communities_name)) p_pairs_freq_change_list[[i]] <- pairs_freq %>% filter(Community == communities_name[i]) %>% plot_frequency_change()
+p_pairs_freq_change_list <- rep(list(NA), length(communities$Community)) %>% setNames(communities$Community)
+for (i in 1:length(communities$Community)) p_pairs_freq_change_list[[i]] <- pairs_freq %>% filter(Community == communities$Community[i]) %>% plot_frequency_change()
 
 ## Spread the df
 pairs_freq_T0 <- pairs_freq %>%
@@ -271,7 +271,7 @@ pairs_interaction_table$FromRare <- ff(pairs_interaction_table$FromRare)
 pairs_interaction_table$FromMedium <- ff(pairs_interaction_table$FromMedium)
 pairs_interaction_table$FromAbundant <- ff(pairs_interaction_table$FromAbundant)
 
-
+save(p_pairs_freq_change_list, file = here::here("data/temp/p_pairs_freq_change_list.Rdata"))
 fwrite(pairs_interaction, file = here::here("data/temp/pairs_interaction.csv"))
 fwrite(interaction_type, file = here::here("data/temp/interaction_type.csv"))
 fwrite(pairs_interaction_fitness, file = here::here("data/temp/pairs_interaction_fitness.csv"))

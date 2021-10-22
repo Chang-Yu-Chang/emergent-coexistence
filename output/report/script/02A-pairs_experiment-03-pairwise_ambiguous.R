@@ -1,10 +1,12 @@
-#' Subset the ambigious pairs that are hard to distinguish on TSA agar plates
+#' Subset the ambiguous pairs that are hard to distinguish on TSA agar plates
 #' and subset the isolates that are in these pairs.
 library(tidyverse)
 library(data.table)
 
+isolates_ID_match <- read_csv(here::here("data/temp/isolates_ID_match.csv"))
+
 # Ambiguous pairs
-pairs_ambiguous <- fread(here::here("data/temp/pairs_competition.csv")) %>%
+pairs_ambiguous <- read_csv(here::here("data/temp/pairs_competition.csv")) %>%
   filter(is.na(ColonyCount1)) %>%
   select(-starts_with("ColonyCount"), -DilutionFactor)
 

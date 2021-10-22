@@ -1,5 +1,5 @@
 #' Relative abundances within pairs at T8
-#' `data/temp/pairs_freq_taxonomy` is from the R script `output/report/scipt/02-pairs-08-pairs_interaction_taxonomy.R`
+#' `data/temp/pairs_freq_taxonomy` is from the R script `output/report/script/02-pairs-08-pairs_interaction_taxonomy.R`
 library(tidyverse)
 library(data.table)
 pairs_melted <- fread(here::here("data/output/pairs_melted.csv"))
@@ -57,7 +57,7 @@ pairs_freq_taxonomy_fermenter %>% as_tibble() %>%
 
 
 
-
+save(pairs_freq_taxonomy_fermenter, pairs_freq_taxonomy_family, file = here::here("data/temp/pairs_hist_plots.Rdata"))
 
 
 

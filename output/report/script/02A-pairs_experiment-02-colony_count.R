@@ -35,6 +35,8 @@ switch_pairwise_column <- function (df, bypair = T) {
   }
 }
 
+communities <- read_csv(here::here("data/output/communities.csv"))
+
 # Read colony counts ----
 ## TSA plates
 pairs_CFU <-
@@ -46,7 +48,7 @@ pairs_CFU <-
   filter(!(Experiment == "Transitivity_B2" & Community == "C11R1" & Isolate1 == 1)) %>%
   # Configurate the attributes
   mutate(
-    Community = ordered(Community, levels = communities_name),
+    Community = ordered(Community, levels = communities$Community),
     Isolate1 = ordered(Isolate1, 1:12), Isolate2 = ordered(Isolate2, 1:12),
     Isolate1Freq = as.character(Isolate1Freq), Isolate2Freq = as.character(Isolate2Freq),
     # Colony counts of isolate 2
@@ -68,7 +70,7 @@ pairs_competition_chromo <-
   # Configurate the attributes
   mutate(
     Experiment = rep("Chromogenic", nrow(.)),
-    Community = ordered(Community, levels = communities_name),
+    Community = ordered(Community, levels = communities$Community),
     Isolate1 = ordered(Isolate1, 1:12), Isolate2 = ordered(Isolate2, 1:12),
     Isolate1Freq = as.character(Isolate1Freq), Isolate2Freq = as.character(Isolate2Freq),
     # Colony counts of isolate 2
@@ -98,7 +100,7 @@ pairs_DF <-
   # Configurate the attributes
   mutate(
     Experiment = paste0("Transtivity_", Batch),
-    Community = ordered(Community, levels = communities_name),
+    Community = ordered(Community, levels = communities$Community),
     Isolate1 = ordered(Isolate1, 1:12), Isolate2 = ordered(Isolate2, 1:12),
     Isolate1Freq = as.character(Isolate1Freq), Isolate2Freq = as.character(Isolate2Freq)
   ) %>%
@@ -111,7 +113,7 @@ pairs_DF <-
 pairs_competition <- pairs_CFU %>%
   left_join(pairs_DF, by = c("Experiment", "Community", "Isolate1", "Isolate2", "Isolate1Freq", "Isolate2Freq")) %>%
   switch_pairwise_column(bypair = T) %>%
-  mutate(Community = ordered(Community, levels = communities_name)) %>%
+  mutate(Community = ordered(Community, levels = communities$Community)) %>%
   arrange(Community, Isolate1, Isolate2, Isolate1Freq, Isolate2Freq)
 
 

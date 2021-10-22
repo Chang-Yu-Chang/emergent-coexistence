@@ -2,6 +2,7 @@
 library(tidyverse)
 library(data.table)
 
+communities <- read_csv(here::here("data/output/communities.csv"))
 # Plate layout in data.frame form ----
 ## Batch B2, plate 933 ----
 plate_B2_933 <- data.frame(stringsAsFactors = F,
@@ -278,7 +279,7 @@ plates <- rbind(plate_B2_933_P1, plate_B2_933_P2, plate_B2_444_P1, plate_B2_444_
   plate_C2_13B_P1, plate_C2_13B_P2, plate_D_75_P1, plate_D_75_P2, plate_D_5543_P1, plate_D_5543_P2)
 
 
-# Match ambiguous pairs to well positon on plates ----
+# Match ambiguous pairs to well position on plates ----
 pairs_ambiguous <- fread(here::here("data/temp/pairs_ambiguous.csv"))
 
 ## Switch the isolate1 and isolate2 since the P1 is 50:50 and
@@ -292,9 +293,9 @@ pairs_ambiguous <- pairs_ambiguous %>% mutate(Isolate1 = factor(Isolate1), Isola
 pairs_ambiguous_on_DW96 <- pairs_ambiguous %>%
   left_join(plates, by = c("Community", "Isolate1", "Isolate2", "Experiment", "Isolate1Freq", "Isolate2Freq")) %>%
   mutate(Plate = ifelse((Isolate1Freq != 50 & PlateLayout != "C11R1") , "P2", "P1"),
-    Community = ordered(Community, communities_name)) %>%
+    Community = ordered(Community, communities$Community)) %>%
   distinct(Community, Isolate1, Isolate2, Isolate1Freq, Isolate2Freq, .keep_all = T) %>%
   select(-MixIsolate)
 
 #
-fwrite(plates, here::here("data/temp/plates.csv"))
+fwrite(plates, here::here("data/output/plates.csv"))

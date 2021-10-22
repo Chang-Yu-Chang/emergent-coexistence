@@ -5,6 +5,7 @@ library(data.table)
 ## Read isolates' RDP and ID match
 isolates_RDP <- fread(here::here("data/temp/isolates_RDP.csv"))
 isolates_ID_match <- fread(here::here("data/temp/isolates_ID_match.csv"))
+communities <- fread(here::here("data/output/communities.csv"))
 
 ## Read pairs
 pairs_ID <- fread(here::here("data/temp/pairs_ID.csv"))
@@ -13,7 +14,7 @@ pairs_ID <- fread(here::here("data/temp/pairs_ID.csv"))
 ## Match isolates' information
 isolates_RDP_ID <- isolates_ID_match %>%
   left_join(isolates_RDP, by = c("ID")) %>%
-  filter(Community %in% communities_name) %>%
+  filter(Community %in% communities$Community) %>%
   select(ExpID, ID, Community, Isolate, Family, Genus, GenusScore, Fermenter, Sequence) %>%
   as_tibble()
 

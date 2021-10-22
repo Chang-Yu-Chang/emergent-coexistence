@@ -1,11 +1,88 @@
-# Experimental data
+# Figure 1 for pairwise network
 
-library(tidygraph)
-library(ggraph)
 library(tidyverse)
 library(data.table)
 library(cowplot)
-source("network_functions.R")
+source(here::here("plotting_scripts/network_functions.R"))
+
+# Figure 1A
+p_A <- ggdraw() + draw_image(here::here("plots/cartoons/Fig1A.png"))
+
+# Figure 1B
+sequences_abundance <- fread(here::here("data/temp/sequences_abundance.csv"))
+communities <- read_csv(here::here("data/output/communities.csv"))
+
+# color set from Sylvie
+color_sets <- tibble(Color = c("yellow", "deepskyblue3", "blue", "darkorchid2", "firebrick", "orange2", "grey"),
+                     Family = c("Aeromonadaceae", "Enterobacteriaceae", "Moraxellaceae", "Pseudomonadaceae","Comamonadaceae","Alcaligenaceae", "Sphingobacteriaceae"))
+plot_abundance <- function(df, label_x = "Community", label_y = "RelativeAbundance", fill = "CommunityESVID") {
+    ggplot(df) +
+        geom_bar(aes_string(x = label_x, y = label_y, fill = fill),
+                 position = "stack", stat = "identity", col = 1) +
+        theme_bw()
+}
+
+p_B <- sequences_abundance %>%
+    filter(AlignmentType == "local") %>%
+    filter(AllowMismatch == Inf) %>%
+    filter(BasePairMismatch <= 4) %>%
+    mutate(Community = ordered(Community,  communities$Community)) %>%
+    plot_abundance(label_x = "Community", label_y = " RelativeAbundance", fill = "Family") +
+    labs(x = "", y = "Relative abundance") +
+    theme(axis.text.x = element_text(angle = 90), panel.grid.major = element_blank()) +
+    scale_fill_manual(values = setNames(color_sets$Color, color_sets$Family)) +
+    scale_x_discrete(expand=c(0,0)) +
+    scale_y_continuous(expand=c(0,0), limits = c(0,1), breaks = seq(0,1, .25)) +
+    NULL
+
+
+p_top <- plot_grid(p_A, p_B)
+p_B
+#ggsave(here::here("plots/Fig1.png"), p, width = 10, height = 3)
+
+
+# Figure 1C
+p_C <- ggdraw() + draw_image(here::here("plots/cartoons/Fig1C.png"))
+
+# Figure 1D
+load(here::here("data/output/network_community.Rdata")) # Load observed networks net_list
+load(here::here("data/output/example_motif_list.Rdata")) # Load example motif graphs example_motifs
+network_pairs <- net_list %>%
+    lapply(function(x){activate(x, edges) %>% as_tibble}) %>%
+    bind_rows(.id = "Community") %>%
+    filter(!(InteractionType == "coexistence" & from > to)) %>%
+    mutate(InteractionType = ifelse(InteractionType == "neutrality", "coexistence", InteractionType)) %>%
+    group_by(InteractionType) %>%
+    summarize(Count = n())
+
+network_pairs %>%
+    ggplot(aes(x = InteractionType, y = Count, fill = InteractionType)) +
+    geom_col(color = 1) +
+    geom_text(aes(y = Count + 5, label = paste0(round(Count/sum(Count), 2) * 100, "%")), position = position_dodge(width = 0.9)) +
+    annotate("text", x = 0.5, y = 150, hjust = "inward", vjust = "inward", label = paste0("n=", sum(network_pairs$Count))) +
+    scale_y_continuous(expand = c(0,0), limits = c(0, 150)) +
+    scale_fill_manual(values = c(exclusion="#DB7469", coexistence="#557BAA")) +
+    theme_cowplot() +
+    guides(fill = F) +
+    labs(x = "", y = "Number of pairwise competition")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 isolates <- fread("../data/output/isolates.csv")
 pairs <- fread("../data/output/pairs.csv")

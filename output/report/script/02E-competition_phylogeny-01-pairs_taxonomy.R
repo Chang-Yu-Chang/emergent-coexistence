@@ -1,6 +1,7 @@
 #' Read and match isolates' taxonomy (family, genus, and fermenter) to pairs
 library(tidyverse)
 library(data.table)
+
 # Read data ----
 ## Read isolates' RDP and ID match
 isolates_RDP <- fread(here::here("data/temp/isolates_RDP.csv"))

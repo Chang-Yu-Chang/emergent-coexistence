@@ -8,53 +8,880 @@ output:
     number_sections: no
 ---
 
-```{r setup, include = FALSE}
-knitr::opts_chunk$set(cache = TRUE, echo = FALSE)
+```{r setup, include = F}
+knitr::opts_chunk$set(cache = FALSE, echo = FALSE)
 library(tidyverse)
 library(data.table)
 library(cowplot)
+run_scripts <- F
+communities <- read_csv(here::here("data/output/communities.csv"))
 ```
 
 
-# Goal {-} 
+# Goal
 
-- Combine and read data csv from Rmd 02A to 02D
+- Combine and read data csv from 02A to 02D
 
 - Match and compare isolates' information to outcome of pairwise competition
     - RDP taxonomy (e.g., family and genus)
     - 16S differences
     - Distance on phylogenetic tree
     - Monoculture growth rate 
-  
 
-# Read and combine pairs data 
+- The R scripts (sourced in this Rmd) can be run externally to Rstudio.
+- The R scripts are only for saving R functions, processing raw and temporary data.
+- All visualization codes are in this Rmd file.
+
+# 02A pairs experiments
+
+- Experiment related scripts
+
+- Read pairwise competition outcomes that are determined by colony counts on plates. 
+
+- Filter out ambiguous pairs and later fill in the data hole by CASEU results. 
+
+- Map pairs and isolates to the 96-well plate layout
+
+
+## Read the pairwise competitive outcomes determined by colony counting on TSA
+
+Generate table for manual key-in
+
+```{r eval = F}
+if (FALSE) source("script/02A-pairs_experiment-01-pairwise_manual_key_in.R")
+```
+
+Then I manually checked the scanned plate images of competitive pairs. The plate images are saved in folder `plate_scan/high_order_plate_scan/` and divided according the experimental batches.
+
+Batch | Community
+------|-----------
+B2    | 2.6, 2.8, 7.1, 8.4, 10.2, 11.1
+C     | 11.1 isolate 1
+C2    | 11.2
+D     | 1.2, 1.4, 1.6, 1.7, 4.1, 11.5
+
+
+```{r warning = F}
+# Read result colony counts and dilution factor
+if (run_scripts) source("script/02A-pairs_experiment-02-colony_count.R")
+```
+
+There are 186x3=558 outcomes of pairwise competitions.
 
 ```{r}
-source("script/02-pairs-01-read_data.R")
+pairs_competition <- read_csv(here::here("data/temp/pairs_competition.csv"))
+pairs_competition
+```
+
+67 pairs without determined outcomes of pairwise competitions will be determined by using CASEU method
+
+```{r}
+pairs_competition %>%
+  filter(is.na(ColonyCount))
+```
+
+186 pair IDs saved in `pairs_ID`
+
+```{r}
+pairs_ID <- read_csv(here::here("data/temp/pairs_ID.csv"))
+pairs_ID
+```
+
+
+
+## Ambiguous pairs and isolates on TSA agar plates
+
+```{r}
+if (run_scripts) source("script/02A-pairs_experiment-03-pairwise_ambiguous.R")
+```
+
+There are 67 pair-freqs that I don't know the competitive outcomes by TSA plate counting. The ambiguous pairs will be later examined by using selective media or Sanger sequencing. 
+
+```{r}
+pairs_ambiguous <- read_csv(here::here("data/temp/pairs_ambiguous.csv"))
+pairs_ambiguous
+```
+
+28 pairs
+
+```{r}
+pairs_ambiguous %>% 
+  group_by(Community, Isolate1, Isolate2) %>%
+  summarize(Count = n())
+```
+
+36 isolates involved in the ambiguous pairs. 
+
+```{r}
+isolates_ambiguous <- read_csv(here::here("data/temp/isolates_ambiguous.csv"))
+isolates_ambiguous
+```
+
+
+
+## Map pairs and isolates to the DW96 plate layout
+
+```{r warning = F}
+plates_name <- c("plate_B2_933", "plate_B2_444", "plate_C_C11R1", "plate_C2_13A", "plate_C2_13B", "plate_D_75", "plate_D_5543")
+source("script/02A-pairs_experiment-04-pairwise_plate_layout.R")
+```
+
+Each plate has 96 rows and has the following variables
+
+```{r}
+plates <- read_csv(here::here("data/output/plates.csv"))
+str(plates)
+```
+
+Read plate layout by batch
+
+```{r}
+draw_plate_from_df <- function(
+  df,
+  well_size = 5,
+  text_size = 3,
+  annotation = TRUE,
+  annotate_each_well = TRUE,
+  fill_legend = F,
+  vjust = 0,
+  ...
+) {
+  # Check
+  stopifnot(
+    is.data.frame(df),
+    "Well" %in% names(df),
+    "TextLabel" %in% names(df) | "FillLabel" %in% names(df)
+  )
+
+  # Make plate
+  plate <- df %>%
+    mutate(
+      Row = match(substr(Well, 1, 1), LETTERS[1:8]),
+      Col = substr(Well, 2, 3) %>% as.numeric(),
+    ) %>%
+    filter(!grepl("blank", .$FillLabel)) %>%
+    mutate(FillLabel = as.character(FillLabel))
+
+  # Empty well
+  empty_well <- data.frame(
+    Row = rep(1:8, each = 12),
+    Col = rep(1:12, 8)
+  )
+
+  # Plot blank plate
+  if (all(is.na(plate$FillLabel))) {
+    return(
+      ggplot() +
+        geom_point(data = empty_well, aes(x = Col, y = Row), shape = 1, size = well_size, color = "black", fill = NA) +
+        scale_x_continuous(name = "", breaks = 1:12, labels = 1:12, limits = c(1, 12), position = "top") +
+        scale_y_reverse(name = "", lim = c(8, 1), breaks = 1:8, labels = LETTERS[1:8]) +
+        theme_bw() +
+        NULL
+    )
+  }
+
+  # Plot segments
+  g_empty_well <- geom_point(data = empty_well, aes(x = Col, y = Row),
+    shape = 1, size = well_size, color = "black", fill = NA)
+
+  g_plate <- geom_point(data = plate, aes(x = Col, y = Row, fill = FillLabel),
+    pch = 21, size = well_size)
+
+
+  # Annotate text for fill
+  plate_fill_text <- plate %>%
+    group_by(FillLabel) %>%
+    summarize(Col = mean(Col), Row = mean(Row)) %>%
+    mutate(Row = ifelse((Row %% 1) == 0, Row - vjust, Row))
+
+  if ("TextLabel" %in% names(df)) {
+    g_text_label <- geom_text(data = plate, aes(x = Col, y = Row, label = TextLabel), size = text_size)
+  } else g_text_label <- NULL
+
+  if (annotation == T) {
+    g_text_fill <- geom_text(data = plate_fill_text, aes(x = Col, y = Row, label = FillLabel))
+  } else g_text_fill <- NULL
+
+
+  # Plot plate
+  pp <-
+    ggplot() + g_plate + g_empty_well + g_text_label + g_text_fill +
+    scale_x_continuous(name = "", breaks = 1:12, labels = 1:12, limits = c(1, 12), position = "top") +
+    scale_y_reverse(name = "", lim = c(8, 1), breaks = 1:8, labels = LETTERS[1:8]) +
+    theme_bw() +
+    NULL
+
+  if (fill_legend == T) {
+    return(pp+theme(legend.position = "top"))
+  } else return(pp + guides(fill=F))
+
+}
+
+easy_plot_plate <- function(plate) {
+  mutate(plate,
+    TextLabel = ifelse(MixIsolate, paste(Isolate1, Isolate2, sep = "_"), Isolate1),
+    FillLabel = paste0(Community, ifelse(MixIsolate, "", "_single"))) %>%
+    draw_plate_from_df()
+}
+
+```
+
+```{r}
+for (i in 1:7) assign(paste0("p", i), easy_plot_plate(eval(parse(text = plates_name[i]))))
+p <- plot_grid(p1, p2, p3, NULL, p4, p5, p6, p7, labels = c("B2_933", "B2_444", "C_C11R1", "", "C2_13A", "C2_13B", "D_75", "D_5543"), ncol = 2, nrow = 4)
+ggsave("figure/02A-plate_layout.pdf", p, width = 12, height = 16)
+```
+
+Plate layout that takes different initial frequencies:
+
+- P1 is 50%:50%.
+
+- P2 and P3 are identical and whose rows are 95% and columns are 5%.
+
+The only exception is plate C11R1 in batch C, which only has one plate.
+
+
+# 02B CASEU sanger sequencing
+
+- To determine the relative abundance of of ambiguous pairs in competitive assays. 
+
+- Use CASEU packages to analyse the Sanger sequencing of mixture culture.
+
+- Sanger sequencing protocol preparation. Experimental protocol files are saved in folder `output/protocol/`
+
+```{r}
+list.files(here::here("output/protocol"), pattern = "caseu")
+```
+
+- Once we got the mixture Sanger sequences back, we implement analysis by using `CASEU` (Compositional analysis by Sanger electropherogram unmixing), an R package designed for quantifying relative abundance of Sanger sequences mixture. [source code](https://bitbucket.org/DattaManoshi/caseu). Install `CASEU` from bitbucket.
+
+- Check out [package vignette](https://htmlpreview.github.io/?https://bitbucket.org/dattamanoshi/caseu/raw/master/doc/CASEU_Vignette.html).
+
+```{r, echo = TRUE, eval = FALSE}
+devtools::install_bitbucket('dattamanoshi/caseu') # Install CASEU package
+library(CASEU)
+```
+
+
+## Test on example data
+
+Test the example code and data.
+
+Fit Sanger sequences of a mixed culture of four strains. This step may take a few seconds.
+
+```{r echo = T, eval = F}
+library(CASEU)
+data('fourStrainExpt') # load an example dataset
+results <-
+  fitSangerMixture(mixture=fourStrainExpt$mixture, # mixture
+  components = fourStrainExpt$components, # Four individual 16S sequences
+  verbose=TRUE)
+
+save(results, file = here::here("data/temp/CASEU_test_results1.Rdata"))
+```
+
+```{r eval = F}
+load(file = here::here("data/temp/CASEU_test_results1.Rdata"))
+print(results)                      # view the results
+plot(results)                       # plot the fit
+sangerFitDiagnosticPlot(results)    # plot a bunch more diagnostics
+```
+
+Fitted mixture sanger electropherogram output
+
+```{r eval = F}
+names(results)
+```
+
+
+
+## CASEU pilot1
+
+The plate layout of PCR plate and list of samples are specified in `output/protocol/protocol_20190813_Sanger_seq_prep.pdf`. 
+
+```{r}
+fread(here::here("output/protocol/tab_fig/protocol_20190813_Sanger_seq_prep-genewiz_table.csv"))
+```
+
+The isolates used in this round is from the list below.
+
+Isolate         |  Code     |  Taxa
+----------------|-----------|-------
+C11R1 isolate 1 | A         | Pseudomonas
+C1R7 isolate 2  | B         | Pseudomonas
+C1R7 isolate 1  | C         | Enterobacter
+C1R7 isolate 7  | D         | Raoultella
+Table: isolates
+
+Read trace matrices for isolates and mixtures
+
+```{r}
+if(run_scripts) source("script/02B-CASEU_sanger_seq-01-pilot1.R")
+```
+
+
+```{r}
+CASEU_pilot1 <- read_csv(here::here("data/temp/CASEU_pilot1.csv"))
+CASEU_pilot1
+```
+
+
+Plot the expected isolate frequency vs. CASEU predicted frequency
+
+```{r fig.height = 3, fig.width=3}
+CASEU_pilot1 <- read_csv(here::here("data/temp/CASEU_pilot1.csv"))
+CASEU_pilot1_p1 <- 
+  CASEU_pilot1 %>%
+  filter(Isolate1 != "B", Isolate2 != "B") %>% # Without B and 
+  mutate(Treatment = ifelse(Treatment == "AM", "amplicon mixture", "OD mixture")) %>%
+  ggplot(aes(x = Isolate1Freq, y = Isolate1FreqPredicted, color = Treatment)) +
+  geom_jitter(size = 2) +
+  geom_abline(slope = 1, intercept = 0, color = "black") +
+  scale_x_continuous(limits = c(-.01, .6)) +
+  scale_y_continuous(limits = c(-.01, .6)) +
+  facet_grid(Isolate1 ~ Isolate2) +
+  theme_bw() +
+  theme(legend.position = "top") +
+  labs(x = "Expected isolate frequency", y = "CASEU predicted isolate frequency")
+
+CASEU_pilot1_p1
+ggsave("figure/02B-CASEU_pilot1_expected_vs_predicted.png", CASEU_pilot1_p1)
+```
+
+
+
+
+## CASEU pilot2
+
+The plate layout of PCR plate and list of samples are specified in `output/protocol/protocol_20190813_Sanger_seq_prep.pdf`. There are 32 samples from pairwise competition and 16 samples from control. Also read Sylvie's data. 
+
+```{r include = F}
+genewiz_pilot2 <- fread(here::here("output/protocol/tab_fig/protocol_20190910_Sanger_seq_prep-genewiz_table_CYC.csv")) 
+genewiz_pilot2
+```
+
+Isolates A B C D in control are the isolates below. 
+
+Isolate         |  Code     |  Taxa
+----------------|-----------|-------
+C11R1 isolate 1 | A         | Pseudomonas
+C1R7 isolate 2  | B         | Pseudomonas
+C1R7 isolate 1  | C         | Enterobacter
+C1R7 isolate 7  | D         | Raoultella
+
+```{r eval = F}
+# Each script takes ~10 mins to run
+source("script/02B-CASEU_sanger_seq-02-pilot2.R")
+#source("script/02B-CASEU_sanger_seq-03-pilot2_Sylvie.R") # Run Sylvie's sequence
+```
+
+
+### Control pairs
+
+In the 12 control synthetic pairs that were made of 4 isolates, compare these pairs' OD frequencies, colony counts, and CASEU predictions.
+
+Read CASEU predicted frequencies and colony count frequencies in the 12 control pairs.
+
+```{r}
+# Read data
+CASEU_pilot2 <- read_csv(here::here("data/temp/CASEU_pilot2.csv"))
+CASEU_pilot2_plating <- read_csv(here::here("data/raw/Sanger/CASEU_pilot2/CASEU_pilot2_plating.csv")) %>%
+  mutate(Isolate1ColonyFreq = Isolate1Colony / (Isolate1Colony + Isolate2Colony),
+    Isolate2ColonyFreq = Isolate2Colony / (Isolate1Colony + Isolate2Colony))
+```
+
+Join the CASEU predicted result of control pairs in `CASEU_pilot2` with the plating result in `CASEU_pilot2_plating`. The pair CYC_control_50_50_CD has a lot colonies and the colony count of C is just approximation (n=300)
+
+```{r}
+CASEU_pilot2_control <- CASEU_pilot2 %>%
+  filter(Treatment == "control") %>%
+  left_join(CASEU_pilot2_plating, by = c("MixtureName", "User", "Treatment", "Isolate1Freq", "Isolate2Freq", "Isolate1", "Isolate2"))
+```
+
+Plot the CASEU predictio vs. colony counts and CASEU prediction vs. OD frequencies
+
+```{r warning=F}
+CASEU_pilot2_p1 <- 
+  CASEU_pilot2_control %>%
+  ggplot(aes(x = Isolate1ColonyFreq, y = Isolate1FreqPredicted, color = Treatment)) +
+  geom_point(size = 2) +
+  geom_abline(slope = 1, intercept = 0, color = "black") +
+  scale_x_continuous(limits = c(-.01, 1.01), breaks = c(0, 0.5, 1)) +
+  scale_y_continuous(limits = c(-.01, 1.01), breaks = c(0, 0.5, 1)) +
+  facet_grid(Isolate1 ~ Isolate2) +
+  theme_bw() +
+  theme(legend.position = "top", panel.grid.minor = element_blank()) +
+  labs(x = "Expected isolate frequency by colony counting", 
+    y = "CASEU predicted isolate frequency") +
+  ggtitle("CASEU prediction vs. Colony counts")
+
+CASEU_pilot2_p2 <- 
+  CASEU_pilot2_control %>%
+  ggplot(aes(x = Isolate1Freq, y = Isolate1FreqPredicted, color = Treatment)) +
+  geom_point(size = 2) +
+  geom_abline(slope = 1, intercept = 0, color = "black") +
+  scale_x_continuous(limits = c(-.01, 1.01)) +
+  scale_y_continuous(limits = c(-.01, 1.01)) +
+  facet_grid(Isolate1 ~ Isolate2) +
+  theme_bw() +
+  theme(legend.position = "top", panel.grid.minor = element_blank()) +
+  labs(x = "Expected isolate frequency by OD", 
+    y = "CASEU predicted isolate frequency") +
+  ggtitle("CASEU prediction vs. OD frequencies")
+```
+
+
+```{r warning=F}
+p <- plot_grid(CASEU_pilot2_p1, CASEU_pilot2_p2, ncol = 1)
+ggsave("figure/02B-CASEU_pilot2_control.png", p, width = 5, height = 10)
+```
+
+
+
+```{r eval = F, include = F}
+### Outcome of pairwise competition
+#There are 24 pairs of C11R1 been sequenced in CASEU pilot2.
+if (FALSE) {
+CASEU_pilot2 <- fread(here::here("data/temp/CASEU_pilot2.csv")) %>% 
+  filter(Treatment == "C11R1") %>%
+  mutate(Community = Treatment) %>%
+  select(Community, Isolate1, Isolate2, Isolate1Freq, Isolate2Freq, Isolate1FreqPredicted, Isolate2FreqPredicted) %>%
+  invnet::switch_pairwise_column()
+
+CASEU_pilot2 %>% 
+  mutate(Pair = paste0(Isolate1, "_", Isolate2)) %>%
+  ggplot(aes(x = Isolate1Freq, y = Isolate1FreqPredicted, color = Pair, Group = Pair)) +
+  geom_point() + geom_line() +
+#  geom_abline(slope = 1, intercept = 0, color = "black") +
+  facet_wrap(.~Community) +
+  theme_bw()
+    
+}
+```
+
+
+## CASEU pilot3
+
+The plate layout of PCR plate and list of samples are specified in `output/protocol/protocol_20190923_SequalPrep_Sanger_prep.pdf`. 
+
+```{r}
+fread(here::here("output/protocol/tab_fig/protocol_20190924_Sanger_seq_prep-genewiz_table_CYC.csv"))
+```
+
+Read trace matrices for isolates and mixtures
+
+```{r eval = F}
+# It takes about ~15 mins to run 
+if (run_scripts) source("script/02B-CASEU_sanger_seq-04-pilot3.R")
+```
+
+```{r}
+CASEU_pilot3 <- read_csv(here::here("data/temp/CASEU_pilot3.csv"))
+CASEU_pilot3 %>%
+  mutate(Isolate1 = factor(Isolate1)) %>%
+  ggplot(aes(x = Isolate1Freq, y = Isolate1FreqPredicted, color = Isolate1, group = paste0(Isolate1, "_", Isolate2))) +
+  geom_point() + geom_line() +
+#  geom_abline(slope = 1, intercept = 0, color = "black") +
+  facet_wrap(.~Community) +
+  theme_bw()
+```
+
+
+## CASEU pilot4
+
+The plate layout of PCR plate and list of samples are specified in `output/protocol/protocol_20191007_Sanger_seq_prep.pdf`. 
+
+```{r}
+fread(here::here("output/protocol/tab_fig/protocol_20191007_Sanger_seq_prep-genewiz_table_CYC.csv"))
+```
+
+Read trace matrices for isolates and mixtures
+
+```{r eval = F}
+# It takes about ~15 mins to run
+if (run_scripts) source("script/02B-CASEU_sanger_seq-05-pilot4.R")
+```
+
+
+```{r}
+CASEU_pilot4 <- read_csv(here::here("data/temp/CASEU_pilot4.csv"))
+CASEU_pilot4 %>%
+  mutate(Isolate1 = factor(Isolate1)) %>%
+  ggplot(aes(x = Isolate1Freq, y = Isolate1FreqPredicted, color = Isolate1, group = paste0(Isolate1, "_", Isolate2))) +
+  geom_point() + geom_line() +
+  facet_wrap(.~Community) +
+  theme_bw()
+```
+
+
+
+# 02C pairs_OD_CFU
+
+- Error propagation theory
+
+- Derive isolates' $\epsilon$ from T8 data and calculate uncertatinty using error propagation theory
+
+- Convert T0 OD frequency $f^O$ to CFU frequency $f^C$ and estimate the uncertainty in converted CFU frequencies at T8. Output `data/temp/pairs_CFU_freq_uncertainty.csv`
+
+## General formula of error propagation
+
+This section explains the error propagation theory to estimate the uncertainty in the experimental measurement. There are one or more quantities $x, y, ...$, with corresponding uncertainties $\delta x, \delta y, ...$ and that we wish to use the measured values of x and y to calculate the quantity of real interest q. There are three provisional rules:
+
+1. The square-root rule for counting experiments. The average number of event in time T is $v\pm\sqrt{v}$
+
+2. Uncertainty in **sums and differences**. The computed mean value $q=x+y+z-(u+w)$. If the uncertainties in x, ..., w are known to be independent and random, then the uncertainty in the computed value of q is the quadratic sum $\delta q = \sqrt{(\delta x)^2+(\delta y)^2+(\delta z)^2+(\delta u)^2+(\delta w)^2}$ , In any case, $\delta q$ is never larger than their ordinary sum $\delta q \leqslant \delta x + \delta y+ \delta z + \delta u + \delta w$
+
+3. Uncertainty in **product and quotients**. $q=\frac{x\times z}{u\times w}$, then the fractional uncertainty in the computed value q is the sum. If the uncertainties in x, ...,w are independent and random, then the fractional uncertainty in q is the sum in quadrature of the original uncertainties, $\frac{\delta q}{\left|q\right|} = \sqrt{(\frac{\delta x}{\left|x\right|})^2 + \frac{\delta y}{\left|y\right|})^2 +\frac{\delta z}{\left|z\right|})^2 +\frac{\delta u}{\left|u\right|})^2 + \frac{\delta w}{\left|w\right|})^2}$. $\frac{\delta q}{\left| q \right|} \leqslant \frac{\delta x}{\left| x \right|} + \frac{\delta z}{\left| z \right|} + \frac{\delta u}{\left| u \right|} + \frac{\delta w}{\left| w \right|}$ 
+
+Taking these three provisional rules together, the general formula for error propagation takes the following form. Assume the computed quantity is a function of $x_1, x_2, ..., x_n$, the uncertainty in q is $$\delta q= \sqrt{(\sum{\frac{\partial q}{\partial x_i}}\delta x_i)^2}$$ 
+
+
+
+## Uncertainty in epsilon 
+
+```{r}
+if (run_scripts) source("script/02C-pairs_OD_CFU-01-epsilon_uncertainty.R")
+```
+
+
+The uncertainties in each isolate' epsilon $\epsilon_A = \frac{OD_A DF_A v_A}{CFU_A}$ comes from four parts:
+
+1. $DF$: Dilution factors. The uncertainty comes from the pipetting in serial dilution, which is calcaulted below.
+2. $v$: Plating volumes. The systematic error for P20 set at 20 uL is 0.4 uL.
+3. $CFU$: CFU counts. The uncertainty in CFU follows poisson distribution, which means that the variance is the same as the mean (measured CFU). The standard deviation is $\sqrt{CFU}$.
+4. $OD$: OD measurement. The uncertainty in measuring OD in plate reader, which is assumed to be 0.001.
+
+
+**Dilution factor**
+
+The uncertainty in dilution factor comes from the pipetting steps in serial dilution, which include two pipetting volumes:
+
+1. `V1`: serial dispensing 10 uL of diluted solution using mP20. It has uncertainty `ErrorV1` 2 uL.
+2. `V2`: dispense 90 uL of PBS using mP200. It has uncertainty `ErrorV2` 0.4 uL.
+
+For dilution factor $10^{n}$, it has the the mean $(\frac{V_1}{V_1+V_2})^n$. To obtain the uncertainty in the measured mean, first we caluculate the partial derivatives $\frac{\partial DF}{\partial V_1}$ and $\frac{\partial DF}{\partial V_2}$. Then the uncertainty $\delta DF = \sqrt{(\frac{\partial DF}{\partial V_1}\delta V_1)^2 + (\frac{\partial DF}{\partial V_2}\delta V_2)^2}$
+
+
+```{r}
+dilution_factor <- 
+  data.frame(n = c(4, 5), V1 = 10, V2 = 90, ErrorV1 = 0.4, ErrorV2 = 2) %>%
+  mutate(PartialV1 = n * V1^(n-1) * V2 / (V1+V2)^(n+1), #-n*(V1+V2)^(n-1)*V2/(V1^(n+1)),
+         PartialV2 = -n * V1^(n-1) / (V1+V2)^(n+1), #n*(V1+V2)^(n-1)/(V1^n),
+         DF = (V1/(V1+V2))^n,
+         ErrorDF = sqrt((PartialV1*ErrorV1)^2 + (PartialV2*ErrorV2)^2))
+
+dilution_factor
+```
+
+
+By using error propagation theroy, the uncertainty in isolates epsilon has the form 
+
+$$\delta \epsilon = \sqrt{(\frac{\partial  \epsilon}{\partial DF}\delta DF)^2 +(\frac{\partial  \epsilon}{\partial CFU}\delta CFU)^2 + (\frac{\partial  \epsilon}{\partial OD}\delta OD)^2 + (\frac{\partial  \epsilon}{\partial V}\delta V)^2}$$
+
+
+```{r}
+isolates_epsilon_uncertainty <- read_csv(here::here("data/temp/isolates_epsilon_uncertainty.csv"))
+isolates_epsilon_uncertainty
+```
+
+There are 7 isolates that have either 0 CFU or negative OD value, so they don't have epsilon values.
+
+```{r}
+isolates_epsilon_uncertainty %>%
+  filter(is.na(Epsilon))
+```
+
+## Convert T0 OD frequencies to CFU frequencies
+
+```{r}
+if (run_scripts) source("script/02C-pairs_OD_CFU-02-CFU_frequency.R")
+```
+
+The outcome of pairwise competition were determined by comparing the frequency changes between T0 and T8. The T8 frequencies were determined by plating the mature media on rich agar media on which the colonies were counted, whereas T0 frequencies were set to 95/5, 50/50 and 5/95 by mixing two isolate inocula with equal OD.  In this section, I will use the OD-CFU conversion coefficient $\epsilon$ derived from T8 isolate data to convert T0 OD frequencies into CFU frequencies. In specific, the CFU frequency of isolate 1 $f^C_1$ of a pair can be derived from OD frequencies of isolate 1 and 2 $f^O_1 ,f^O_2$, which have the relationship below. 
+
+$f^C_1 = \frac{f^o_1\epsilon_1DFv}{f^o_1\epsilon_1DFv + f^o_2\epsilon_2DFv}=\frac{f^o_1\epsilon_1}{f^o_1\epsilon_1 + f^o_2\epsilon_2}$
+
+where $\epsilon$ of each isolate was pre-calculated from T8 dataset. DF and v are the same in conversion.
+
+```{r}
+pairs_CFU_freq <- read_csv(here::here("data/temp/pairs_CFU_freq.csv"))
+pairs_CFU_freq
+```
+
+
+## Uncertainty in T0 CFU frequencies
+
+```{r warning = F}
+if (run_scripts) source("script/02C-pairs_OD_CFU-03-CFU_frequency_uncertainty.R")
+```
+
+Write CFU frequencies to `data/temp/pairs_CFU_freq_uncertainty.csv`
+
+```{r}
+pairs_CFU_freq_uncertainty <- read_csv(here::here("data/temp/pairs_CFU_freq_uncertainty.csv"))
+pairs_CFU_freq_uncertainty
+```
+
+
+# 02D determine pairwise interaction
+
+## Combine outcomes of pairwise competition from CFU counts and CASEU
+
+Raw data (e.g., CFU counts and CASEU Sanger sequences) are processed and generated into temporary result csv:
+
+1. `02B-CASEU_sanger_seq` reads CASEU raw data and outputs `temp/CASEU_pilot2.csv` and `temp/CASEU_pilot3.csv`. Both files are CASEU predicted T8 frequencies.
+
+2. `02C-pairs_OD_CFU` reads pair_competition and dilution factor data, and it outputs `temp/pairs_CFU_freq_uncertainty.csv`, which has the T0 OD-converted CFU frequencies and T8 CFU frequencies with uncertainties.
+
+**Note that if a pair has both CFU and CASEU result, CASEU will overwrite the CFU result**
+
+```{r}
+if (run_scripts) source("script/02D-determine_pairwise_interaction-01-combine_CFU_CASEU_result.R")
+```
+
+The script in this section returns a data.frame `pairs_freq` that has the following variables:
+
+- `Community`
+- `Isolate1` and `Isolate2`: indices of isolates within a community. The number of isolate1 is always smaller than isolate2
+- `Isolate1InitialODFreq` and `Isolate2InitialODFreq`: 5, 50 or 95. The initial OD frequencies of isolates at T0. This two serve as discrete grouping variables.
+- `Time`: T0 or T8.
+- `Isolate1MeasuredFreq`: the measured frequency od isolate1 in the pair. 
+- `ErrorIsolate1MeasuredFreq`: the uncertainty of `Isolate1MeasuredFreq`.
+- `RawDataType`: OD, ODtoCFU, CFU, Sanger (CASEU). The raw data type in which the isolate frequencies were measured.
+- `Contamination`: logical. There are contaminations in three pairs at T8 plates.
+
+186x3x2=1116 pair-freq at two time points
+
+```{r}
+pairs_freq <- read_csv(here::here("data/output/pairs_freq.csv"))
+pairs_freq
+```
+
+
+There is one pair-freq that cannot be specified because of contamination.
+
+```{r}
+pairs_freq %>%
+  filter(Time == "T8") %>%
+  filter(is.na(Isolate1MeasuredFreq))
+```
+
+
+## Determine pairwise interactions
+
+```{r warning = F, message = F}
+if (run_scripts) source("script/02D-determine_pairwise_interaction-02-determine_pairwise_interaction.R")
+```
+
+
+Plot frequency changes. Output figure of CFU frequency changes to `output/figure/pairs_freq_change_uncertainty.pdf`
+
+```{r eval = F}
+load(here::here("data/temp/p_pairs_freq_change_list.Rdata"))
+pdf(here::here("output/report/figure/02D-freq_change_uncertainty.pdf"), height = 10 , width = 10); for (i in 1:length(communities$Community)) print(p_pairs_freq_change_list[[i]]); invisible(dev.off())
+```
+
+Table of all 27 possible combinations of fitness function and their interaction types 
+
+```{r}
+interaction_type <- read_csv(here::here("data/temp/interaction_type.csv"))
+interaction_type
+```
+
+
+Table of interaction types
+
+```{r}
+pairs_interaction_fitness <- read_csv(here::here("data/temp/pairs_interaction_fitness.csv"))
+pairs_interaction_fitness %>%
+  group_by(InteractionType) %>%
+  summarize(Count = n()) 
+```
+
+Interaction table
+
+```{r}
+pairs_interaction_table <- read_csv(here::here("data/temp/pairs_interaction_table.csv"))
+pairs_interaction_table
+```
+
+
+## Isolate tournament
+
+
+```{r warning = F, message = F}
+if (run_scripts) source("script/02D-determine_pairwise_interaction-03-isolate_tournament.R")
+```
+
+Tournament ranks of each isolate. Note that I consider neturality and bistability as draw in the tournament.
+
+- `Score`: the competitive scores of isolate. This score is computed by the formula: number of wins - number of loses + 0 * number of draws. 
+- `Game`: number of pairwise competition the isolate has played. The number of games an isolate plated within a community should be community size minus one. 
+- `Rank`: the ranks based on `Score`. The ranks range from 1 to the focal community size. Isolates with the same scores in a community are given the same rank.
+- `PlotRank`: continuous rank for plotting convenience.
+
+
+# 02E competition phylogeny
+
+- Correlate competition result with phylogenetic distance
+
+- Measure the pairwise phylogenetic distances by difference in 16S base pairs `pairs_taxonomy`
+    - Coarse-grained taxonomy (Family and Genus)
+    - Compute the pairwise sequence differences using `Biostring::pairwiseAlignment()` 
+    - Compute pairwise tree distance using `ape::cophenetic.phylo()` on built tree. Try out different tree building methods
+
+
+## Isolates' RDP taxonomy
+
+```{r warning = F}
+if (run_scripts) source("script/02E-competition_phylogeny-01-pairs_taxonomy.R")
+```
+
+```{r}
+pairs_taxonomy <- read_csv(here::here("data/temp/pairs_taxonomy.csv"))
+pairs_taxonomy
+```
+
+
+
+## Isolates' 16S sequence difference
+
+
+```{r eval = F}
+if (run_scripts) source("script/02E-competition_phylogeny-02-pairs_16S.R")
+```
+
+```{r}
+pairs_16S <- read_csv(here::here("data/temp/pairs_16S.csv"))
+pairs_16S
+```
+
+
+```{r include = F}
+# Plot the isolate 16S alignments
+if (FALSE) {
+msa::msaPrettyPrint(aln, file = "isolates_alignment.pdf", output="pdf", 
+  paperHeight = 15, paperWidth = 10,
+  showNames="left", askForOverwrite=FALSE, verbose=FALSE)
+}
+```
+
+
+## Isolates' branch distances on phylogenetic tree (deprecated)
+
+```{r warning = F, message = F}
+if (run_scripts) source("script/02E-competition_phylogeny-03-pairs_tree_branch.R")
+```
+
+```{r}
+pairs_tree_distance <- read_csv(here::here("data/temp/pairs_tree_distance.csv"))
+pairs_tree_distance
+```
+
+
+# Summary
+
+## Read and combine pairs data 
+
+```{r}
+if (run_scripts) source("script/02-pairs-01-read_data.R")
 ```
 
 186 pairs
 
 ```{r}
+pairs <- read_csv(here::here("data/output/pairs.csv"))
 pairs
 ```
 
 
-Pairs dataframe melted by T0/T8 and three initial frequencies
+Pairs data.frame melted by T0/T8 and three initial frequencies. 186x3x2=1116
 
 ```{r}
+pairs_melted <- read_csv(here::here("data/output/pairs_melted.csv"))
 pairs_melted
 ```
 
-# Plot outcomes types
+## Plot outcomes types
 
 ```{r warning = F}
-source("script/02-pairs-02-outcome_types.R")
+if (run_scripts) source("script/02-pairs-02-outcome_types.R")
 ```
+
+```{r}
+# pairs_list <- pairs_example_outcomes
+# pairs_freq_df <- pairs_freq
+# R function for plotting frequency changes
+plot_pairs_freq <- function(pairs_list, pairs_freq_df, show_strip = TRUE) {
+  # A list of pairs with Community, Isolate1, and Isolate2
+  pairs_list %>%
+    # Joint the df `pairs_freq` that saves frequency data
+    left_join(pairs_freq_df, by = c("Community", "Isolate1", "Isolate2")) %>%
+    ungroup() %>%
+    mutate(Isolate1InitialODFreq = factor(Isolate1InitialODFreq),
+      InteractionType = ordered(InteractionType, c("exclusion", "bistability", "coexistence", "neutrality")),
+      InteractionTypeFiner = ordered(InteractionTypeFiner, c("competitive exclusion", "mutual exclusion",
+        "stable coexistence", "frequency-dependent coexistence", "neutrality"))) %>%
+    ggplot(aes(x = Time, y = Isolate1MeasuredFreq, color = Isolate1InitialODFreq, group = Isolate1InitialODFreq)) +
+    geom_point(size = 2) +
+    geom_line(size = 1) +
+    scale_y_continuous(breaks = seq(0,1,0.5)) +
+    theme_bw() +
+    theme(
+      axis.title.x = element_blank(),
+      panel.spacing = unit(5, "mm"),
+      panel.grid.minor = element_blank()
+      ) +
+      {if (show_strip == FALSE) theme(strip.background = element_blank(), strip.text = element_blank())} +
+    guides(color = F) +
+    labs(x = "transfer", y = "isolate relative abundance")
+}
+```
+
+
+```{r}
+# R function for plotting bars
+plot_bar <- function(pairs, bar_by = "InteractionType", fill_by = "InteractionType", show_fill_legend = F) {
+  # Modify bars
+  pairs$InteractionTypeFiner[pairs$InteractionTypeFiner == "frequency-dependent coexistence"] <- "frequency-dependent\ncoexistence"
+
+  # Color palettes
+  interaction_type <- c("exclusion", "coexistence", "neutrality", "mutual exclusion", "frequency-dependent\ncoexistence")
+  myColor = c("#DB7469", "#557BAA", "#8650C4", "red", "blue")
+  names(myColor) <- interaction_type
+
+  # Plot
+  pairs %>%
+    ungroup() %>%
+    mutate(
+      InteractionType = ordered(InteractionType, c("exclusion", "coexistence", "neutrality")),
+      InteractionTypeFiner = ordered(InteractionTypeFiner, c("competitive exclusion", "mutual exclusion",
+        "stable coexistence", "frequency-dependent\ncoexistence", "neutrality"))) %>%
+    group_by_at(.vars = c(bar_by, fill_by)) %>%
+    summarize(Count = n(), Fraction = n()/nrow(.)) %>%
+    ggplot() +
+    geom_bar(aes_string(x = bar_by, y = "Fraction", fill = fill_by), stat = "identity", color = 1, position = "dodge") +
+    scale_y_continuous(limits = c(0, 1)) +
+    scale_fill_manual(values = myColor) +
+    facet_grid(as.formula(paste0("~", bar_by)), scale = "free_x") +
+    { if (show_fill_legend == FALSE) guides(fill = "none") } +
+    theme_cowplot() +
+    theme(axis.title.x = element_blank(),
+      panel.spacing = unit(0, "mm"),
+      panel.grid.major.x = element_blank(),
+      legend.position = "top",
+      legend.title = element_blank(),
+      strip.text = element_blank())
+}
+
+```
+
 
 Four example outcomes: bistability, coexistence, exclusion, and neutrality 
 
 ```{r}
+pairs_example_outcomes <- read_csv(here::here("data/output/pairs_example_outcomes.csv"))
+
 # Plot pairs example dynamics
 p_pairs_example_outcomes <- pairs_example_outcomes %>%
   plot_pairs_freq(pairs_freq_df = pairs_freq, show_strip = F) +
@@ -75,6 +902,7 @@ ggsave(here::here("output/report/figure/02-pairs-pairs_outcomes.pdf"), p, width 
 Four example outcomes: bistability, coexistence, exclusion, and neutrality 
 
 ```{r warning = F}
+pairs_example_outcomes_finer <- read_csv(here::here("data/output/pairs_example_outcomes_finer.csv"))
 # Plot pairs example dynamics
 p_pairs_example_outcomes_finer <- pairs_example_outcomes_finer %>%
   plot_pairs_freq(pairs_freq_df = pairs_freq, show_strip = F) +
@@ -94,18 +922,19 @@ ggsave(here::here("output/report/figure/02-pairs-pairs_outcomes.pdf"), p, width 
 ```
 
 
-# Pairs taxonomy vs. outcome of pairwise competition
+## Pairs taxonomy vs. outcome of pairwise competition
 
 ```{r}
-source("script/02-pairs-03-taxonomy.R")
+if (run_scripts) source("script/02-pairs-03-taxonomy.R")
 ```
 
 
-## RDP taxonomy
+### RDP taxonomy
 
 Fermenter vs. Interaction type
 
 ```{r fig.width=3, fig.height=3}
+load(here::here("data/temp/pairs_bar_plots.Rdata"))
 p_pairs_interaction_fermenter
 ggsave(here::here("output/report/figure/02-pairs-fermenter_interaction.pdf"), p_pairs_interaction_fermenter, width = 5, height = 5)
 
@@ -118,7 +947,7 @@ p_pairs_interaction_family
 ggsave(here::here("output/report/figure/02-pairs-family_interaction.pdf"), p_pairs_interaction_family, width = 5, height = 5)
 ```
 
-## Pairwise 16S differences
+### Pairwise 16S differences
 
 Pairwise 16S differences
 
@@ -164,50 +993,17 @@ p_pairs_interaction_16S_cut
 
 
 
-## Pairwise distance difference of tips on a tree (deprecated)
-
-Pairwise tree distance difference
-
-```{r}
-pairs %>%
-  filter(!is.na(PairTreeDistance)) %>% 
-  ggplot(aes(x = PairTreeDistance, fill = PairFermenter)) +
-  geom_histogram(col = "black") +
-  theme_bw() +
-  theme(legend.position = "top") +
-  labs(x = "pairwise 16S base pair differences") +
-  ggtitle("")
-```
-
-Coarse-grained tree distance difference
-
-```{r}
-pairs %>%
-  filter(!is.na(PairTreeDistance)) %>% 
-  ggplot(aes(x = PairTreeDistance, fill = PairFermenter)) +
-  geom_histogram(col = "black", binwidth = 0.05) +
-  theme_bw() +
-  theme(legend.position = "top") +
-  labs(x = "pairwise 16S base pair differences") +
-  ggtitle("")
-
-```
-
-```{r  fig.width=5, fig.height=5}
-p_pairs_interaction_tree_cut
-```
-
-
 # Relative abundance within pairs 
 
 ```{r}
-source("script/02-pairs-04-pairs_relative_abundance.R")
+if (run_scripts) source("script/02-pairs-04-pairs_relative_abundance.R")
 ```
 
 
 Relative abundance of fermenter vs. non-fermenter pairs
 
 ```{r}
+load(here::here("data/temp/pairs_hist_plots.Rdata"))
 pairs_freq_taxonomy_fermenter %>%
   filter(Time == "T8") %>%
   filter(!Isolate1MeasuredFreq %in% c(0,1)) %>%
@@ -238,7 +1034,7 @@ pairs_freq_taxonomy_family %>%
 
 ```{r}
 communities_pair_coext <- pairs %>%
-  mutate(Community = ordered(Community, levels = communities_name)) %>%
+  mutate(Community = ordered(Community, levels = communities$Community)) %>%
   filter(InteractionType != "") %>%
   filter(InteractionType %in% c("exclusion", "coexistence")) %>%
   group_by(Community, InteractionType) %>%
@@ -246,7 +1042,7 @@ communities_pair_coext <- pairs %>%
   spread(InteractionType, Count) %>%
   mutate(FracCoext = coexistence / (coexistence + exclusion)) %>%
   ungroup() %>%
-  mutate(CommunitySize = community_size)
+  mutate(CommunitySize = communities$CommunitySize)
 
 communities_pair_coext$FracCoext[is.na(communities_pair_coext$FracCoext)] <- 0
 ```
@@ -264,7 +1060,7 @@ communities_pair_coext %>%
   labs(x = "community", y = "fraction of coexistence")
 
 p_communities_pair_coext
-pdf(root$find_file("output/figure/communities_fraction_coexistence.pdf"), width = 5, height = 3); p_communities_pair_coext; invisible(dev.off())
+ggsave("figure/02-communities_fraction_coexistence.png", p_communities_pair_coext, width = 5, height = 3)
 ```
 
 # Community hierarchy in communities
@@ -279,7 +1075,7 @@ The hierarchy score $h$ for an n-member netowkr is calculated as:
 $$h = \sum_{s_i>s_j}f_{ij}$$
 
 ```{r}
-communities_hierarchy <- fread(root$find_file("data/temp/communities_hierarchy.csv"))
+communities_hierarchy <- read_csv(here::here("data/temp/communities_hierarchy.csv"))
 
 p_communities_hierarchy <- communities_hierarchy %>%
   ggplot() +
@@ -290,7 +1086,7 @@ p_communities_hierarchy <- communities_hierarchy %>%
   labs(x = "community", y = "hierarchy score")
 
 p_communities_hierarchy
-pdf(root$find_file("output/figure/communities_hierarchy.pdf"), width = 5, height = 3); p_communities_hierarchy; invisible(dev.off())
+pdf(here::here("output/figure/communities_hierarchy.pdf"), width = 5, height = 3); p_communities_hierarchy; invisible(dev.off())
 
     
 ```
@@ -298,37 +1094,19 @@ pdf(root$find_file("output/figure/communities_hierarchy.pdf"), width = 5, height
 
 
 
-# Growth traits vs coexistence
+# Growth traits vs coexistence (Deprecated)
 
 ```{r}
+if (FALSE) {
 source("script/02-pairs-05-growth_rates.R")
-```
-
-```{r}
 pairs_growth_rate
-```
-
-Save pairwise growth traits data 
-
-```{r}
-if (write_all_csv) fwrite(pairs_growth_rate, file = root$find_file("data/output/pairs_growth_rate.csv"))
-```
-
-
-
-```{r fig.width=5, fig.height=10, warning = F}
 p_pairs_growth_rate_hist
-```
-
-
-```{r fig.width=5, fig.height=10, warning=F}
 p_pairs_growth_rate_density
-```
 
-```{r}
-pdf(root$find_file("output/figure/pairs_growth_rates_hist.pdf"), width = 10, height = 5); for (i in 1:11) print(p_pairs_growth_rate_hist_list[[i]]); invisible(dev.off())
+pdf(here::here("output/figure/pairs_growth_rates_hist.pdf"), width = 10, height = 5); for (i in 1:11) print(p_pairs_growth_rate_hist_list[[i]]); invisible(dev.off())
 
-pdf(root$find_file("output/figure/pairs_growth_rates_density.pdf"), width = 10, height = 5); for (i in 1:11) print(p_pairs_growth_rate_density_list[[i]]); invisible(dev.off())
+pdf(here::here("output/figure/pairs_growth_rates_density.pdf"), width = 10, height = 5); for (i in 1:11) print(p_pairs_growth_rate_density_list[[i]]); invisible(dev.off())
+}
 ```
 
 

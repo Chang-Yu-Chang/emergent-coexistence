@@ -1,4 +1,4 @@
-#' This script runs the analysus of CASEU pilot1 Sanger sequences raw data
+#' This script runs the analysis of CASEU pilot1 Sanger sequences raw data
 library(tidyverse)
 library(data.table)
 library(CASEU)

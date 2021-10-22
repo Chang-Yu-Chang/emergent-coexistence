@@ -1,5 +1,8 @@
 #' This script calculates the uncertainty in epslion from the uncertainties of OD, CFU, and V
 
+library(tidyverse)
+library(data.table)
+
 # Read OD and CFU at T8
 isolates_OD_CFU <- fread(here::here("data/temp/isolates_OD_CFU.csv"))
 

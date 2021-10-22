@@ -4,43 +4,44 @@ library(data.table)
 
 
 # Read data ----
-# communities_abundance <- fread(here::here("data/temp/communities_abundance.csv")) %>% as_tibble() # Data from Nanxi
-communities_abundance_syl <- fread(here::here("data/temp/communities_abundance_syl.csv")) %>% as_tibble() # Data from Sylvie
-isolates_ID_match <- fread(here::here("data/temp/isolates_ID_match.csv"))
-isolates_RDP <- fread(here::here("data/temp/isolates_RDP.csv")) %>% as_tibble()
+communities_abundance_syl <- read_csv(here::here("data/temp/communities_abundance_syl.csv")) # Data from Sylvie
+isolates_ID_match <- read_csv(here::here("data/temp/isolates_ID_match.csv"))
+isolates_RDP <- read_csv(here::here("data/temp/isolates_RDP.csv"))
 isolates_ID_RDP <- isolates_ID_match %>% filter(!grepl("Ass", Community)) %>% left_join(isolates_RDP) %>% select(ExpID, ID, Community, Isolate, Family, Genus, Sequence) %>% as_tibble()
 
+if (FALSE) {
+# C2R4 isolates, hardcoded
+temp <- list.files(here::here("data/raw/Sanger/Sanger_ES_C2R4_SE"), "merged.fasta", full.names = T)
+temp_df <- tibble(ExpID = c("E", "P", "R", "C"), ID = c(160, 162, 165, 169), Community = "C2R4",
+  Family = c("Enterobacteriaceae", "Pseudomonadaceae", "Pseudomonadaceae", "Enterobacteriaceae"),
+  Genus = c("Enterobacter", "Pseudomonas", "Raoultella", "Citrobacter"), Sequence =
+    c(seqinr::read.fasta(temp[1], as.string = T, seqonly = T, seqtype = "DNA")[[1]],
+      seqinr::read.fasta(temp[2], as.string = T, seqonly = T, seqtype = "DNA")[[1]],
+      seqinr::read.fasta(temp[3], as.string = T, seqonly = T, seqtype = "DNA")[[1]],
+      seqinr::read.fasta(temp[4], as.string = T, seqonly = T, seqtype = "DNA")[[1]]))
 
-## C2R4 isolates, hardcoded
-# temp <- list.files(here::here("data/raw/Sanger/Sanger_ES_C2R4_SE"), "merged.fasta", full.names = T)
-# temp_df <- tibble(ExpID = c("E", "P", "R", "C"), ID = c(160, 162, 165, 169), Community = "C2R4",
-#   Family = c("Enterobacteriaceae", "Pseudomonadaceae", "Pseudomonadaceae", "Enterobacteriaceae"),
-#   Genus = c("Enterobacter", "Pseudomonas", "Raoultella", "Citrobacter"), Sequence =
-#     c(seqinr::read.fasta(temp[1], as.string = T, seqonly = T, seqtype = "DNA")[[1]],
-#       seqinr::read.fasta(temp[2], as.string = T, seqonly = T, seqtype = "DNA")[[1]],
-#       seqinr::read.fasta(temp[3], as.string = T, seqonly = T, seqtype = "DNA")[[1]],
-#       seqinr::read.fasta(temp[4], as.string = T, seqonly = T, seqtype = "DNA")[[1]]))
-#
-# isolates_Sanger_ID <- fread(here::here("output/report/data/01E-isolates_SangerID_SE.csv")) %>% transmute(ID = SangerID); isolates_Sanger_ID$ID[isolates_Sanger_ID$ID == 523] <- 162
-# isolates_RDP <- isolates_RDP %>% bind_rows(temp_df)
-#
-#
-#   isolates_ID_match %>%
-#   left_join(isolates_RDP) %>%
-#   as_tibble()
+isolates_Sanger_ID <- fread(here::here("output/report/data/01E-isolates_SangerID_SE.csv")) %>% transmute(ID = SangerID); isolates_Sanger_ID$ID[isolates_Sanger_ID$ID == 523] <- 162
+isolates_RDP <- isolates_RDP %>% bind_rows(temp_df)
 
 
+  isolates_ID_match %>%
+  left_join(isolates_RDP) %>%
+  as_tibble()
+
+}
 
 #' To use community ESVs, here are some criteria for sequence alignment:
 #' 1. Only use ESVs from transfer 12
 #' 2. Use the communities assembled in glucose media
 #' 3. Remove duplicates
-# communities_abundance_align <- communities_abundance %>%
-#   filter(!grepl("AA", SampleID)) %>%
-#   filter(Transfer == 12) %>%
-#   mutate(Community = ordered(Community, levels = c(paste0("C", 1:12, "Rpool"), paste0("C", rep(1:12, each = 8), "R", rep(1:8, 12))))) %>%
-#   group_by(SampleID, Community) %>%
-#   arrange(Community, SampleID)
+if (FALSE) {
+communities_abundance_align <- communities_abundance %>%
+  filter(!grepl("AA", SampleID)) %>%
+  filter(Transfer == 12) %>%
+  mutate(Community = ordered(Community, levels = c(paste0("C", 1:12, "Rpool"), paste0("C", rep(1:12, each = 8), "R", rep(1:8, 12))))) %>%
+  group_by(SampleID, Community) %>%
+  arrange(Community, SampleID)
+}
 
 communities_abundance_syl_align <- communities_abundance_syl %>%
   filter(CarbonSource == "Glucose", Transfer == 12)
@@ -142,14 +143,12 @@ align_sequence <- function(communities_abundance_align, isolates_ID_RDP, alignme
 ## Align Sanger to ESVs
 alignment_type <- c("global", "local", "overlap", "global-local", "local-global")
 sequences_alignment_list <- rep(list(NA), length(alignment_type))
-#tt <- proc.time()
 for (i in 1:length(alignment_type)) {
   sequences_alignment_list[[i]] <- align_sequence(communities_abundance_syl_align, isolates_ID_RDP, alignment_type = alignment_type[i])
   print(alignment_type[i])
 }
 ## Merge list
 sequences_alignment_syl <- rbindlist(sequences_alignment_list) %>% as_tibble
-#proc.time() - tt
 
 fwrite(sequences_alignment_syl, here::here("data/temp/sequences_alignment_syl.csv"))
 

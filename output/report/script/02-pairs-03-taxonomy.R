@@ -97,6 +97,9 @@ p_pairs_interaction_16S_cut <- pairs_interaction_16S_cut %>%
   theme(axis.text.x = element_text(angle = 90)) +
   labs(x = "pairwise differernces in 16S sequences (bp)", y = "fraction of coexistence")
 
+#
+save(p_pairs_interaction_fermenter, p_pairs_interaction_family, p_pairs_interaction_16S_cut, file = here::here("data/temp/pairs_bar_plots.Rdata"))
+
 if (FALSE) {
 
 

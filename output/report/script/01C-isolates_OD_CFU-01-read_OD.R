@@ -6,6 +6,7 @@ library(data.table)
 OD_B2 <- fread(here::here("data/raw/OD/OD_B2.csv"))
 OD_C2 <- fread(here::here("data/raw/OD/OD_C2.csv")) # Data from batch C C11R1 plate is also included
 OD_D <- fread(here::here("data/raw/OD/OD_D.csv"))
+communities <- fread(here::here("data/output/communities.csv"))
 
 # Remove the contaminated data: B2 community C11R1 isolate1
 OD_B2 <- filter(OD_B2, !(Community == "C11R1" & Isolate1 == 1)) %>% filter(!(Community == "C11R1" & Isolate2 == 1))
@@ -19,7 +20,7 @@ OD <- rbind(cbind(Experiment = "transitivity_B2", OD_B2),
 OD <- OD %>%
   select(Community, Transfer, Isolate1, Isolate2, Isolate1Freq, Isolate2Freq, MixIsolate, MixPlate, Wavelength, Abs, Experiment) %>%
   filter(Isolate1 != "blank") %>%
-  mutate(Community = factor(Community, communities_name)) %>% arrange(Community)
+  mutate(Community = factor(Community, communities$Community)) %>% arrange(Community)
 
 # Some pairs dont have full wavelength measurement
 # table(OD$Wavelength)
