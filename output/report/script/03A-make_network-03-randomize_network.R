@@ -1,18 +1,12 @@
 #' Make a R list of randomized  networks
 library(tidyverse)
-library(data.table)
 library(igraph)
 library(tidygraph)
 source(here::here("plotting_scripts/network_functions.R"))
 
-# Data
-isolates <- fread(here::here("data/output/isolates.csv"))
-pairs <- fread(here::here("data/output/pairs.csv"))
-communities <- fread(here::here("data/output/communities.csv"))
-communities_name <- communities$Community
-communities_size <- communities$CommunitySize
-
-# Read networks
+isolates <- read_csv(here::here("data/output/isolates.csv"))
+pairs <- read_csv(here::here("data/output/pairs.csv"))
+communities <- read_csv(here::here("data/output/communities.csv"))
 load(here::here("data/output/network_community.Rdata"))
 
 # Make random networks and save them in a list ----
@@ -20,7 +14,7 @@ b <- 1000 # Number of bootstrapping/randomization
 
 # Make an empty two-layer R list
 net_randomized_list <- rep(list(rep(list(NA), b)), length(net_list))
-names(net_randomized_list) <- communities_name
+names(net_randomized_list) <- communities$Community
 
 tt <- proc.time()
 for (i in 1:length(net_list)) {
@@ -31,7 +25,7 @@ for (i in 1:length(net_list)) {
     if (b_loop_index %% 1000 == 0) cat("\n boostrap =", b_loop_index)
   }
   # Print
-  cat("\n\n", communities_name[i])
+  cat("\n\n", communities$Community[i])
   cat("\n", (proc.time() - temp_tt)[3], "seconds")
   if (i == length(net_list)) cat("\n\n total time:", (proc.time() - tt)[3], "seconds\n\n")
 

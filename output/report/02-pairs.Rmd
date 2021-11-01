@@ -241,6 +241,20 @@ Plate layout that takes different initial frequencies:
 The only exception is plate C11R1 in batch C, which only has one plate.
 
 
+```{r}
+OD <- read_csv(here::here("data/temp/OD.csv"))
+
+OD %>%
+    filter(Community == "C1R2", Wavelength == 620) %>%
+    ggplot(aes(x = Transfer, y = Abs, color = Isolate1Freq)) +
+    geom_line() + geom_point() +
+    facet_grid(Isolate1 ~ Isolate2) +
+    theme_bw()
+    
+```
+
+
+
 # 02B CASEU sanger sequencing
 
 - To determine the relative abundance of of ambiguous pairs in competitive assays. 
@@ -655,6 +669,16 @@ The script in this section returns a data.frame `pairs_freq` that has the follow
 ```{r}
 pairs_freq <- read_csv(here::here("data/output/pairs_freq.csv"))
 pairs_freq
+pairs_freq %>%
+    filter(Community == "C11R2") %>%
+    filter(Isolate1 == 1, Isolate2 == 4) %>%
+    mutate(Time = ordered(Time, c("T0", "T8")), Isolate1InitialODFreq = factor(Isolate1InitialODFreq)) %>%
+    ggplot(aes(x = Time, y = Isolate1MeasuredFreq, color = Isolate1InitialODFreq, group = Isolate1InitialODFreq)) +
+    geom_line() + geom_point() +
+    facet_grid(Isolate1 ~ Isolate2) +
+    theme_bw()
+    
+    
 ```
 
 
@@ -665,6 +689,7 @@ pairs_freq %>%
   filter(Time == "T8") %>%
   filter(is.na(Isolate1MeasuredFreq))
 ```
+
 
 
 ## Determine pairwise interactions

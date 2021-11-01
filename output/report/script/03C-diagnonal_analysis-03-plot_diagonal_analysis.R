@@ -1,18 +1,15 @@
-#' Plot the result from dioagonal analysis
+#' Plot the result from diagonal analysis
 library(tidyverse)
 library(data.table)
 
 communities <- fread(here::here("data/output/communities.csv"))
-communities_name <- communities$Community
-networks_diag <- fread(here::here("data/output/networks_diag.csv")) %>%
-  mutate(Community = ordered(Community, communities_name))
-networks_diag_randomized <- fread(here::here("data/output/networks_diag_randomized.csv")) %>%
-  mutate(Community = ordered(Community, communities_name))
+networks_diag <- fread(here::here("data/output/networks_diag.csv")) %>% mutate(Community = ordered(Community, communities$Community))
+networks_diag_randomized <- fread(here::here("data/output/networks_diag_randomized.csv")) %>% mutate(Community = ordered(Community, communities$Community))
 
 # Specify the diagonal distances that have zero-entries of coexistence count ----
 ## Make temporary df that has the full diagonal distances
-temp_list <- rep(list(NA), length(communities_name))
-for (i in 1:length(communities_name)) temp_list[[i]] <- data.frame(Community = communities$Community[i], DistanceToDiagonal = 1:(communities$CommunitySize[i]-1))
+temp_list <- rep(list(NA), length(communities$Community))
+for (i in 1:length(communities$Community)) temp_list[[i]] <- data.frame(Community = communities$Community[i], DistanceToDiagonal = 1:(communities$CommunitySize[i]-1))
 temp_df <- rbindlist(temp_list) %>% as_tibble # For 13 observed networks
 temp_df2 <- rep(list(temp_df), 10000) %>% rbindlist(idcol = "Randomization") %>% as_tibble()  # For 10000 randomization
 

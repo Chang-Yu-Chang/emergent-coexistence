@@ -230,27 +230,35 @@ make_random_network <- function (
 count_motif <- function(net) igraph::triad_census(net)[c(10, 9, 12, 14, 13, 15, 16)]
 
 # Plot adjacent matrix
-plot_adjacent_matrix <- function(graph, show.legend = F, show.axis = F) {
+plot_adjacent_matrix <- function(graph, show.legend = F, show.axis = F, show_label = "ID") {
     graph_ranked <- graph %>%
         activate(nodes) %>%
         select(Isolate, PlotRank) %>%
         activate(edges) %>%
-        mutate(fromRank = .N()$PlotRank[match(from, .N()$Isolate)],
+        mutate(
+            fromRank = .N()$PlotRank[match(from, .N()$Isolate)],
             toRank = .N()$PlotRank[match(to, .N()$Isolate)])
 
-    n_nodes <- igraph::vcount(graph_ranked)
+            # fromLabel = .N()[match(from, .N()$Isolate), show_label],
+            # toLabel = .N()[match(to, .N()$Isolate), show_label])
 
+    #label_ID <- igraph::get.vertex.attribute(graph)$ID %>% setNames(igraph::get.vertex.attribute(graph)$PlotRank)
+
+    n_nodes <- igraph::vcount(graph_ranked)
     interaction_type <- c("exclusion", "coexistence", "lose", "bistability", "neutrality", "self", "undefined")
     interaction_color = c("#DB7469", "#557BAA", "#73C966", "#EECF6D", "#8650C4", "black", "grey80")
     names(interaction_color) <- interaction_type
 
     graph_ranked %>%
         filter(fromRank <= toRank) %>%
+        #mutate(fromLabel = factor(fromLabel), toLabel = factor(toLabel)) %>%
         bind_edges(tibble(from = 1:n_nodes, to = 1:n_nodes, fromRank = 1:n_nodes, toRank = 1:n_nodes, InteractionType = "self")) %>%
         as_tibble() %>%
         ggplot() +
         geom_tile(aes(x = toRank, y = fromRank, fill = InteractionType), width = 0.9, height = 0.9) +
-        scale_x_continuous(position = "top", breaks = 1:n_nodes) +
+        #geom_tile(aes(x = toLabel, y = fromLabel, fill = InteractionType), width = 0.9, height = 0.9) +
+        #scale_x_discrete(labels= label_ID) %>%
+        #scale_x_continuous(position = "top", breaks = 1:n_nodes) +
         scale_y_reverse(breaks = 1:n_nodes) +
         scale_fill_manual(values = interaction_color) +
         {if (show.axis) { theme_minimal()} else theme_void()} +

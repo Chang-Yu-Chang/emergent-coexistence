@@ -9,10 +9,9 @@ library(igraph)
 source(here::here("plotting_scripts/network_functions.R"))
 
 # Data
-isolates <- fread(here::here("data/output/isolates.csv"))
-pairs <- fread(here::here("data/output/pairs.csv"))
-communities <- fread(here::here("data/output/communities.csv"))
-communities_name <- communities$Community
+isolates <- read_csv(here::here("data/output/isolates.csv"))
+pairs <- read_csv(here::here("data/output/pairs.csv"))
+communities <- read_csv(here::here("data/output/communities.csv"))
 load(here::here("data/output/network_community.Rdata")) # net_list
 load(here::here("data/output/network_randomized.Rdata")) # net_randomized_list
 
@@ -30,7 +29,7 @@ networks_motif <- lapply(net_list, function (net) {
 
 # Count the motifs in randomized networks
 networks_motif_randomized_list <- rep(list(NA), length(net_list))
-names(networks_motif_randomized_list) <- communities_name
+names(networks_motif_randomized_list) <- communities$Community
 
 tt <- proc.time()
 for (i in 1:length(net_list)) {
@@ -40,7 +39,7 @@ for (i in 1:length(net_list)) {
   }) %>%
     rbindlist(idcol = "Randomization")
   # Print
-  cat("\n\n", communities_name[i])
+  cat("\n\n", communities$Community[i])
   cat("\n", (proc.time() - temp_tt)[3], "seconds")
   if (i == length(net_list)) cat("\n\n total time:", (proc.time() - tt)[3], "seconds")
 }
@@ -58,9 +57,9 @@ networks_motif_randomized_percentile <-
   mutate(Percentile = c("p5", "p95")) %>%
   {.}
 
-fwrite(networks_motif, file = here::here("data/output/networks_motif.csv"))
-fwrite(networks_motif_randomized, file = here::here("data/output/networks_motif_randomized.csv"))
-#fwrite(networks_motif_randomized_percentile, here::here("data/temp/networks_motif_randomized_percentile.csv"))
+write_csv(networks_motif, file = here::here("data/output/networks_motif.csv"))
+write_csv(networks_motif_randomized, file = here::here("data/output/networks_motif_randomized.csv"))
+write_csv(networks_motif_randomized_percentile, here::here("data/output/networks_motif_randomized_percentile.csv"))
 
 
 

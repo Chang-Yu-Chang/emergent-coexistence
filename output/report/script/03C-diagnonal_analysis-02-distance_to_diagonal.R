@@ -4,11 +4,9 @@ library(data.table)
 library(tidygraph)
 library(igraph)
 source(here::here("plotting_scripts/network_functions.R"))
-isolates <- fread(here::here("data/output/isolates.csv"))
-pairs <- fread(here::here("data/output/pairs.csv"))
-communities <- fread(here::here("data/output/communities.csv"))
-communities_name <- communities$Community
-communities_size <- communities$CommunitySize
+isolates <- read_csv(here::here("data/output/isolates.csv"))
+pairs <- read_csv(here::here("data/output/pairs.csv"))
+communities <- read_csv(here::here("data/output/communities.csv"))
 load(here::here("data/output/network_community.Rdata"))
 load(here::here("data/output/network_randomized.Rdata"))
 
@@ -24,7 +22,7 @@ tournament_rank <- function(pairs) {
     # Lose
     Lose = filter(pairs, InteractionType == "exclusion") %>%
       select(to) %>% unlist() %>% factor(isolate_name) %>% table() %>% as.vector(),
-    # Draw; Note that I consider neturality and bistability as draw in the tournament
+    # Draw; Note that I consider neutrality and bistability as draw in the tournament
     Draw = filter(pairs, InteractionType %in% c("coexistence", "neutrality", "bistability")) %>%
       select(from, to) %>% unlist() %>% factor(isolate_name) %>% table() %>% as.vector())
 
@@ -105,7 +103,7 @@ networks_diag <- lapply(net_list, diag_distance) %>% rbindlist(idcol = "Communit
 
 # Count the distance to diagonal in randomized networks
 networks_diag_randomized_list <- rep(list(NA), length(net_list))
-names(networks_diag_randomized_list) <- communities_name
+names(networks_diag_randomized_list) <- communities$Community
 
 tt <- proc.time()
 for (i in 1:length(net_list)) {
@@ -113,7 +111,7 @@ for (i in 1:length(net_list)) {
   networks_diag_randomized_list[[i]] <- lapply(net_randomized_list[[i]], diag_distance) %>%
     rbindlist(idcol = "Randomization")
   # Print
-  cat("\n\n", communities_name[i])
+  cat("\n\n", communities$Community[i])
   cat("\n", (proc.time() - temp_tt)[3], "seconds")
   if (i == length(net_list)) cat("\n\n total time:", (proc.time() - tt)[3], "seconds")
 }
@@ -121,6 +119,6 @@ for (i in 1:length(net_list)) {
 networks_diag_randomized <- rbindlist(networks_diag_randomized_list, idcol = "Community")
 
 # Save the result
-fwrite(networks_diag, file = here::here("data/output/networks_diag.csv"))
-fwrite(networks_diag_randomized, file = here::here("data/output/networks_diag_randomized.csv"))
+write_csv(networks_diag, file = here::here("data/output/networks_diag.csv"))
+write_csv(networks_diag_randomized, file = here::here("data/output/networks_diag_randomized.csv"))
 

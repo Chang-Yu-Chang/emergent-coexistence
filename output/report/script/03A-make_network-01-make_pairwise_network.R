@@ -6,20 +6,18 @@ library(ggraph)
 source(here::here("plotting_scripts/network_functions.R"))
 
 # Read data ----
-communities <- fread(here::here("data/output/communities.csv"))
-community_name <- communities$Community
-community_size <- communities$CommunitySize
-isolates <- fread(here::here("data/output/isolates.csv"))
-pairs <- fread(here::here("data/output/pairs.csv"))
+communities <- read_csv(here::here("data/output/communities.csv"))
+isolates <- read_csv(here::here("data/output/isolates.csv"))
+pairs <- read_csv(here::here("data/output/pairs.csv"))
 
 # Make network, which self-contain all isolates and pairs information
-net_list <- rep(list(NA), length(community_name)) # tbl graph object
-names(net_list) <- community_name
-names(net_tbl_list) <- community_name
+net_list <- rep(list(NA), length(communities$Community)) # tbl graph object
+names(net_list) <- communities$Community
+#names(net_tbl_list) <- communities$Community
 
-for (i in 1:length(community_name)) {
-    net_list[[i]] <- make_network(isolates = filter(isolates, Community == community_name[i]),
-                                  pairs = filter(pairs, Community == community_name[i]))
+for (i in 1:length(communities$Community)) {
+    net_list[[i]] <- make_network(isolates = filter(isolates, Community == communities$Community[i]),
+                                  pairs = filter(pairs, Community == communities$Community[i]))
 }
 
 # Plot
