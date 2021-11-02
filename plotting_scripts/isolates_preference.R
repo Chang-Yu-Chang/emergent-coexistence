@@ -182,9 +182,24 @@ p <- isolates_byproduct_time %>%
 ggsave(here::here("plots/Fig_pairs-byproduct_conc.png"), plot = p, width = 20 , height = 10)
 
 
+# Acetate and pH over time
+coeff <- 3
+p <- isolates_byproduct_time %>%
+    mutate(ID = factor(ID)) %>%
+    ggplot() +
+    geom_line(aes(x = Time, y = pH*coeff, color = "pH")) +
+    geom_point(aes(x = Time, y = pH*coeff, color = "pH")) +
+    geom_line(aes(x = Time, y = acetate_mM, color = "acetate")) +
+    geom_point(aes(x = Time, y = acetate_mM, color = "acetate")) +
+    #geom_text(data = isolates_preference, aes(label = PreferredCS), x = 8, y = Inf, size = 2, vjust = 1) +
+    scale_y_continuous(name = "acetate (mM)", sec.axis = sec_axis(~./coeff, name = "pH")) +
+    scale_color_manual(values = c("acetate" = "red", "pH" = "grey")) +
+    facet_wrap(.~ID, scales = "free_y") +
+    theme_bw() +
+    theme(legend.position = "top") +
+    labs(x = "Time", color = "")
 
-
-
+ggsave(here::here("plots/Fig_pairs-pH.png"), plot = p, width = 20 , height = 10)
 
 
 
