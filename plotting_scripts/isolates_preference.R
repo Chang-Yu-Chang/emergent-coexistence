@@ -2,8 +2,6 @@
 library(tidyverse)
 library(cowplot)
 
-# Data ----
-isolates <- read_csv(here::here("data/output/isolates.csv"))
 # Byproduct measurement on glucose. Data from Sylvie
 isolates_byproduct_time <- read_csv(here::here("data/raw/growth_rate/Estrela_2021_isolates_ph_OAs.csv")) %>%
     select(ID = SangerID, Time = time_hours, OD620, pH, Glucose_perc, acetate_mM, succinate_mM, lactate_mM)
@@ -151,55 +149,27 @@ isolates_preference$PreferredCS[isolates_preference$ID == 523] <- "acetate"
 write_csv(isolates_preference, file = here::here("data/temp/isolates_preference.csv"))
 
 
-## Acids concentration over time
-coeff <- 5
-p <- isolates_byproduct_time %>%
-    #filter(ID %in% c(160, 165)) %>%
-    mutate(ID = factor(ID)) %>%
-    # group_by(ID) %>%
-    # select(-pH, -OD620, -Glucose_perc) %>%
-    # pivot_longer(cols = c(-ID, -Time), names_to = "CS", values_to = "Conc") %>%
-    # group_by(ID, CS) %>%
-    # Remove a CS if it is not produced in any of the time point sampled
-    filter(!all(acetate_mM == 0), !all(lactate_mM == 0), !all(succinate_mM == 0)) %>%
-    ggplot() +
-    geom_line(aes(x = Time, y = acetate_mM, color = "acetate")) +
-    geom_point(aes(x = Time, y = acetate_mM, color = "acetate")) +
-    geom_line(aes(x = Time, y = lactate_mM * coeff, color = "lactate")) +
-    geom_point(aes(x = Time, y = lactate_mM * coeff, color = "lactate")) +
-    geom_line(aes(x = Time, y = succinate_mM * coeff, color = "succinate")) +
-    geom_point(aes(x = Time, y = succinate_mM * coeff, color = "succinate")) +
-    geom_text(data = isolates_preference, aes(label = PreferredCS), x = 8, y = Inf, size = 2, vjust = 1) +
-    scale_y_continuous(name = "acetate (mM)", sec.axis = sec_axis(~./coeff, name = "lactate (mM) or succinate (mM)")) +
-    scale_color_manual(values = c("acetate" = "red", "lactate" = "green", "succinate" = "blue")) +
-    #geom_point(aes(x = Time, y = Conc, color = CS, group = CS)) +
-    facet_wrap(.~ID, scales = "free_y") +
-    theme_bw() +
-    theme(legend.position = "top") +
-    #guides(color = "none") +
-    labs(x = "Time", color = "")
+if (FALSE) {
+    # Acetate and pH over time
+    coeff <- 3
+    p <- isolates_byproduct_time %>%
+        mutate(ID = factor(ID)) %>%
+        ggplot() +
+        geom_line(aes(x = Time, y = pH*coeff, color = "pH")) +
+        geom_point(aes(x = Time, y = pH*coeff, color = "pH")) +
+        geom_line(aes(x = Time, y = acetate_mM, color = "acetate")) +
+        geom_point(aes(x = Time, y = acetate_mM, color = "acetate")) +
+        #geom_text(data = isolates_preference, aes(label = PreferredCS), x = 8, y = Inf, size = 2, vjust = 1) +
+        scale_y_continuous(name = "acetate (mM)", sec.axis = sec_axis(~./coeff, name = "pH")) +
+        scale_color_manual(values = c("acetate" = "red", "pH" = "grey")) +
+        facet_wrap(.~ID, scales = "free_y") +
+        theme_bw() +
+        theme(legend.position = "top") +
+        labs(x = "Time", color = "")
 
-ggsave(here::here("plots/Fig_pairs-byproduct_conc.png"), plot = p, width = 20 , height = 10)
+    ggsave(here::here("plots/Fig_pairs-pH.png"), plot = p, width = 20 , height = 10)
+}
 
-
-# Acetate and pH over time
-coeff <- 3
-p <- isolates_byproduct_time %>%
-    mutate(ID = factor(ID)) %>%
-    ggplot() +
-    geom_line(aes(x = Time, y = pH*coeff, color = "pH")) +
-    geom_point(aes(x = Time, y = pH*coeff, color = "pH")) +
-    geom_line(aes(x = Time, y = acetate_mM, color = "acetate")) +
-    geom_point(aes(x = Time, y = acetate_mM, color = "acetate")) +
-    #geom_text(data = isolates_preference, aes(label = PreferredCS), x = 8, y = Inf, size = 2, vjust = 1) +
-    scale_y_continuous(name = "acetate (mM)", sec.axis = sec_axis(~./coeff, name = "pH")) +
-    scale_color_manual(values = c("acetate" = "red", "pH" = "grey")) +
-    facet_wrap(.~ID, scales = "free_y") +
-    theme_bw() +
-    theme(legend.position = "top") +
-    labs(x = "Time", color = "")
-
-ggsave(here::here("plots/Fig_pairs-pH.png"), plot = p, width = 20 , height = 10)
 
 
 

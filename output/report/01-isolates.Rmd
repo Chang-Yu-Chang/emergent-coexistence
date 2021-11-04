@@ -250,7 +250,6 @@ isolates_epsilon
 
 # 01D isolates growth rates
 
-- `isolates_glu`: isolates growth rates and metabolite content at 16hr growing on glucoe.
 
 ```{r}
 if (run_scripts) source("script/01D-isolates_growth_rate-01-read_data.R")
@@ -258,27 +257,40 @@ if (run_scripts) source("script/01D-isolates_growth_rate-01-read_data.R")
 
 
 ```{r}
-isolates_growth_rate_ID
+isolates_growth_traits <- read_csv(here::here("data/temp/isolates_growth_traits.csv")) 
 ```
 
-11 carbon sources measured
+`isolates_growth_traits` contains many columns. CS is a wildcard for any carbon source measured.
+    - `r_CS`: the Rmid growth rate on a CS. Data from Jean `data/raw/growth_rate/Growthcurver.csv`.
+    - `X_CS_*hr`: secreted acids (acetate, lactate, succinate) amount at 0, 16, 28, 48 hr. Data from Sylvie `data/raw/growth_rate/Estrela_2021_isolates_ph_OAs.csv`.
+    - `OD620_16h_CS`: the 620 nm OD at 16 hr on a CS. Data from Jean `data/raw/growth_rate/OD_Data_MH2.csv`.
+    - `pH_*hr`: pH measured at 0, 16, 28, 48 hr. Data from Sylvie `data/raw/growth_rate/Estrela_2021_isolates_ph_OAs.csv`.
+    - `PreferredCS` and `SecretedCS`: acid preference determined by the sequence of acid used, manually corrected by eyeballing the figure `01D-byproduct_conc.png`. Data from Sylvie `data/raw/growth_rate/Estrela_2021_isolates_ph_OAs.csv`.
+    - `ByproductSum_*hr`: sum of acids produced at 0, 16, 28, 48 hr. Data from Sylvie `data/raw/growth_rate/Estrela_2021_isolates_ph_OAs.csv`.
+
+## Acids production over time
 
 ```{r}
-unique(isolates_growth_rate_ID$CarbonSource)
-```
+coeff <- 5
+p <- isolates_growth_traits %>%
+    mutate(ID = factor(ID)) %>%
+    filter(!all(acetate_mM == 0), !all(lactate_mM == 0), !all(succinate_mM == 0)) %>%
+    ggplot() +
+    geom_line(aes(x = Time, y = acetate_mM, color = "acetate")) +
+    geom_point(aes(x = Time, y = acetate_mM, color = "acetate")) +
+    geom_line(aes(x = Time, y = lactate_mM * coeff, color = "lactate")) +
+    geom_point(aes(x = Time, y = lactate_mM * coeff, color = "lactate")) +
+    geom_line(aes(x = Time, y = succinate_mM * coeff, color = "succinate")) +
+    geom_point(aes(x = Time, y = succinate_mM * coeff, color = "succinate")) +
+    geom_text(data = isolates_preference, aes(label = PreferredCS), x = 8, y = Inf, size = 2, vjust = 1) +
+    scale_y_continuous(name = "acetate (mM)", sec.axis = sec_axis(~./coeff, name = "lactate (mM) or succinate (mM)")) +
+    scale_color_manual(values = c("acetate" = "red", "lactate" = "green", "succinate" = "blue")) +
+    facet_wrap(.~ID, scales = "free_y") +
+    theme_bw() +
+    theme(legend.position = "top") +
+    labs(x = "Time", color = "")
 
-Not all isolates have full 11 carbon source growth curves.
-
-```{r}
-isolates_growth_rate_ID %>%
-  group_by(ExpID) %>%
-  summarize(Count = n())
-```
-
-Spread the isolates community so that it contains only 68 rows (68 isolates)
-
-```{r}
-isolates_growth_rate_spread_ID
+ggsave("figure/01D-byproduct_conc.png", plot = p, width = 20 , height = 10)
 ```
 
 # 01E match isolates to ESV for community abundanuce
@@ -479,85 +491,69 @@ isolates
 str(isolates)
 ```
 
-For plotting growth rates data, use the melted isolate data.frame `isolates_melted`. 719 rows
+
+
+## Plot isolates' functions
+
+### Growth rates on varied CSs
 
 ```{r}
-isolates_melted
-str(isolates_melted)
+isolates %>%
+    select(ID, Fermenter, starts_with("r_")) %>%
+    pivot_longer(cols = c(-Fermenter, -ID), names_prefix = "r_", names_to = "CS", values_to = "r") %>%
+    mutate(CS = factor(CS, c("glucose", "acetate", "lactate", "succinate", "gluconate", "ketogluconate"))) %>%
+    filter(!is.na(Fermenter)) %>%
+    ggplot() +
+    geom_histogram(aes(x = r, fill = Fermenter), color = 1, binwidth = 0.005) +
+    facet_wrap(.~CS, nrow = 3, scales = "free_y") +
+    theme_classic()
 ```
 
-## Plot isolates' function distribution
-
-R functions for plotting
+### OD at 16hr on varied CSs
 
 ```{r}
-plot_isolate_histogram <- function (isolates, value_by = "OD620", fill_by = "Fermenter") {
-  if (fill_by == "Family") {
-    temp_isolates <- filter(isolates, Family %in% c("Enterobacteriaceae", "Pseudomonadaceae")) 
-    } else temp_isolates <- isolates
-
-  temp_isolates %>%
-    ggplot(aes_string(group = fill_by)) +
-    geom_histogram(aes_string(x = value_by, fill = fill_by), bins = 20, position = "dodge", col = "black") +
-    theme_bw() +
-    theme(legend.position = "top")
-}
-
-plot_isolate_distribution <- function (isolates, value_by = "OD620", fill_by = "Fermenter") {
-  if (fill_by == "Family") {
-    temp_isolates <- filter(isolates, Family %in% c("Enterobacteriaceae", "Pseudomonadaceae")) 
-    } else temp_isolates <- isolates
-
-  temp_isolates %>%
-    ggplot(aes_string(group = fill_by)) +
-    geom_density(mapping = aes_string(x = value_by, col = fill_by), lwd = 2) +
-    theme_bw() +
-    theme(legend.position = "top")
-}
+isolates %>%
+    select(ID, Fermenter, starts_with("OD")) %>%
+    pivot_longer(cols = c(-Fermenter, -ID), names_prefix = "OD620_16h_", names_to = "CS", values_to = "r") %>%
+    mutate(CS = factor(CS, c("glucose", "acetate", "succinate", "citrate", "fructose", "arabinose", "galactose", "ribose", "glycerol", "pyruvate", "malate", "fumarate"))) %>%
+    filter(!is.na(Fermenter)) %>%
+    ggplot() +
+    geom_histogram(aes(x = r, fill = Fermenter), color = 1, binwidth = 0.01) +
+    facet_wrap(.~CS, nrow = 4, scales = "free_y") +
+    theme_classic()
 ```
 
-OD by fermentation
+
+### Acids production
+```{r}
+isolates %>%
+    select(ID, Fermenter, starts_with("X_"), starts_with("pH")) %>%
+    pivot_longer(cols = c(-Fermenter, -ID), names_prefix = "X_", names_sep = "_", names_to = c("CS", "Time"), values_to = "Amount") %>%
+    mutate(Time = sub("hr", "", Time)) %>%
+    mutate(CS = factor(CS, c("pH", "acetate", "lactate", "succinate"))) %>%
+    filter(!is.na(Fermenter)) %>%
+    ggplot() +
+    geom_line(aes(x = Time, y = Amount, group = ID, color = Fermenter)) +
+    facet_wrap(.~CS, nrow = 2, scales = "free_y") +
+    theme_classic()
+```
+
+### Total acid production
 
 ```{r}
-plot_isolate_histogram(isolates, value_by = "OD620", fill_by = "Fermenter") 
-plot_isolate_distribution(isolates, value_by = "OD620", fill_by = "Fermenter")
+isolates %>%
+    select(ID, Fermenter, starts_with("Byproduct")) %>%
+    pivot_longer(cols = c(-Fermenter, -ID), names_prefix = "ByproductSum_", names_to = "Time", values_to = "Amount") %>%
+    mutate(Time = sub("hr", "", Time)) %>%
+    filter(!is.na(Fermenter)) %>%
+    ggplot() +
+    geom_line(aes(x = Time, y = Amount, group = ID, color = Fermenter)) +
+    #facet_wrap(.~CS, nrow = 2, scales = "free_y") +
+    theme_classic()
 ```
 
-OD by family
 
-```{r}
-plot_isolate_histogram(isolates, value_by = "OD620", fill_by = "Family") 
-plot_isolate_distribution(isolates, value_by = "OD620", fill_by = "Family")
-```
-
-Maximal growth rates by fermentation
-
-```{r include = F}
-isolates_melted %>%
-  filter(!is.na(Fermenter)) %>%
-  ggplot(aes(group = Fermenter)) +
-  geom_density(aes(x = MaxGrowthRate, y = ..density.., col = Fermenter), lwd = 2) +
-  facet_wrap(CarbonSource~., scale = "free", ncol = 3) +
-  theme_bw() +
-  theme(legend.position = "top")
-```
-
-Maximal growth rates by family
-
-```{r fig.width=5, fig.height=8, include = F}
-p_isolates_growth_rate <- isolates_melted %>%
-  filter(Family %in% c("Enterobacteriaceae", "Pseudomonadaceae")) %>%
-  ggplot(aes(group = Family)) +
-  geom_density(aes(x = MaxGrowthRate, y = ..density.., col = Family), lwd = 2) +
-  facet_wrap(CarbonSource~., scale = "free", ncol = 3) +
-  theme_bw() +
-  theme(legend.position = "top")
-
-p_isolates_growth_rate
-if (write_all_csv) fwrite(isolates_growth_rate_ID_RDP, root$find_file("data/temp/isolates_growth_rate_ID_RDP.csv"))
-```
-
-## Plot isolates' tree and traits (Deprecated as the ggtree always causes crash on 20211021)
+### Plot isolates' tree and traits (Deprecated as the ggtree always causes crash on 20211021)
 
 ```{r}
 if (run_scripts) source("script/01-isolates-03-phylogeny_growth_trait.R")

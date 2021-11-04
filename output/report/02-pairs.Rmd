@@ -11,7 +11,6 @@ output:
 ```{r setup, include = F}
 knitr::opts_chunk$set(cache = FALSE, echo = FALSE)
 library(tidyverse)
-library(data.table)
 library(cowplot)
 run_scripts <- F
 communities <- read_csv(here::here("data/output/communities.csv"))
@@ -819,18 +818,27 @@ pairs <- read_csv(here::here("data/output/pairs.csv"))
 pairs
 ```
 
-
 Pairs data.frame melted by T0/T8 and three initial frequencies. 186x3x2=1116
 
 ```{r}
-pairs_melted <- read_csv(here::here("data/output/pairs_melted.csv"))
-pairs_melted
+pairs_freq <- read_csv(here::here("data/output/pairs_freq.csv"))
+pairs_freq
 ```
+
+pairs_meta contains the growth traits of isolates. Note that the order of Isolate1 and Isolate2 in some pairs are flipped such that Isolate1 is always the dominant strain and Isolate 2 is the subdomaint one. Dominant strain is the winner in exclusion pairs, and the more abundant strain (50:50 treatment) in coexistence pairs.
+
+```{r}
+pairs_meta <- read_csv(here::here("data/output/pairs_meta.csv"))
+pairs_meta
+```
+
 
 ## Plot outcomes types
 
 ```{r warning = F}
 if (run_scripts) source("script/02-pairs-02-outcome_types.R")
+interaction_type <- c("exclusion", "bistability", "coexistence", "neutrality")
+interaction_type_finer <- c("competitive exclusion", "mutual exclusion", "stable coexistence", "frequency-dependent coexistence", "neutrality")
 ```
 
 ```{r}
@@ -902,25 +910,55 @@ plot_bar <- function(pairs, bar_by = "InteractionType", fill_by = "InteractionTy
 ```
 
 
-Four example outcomes: bistability, coexistence, exclusion, and neutrality 
+Four example outcomes: coexistence and exclusion
 
 ```{r}
 pairs_example_outcomes <- read_csv(here::here("data/output/pairs_example_outcomes.csv"))
-
+pairs_freq <- read_csv(here::here("data/output/pairs_freq.csv"))
 # Plot pairs example dynamics
 p_pairs_example_outcomes <- pairs_example_outcomes %>%
-  plot_pairs_freq(pairs_freq_df = pairs_freq, show_strip = F) +
-  facet_grid(.~InteractionType)
+    filter(InteractionType != "neutrality") %>%
+    left_join(pairs_freq, by = c("Community", "Isolate1", "Isolate2")) %>%
+    mutate(Isolate1InitialODFreq = factor(Isolate1InitialODFreq),
+           InteractionType = factor(InteractionType, interaction_type)) %>%
+    ggplot(aes(x = Time, y = Isolate1MeasuredFreq, color = Isolate1InitialODFreq, group = Isolate1InitialODFreq)) +
+    geom_point(size = 2) +
+    geom_line(size = 1) +
+    scale_y_continuous(breaks = seq(0,1,0.5)) +
+    facet_grid(.~InteractionType) +
+    theme_classic() +
+    theme(axis.title.x = element_blank(), panel.spacing = unit(0, "mm"), strip.text.x = element_blank()) +
+    guides(color = "none") +
+    labs(x = "transfer", y = "isolate relative abundance")
+p_pairs_example_outcomes
 
-# The frequencies of three outcomes
-p_pairs_interaction <- plot_bar(pairs, bar_by = "InteractionType") +
-  geom_text(data = data.frame(InteractionType = "neutrality", x = 1, y = 1, label = "n = 186 pairs"), mapping = aes(x = x, y = y, label = label))
+```
+The frequencies of coexistence vs. exclusion
+
+
+```{r}
+pairs <- read_csv(here::here("data/output/pairs.csv"))
+interaction_type <- c("exclusion", "coexistence", "neutrality", "mutual exclusion", "frequency-dependent\ncoexistence")
+interaction_color = c("#DB7469", "#557BAA", "#8650C4", "red", "blue")
+names(interaction_color) <- interaction_type
+
+p_pairs_interaction <- pairs %>%
+    mutate(InteractionType = ifelse(InteractionType == "neutrality", "coexistence", InteractionType)) %>%
+    mutate(InteractionType = factor(InteractionType, interaction_type)) %>%
+    ggplot() +
+    geom_bar(aes(x = InteractionType, fill = InteractionType), color = 1) +
+    geom_text(x = Inf, y = Inf, label = paste0("n = ", nrow(pairs), " pairs"), vjust = 1, hjust = 1) +
+    scale_fill_manual(values = interaction_color) +
+    theme_classic() +
+    theme(axis.title.x = element_blank(), legend.position = "none") +
+    labs(x = "")
+p_pairs_interaction
 ```
 
 ```{r fig.width = 4, fig.height = 3}
 p <- plot_grid(p_pairs_interaction, p_pairs_example_outcomes, ncol = 1, align = "v", rel_heights = c(1, 0.5))
 p
-ggsave(here::here("output/report/figure/02-pairs-pairs_outcomes.pdf"), p, width = 8, height = 6)
+ggsave(here::here("output/report/figure/02-pairs-pairs_outcomes.pdf"), p, width = 5, height = 6)
 ```
 
 
