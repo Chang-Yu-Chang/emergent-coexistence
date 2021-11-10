@@ -1,6 +1,5 @@
 #' Match the isolate and pairs to the frozen stock saved in 96-well deep-well plates
 library(tidyverse)
-library(data.table)
 
 communities <- read_csv(here::here("data/output/communities.csv"))
 # Plate layout in data.frame form ----
@@ -280,7 +279,7 @@ plates <- rbind(plate_B2_933_P1, plate_B2_933_P2, plate_B2_444_P1, plate_B2_444_
 
 
 # Match ambiguous pairs to well position on plates ----
-pairs_ambiguous <- fread(here::here("data/temp/pairs_ambiguous.csv"))
+pairs_ambiguous <- read_csv(here::here("data/temp/pairs_ambiguous.csv"))
 
 ## Switch the isolate1 and isolate2 since the P1 is 50:50 and
 ## rows and columns in P2 P3 are for 95 and 5 respectively
@@ -297,5 +296,135 @@ pairs_ambiguous_on_DW96 <- pairs_ambiguous %>%
   distinct(Community, Isolate1, Isolate2, Isolate1Freq, Isolate2Freq, .keep_all = T) %>%
   select(-MixIsolate)
 
-#
-fwrite(plates, here::here("data/output/plates.csv"))
+
+
+
+# Across-community and random assembly ----
+# Read data
+isolates <- read_csv(here::here("data/output/isolates.csv"))
+community_names <- isolates %>% filter(str_detect(Community, "Ass")) %>% pull(Community) %>% unique
+#community_names_sizes <- rep(8, 4)
+myColor <- c(AcrAss1 = "#ED6A5A", AcrAss2 = "#53A2BE", RanAss1 = "#FFD23F", RanAss2 = "#2CA58D", blank = "#BFBFBF", EP = "purple")
+plate_names <- c("AD_P1", "BD_P1", "C_P1", "AD_P2", "BD_P2", "C_P2")
+plate_names_DNA <- c("AB_P1", "CD_P1", "AD_P2", "BD_P2", "C_P2")
+
+# Plate layout ----
+well_names <- paste0(rep(LETTERS[1:8], 12), sprintf("%02d", rep(1:12, each = 8)))
+random_community_names <- c("AcrAss1", "AcrAss2", "RanAss1", "RanAss2")
+
+layout_AD_P1 <- data.frame(
+    PlateLayout = "AD",
+    MixPlate = "P1",
+    Well = well_names,
+    Community = c(rep("AcrAss1", 64), rep("RanAss2", 32)),
+    Isolate1 = rep(1:8, 12),
+    Isolate2 = c(rep(1:8, each = 8), rep(1:4, each = 8)),
+    MixIsolate = rep(T, 96),
+    Isolate1Freq = rep(0.5, 96),
+    Isolate2Freq = rep(0.5, 96)
+)
+
+layout_AD_P2 <- layout_AD_P1 %>%
+    mutate(Isolate1Freq = rep(0.95, 96), Isolate2Freq = rep(0.05, 96),
+           MixPlate = "P2")
+
+layout_AD_P3 <- layout_AD_P2 %>% mutate(MixPlate = "P3")
+
+layout_BD_P1 <- data.frame(
+    PlateLayout = "BD",
+    MixPlate = "P1",
+    Well = well_names,
+    Community = c(rep("AcrAss2", 64), rep("RanAss2", 32)),
+    Isolate1 = rep(1:8, 12),
+    Isolate2 = c(rep(1:8, each = 8), rep(5:8, each = 8)),
+    MixIsolate = rep(T, 96),
+    Isolate1Freq = rep(0.5, 96),
+    Isolate2Freq = rep(0.5, 96)
+)
+
+layout_BD_P2 <- layout_BD_P1 %>%
+    mutate(Isolate1Freq = rep(0.95, 96), Isolate2Freq = rep(0.05, 96),
+           MixPlate = "P2")
+
+layout_BD_P3 <- layout_BD_P2 %>% mutate(MixPlate = "P3")
+
+layout_C_P1 <- data.frame(
+    PlateLayout = "C",
+    MixPlate = "P1",
+    Well = well_names,
+    Community = c(rep("RanAss1", 64), rep("blank", 16), rep("EP", 4), rep("blank", 4), rep("EP", 4), rep("blank", 4)),
+    Isolate1 = c(rep(1:8, 8), rep(NA, 16), rep(1, 4), rep(NA, 4), rep(1, 3), 2, rep(NA, 4)),
+    Isolate2 = c(rep(1:8, each = 8), rep(NA, 16), rep(2, 3), 1, rep(NA, 4), rep(2, 4), rep(NA, 4)),
+    MixIsolate = c(rep(T, 64), rep(F, 32)),
+    Isolate1Freq = c(rep(0.5, 64), rep(NA, 16), 0.5, 0.95, 0.05, rep(NA, 5), 0.5, 0.95, 0.05, rep(NA, 5)),
+    Isolate2Freq = c(rep(0.5, 64), rep(NA, 16), 0.5, 0.05, 0.95, rep(NA, 5), 0.5, 0.95, 0.05, rep(NA, 5))
+)
+
+
+layout_C_P2 <- data.frame(
+    PlateLayout = "C",
+    MixPlate = "P2",
+    Well = well_names,
+    Community = c(rep("RanAss1", 64), rep(random_community_names[1:4], each = 8)),
+    Isolate1 = c(rep(1:8, 8), rep(1:8, 4)),
+    Isolate2 = c(rep(1:8, each = 8), rep(1:8, 4)),
+    MixIsolate = c(rep(T, 64), rep(F, 32)),
+    Isolate1Freq = c(rep(0.95, 64), rep(NA, 32)),
+    Isolate2Freq = c(rep(0.05, 64), rep(NA, 32))
+)
+
+layout_C_P3 <- layout_C_P2 %>% mutate(MixPlate = "P3")
+
+
+
+# Merge plate layouts ----
+plates_random <- bind_rows(layout_AD_P1, layout_AD_P2, layout_AD_P3,
+                           layout_BD_P1, layout_BD_P2, layout_BD_P3,
+                           layout_C_P1, layout_C_P2, layout_C_P3) %>%
+    as_tibble()
+
+
+# Plot the plate layout
+plate_layout_name <- plates_random %>%
+    arrange(MixPlate, PlateLayout) %>%
+    unite("PlateMixLayout", PlateLayout, MixPlate) %>%
+    pull(PlateMixLayout) %>% unique
+
+p_random_network_plates_list <- rep(list(NA), length(plate_layout_name))
+names(p_random_network_plates_list) <- plate_layout_name
+
+for (i in 1:length(plate_layout_name)) {
+    # Unite the plate and well names
+    temp <- plates_random %>%
+        unite("PlateMixLayout", PlateLayout, MixPlate) %>%
+        filter(PlateMixLayout == plate_layout_name[i]) %>%
+        mutate(FillLabel = Community, Isolate1Freq = Isolate1Freq * 100, Isolate2Freq = Isolate2Freq * 100) %>%
+        unite("temp1", Isolate1, Isolate2, sep = "_") %>%
+        unite("temp2", Isolate1Freq, Isolate2Freq, sep = ":") %>%
+        unite("TextLabel", temp1, temp2, sep = "\n") %>%
+        select(Community, Well, FillLabel, TextLabel)
+
+    # Monoculture
+    temp$TextLabel[grepl("NA", temp$TextLabel)] <- substr(temp$TextLabel, 1, 1)[grepl("NA", temp$TextLabel)]
+
+    # Plot plate
+    # p_random_network_plates_list[[i]] <- temp %>%
+    #     draw_plate_from_df(fill_legend = F, annotation = T) +
+    #     scale_fill_manual(values = myColor)
+}
+
+
+
+write_csv(plates_random, here::here("data/output/plates_random.csv"))
+write_csv(plates, here::here("data/output/plates.csv"))
+
+
+
+
+
+
+
+
+
+
+

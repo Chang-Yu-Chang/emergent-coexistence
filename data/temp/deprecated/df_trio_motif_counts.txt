@@ -1,7 +1,0 @@
-Motif,Seed,FractionTrioCoexistence,Count,RelativeMotifCount,Experiment
-2,2,0.103896103896104,154,0.77,Species pool
-3,2,0.125,8,0.04,Species pool
-4,2,0.5,2,0.01,Species pool
-5,2,0.307692307692308,26,0.13,Species pool
-6,2,0.333333333333333,9,0.045,Species pool
-7,2,1,1,0.005,Species pool

@@ -1,15 +1,19 @@
 # Figure 1 for pairwise network
 
 library(tidyverse)
+library(tidymodels)
 library(cowplot)
 library(ggsci)
 source(here::here("plotting_scripts/network_functions.R"))
 
 sequences_abundance <- read_csv(here::here("data/temp/sequences_abundance.csv"))
 communities <- read_csv(here::here("data/output/communities.csv"))
-pairs <- read_csv(here::here("data/output/pairs.csv"))
+pairs <- read_csv(here::here("data/output/pairs.csv")) %>% mutate(InteractionType = ifelse(InteractionType == "neutrality", "coexistence", InteractionType))
 pairs_example_outcomes <- read_csv(here::here("data/output/pairs_example_outcomes.csv"))
 pairs_freq <- read_csv(here::here("data/output/pairs_freq.csv"))
+interaction_type <- c("exclusion", "coexistence", "neutrality", "mutual exclusion", "frequency-dependent\ncoexistence")
+interaction_color = c("#DB7469", "#557BAA", "#8650C4", "red", "blue")
+names(interaction_color) <- interaction_type
 
 
 # Figure 1A
@@ -60,21 +64,55 @@ p_pairs_example_outcomes <- pairs_example_outcomes %>%
     guides(color = "none") +
     labs(x = "transfer", y = "frequency")
 ## The frequencies of coexistence vs. exclusion
-interaction_type <- c("exclusion", "coexistence", "neutrality", "mutual exclusion", "frequency-dependent\ncoexistence")
-interaction_color = c("#DB7469", "#557BAA", "#8650C4", "red", "blue")
-names(interaction_color) <- interaction_type
-
-p_pairs_interaction <- pairs %>%
+temp <- pairs %>% filter(Assembly == "self_assembly") %>%
     mutate(InteractionType = ifelse(InteractionType == "neutrality", "coexistence", InteractionType)) %>%
-    mutate(InteractionType = factor(InteractionType, interaction_type)) %>%
+    mutate(InteractionType = factor(InteractionType, c("coexistence", "exclusion"))) %>%
+    group_by(InteractionType) %>% summarize(Count = n()) %>% ungroup() %>% mutate(Fraction = Count / sum(Count))
+p_pairs_interaction <- temp %>%
     ggplot() +
-    geom_bar(aes(x = InteractionType, fill = InteractionType), color = 1) +
-    geom_text(x = Inf, y = Inf, label = paste0("n = ", nrow(pairs), " pairs"), vjust = 1, hjust = 1) +
-    scale_fill_manual(values = interaction_color) +
+    geom_col(aes(x = InteractionType, y = Count, fill = InteractionType), color = 1) +
+    geom_text(x = -Inf, y = Inf, label = paste0("n = ", sum(temp$Count)), vjust = 1, hjust = -0.1) +
+    geom_text(aes(x = InteractionType, y = Count, label = paste0(round(Fraction, 3) * 100,"%")), nudge_y = 5) +
+    scale_fill_manual(values = interaction_color, breaks = c("exclusion", "coexistence")) +
+    scale_y_continuous(limits = c(0, 150), expand = c(0,0)) +
     theme_classic() +
-    theme(axis.title.x = element_blank(), legend.position = "none") +
-    labs(x = "")
+    theme(axis.title.x = element_blank(), legend.position = "top",
+          axis.text.x = element_text(size = 10, color = "black"), axis.text.y = element_text(color = "black"),
+          axis.title.y = element_text(size = 10)) +
+    labs(x = "", y = "Number of pairs", fill = "")
+ggsave(here::here("plots/Fig1-self_assembly.png"), p_pairs_interaction, width = 3, height = 4)
 p_D <- plot_grid(p_pairs_interaction, p_pairs_example_outcomes, ncol = 1, axis = "lf", align = "h", rel_heights = c(1, 0.5))
+
+# Similar coexistence count for both random assembly and self-assembly
+temp <- pairs %>%
+    mutate(Assembly = factor(Assembly, c("random_assembly", "across_community", "self_assembly"))) %>%
+    filter(Assembly %in% c("random_assembly", "self_assembly")) %>%
+    group_by(Assembly, InteractionType) %>% summarize(Count = n()) %>% mutate(Fraction = Count / sum(Count))
+n_size <- temp %>% summarize(Count = sum(Count))
+p_pairs_interaction_random <- temp %>%
+    ggplot() +
+    geom_col(aes(x = Assembly, y = Count, fill = InteractionType), position = "fill", color = 1, width = 0.8) +
+    #geom_text(aes(x = Assembly, y = Fraction, label = paste0(round(Fraction, 3) * 100,"%")), nudge_y = 5) +
+    scale_fill_manual(values = interaction_color, breaks = c("exclusion", "coexistence")) +
+    scale_x_discrete(labels = c("random_assembly" = paste0("random assembly\nn=", pull(filter(n_size, Assembly == "random_assembly"), Count)),
+                                "self_assembly" = paste0("self assembly\nn=", pull(filter(n_size, Assembly == "self_assembly"), Count)))) +
+    scale_y_continuous(expand = c(0,0), breaks = c(0, .5, 1)) +
+    theme_classic() +
+    theme(axis.title.x = element_blank(), legend.position = "right", axis.text.x = element_text(size = 10)) +
+    labs(x = "", y  = "Percentage", fill = "")
+ggsave(here::here("plots/Fig1-random_assembly.png"), p_pairs_interaction_random, width = 4.5, height = 4.5)
+## Stat
+observed_stat <- pairs %>%
+    filter(Assembly %in% c("random_assembly", "self_assembly")) %>%
+    chisq_test(InteractionType ~ Assembly) %>% pull(statistic)
+null_stat <- pairs %>%
+    filter(Assembly %in% c("random_assembly", "self_assembly")) %>%
+    specify(InteractionType ~ Assembly, success = "coexistence") %>%
+    hypothesize(null = "independence") %>%
+    generate(reps = 1000, type = "permute") %>%
+    calculate(stat = "Chisq", order = c("random_assembly", "self_assembly"))
+null_stat %>%
+    get_p_value(obs_stat = observed_stat, direction = "two-sided")
 
 
 

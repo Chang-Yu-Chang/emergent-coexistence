@@ -1,44 +1,47 @@
-library(rvest)
 library(tidygraph)
 library(ggraph)
 library(tidyverse)
+library(rvest)
 
-pub_url <- "http://www.sanchezlaboratory.com/pubs"
 
 pub_xpath <- '//*[@id="block-yui_3_17_2_1_1567798471690_21270"]/div/p'
-html_content <- read_html(pub_url)
-pub_list <- html_content %>%
-    html_nodes(xpath = pub_xpath) %>%
-    html_text()
-
-coauthor_list <- pub_list %>%
-    gsub('\\#', "", .) %>%
-    gsub('\\*', "", .) %>%
+coauthor_list <- read_html("http://www.sanchezlaboratory.com/pubs") %>%
+    # Select the line of publication list
+    html_elements("section") %>%
+    # Separate individual publicaitons
+    html_elements("p") %>%
+    html_text() %>%
+    # Separate titles and authors
     strsplit(split = "\\(\\d{4}\\)") %>% sapply(function(x) x[2]) %>%
-    gsub("^\\.\\s", "", .) %>%
-    gsub("^\\s", "", .) %>%
-    strsplit(split = "\\(\\d+\\)") %>% sapply(function(x) x[1]) %>%
-     strsplit(split = "\\. mSystem") %>% sapply(function(x) x[1]) %>%
-     strsplit(split = "\\. mSystem") %>% sapply(function(x) x[1]) %>%
-    strsplit(split = "\\. PNAS") %>% sapply(function(x) x[1]) %>%
-    strsplit(split = "\\. Cell System") %>% sapply(function(x) x[1]) %>%
-    strsplit(split = "\\. Lecture Notes in Computer Science") %>% sapply(function(x) x[1]) %>%
-    strsplit(split = "\\. Biophysical Journal") %>% sapply(function(x) x[1]) %>%
-    strsplit(split = "\\. Natural Computing") %>% sapply(function(x) x[1]) %>%
-    strsplit(split = "\\. Science") %>% sapply(function(x) x[1]) %>%
+    # Clean up shits
+    str_replace("^\\.\\s+", "") %>%
+    str_replace("\\#|\\*", "") %>%
+    str_replace("^\\s+", "") %>%
+    # Separate authors and journals
+    strsplit(split = "\\. Cell Systems") %>% sapply(function(x) x[1]) %>%
+    strsplit(split = "\\. eLife") %>% sapply(function(x) x[1]) %>%
     strsplit(split = "\\. ISME") %>% sapply(function(x) x[1]) %>%
-    strsplit(split = "\\. PLOS") %>% sapply(function(x) x[1]) %>%
-    strsplit(split = "\\.\\s+PLoS") %>% sapply(function(x) x[1]) %>%
-    strsplit(split = "\\. In review") %>% sapply(function(x) x[1]) %>%
-    strsplit(split = "\\. BioRxiv") %>% sapply(function(x) x[1]) %>%
-    strsplit(split = " BioRxiv") %>% sapply(function(x) x[1]) %>%
-    strsplit(split = "\\. arXiv") %>% sapply(function(x) x[1]) %>%
-    strsplit(split = "\\. Ecoevo") %>% sapply(function(x) x[1]) %>%
+    strsplit(split = "\\. PNAS") %>% sapply(function(x) x[1]) %>%
+    strsplit(split = "\\. Frontiers") %>% sapply(function(x) x[1]) %>%
+    strsplit(split = "\\.\\s+PL") %>% sapply(function(x) x[1]) %>%
+    strsplit(split = "\\s+PL") %>% sapply(function(x) x[1]) %>%
+    strsplit(split = "\\. Annual") %>% sapply(function(x) x[1]) %>%
+    strsplit(split = "\\. Natur") %>% sapply(function(x) x[1]) %>%
+    strsplit(split = "\\. Current") %>% sapply(function(x) x[1]) %>%
+    strsplit(split = "\\. Science") %>% sapply(function(x) x[1]) %>%
     strsplit(split = "\\. Evolution") %>% sapply(function(x) x[1]) %>%
+    strsplit(split = "\\. Bio") %>% sapply(function(x) x[1]) %>%
+    strsplit(split = "\\. Lecture") %>% sapply(function(x) x[1]) %>%
     strsplit(split = "\\. Journal") %>% sapply(function(x) x[1]) %>%
-    strsplit(split = "\\. Current Opinion") %>% sapply(function(x) x[1]) %>%
-    {.}
-
+    strsplit(split = "\\. mS") %>% sapply(function(x) x[1]) %>%
+    strsplit(split = "\\w Communi") %>% sapply(function(x) x[1]) %>%
+    `[`(!is.na(.)) %>%
+    # Separate names
+    strsplit(split = "\\s*,\\s*") %>%
+    sapply(function(x) strsplit(x, split = " \\& ")) %>%
+    lapply(unlist) %>%
+    sapply(function(x) strsplit(x, split = " and ")) %>%
+    lapply(unlist)
 
 sanchez_lab <- c(
     "Chang-Yu Chang",
@@ -49,33 +52,53 @@ sanchez_lab <- c(
     "Alicia Sanchez-Gorostiaga",
     "Djordje Bajic",
     "Alvaro Sanchez",
+    "Joshua Goldford",
     "Madeline Bender",
+    "Felipe Lino",
     "Juan Diaz-Colunga",
     "Nora Pyenson",
+    "Xin Sun",
+    "Abby Skwara",
     "Jackie Folmar"
 )
+sanchez_lab <- rev(sanchez_lab)
 
-temp_list <- coauthor_list %>% strsplit(split = ",")
-for (i in 1:length(temp_list)) {
-    x = temp_list[[i]]
-    if (i == 4) x <- c("Chang-Yu Chang", "Jean C.C. Vila", x[-1])
-    if (any(grepl("&", x))) temp_list[[i]] <- strsplit(x, "&") %>% unlist()
-    if (any(grepl("and", x))) temp_list[[i]] <- strsplit(x, "and") %>% unlist()
 
-}
+sanchez_lab_g1 <- c(    "Chang-Yu Chang",
+                        "Jean Vila",
+                        "Maria Rebolleda-Gomez",
+                        "Nanxi Lu",
+                        "Sylvie Estrela",
+                        "Alicia Sanchez-Gorostiaga",
+                        "Djordje Bajic",
+                        "Alvaro Sanchez",
+                        "Joshua Goldford",
+                        "Madeline Bender")
 
-paper_author_list <-  temp_list %>%
+
+# Clean up space in the beginning or the end
+paper_author_list <-  coauthor_list %>%
     lapply(function(x) tibble(Author = x)) %>%
     bind_rows(.id = "Paper") %>%
-    mutate(Author = gsub("^\\s+", "", Author)) %>%
-    mutate(Author = gsub("\\s+$", "", Author))
+    mutate(Author = str_replace(Author, "^\\s", "")) %>%
+    mutate(Author = str_replace(Author, "\\s$", "")) %>%
+    mutate(Author = str_replace(Author, "#$", "")) %>%
+    mutate(Author = str_replace(Author, "\\*$", "")) %>%
+    # Manually add in Cell system paper
+    bind_rows(tibble(Paper = rep("1", 2), Author = c("Joshua Goldford", "Alicia Sanchez-Gorostiaga")))
 
+# Clean up the name ambiguity
 paper_author_list_sanchez <- paper_author_list %>%
-    mutate(Author = ifelse(Author %in% c("Jean CC Vila", "Jean C.C. Vila"), "Jean Vila", Author)) %>%
+    mutate(Author = ifelse(Author %in% c("Jean CC Vila", "Jean C.C. Vila", "Jean C. C. Vila"), "Jean Vila", Author)) %>%
     mutate(Author = ifelse(Author %in% c("María Rebolleda-Gomez"), "Maria Rebolleda-Gomez", Author)) %>%
     mutate(Author = ifelse(Author %in% c("Djordje Bajić", "Djordje Bajic"), "Djordje Bajic", Author)) %>%
     filter(Author %in% sanchez_lab)
 
+# Nodes
+df_nodes <- tibble(name = sanchez_lab) %>% mutate(Gen1 = name %in% sanchez_lab_g1)
+
+
+# Edges
 df_temp <- paper_author_list_sanchez %>%
     group_by(Paper) %>%
     mutate(AuthorNumber = n()) %>%
@@ -86,61 +109,60 @@ df_edges <- df_temp %>%
     lapply(function(x) {
         temp <- t(combn(x$Author, 2))
         tibble(from = temp[,1], to = temp[,2])
-        }) %>%
+    }) %>%
     bind_rows(.id = "Paper") %>%
+    mutate(from = match(from, sanchez_lab), to = match(to, sanchez_lab))
+
+df_edges[,c("from", "to")] <- df_edges %>%
+    select(from, to) %>%
+    apply(1, sort) %>% t()
+
+df_edges <- df_edges %>%
     arrange(from, to) %>%
     group_by(from, to) %>%
-    summarise(CoauthoredPaper = n())
+    summarise(`Number of coauthored papers` = n())
 
+# Graph
+graph <- tbl_graph(nodes = df_nodes, edges = df_edges)
 
-graph <- tbl_graph(nodes = tibble(name = sanchez_lab), edges = df_edges)
-
-node_size = 15
+node_size = 3
 p1 <- graph %>%
-    ggraph(layout = "circle") +
-    geom_edge_link(aes(edge_width = CoauthoredPaper), color = "grey30", alpha = 0.5,
+    ggraph(layout = "linear") +
+    geom_edge_arc(aes(edge_width = `Number of coauthored papers`), color = "grey20", alpha = 0.5,
         start_cap = circle(node_size/2+1, "mm"),
         end_cap = circle(node_size/2+1, "mm")) +
-    geom_node_point(size = node_size, fill = "white", color = "grey30", shape = 21) +
-    geom_node_text(aes(label = name), size = 5, color = "black") +
-    theme_graph() +
-    scale_x_continuous(limits = c(-2, 2)) +
-    scale_y_continuous(limits = c(-2, 2)) +
-    theme(legend.position = "none")
-#        plot.margin = unit(rep(10,4), units = "mm"))
+    geom_node_text(aes(label = name, color = Gen1), size = 3, hjust = 1) +
+    coord_flip() +
+    scale_edge_width(breaks = c(1,4,9)) +
+    scale_y_continuous(limits = c(-2, 5)) +
+    scale_color_manual(values = c(`TRUE` = "#DB7469", `FALSE` = "#557BAA")) +
+    guides(color = "none") +
+    theme_classic() +
+    theme(legend.position = "top", panel.background = element_rect(fill = "white"),
+          axis.line = element_blank(), axis.title = element_blank(), axis.text = element_blank(), axis.ticks = element_blank())
+p1
+ggsave(here::here("plots/lab_network_linear.png"), plot = p1, width = 6, height = 4)
 
-ggsave("../plots/lab_network.png", plot = p1, width = 10, height = 10)
+node_size = 3
+p2 <- graph %>%
+    activate(nodes) %>% filter(name %in% sanchez_lab_g1) %>%
+    ggraph(layout = "circle") +
+    geom_edge_link(aes(edge_width = `Number of coauthored papers`), color = "grey20", alpha = 0.5,
+        start_cap = circle(node_size/2+1, "mm"),
+        end_cap = circle(node_size/2+1, "mm")) +
+    geom_node_text(aes(label = name), size = 3, color = "black") +
+    theme_classic() +
+    scale_edge_width(breaks = c(1,4,9)) +
+    scale_x_continuous(limits = c(-1.2, 1.2)) +
+    scale_y_continuous(limits = c(-1.2, 1.2)) +
+    theme(legend.position = "top", panel.background = element_rect(fill = "white"),
+          axis.line = element_blank(), axis.title = element_blank(), axis.text = element_blank(), axis.ticks = element_blank())
 
-#nodes <- tibble(Name <- c("Alvaro", "Djordje", "Alicia", "Sylvie", "Nanxi", "Chang-Yu", "Jean", "Nora", "Juan"))
-
-if (FALSE) {
-    #gs_id = "vwkZIIMAAAAJ"
-    gs_id = "dt8_0JAAAAAJ"
-    get_profile(id = gs_id)
-    coauthor_network <- get_coauthors(gs_id, n_coauthors = 20)
-
-    sanchez_lab <- c("Chang-Yu Chang",
-        "Nanxi Lu",
-        "Jean Vila",
-        "Sylvie Estrela",
-        "Alicia Sanchez-Gorostiaga",
-        "Djordje Bajić",
-        "Alvaro Sanchez",
-        "Maria Rebolleda-Gomez"
-    )
-
-    coauthor_network_cleaned <- coauthor_network %>%
-        filter(!(coauthors %in% c("Sort By Title", "Sort By Citations", " Sort By Year")),
-            !(author %in% c("Sort By Title", "Sort By Citations", " Sort By Year"))) %>%
-        filter(author %in% sanchez_lab, coauthors %in% sanchez_lab)
+p2
+ggsave(here::here("plots/lab_network.png"), plot = p2, width = 5, height = 5)
 
 
-    graph <- tbl_graph(edges = coauthor_network_cleaned)
 
-    graph %>%
-        ggraph(layout = "circle") +
-        geom_node_point(aes(label = name), size = 10, color = "white") +
-        geom_node_text(aes(label = name), size = 5) +
-        geom_edge_link() +
-        theme_graph()
-}
+
+
+

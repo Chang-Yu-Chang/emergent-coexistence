@@ -1,7 +1,5 @@
 #' Pick random isolates for experiment
-
 library(tidyverse)
-library(data.table)
 isolates <- read_csv(here::here("data/output/isolates.csv"))
 jean_isolates_RDP <- read_csv(here::here("data/temp/jean_isolates_RDP.csv"))
 
@@ -43,7 +41,7 @@ isolates_assembly_across <-
   mutate(Assembly = "across-community",
     Community = rep(paste0("AcrAss", 1:2), each = 8)) %>%
   mutate(Isolate = rep(1:8, 2)) %>%
-  select(Assembly, ExpID, Community, Isolate, Family, Genus)
+  select(Assembly, ExpID, ID, Community, Isolate, Family, Genus)
 
 isolates_assembly_random <-
   temp_df3 %>%
@@ -51,7 +49,7 @@ isolates_assembly_random <-
   mutate(Assembly = rep("random-assembly", 16),
     Community = rep(paste0("RanAss", 1:2), each = 8),
     Isolate = rep(1:8, 2)) %>%
-    select(Assembly, ExpID, Community, Isolate, Family, Genus)
+    select(Assembly, ExpID, ID, Community, Isolate, Family, Genus)
 
 #
 isolates_random <- isolates_assembly_across %>%

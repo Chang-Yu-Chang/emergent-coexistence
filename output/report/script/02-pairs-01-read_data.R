@@ -35,9 +35,22 @@ pairs_coexist_dominant <- pairs %>%
     mutate(Isolate1Dominant = T8 > T0) %>%
     select(Community, Isolate1, Isolate2, Isolate1Dominant)
 
-pairs <- left_join(pairs, pairs_coexist_dominant)
+pairs <- left_join(pairs, pairs_coexist_dominant) %>%
+        mutate(Assembly = ifelse(str_detect(Community, "C\\d+R\\d+"), "self_assembly",
+                                 ifelse(str_detect(Community, "AcrAss"), "across_community",
+                                        ifelse(str_detect(Community, "RanAss"), "random_assembly", NA)))) %>%
+    select(Assembly, everything())
 
+
+#
+"
+remove this line if the random network data is completed
+"
+pairs <- pairs %>% filter(!(is.na(InteractionType) & Assembly != "self_assembly"))
+
+#
 pairs_meta <- pairs
+
 
 # Swap so that fermenter is always isolate1
 for (i in 1:nrow(pairs_meta)) {

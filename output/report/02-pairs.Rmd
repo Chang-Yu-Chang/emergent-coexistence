@@ -129,8 +129,15 @@ Each plate has 96 rows and has the following variables
 
 ```{r}
 plates <- read_csv(here::here("data/output/plates.csv"))
-str(plates)
+plates
 ```
+plates for across-community and random assembly
+
+```{r}
+plates_random <- read_csv(here::here("data/output/plates_random.csv"))
+plates_random
+```
+
 
 Read plate layout by batch
 
@@ -527,6 +534,166 @@ CASEU_pilot4 %>%
 ```
 
 
+## Random network, CASEU batch 1
+
+- Genewiz submisstion code: Caseu_RN_1
+- Plate layout: T3 C P2
+- Description: samples 3, 4, 5, 12, 13, 27, 29, 33, 73, 85, 86, 91, and 94 (order by column in the plate layout) arrived Genewiz dry, so they are not processed.
+
+```{r eval = F}
+if (run_scripts) source("script/02B-random_network_CASEU-01-batch1.R")
+```
+
+```{r}
+CASEU_RN1 <- read_csv(here::here("data/temp/CASEU_RN1.csv"))
+```
+
+```{r}
+CASEU_RN1 %>%
+  mutate(T0 = Isolate1Freq, T3 = Isolate1FreqPredicted, InitialFrequency = factor(T0)) %>% 
+  select(Community, Isolate1, Isolate2, InitialFrequency, T0, T3) %>%
+  pivot_longer(cols = c(T0, T3), names_to = "Transfer", values_to = "Isolate1Freq") %>%
+  mutate(Transfer = ordered(Transfer, levels = c("T0", "T3"))) %>%
+  ggplot(aes(x = Transfer, y = Isolate1Freq, color = InitialFrequency, group = InitialFrequency)) +
+  geom_point() + geom_line() +
+  facet_grid(Isolate1 ~ Isolate2) + 
+  scale_y_continuous(limits = c(0,1)) +
+  theme_bw() +
+  ggtitle("Random network 1") +
+  labs(x = "transfer", y = "isolate1 frequency")
+
+```
+
+
+
+## Random network, CASEU batch2
+
+- Genewiz submission code: Caseu_RN_2
+- Plate layout: T3 C P2
+- Description: this plate layout contains the isolates for all 4 random assembled communities 
+
+```{r}
+source("script/02B-random_network_CASEU-02-batch2.R")
+```
+
+```{r}
+CASEU_RN2 <- read_csv(here::here("data/temp/CASEU_RN2.csv"))
+```
+
+
+```{r}
+CASEU_RN2 %>%
+  mutate(T0 = Isolate1Freq, T3 = Isolate1FreqPredicted, InitialFrequency = factor(T0)) %>% 
+  select(Community, Isolate1, Isolate2, InitialFrequency, T0, T3) %>%
+  pivot_longer(cols = c(T0, T3), names_to = "Transfer", values_to = "Isolate1Freq") %>%
+  mutate(Transfer = ordered(Transfer, levels = c("T0", "T3"))) %>%
+  ggplot(aes(x = Transfer, y = Isolate1Freq, color = InitialFrequency, group = InitialFrequency)) +
+  geom_point() + geom_line() +
+  facet_grid(Isolate1 ~ Isolate2) + 
+  scale_y_continuous(limits = c(0,1)) +
+  theme_bw() +
+  ggtitle("Random network 1") +
+  labs(x = "transfer", y = "isolate1 frequency")
+
+```
+
+```{r}
+load(here::here("data/temp/CASEU_RN2_raw_output.Rdata"))
+which(is.na(CASEU_RN2_raw_output))
+CASEU_RN2_mixture_list
+```
+
+
+## Random network, CASEU batch3
+
+- Genewiz submisstion code: Caseu_RN_3
+- Plate layout: 
+    - P1 (T0 C P2), tracking number 30-333649143
+    - P2 (T0 AD P2), tracking number 30-333649365
+    - P3 (T3 AD P2), tracking number 30-333649517
+- Description: AD plates have the isolates assembled from the self-assembled communities but different communities
+
+```{r eval = F}
+if (run_scripts) source("script/02B-random_network_CASEU-03-batch3.R")
+```
+
+Use T0 OD frequencies
+
+```{r}
+CASEU_RN3 <- read_csv(here::here("data/temp/CASEU_RN3.csv"))
+temp <- CASEU_RN3 %>% 
+  filter(Community == "AcrAss1") %>%
+  mutate(InitialFrequency = factor(Isolate1Freq), Time = ordered(Time, c("T0", "T3")))
+
+temp$Isolate1FreqPredicted[temp$Time == "T0"] <- temp$Isolate1Freq[temp$Time == "T0"]
+  
+temp %>%
+  select(Time, Community, Isolate1, Isolate2, InitialFrequency, Isolate1FreqPredicted) %>%
+  arrange(Isolate1, Isolate2, InitialFrequency, Time) %>%
+  ggplot(aes(x = Time, y = Isolate1FreqPredicted, color = InitialFrequency, group = InitialFrequency)) +
+  geom_point() + geom_line() +
+  facet_grid(Isolate1 ~ Isolate2) + 
+  scale_y_continuous(limits = c(0,1)) +
+  theme_bw() +
+  ggtitle("AcrAss1") +
+  labs(x = "transfer", y = "isolate1 frequency")
+```
+
+
+Use CASEU predicted frequencies
+
+```{r}
+CASEU_RN3 %>% 
+  filter(Community == "AcrAss1") %>%
+  mutate(InitialFrequency = factor(Isolate1Freq), Time = ordered(Time, c("T0", "T3"))) %>%
+  select(-Sample, -Mixture, -RSquare, -Isolate2FreqPredicted) %>%
+  select(Time, Community, Isolate1, Isolate2, InitialFrequency, Isolate1FreqPredicted) %>%
+  arrange(Isolate1, Isolate2, InitialFrequency, Time) %>%
+  ggplot(aes(x = Time, y = Isolate1FreqPredicted, color = InitialFrequency, group = InitialFrequency)) +
+  geom_point() + geom_line() +
+  facet_grid(Isolate1 ~ Isolate2) + 
+  scale_y_continuous(limits = c(0,1)) +
+  theme_bw() +
+  ggtitle("AcrAss1") +
+  labs(x = "transfer", y = "isolate1 frequency")
+```
+
+
+## Random network, caseu batch 4
+
+- Genewiz submisstion code: Caseu_RN_4
+- Plate layout: T3 BD P3
+- Description: This plate has the full AcrAss2 (B) and half of RanAss2 (D) network.
+
+
+```{r}
+if (run_scripts) source("script/02B-random_network_CASEU-02-batch4.R")
+```
+
+
+```{r}
+CASEU_RN4 <- read_csv(here::here("data/temp/CASEU_RN4.csv"))
+CASEU_RN4
+```
+
+
+## Random netwokr, caseu batch 5
+
+- Genewiz submission code: 
+- Plate layout: T3 BD P3
+    - T0 BD P2
+    - T3 C P3
+- Description: XX
+
+```{r}
+
+```
+
+
+
+
+
+
 
 # 02C pairs_OD_CFU
 
@@ -661,13 +828,18 @@ The script in this section returns a data.frame `pairs_freq` that has the follow
 - `Isolate1MeasuredFreq`: the measured frequency od isolate1 in the pair. 
 - `ErrorIsolate1MeasuredFreq`: the uncertainty of `Isolate1MeasuredFreq`.
 - `RawDataType`: OD, ODtoCFU, CFU, Sanger (CASEU). The raw data type in which the isolate frequencies were measured.
-- `Contamination`: logical. There are contaminations in three pairs at T8 plates.
+- `Contamination`: logical. There are contamination in three pairs at T8 plates.
 
-186x3x2=1116 pair-freq at two time points
+186x3x2=1116 pair-freq at two time points for the self-assembled community networks.
+Plus the across-community and random networks (20211108 in progress)
 
 ```{r}
 pairs_freq <- read_csv(here::here("data/output/pairs_freq.csv"))
 pairs_freq
+```
+
+
+```{r}
 pairs_freq %>%
     filter(Community == "C11R2") %>%
     filter(Isolate1 == 1, Isolate2 == 4) %>%
@@ -676,8 +848,6 @@ pairs_freq %>%
     geom_line() + geom_point() +
     facet_grid(Isolate1 ~ Isolate2) +
     theme_bw()
-    
-    
 ```
 
 
@@ -697,15 +867,7 @@ pairs_freq %>%
 if (run_scripts) source("script/02D-determine_pairwise_interaction-02-determine_pairwise_interaction.R")
 ```
 
-
-Plot frequency changes. Output figure of CFU frequency changes to `output/figure/pairs_freq_change_uncertainty.pdf`
-
-```{r eval = F}
-load(here::here("data/temp/p_pairs_freq_change_list.Rdata"))
-pdf(here::here("output/report/figure/02D-freq_change_uncertainty.pdf"), height = 10 , width = 10); for (i in 1:length(communities$Community)) print(p_pairs_freq_change_list[[i]]); invisible(dev.off())
-```
-
-Table of all 27 possible combinations of fitness function and their interaction types 
+Table of all 27 + 4 possible combinations of fitness function and their interaction types 
 
 ```{r}
 interaction_type <- read_csv(here::here("data/temp/interaction_type.csv"))
@@ -811,7 +973,7 @@ pairs_tree_distance
 if (run_scripts) source("script/02-pairs-01-read_data.R")
 ```
 
-186 pairs
+186 pairs of self-assembled communities and 112 pair from across-community and random networks
 
 ```{r}
 pairs <- read_csv(here::here("data/output/pairs.csv"))
@@ -936,7 +1098,7 @@ p_pairs_example_outcomes
 The frequencies of coexistence vs. exclusion
 
 
-```{r}
+```{r fig.width = 3, fig.height = 5}
 pairs <- read_csv(here::here("data/output/pairs.csv"))
 interaction_type <- c("exclusion", "coexistence", "neutrality", "mutual exclusion", "frequency-dependent\ncoexistence")
 interaction_color = c("#DB7469", "#557BAA", "#8650C4", "red", "blue")
@@ -949,6 +1111,7 @@ p_pairs_interaction <- pairs %>%
     geom_bar(aes(x = InteractionType, fill = InteractionType), color = 1) +
     geom_text(x = Inf, y = Inf, label = paste0("n = ", nrow(pairs), " pairs"), vjust = 1, hjust = 1) +
     scale_fill_manual(values = interaction_color) +
+    facet_grid(Assembly~., scales = "free_y") +
     theme_classic() +
     theme(axis.title.x = element_blank(), legend.position = "none") +
     labs(x = "")

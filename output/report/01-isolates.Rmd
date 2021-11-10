@@ -33,15 +33,16 @@ if (run_scripts) source("script/01A-isolates_experiments-01-metadata.R")
 
 ## Isolate IDs
 
-68 isolates used in the pairwise competition assay. The csv saves 
+100 isolates used in the pairwise competition assay, for within-community, across-community, and random assembly. The csv contains:
 
 - `ExpID`: isolation ID used by Djordje. The first and second numbers indicate inoculum and replicates in Goldford2018.
 - `ID`: Sanger sequencing ID. Unique ID for sequenced isolates from Sanchez lab.
 - `Community`: community ID used in the competition assay.
 - `Isolate`: Isolates ID within a community ID, used in the competition assay.
 
+
 ```{r}
-isolates_ID_match <- fread(here::here("data/temp/isolates_ID_match.csv"))
+isolates_ID_match <- read_csv(here::here("data/temp/isolates_ID_match.csv"))
 isolates_ID_match
 ```
 
@@ -49,8 +50,10 @@ isolates_ID_match
 
 Community IDs and basic information
 
+13 self-assembled communities, two across-community assembly, two random assmebly
+
 ```{r}
-communities <- fread(here::here("data/output/communities.csv"))
+communities <- read_csv(here::here("data/output/communities.csv"))
 communities
 ```
 
@@ -107,7 +110,7 @@ These isolates include Djordje's isolates from simplicity paper, and Jean's isol
 - `ConsensusLength`: 
 
 ```{r}
-isolates_16S <- fread(here::here("data/temp/isolates_16S.csv"))
+isolates_16S <- read_csv(here::here("data/temp/isolates_16S.csv"))
 isolates_16S
 ```
 
@@ -129,7 +132,7 @@ if (run_scripts) source("script/01B-isolate_sanger_seq-02-RDP.R")
 - `Sequence`
 
 ```{r}
-isolates_RDP <- fread(here::here("data/temp/isolates_RDP.csv"))
+isolates_RDP <- read_csv(here::here("data/temp/isolates_RDP.csv"))
 isolates_RDP
 ```
 
@@ -200,7 +203,7 @@ There are 68 isolates used in the pairwise competition experiments.
 Write all OD data in `data/temp/OD.csv` and isolate OD in `data/temp/isolates_OD.csv`
 
 ```{r}
-isolates_OD <- fread(here::here("data/temp/isolates_OD.csv"))
+isolates_OD <- read_csv(here::here("data/temp/isolates_OD.csv"))
 isolates_OD
 ```
 
@@ -446,7 +449,7 @@ communities_abundance_syl %>%
 Abundances of ESVs matched to Sangers.
 
 ```{r}
-sequences_abundance <- fread(here::here("data/temp/sequences_abundance.csv"))
+sequences_abundance <- read_csv(here::here("data/temp/sequences_abundance.csv"))
 # Color sets from Sylvie
 color_sets <- tibble(Color = c("yellow", "deepskyblue3", "blue", "darkorchid2", "firebrick", "orange2", "grey"),
   Family = c("Aeromonadaceae", "Enterobacteriaceae", "Moraxellaceae", "Pseudomonadaceae","Comamonadaceae","Alcaligenaceae", "Sphingobacteriaceae"))

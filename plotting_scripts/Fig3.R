@@ -1,9 +1,11 @@
 # Figure 3: pairs alike coexist more than pairs dissimilar
 library(tidyverse)
+library(tidymodels)
 library(cowplot)
 library(ggsci)
 
 isolates <- read_csv(here::here("data/output/isolates.csv"))
+pairs <- read_csv(here::here("data/output/pairs.csv")) %>% mutate(InteractionType = ifelse(InteractionType == "neutrality", "coexistence", InteractionType))
 pairs_meta <- read_csv(here::here("data/output/pairs_meta.csv")) %>% mutate(InteractionType = ifelse(InteractionType == "neutrality", "coexistence", InteractionType))
 
 interaction_type <- c("exclusion", "coexistence")
@@ -11,6 +13,14 @@ interaction_color = c("#DB7469", "#557BAA")
 names(interaction_color) <- interaction_type
 
 # Coexistence more likely in pairs alike
+
+#
+isolates %>%
+    ggplot() +
+    geom_histogram(aes(x = X_sum_16hr, fill = Fermenter), color = 1) +
+    theme_classic()
+
+
 
 # r_glu
 p1 <- pairs_meta %>%
@@ -32,6 +42,7 @@ p2 <- pairs_meta %>%
     select(InteractionType, PairFermenter, starts_with("X_sum") & !ends_with("d")) %>%
     pivot_longer(cols = c(-InteractionType, -PairFermenter), names_to = c("Time", "Isolate"), names_pattern = "X_sum_(.*)hr(.)", names_transform = list(Time = as.numeric), values_to = "X_sum") %>%
     filter(!is.na(PairFermenter)) %>%
+    filter(Time == 16) %>%
     ggplot(aes(x = InteractionType, y = X_sum, fill = Isolate)) +
     geom_boxplot() +
     geom_point(shape = 1, size = 2, position = position_jitterdodge(jitter.width = 0.2)) +
@@ -76,18 +87,27 @@ p4
 
 #
 p <- plot_grid(p1, p2, align = "v", axis = "lr", ncol = 1)
-ggsave(here::here("plots/Fig3.png"), p, width = 8, height = 8)
+#ggsave(here::here("plots/Fig3.png"), p, width = 8, height = 8)
 
 
 # Stats
+pairs_meta <- pairs_meta %>%
+    mutate_if(is.character, as.factor)
+
+
 pairs_meta %>%
-    filter(PairFermenter == "FF") %>%
-    filter(!is.na(InteractionType)) %>%
+
+    #filter(PairFermenter == "FF") %>% filter(!is.na(InteractionType)) %>%
     mutate(InteractionType = ifelse(InteractionType == "coexistence", 1, 0)) %>%
     glm(formula = InteractionType ~ r_glu_d * X_sum_16hr_d, data = ., family = "binomial") %>%
     broom::tidy() %>%
     #select(term, estimate, p.value) %>%
     {.}
+
+logistic_reg() %>%
+    set_engine("glm") %>%
+    fit(InteractionType ~ r_glu_d * X_sum_16hr_d, data = pairs_meta) %>%
+    tidy() %>%
 
 
 

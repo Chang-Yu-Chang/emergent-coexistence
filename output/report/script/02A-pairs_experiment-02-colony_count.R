@@ -131,13 +131,9 @@ for (i in 1:nrow(pairs_competition_chromo)) {
     mutate(DilutionFactor = as.integer(DilutionFactor))
 }
 
-#
-pairs_ID <- pairs_competition %>%
-  select(Community, Isolate1, Isolate2) %>%
-  distinct()
+
 #
 fwrite(pairs_competition, file = here::here("data/temp/pairs_competition.csv"))
-fwrite(pairs_ID, file = here::here("data/temp/pairs_ID.csv"))
 
 
 

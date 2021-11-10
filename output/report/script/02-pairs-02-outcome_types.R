@@ -1,6 +1,5 @@
 #' Types of pairwise competition outcomes
 library(tidyverse)
-library(data.table)
 communities <- read_csv(here::here("data/output/communities.csv"))
 
 # Read data

@@ -1,5 +1,5 @@
 ---
-title: "Analysis on the empirical random invasion networks"
+title: "Analysis on empirical random competitive networks"
 author: "Chang-Yu Chang"
 date: "`r Sys.Date()`"
 output:
@@ -10,26 +10,22 @@ output:
 
 ```{r setup, include = F}
 knitr::opts_chunk$set(cache = FALSE, echo = FALSE)
-
 library(tidyverse)
-library(data.table)
 library(cowplot)
 library(igraph)
 library(tidygraph)
 library(ggraph)
-source(here::here("plotting_scripts/network_functions.R"))
+
 run_scripts <- F
 communities <- read_csv(here::here("data/output/communities.csv"))
+```
 
-# communities <- read_csv(here::here("data/temp/communities.csv"))
-# communities_name <- communities$Community
-# communities_size <- communities$CommunitySize
-# random_network_communities_name <- c("AcrAss1", "AcrAss2", "RanAss1", "RanAss2")
-# random_network_communities_size <- rep(7, 4) 
-# isolates_ID_match <- read_csv(here::here("data/temp/isolates_ID_match.csv"))
-# isolates <- read_csv(here::here("data/output/isolates.csv"))
-# jean_isolates_RDP <- read_csv(here::here("data/temp/jean_isolates_RDP.csv"))
-
+```{r}
+random_network_communities_name <- c("AcrAss1", "AcrAss2", "RanAss1", "RanAss2")
+random_network_communities_size <- rep(7, 4)
+isolates_ID_match <- read_csv(here::here("data/temp/isolates_ID_match.csv"))
+isolates <- read_csv(here::here("data/output/isolates.csv"))
+jean_isolates_RDP <- read_csv(here::here("data/temp/jean_isolates_RDP.csv"))
 ```
 
 # Introduction

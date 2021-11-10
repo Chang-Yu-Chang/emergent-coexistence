@@ -1,5 +1,6 @@
 # Read and align raw Sanger sequences from Genewiz
 
+library(tidyverse)
 library(sangeranalyseR)
 
 #
@@ -53,7 +54,7 @@ df_seq <-
   dplyr::select(ID, Sequence) %>%
   dplyr::mutate(ConsensusLength = nchar(Sequence))
 
-data.table::fwrite(df_seq, file = here::here("data/temp/", "isolates_16S.csv"))
+write_csv(df_seq, file = here::here("data/temp/isolates_16S.csv"))
 
 if (FALSE) {
 

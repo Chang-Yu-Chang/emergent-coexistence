@@ -1,9 +1,0 @@
-"Plate","Well","Wavelength","Abs","input_volume","buffer_volume","total_volume"
-"test_suspend_ori","A01",620,1.183,254,2746,3000
-"test_suspend_ori","B01",620,0.88,341,2659,3000
-"test_suspend_ori","C01",620,0.695,432,2568,3000
-"test_suspend_ori","D01",620,0.781,385,2615,3000
-"test_suspend_ori","E01",620,-0.001,-299999,302999,3000
-"test_suspend_ori","F01",620,0,Inf,-Inf,3000
-"test_suspend_ori","G01",620,0.000999999999999994,300001,-297001,3000
-"test_suspend_ori","H01",620,0,Inf,-Inf,3000

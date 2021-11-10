@@ -1,14 +1,14 @@
 #' Read and match isolates' 16S to pairs
 library(tidyverse)
-library(data.table)
+
 # Read data ----
 ## Read isolates' RDP and ID match
-isolates_RDP <- fread(here::here("data/temp/isolates_RDP.csv"))
-isolates_ID_match <- fread(here::here("data/temp/isolates_ID_match.csv"))
-communities <- fread(here::here("data/output/communities.csv"))
+isolates_RDP <- read_csv(here::here("data/temp/isolates_RDP.csv"))
+isolates_ID_match <- read_csv(here::here("data/temp/isolates_ID_match.csv")) %>% select(ExpID, ID, Community, Isolate)
+communities <- read_csv(here::here("data/output/communities.csv"))
 
 ## Read pairs
-pairs_ID <- fread(here::here("data/temp/pairs_ID.csv"))
+pairs_ID <- read_csv(here::here("data/temp/pairs_ID.csv"))
 #pairs_freq_func <- fread(here::here("data/temp/pairs_freq_func.csv"))
 
 ## Match isolates' information
@@ -61,4 +61,4 @@ for (i in 1:nrow(pairs_ID)) {
 pairs_16S <- pairs_ID
 
 #
-fwrite(pairs_16S, file = here::here("data/temp/pairs_16S.csv"))
+write_csv(pairs_16S, file = here::here("data/temp/pairs_16S.csv"))
