@@ -155,6 +155,6 @@ CASEU_RN3 <- CASEU_RN3 %>%
 # Save raw CASEU output
 CASEU_RN3_raw_output <- caseu_prediction # Raw CASEU output
 CASEU_RN3_mixture_list <- mixture_list # list of the mixture
-save(CASEU_RN3_raw_output, CASEU_RN3_mixture_list, file = here::here("data/temp/CASEU_RN3_raw_output.Rdata"))
+#save(CASEU_RN3_raw_output, CASEU_RN3_mixture_list, file = here::here("data/temp/CASEU_RN3_raw_output.Rdata"))
 
 fwrite(CASEU_RN3, here::here("data/temp/CASEU_RN3.csv"))

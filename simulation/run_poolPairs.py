@@ -1,10 +1,12 @@
 import sys
 import pandas as pd
 import numpy as np
+import pickle
 from community_simulator import *
 from community_simulator.usertools import *
 
-def sample_d_matrix(assumptions,dtype):
+
+def sample_matrices(assumptions, dtype):
     #PREPARE VARIABLES
     #Force number of species to be an array:
     if isinstance(assumptions['MA'],numbers.Number):
@@ -36,6 +38,7 @@ def sample_d_matrix(assumptions,dtype):
     consumer_index = [[family_names[m] for m in range(F) for k in range(assumptions['SA'][m])]
                       +['GEN' for k in range(assumptions['Sgen'])],consumer_names]
     
+    # Sample d matrix
     #SAMPLE METABOLIC MATRIX FROM DIRICHLET DISTRIBUTION
     DT = pd.DataFrame(np.zeros((M,M)),index=resource_index,columns=resource_index)
     for type_name in type_names:
@@ -56,40 +59,9 @@ def sample_d_matrix(assumptions,dtype):
             p2 =  pd.Series((np.ones(M)*0.9)/M_waste,index = DT.keys()) #Self
             p.loc[waste_name] = (p2.loc[waste_name] + p.loc[waste_name]).values
             DT.loc[type_name,p.index[p!=0]] = dirichlet(p[p!=0]/assumptions['sparsity'],size=len(DT.loc[type_name]))
-    return (DT.T)
-
-
-def sample_c_matrix(assumptions):
-        #PREPARE VARIABLES
-    #Force number of species to be an array:
-    if isinstance(assumptions['MA'],numbers.Number):
-        assumptions['MA'] = [assumptions['MA']]
-    if isinstance(assumptions['SA'],numbers.Number):
-        assumptions['SA'] = [assumptions['SA']]
-    #Force numbers of species to be integers:
-    assumptions['MA'] = np.asarray(assumptions['MA'],dtype=int)
-    assumptions['SA'] = np.asarray(assumptions['SA'],dtype=int)
-    assumptions['Sgen'] = int(assumptions['Sgen'])
-    #Default waste type is last type in list:
-    if 'waste_type' not in assumptions.keys():
-        assumptions['waste_type']=len(assumptions['MA'])-1
-
-    #Extract total numbers of resources, consumers, resource types, and consumer families:
-    M = np.sum(assumptions['MA'])
-    T = len(assumptions['MA'])
-    S = np.sum(assumptions['SA'])+assumptions['Sgen']
-    F = len(assumptions['SA'])
-    M_waste = assumptions['MA'][assumptions['waste_type']]
-    #Construct lists of names of resources, consumers, resource types, and consumer families:
-    resource_names = ['R'+str(k) for k in range(M)]
-    type_names = ['T'+str(k) for k in range(T)]
-    family_names = ['F'+str(k) for k in range(F)]
-    consumer_names = ['S'+str(k) for k in range(S)]
-    waste_name = type_names[assumptions['waste_type']]
-    resource_index = [[type_names[m] for m in range(T) for k in range(assumptions['MA'][m])],
-                      resource_names]
-    consumer_index = [[family_names[m] for m in range(F) for k in range(assumptions['SA'][m])]
-                      +['GEN' for k in range(assumptions['Sgen'])],consumer_names]
+    
+    
+    # Sample c matrix
     assert assumptions['muc'] < M*assumptions['c1'], 'muc not attainable with given M and c1.'
     c = pd.DataFrame(np.zeros((S,M)),columns=resource_index,index=consumer_index)
     #Add Gamma-sampled values, biasing consumption of each family towards its preferred resource
@@ -125,52 +97,26 @@ def sample_c_matrix(assumptions):
         thetac = c_var/c_mean
         kc = c_mean**2/c_var
         c.loc['GEN'] = np.random.gamma(kc,scale=thetac,size=(assumptions['Sgen'],M))
-    return(c)
-
-def sample_l_matrix(assumptions):
-    #Force number of species to be an array:
-    if isinstance(assumptions['MA'],numbers.Number):
-        assumptions['MA'] = [assumptions['MA']]
-    if isinstance(assumptions['SA'],numbers.Number):
-        assumptions['SA'] = [assumptions['SA']]
-    #Force numbers of species to be integers:
-    assumptions['MA'] = np.asarray(assumptions['MA'],dtype=int)
-    assumptions['SA'] = np.asarray(assumptions['SA'],dtype=int)
-    assumptions['Sgen'] = int(assumptions['Sgen'])
-    #Default waste type is last type in list:
-    if 'waste_type' not in assumptions.keys():
-        assumptions['waste_type']=len(assumptions['MA'])-1
-
-    #Extract total numbers of resources, consumers, resource types, and consumer families:
-    M = np.sum(assumptions['MA'])
-    T = len(assumptions['MA'])
-    S = np.sum(assumptions['SA'])+assumptions['Sgen']
-    F = len(assumptions['SA'])
-    M_waste = assumptions['MA'][assumptions['waste_type']]
-    #Construct lists of names of resources, consumers, resource types, and consumer families:
-    resource_names = ['R'+str(k) for k in range(M)]
-    type_names = ['T'+str(k) for k in range(T)]
-    family_names = ['F'+str(k) for k in range(F)]
-    consumer_names = ['S'+str(k) for k in range(S)]
-    waste_name = type_names[assumptions['waste_type']]
-    resource_index = [[type_names[m] for m in range(T) for k in range(assumptions['MA'][m])],
-                      resource_names]
-    consumer_index = [[family_names[m] for m in range(F) for k in range(assumptions['SA'][m])]
-                      +['GEN' for k in range(assumptions['Sgen'])],consumer_names]
-    #
-    l_row = np.concatenate((np.round(np.random.uniform(0.1, 1, assumptions['SA'][0]), 2), np.ones(assumptions['SA'][1])*0.01, np.zeros(assumptions['SA'][2])))
+        
+        
+    # Sample l matrix
+    l_F0 = np.round(np.random.uniform(assumptions['l1'] - assumptions['l_sd'], assumptions['l1'] + assumptions['l_sd'], assumptions['SA'][0]), 2)
+    l_F1 = np.round(np.random.uniform(assumptions['l2'] - assumptions['l_sd'], assumptions['l2'] + assumptions['l_sd'], assumptions['SA'][1]), 2)
+    l_F2 = np.zeros(assumptions['SA'][2])
+    l_row = np.concatenate((l_F0, l_F1, l_F2))
     l = pd.DataFrame(np.tile(l_row, (M,1))).transpose()
     l.index = consumer_index
     l.columns = resource_index
     
-    return(l)
-
+    return DT.T, c, l
 
 def run(input_row):
     ### Load Parameters from the input csv
     output_dir = input_row['output_dir']
-    q = input_row['q']
-    q2 = input_row['q2']
+    q = float(input_row['q'])
+    q2 = float(input_row['q2'])
+    l1 = float(input_row['l1'])
+    l2 = float(input_row['l2'])
     seed = int(input_row['seed'])
     exp_id = int(input_row['exp_id'])
     vamp = float(input_row['vamp'])
@@ -196,15 +142,17 @@ def run(input_row):
     'response':'type I',
     'waste_type':1,
     'R0_food':1000, #unperturbed fixed point for supplied food
-    'n_wells': n_pairs, #Number of independent wells
+    'n_wells': n_pairs*2, #Number of independent wells
     'S':S, #Number of species per well
     'food':0, #index of food source
     'w':1, #energy content of resource
     'g':1, # conversion factor from energy to growth rate
-    'l':0.5,#Leackage rate
+    'l1':l1,#Leackage rate of F0
+    'l2':l2,#Leackage rate of F1
+    'l_sd': 0.1,
     'tau':1, #timescale for esource renewal
     'm' : 1,
-    'sigc': 3 * vamp,
+    'sigc': 3 * vamp
     }
     
     #Generate equations
@@ -217,9 +165,8 @@ def run(input_row):
     # Set random Seed
     np.random.seed(seed)    
     # Sample matrices and l
-    D = sample_d_matrix(a,1)
-    c = sample_c_matrix(a)
-    #l = sample_l_matrix(a)
+    D, c, l = sample_matrices(a,1)
+
     #Set initial state
     N0,R0 = MakeInitialState(a)
     #Construct resource environments and update initial state
@@ -228,7 +175,9 @@ def run(input_row):
     for i in range(n_pairs):
         # Only sample in family 1 and 2
         one_pair = np.random.choice(np.sum([a["SA"][0], a["SA"][1]]), size = 2, replace = False, p = None)
-        N_init[one_pair, i] = [1, 1]
+        one_pair = np.sort(one_pair) 
+        N_init[one_pair, (i*2)] = [0.1, 0.9]
+        N_init[one_pair, (i*2+1)] = [0.9, 0.1]
     N0 = pd.DataFrame(N_init, index = N0.index, columns = N0.keys())
     # Output the initial state
     N0_init = N0.copy()
@@ -239,13 +188,12 @@ def run(input_row):
     params = MakeParams(a)
     params['c'] = c
     params['D'] = D
-    #params['l'] = l
-    #np.concatenate((np.round(np.random.uniform(0.1, 1, a['SA'][0]), 2), np.ones(a['SA'][1])*0.01, np.zeros(a['SA'][2])))
+    params['l'] = l
     
     # Load plate object
-    Plate = Community(init_state, dynamics, params)
-    # Run to steady state. Note tol 1e-3 is the same as in Marsland et al. 
-    Plate.SteadyState(plot = False, tol = 1e-2, verbose = False)
+    Plate = Community(init_state, dynamics, params, parallel = False)
+    Plate.RunExperiment(np.eye(a['n_wells'])/10, T = 24, npass = 5, refresh_resource=True)
+    
     # Save Plate data
     Plate.N = round(Plate.N, 2) 
     N0_init.to_csv(output_dir + 'poolPair_' + str(exp_id) + '_init.csv')

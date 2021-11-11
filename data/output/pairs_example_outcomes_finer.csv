@@ -1,6 +1,6 @@
 Community,Isolate1,Isolate2,InteractionType,InteractionTypeFiner,From,To
-C1R2,1,2,exclusion,competitive exclusion,1,2
-C1R2,1,3,coexistence,frequency-dependent coexistence,1,3
+AcrAss1,1,6,exclusion,competitive exclusion,1,6
+C11R1,1,5,coexistence,frequency-dependent coexistence,1,5
 C2R6,1,3,exclusion,mutual exclusion,1,3
 C2R8,1,2,neutrality,neutrality,1,2
-C1R2,2,4,coexistence,stable coexistence,2,4
+AcrAss1,1,2,coexistence,stable coexistence,1,2

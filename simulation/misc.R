@@ -14,7 +14,7 @@ read_simulation_data <- function (folder, pattern, cs_output_format = T) {
                 suppressMessages() %>%
                 # Edit this ifelse if the species pool size changes
                 {if (cs_output_format) select(., Family = `...1`, Species = `...2`, starts_with("W")) else {
-                    mutate(., Family = paste0("F", rep(0:2, 100)), Species = paste0("S", 0:299))
+                    mutate(., Family = paste0("F", rep(0:2, each = 100)), Species = paste0("S", 0:299))
                 }} %>%
                 na_if(0) %>%
                 pivot_longer(cols = c(-Family, -Species), names_to = "Well", values_to = "Abundance", values_drop_na = T) %>%

@@ -136,7 +136,7 @@ CASEU_RN2 <- CASEU_RN2 %>%
 save(traces_isolate, file = here::here("data/temp/CASEU_RN_isolates_trace.Rdata"))
 CASEU_RN2_raw_output <- caseu_prediction # Raw CASEU output
 CASEU_RN2_mixture_list <- mixture_list # list of the mixture
-save(CASEU_RN2_raw_output, CASEU_RN2_mixture_list, file = here::here("data/temp/CASEU_RN2_raw_output.Rdata"))
+#save(CASEU_RN2_raw_output, CASEU_RN2_mixture_list, file = here::here("data/temp/CASEU_RN2_raw_output.Rdata"))
 
 fwrite(CASEU_RN2, file = here::here("data/temp/CASEU_RN2.csv"))
 

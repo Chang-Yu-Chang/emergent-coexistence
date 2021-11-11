@@ -16,7 +16,7 @@ from .essentialtools import IntegrateWell, OptimizeWell, TimeStamp
 
 #Parameter dimensions for MicroCRM and Lotka-Volterra
 dim_default = {
-                'SxM':['c'],
+                'SxM':['c', 'l'],
                 'MxM':['D','Di'],
                 'SxS':['alpha'],
                 'S':['m','g','K'],
