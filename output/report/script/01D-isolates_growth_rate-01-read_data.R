@@ -4,16 +4,16 @@ library(tidyverse)
 
 isolates_ID_match <- read_csv(here::here("data/temp/isolates_ID_match.csv"))
 # Growth rate data from Jean
-isolates_growth <- read_csv(here::here("data/raw/growth_rate/Growthcurver.csv"))
+isolates_growth <- read_csv("~/Dropbox/lab/invasion-network/data/raw/growth_rate/Growthcurver.csv")
 # Growth rate data from Sylvie
-isolates_growth_syl <- read_csv(here::here("data/raw/growth_rate/Estrela_2021_isolates_grmax.csv"))
+isolates_growth_syl <- read_csv("~/Dropbox/lab/invasion-network/data/raw/growth_rate/Estrela_2021_isolates_grmax.csv")
 # Byproduct measurement on glucose. Data from Sylvie
-isolates_byproduct <- read_csv(here::here("data/raw/growth_rate/By_Products_Glucose.csv")) %>%
+isolates_byproduct <- read_csv("~/Dropbox/lab/invasion-network/data/raw/growth_rate/By_Products_Glucose.csv") %>%
     select(OD620_16h = OD620, ID = SangerID, Glucose_perc, acetate_mM, succinate_mM, lactate_mM, gluconate_mM, ketogluconate_mM)
-isolates_byproduct_time <- read_csv(here::here("data/raw/growth_rate/Estrela_2021_isolates_ph_OAs.csv")) %>%
+isolates_byproduct_time <- read_csv("~/Dropbox/lab/invasion-network/data/raw/growth_rate/Estrela_2021_isolates_ph_OAs.csv") %>%
     select(ID = SangerID, Time = time_hours, OD620, pH, Glucose_perc, acetate_mM, succinate_mM, lactate_mM)
 # OD data from Jean. Filter the 16hr data only
-isolates_OD_DW <- read_csv(here::here("data/raw/growth_rate/OD_Data_MH2.csv")) %>%
+isolates_OD_DW <- read_csv("~/Dropbox/lab/invasion-network/data/raw/growth_rate/OD_Data_MH2.csv") %>%
     filter(Time == 16) %>% select(ID = Sequence, CS = Carbon_Source, OD) %>%
     mutate(CS = sub("[LD]-", "", CS) %>% tolower() %>% paste0("OD620_16h_", .))
 
@@ -215,6 +215,18 @@ isolates_acids <- isolates_byproduct_time %>%
     select(ID, Time, ends_with("mM")) %>%
     rename_with(~ paste0("X_", sub("_mM", "", .)),  ends_with("_mM")) %>%
     pivot_wider(names_from = Time, values_from = starts_with("X_"), names_glue = "{.value}_{Time}hr")
+# Leakiness
+isolates_leakiness <- isolates_byproduct_time %>%
+    select(ID, Time, gluConc = Glucose_perc, X_acetate = acetate_mM, X_succinate = succinate_mM, X_lactate = lactate_mM) %>%
+    mutate(X_sum = 2 * X_acetate + 3 * X_lactate + 4 * X_succinate) %>%
+    # Convert the glucose from mass fraction to mM per carbon
+    mutate(gluConsumption = (0.2 - gluConc) / 180 / 0.1 * 1000 * 6) %>%
+    mutate(leakiness = X_sum / gluConsumption) %>%
+    filter(Time != 0) %>%
+    select(ID, Time, leakiness) %>%
+    pivot_wider(names_from = Time, values_from = leakiness, names_glue = "leakiness_{Time}hr") %>%
+    # Replace the leakiness of 0 glucose consumption time point by NA
+    mutate_all(function(x) ifelse(is.infinite(x), NA, x))
 
 
 # Combine growth rate, OD, pH, preference, secretion data
@@ -224,7 +236,8 @@ isolates_growth_traits <- isolates_ID_match %>%
     left_join(isolates_byproduct_time_sum) %>%
     left_join(isolates_OD_DW_w) %>%
     left_join(isolates_pH) %>%
-    left_join(isolates_preference)
+    left_join(isolates_preference) %>%
+    left_join(isolates_leakiness)
 
 write_csv(isolates_growth_traits, file = here::here("data/temp/isolates_growth_traits.csv"))
 

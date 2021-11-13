@@ -225,21 +225,65 @@ p <- tibble(InteractionType = c("coexistence", "exclusion"), Count = c(130, 0)) 
 ggsave(here::here("plots/talk-pairs_expectation.png"), p, width = 3, height = 4)
 
 
+# Example of pairwise mechanisms
+plot_pairwise_mechanisms <- function(graph) {
+    graph %>%
+        ggraph(layout = "nicely") +
+        geom_node_point(aes(color = Color, shape = Shape), size = node_size, fill = "gray", stroke = node_size/5) +
+        geom_edge_link(aes(color = InteractionType), width = node_size/3,
+                       arrow = arrow(length = unit(node_size/2, "mm"), type = "closed", angle = 45, ends = "last"),
+                       start_cap = circle(node_size/2+3, "mm"),
+                       end_cap = circle(node_size/2+3, "mm")) +
+        scale_edge_color_manual(values = interaction_color) +
+        scale_color_manual(values = c("black" = "black", "white" = NA)) +
+        scale_shape_manual(values = c("real" = 21, "fake" = NA)) +
+        scale_x_continuous(limits = c(-2, 2)) +
+        scale_y_continuous(limits = c(-1.5, 1)) +
+        theme_void() +
+        theme(legend.position = "none", plot.background = element_blank()) +
+        labs(x = "")
+}
+node_size = 10
+p_a <- tbl_graph(nodes = tibble(Isolate = 1:2, G = "g2", x = c(1, -1), y = c(-0.5, -0.5), Color = rep("black", 2), Shape = rep("real", 2)),
+                 edges = tibble(G = "g2", from = 2, to = 1, InteractionType = "exclusion")) %>%
+    plot_pairwise_mechanisms()
+p_b <- tbl_graph(nodes = tibble(Isolate = 1:3, G = "g2", x = c(-1, 1, 0), y = c(0, 0, -1), Color = rep("black", 3), Shape = rep("real", 3)),
+                 edges = tibble(G = "g2", from = c(1, 2), to = c(2, 3), InteractionType = "exclusion")) %>%
+    plot_pairwise_mechanisms()
+p_c <- tbl_graph(nodes = tibble(Isolate = 1:4, G = "g2", x = c(-1, 1, 0, 0), y = c(0, 0, -1, 0), Color = c(rep("black", 3), "white"), Shape = c(rep("real", 3), "fake")),
+                 edges = tibble(G = "g2", from = c(1, 2, 3), to = c(2, 1, 4), InteractionType = c("coexistence", "coexistence", "bistability"))) %>%
+    plot_pairwise_mechanisms()
 
 
+p <- plot_grid(p_a, p_b, p_c, nrow = 1,
+               #labels = c("Pairwise interaction", "Interaction chain", "Higher-order interaction"),
+               axis = "lrtb", align = "vh", label_size = 20) +
+    theme(plot.background = element_rect(fill = NA, color = NA))
+p
+ggsave(here::here("plots/talk-pairwise_mechanisms.png"), p, width = 9, height = 3)
 
 
+set.seed(2)
+p <- tbl_graph(nodes = tibble(Isolate = 1:6),
+          edges = as_tibble(t(combn(6, 2))) %>%
+              setNames(c("From", "To")) %>%
+              mutate(InteractionType = sample(c("coexistence", "exclusion"), size = n(), replace = T))) %>%
+    ggraph(layout = "circle") +
+    geom_node_point(shape = 21, size = node_size, fill = "gray", stroke = node_size/5) +
+    geom_edge_link(aes(color = InteractionType), width = node_size/5,
+                   arrow = arrow(length = unit(node_size/2, "mm"), type = "closed", angle = 30, ends = "last"),
+                   start_cap = circle(node_size/2+3, "mm"),
+                   end_cap = circle(node_size/2+3, "mm")) +
+    scale_edge_color_manual(values = interaction_color) +
+    scale_color_manual(values = c("black" = "black", "white" = NA)) +
+    scale_shape_manual(values = c("real" = 21, "fake" = NA)) +
+    scale_x_continuous(limits = c(-1.2, 1.2)) +
+    scale_y_continuous(limits = c(-1.2, 1.2)) +
+    theme_void() +
+    theme(legend.position = "none", plot.background = element_rect(fill = NA, color = NA), plot.margin = margin(0,0,0,0, unit = "pt")) +
+    labs(x = "")
 
-
-
-
-
-
-
-
-
-
-
+ggsave(here::here("plots/talk-pairwise_mechanisms_network.png"), p, width = 3, height = 3)
 
 
 

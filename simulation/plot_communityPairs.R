@@ -67,11 +67,12 @@ df_interaction %>%
     summarize(Count = n())
 
 # Plot the community pairs
-for (i in 1:3) {
+l = c(0, 0.1, 0.5, 0.9, 1)
+for (i in 1:5) {
     p <- df_interaction %>%
         group_by(Experiment, seed, vamp, q2, l1, PairFermenter, InteractionType) %>%
         summarize(Count = n()) %>%
-        filter(l1 == c(0.1, 0.5, 0.9)[i]) %>%
+        filter(l1 == l[i]) %>%
         ggplot() +
         geom_col(aes(x = PairFermenter, y= Count, fill = InteractionType), color = 1) +
         #geom_col(aes(x = PairFermenter, y= Count, fill = InteractionType), position = "fill") +
@@ -80,7 +81,7 @@ for (i in 1:3) {
         theme_classic() +
         theme(legend.position = "top") +
         labs(x = "", fill = "") +
-        ggtitle(paste0("l1 = ", c(0.1,0.5,0.9)[i]))
+        ggtitle(paste0("l1 = ", l[i]))
     ggsave(paste0("plots/communityPairs_seed1_l1_", i, ".png"), p, width = 10, height = 10)
 }
 p

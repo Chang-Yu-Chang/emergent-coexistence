@@ -160,6 +160,13 @@ interaction_type <- c("exclusion", "coexistence")
 interaction_color = c("#DB7469", "#557BAA")
 names(interaction_color) <- interaction_type
 
+# scatterplot r_glu vs. X_sum
+isolates %>%
+    ggplot(aes(x = r_glucose, y = X_sum_28hr, color = Fermenter)) +
+    geom_point() +
+    theme_classic()
+
+
 # Scatterplot r_glu_d ----
 ## r_glu_d vs. r_ace_d
 p1 <- pairs_meta %>%

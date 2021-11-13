@@ -2,24 +2,25 @@ library(tidyverse)
 source("misc.R")
 
 # Read data
-input_communityPairs <- read_csv("input_communityPairs.csv")
-target_exp_id <- input_communityPairs %>% pull(exp_id)
-pattern_exp_id <- paste(target_exp_id, collapse = "|") %>% paste0("selfAssembly_(", . , ")")
-#pattern_exp_id <- "\\d+"
+input_randomNetworks <- read_csv("input_randomNetworks.csv")
 
-# Subset the target exp_id
-df_init <- read_simulation_data(input_communityPairs$output_dir[1], paste0(pattern_exp_id, "_init")) %>% mutate(Time = 0)
-df_end <- read_simulation_data(input_communityPairs$output_dir[1], paste0(pattern_exp_id, "_end")) %>% mutate(Time = 1)
 
-df <- df_end %>%
-    left_join(select(input_communityPairs, exp_id, seed, vamp, q2))
+S = 300 # number of species in the pool; change this line when the pool size changes
+n_networks = 10
+size_network = 6
+
+species_list <- paste0("S", sample(0:(S-1), size = n_networks * size_network, replace = F))
+well_list <- rep(paste0("W", 0:(n_networks-1)), each = size_network)
+
+df <- input_randomNetworks[rep(1:nrow(input_randomNetworks), each = n_networks*size_network),] %>%
+    mutate(Well = rep(well_list, nrow(input_randomNetworks)), Species = rep(species_list, nrow(input_randomNetworks)))
 
 # Generate pairs
 generate_pairs <- function(x) {
-    # Skip communities with only one or zero strain
     if (length(x) <= 1) return(tibble(Isolate1 = character(), Isolate2 = character()))
     if (length(x) >= 2) {
         x %>%
+            sort() %>%
             combn(2) %>%
             t() %>%
             as_tibble %>%
@@ -34,13 +35,9 @@ df_pairs <- df %>%
     group_by(exp_id, seed, vamp, q2) %>%
     summarize(Pairs = list(bind_rows(Pairs) %>% distinct))
 
-S = 300 # number of species in the pool; change this line when the pool size changes
+
 for (i in 1:nrow(df_pairs)) {
     n_pairs <- nrow(df_pairs$Pairs[i][[1]])
-    if(n_pairs == 0) {
-        cat(paste0("Skip exp_id = ", i, " because of no pairs\n"))
-        next
-    }
     N0 <- as_tibble(matrix(0, nrow = S, ncol = n_pairs)) %>% setNames(paste0("W", 0:(n_pairs-1)))
     species_list <- paste0("S", 0:(S-1))
     pair_list <- df_pairs$Pairs[i][[1]]
@@ -51,7 +48,7 @@ for (i in 1:nrow(df_pairs)) {
         N0[index_pair,2*j-1] <- c(0.1, 0.9)
         N0[index_pair,2*j] <- c(0.9, 0.1)
     }
-    write_csv(N0, file = paste0(input_communityPairs$output_dir[1], 'communityPairs_', df_pairs$exp_id[i], '_init.csv'))
+    write_csv(N0, file = paste0(input_randomNetworks$output_dir[1], 'randomNetworks_', df_pairs$exp_id[i], '_init.csv'))
     cat(paste0("exp_id=", df_pairs$exp_id[i], "\n"))
 }
 

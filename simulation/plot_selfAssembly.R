@@ -2,20 +2,6 @@ library(tidyverse)
 source("misc.R")
 
 # Generate input csv
-n_treatment = 3*4
-n_rep = 20
-input_selfAssembly <- tibble(
-    output_dir = "~/Dropbox/lab/invasion-network/simulation/data/raw/",
-    exp_id = 1:(n_rep*n_treatment),
-    seed = rep(1:n_rep, each = n_treatment),
-    q = 0.9,
-    q2 = c(0.1, 0.5, 0.9) %>% rep(4) %>% rep(n_rep),
-    vamp = c(0.5, 1, 1.5, 2) %>% rep(each = 3) %>% rep(n_rep),
-    S = 100,
-    n_communities = 10
-)
-#write_csv(input_selfAssembly, file = "input_selfAssembly.csv")
-
 n_treatment = 3*3*5
 n_rep = 1
 input_selfAssembly <- tibble(
@@ -32,7 +18,7 @@ input_selfAssembly <- tibble(
 )
 distinct(input_selfAssembly)
 
-write_csv(input_selfAssembly, file = "input_selfAssembly.csv")
+#write_csv(input_selfAssembly, file = "input_selfAssembly.csv")
 
 
 
@@ -47,10 +33,20 @@ pattern_exp_id <- paste(target_exp_id, collapse = "|") %>% paste0("selfAssembly_
 
 # Subset the target exp_id
 #df_init <- read_simulation_data("~/Dropbox/lab/invasion-network/simulation/data/raw", paste0(pattern_exp_id, "_init"), cs_output_format = F) %>% mutate(Time = 0)
-df_end <- read_simulation_data("~/Dropbox/lab/invasion-network/simulation/data/raw", paste0(pattern_exp_id, "_end")) %>% mutate(Time = 1)
+df_end <- read_simulation_data(input_selfAssembly$output_dir[1], paste0(pattern_exp_id, "_end")) %>% mutate(Time = 1)
 
-df <- df_end %>%
-    left_join(select(input_selfAssembly, exp_id, seed, vamp, q2, l1))
+df <- df_end %>% left_join(select(input_selfAssembly, exp_id, seed, vamp, q2, l1))
+
+# Check richness
+df %>%
+    group_by(Experiment, exp_id, seed, vamp, q2, l1, Well) %>%
+    mutate(l1 = factor(l1), q2 = factor(q2)) %>%
+    filter(l1 == 0.5) %>%
+    summarize(Richness = n()) %>%
+    ggplot() +
+    geom_jitter(aes(x = q2, y = Richness, color = l1), shape = 1, height = 0, width = 0.1, size = 3) +
+    facet_grid(.~vamp) +
+    theme_bw()
 
 # Community
 "
@@ -59,32 +55,21 @@ plot and find the decent q and q2 (fixed) and a range of vamp
 "
 I am mixing the cross-community and within community
 "
-
-for (i in 1:3) {
+l = c(0, 0.1, 0.5, 0.9, 1)
+for (i in 1:5) {
     p <- df %>%
-        filter(l1 == c(0.1, 0.5, 0.9)[i]) %>%
+        filter(l1 == l[i]) %>%
         ggplot() +
         geom_col(aes(x = Well, y = Abundance, fill = Family, alpha = Species), color = 1, position = "fill") +
         facet_grid(vamp~q2, labeller = label_both) +
         theme_classic() +
         theme(legend.position = "top") +
         guides(alpha = "none") +
-        ggtitle(paste0("l1 = ", c(0.1,0.5,0.9)[i]))
+        ggtitle(paste0("l1 = ", l[i]))
     ggsave(paste0("plots/selfAssembly_seed1_l1_", i, ".png"), p, width = 10, height = 10)
 }
 p
 #ggsave("plots/selfAssembly_seed1.png", p, width = 10, height = 10)
-
-df_interaction %>%
-    filter(l1 == 0.5, q2 == 0.1, vamp == 1) %>%
-    view
-
-
-
-
-
-
-
 
 
 

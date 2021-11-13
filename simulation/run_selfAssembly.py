@@ -99,13 +99,55 @@ def sample_matrices(assumptions, dtype):
         
         
     # Sample l matrix
-    l_F0 = np.round(np.random.uniform(assumptions['l1'] - assumptions['l_sd'], assumptions['l1'] + assumptions['l_sd'], assumptions['SA'][0]), 2)
-    l_F1 = np.round(np.random.uniform(assumptions['l2'] - assumptions['l_sd'], assumptions['l2'] + assumptions['l_sd'], assumptions['SA'][1]), 2)
-    l_F2 = np.zeros(assumptions['SA'][2])
-    l_row = np.concatenate((l_F0, l_F1, l_F2))
-    l = pd.DataFrame(np.tile(l_row, (M,1))).transpose()
-    l.index = consumer_index
-    l.columns = resource_index
+    l = pd.DataFrame(np.zeros((S,M)),columns=resource_index,index=consumer_index)
+    for k in range(F):
+        for j in range(T):
+            if k==0 and j ==0:
+                if assumptions['l1'] != 0:
+                    l_mean = assumptions['l1']
+                    l_var = assumptions['l_sd']**2
+                    theta_l = l_var/l_mean
+                    k_l = l_mean**2/l_var
+                    l.loc['F'+str(k)]['T'+str(j)] = np.random.gamma(k_l,scale=theta_l,size=(assumptions['SA'][k],assumptions['MA'][j]))
+            elif k==1 and j== 1:
+                if assumptions['l2'] != 0:
+                    l_mean = assumptions['l2']
+                    l_var = assumptions['l_sd'] **2
+                    theta_l = l_var/l_mean
+                    k_l = l_mean**2/l_var
+                    l.loc['F'+str(k)]['T'+str(j)] = np.random.gamma(k_l,scale=theta_l,size=(assumptions['SA'][k],assumptions['MA'][j]))
+            elif k==1 and j ==0:
+                if assumptions['l1'] != 0:
+                    l_mean = assumptions['l2']
+                    l_var = assumptions['l_sd'] **2
+                    theta_l = l_var/l_mean
+                    k_l = l_mean**2/l_var
+                    l.loc['F'+str(k)]['T'+str(j)] = np.random.gamma(k_l,scale=theta_l,size=(assumptions['SA'][k],assumptions['MA'][j]))
+            elif k==0 and j ==1:
+                if assumptions['l1'] != 0:
+                    l_mean = assumptions['l1']
+                    l_var = assumptions['l_sd'] **2
+                    theta_l = l_var/l_mean
+                    k_l = l_mean**2/l_var
+                    l.loc['F'+str(k)]['T'+str(j)] = np.random.gamma(k_l,scale=theta_l,size=(assumptions['SA'][k],assumptions['MA'][j]))
+    if 'GEN' in c.index:
+        if assumptions['l1'] != 0:
+            l_mean = assumptions['l1']
+            l_var = assumptions['l_sd'] **2
+            theta_l = l_var/l_mean
+            k_l = l_mean**2/l_var
+            l.loc['GEN'] = np.random.gamma(k_l,scale=theta_l,size=(assumptions['Sgen'],M))
+    
+    # Set all l >0 to 0
+    l = l.where(l < 1, 1)
+    if False:
+        l_F0 = np.round(np.random.uniform(assumptions['l1'] - assumptions['l_sd'], assumptions['l1'] + assumptions['l_sd'], assumptions['SA'][0]), 2)
+        l_F1 = np.round(np.random.uniform(assumptions['l2'] - assumptions['l_sd'], assumptions['l2'] + assumptions['l_sd'], assumptions['SA'][1]), 2)
+        l_F2 = np.zeros(assumptions['SA'][2])
+        l_row = np.concatenate((l_F0, l_F1, l_F2))
+        l = pd.DataFrame(np.tile(l_row, (M,1))).transpose()
+        l.index = consumer_index
+        l.columns = resource_index
     
     return DT.T, c, l
 

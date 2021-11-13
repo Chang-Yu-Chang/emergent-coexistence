@@ -23,13 +23,15 @@ isolates_tournament <- read_csv(here::here("data/temp/isolates_tournament.csv"))
 # Match isolates' information ----
 ## 68 isolates
 isolates <- isolates_ID_match %>%
+    select(ExpID, ID, Community, Isolate) %>%
     left_join(isolates_RDP, by = c("ID")) %>%
     left_join(isolates_epsilon, by = c("Community", "Isolate")) %>%
     left_join(isolates_tournament, by = c("Community", "Isolate")) %>%
     select(-OD620) %>%
-    left_join(isolates_growth_traits, by = c("ExpID", "ID", "Community", "Isolate")) %>%
+    left_join(isolates_growth_traits, by = c("Family", "Genus", "ExpID", "ID", "Community", "Isolate")) %>%
     mutate(Community = ordered(Community, levels = communities$Community)) %>%
     filter(!(!grepl("JVN", ExpID) & is.na(Community))) %>%
+    select(Assembly, everything()) %>%
     as_tibble()
 
 write_csv(isolates, here::here("data/output/isolates.csv"))

@@ -1,24 +1,10 @@
 library(tidyverse)
 source("misc.R")
 
-n_treatment = 3*4
-n_rep = 20
-
 # Generate input csv
-input_poolPairs <- tibble(
-    output_dir = "~/Dropbox/lab/invasion-network/simulation/data/raw/",
-    exp_id = 1:(n_rep*n_treatment),
-    seed = rep(1:n_rep, each = n_treatment),
-    q = 0.9,
-    q2 = c(0.1, 0.5, 0.9) %>% rep(4) %>% rep(n_rep),
-    vamp = c(0.5, 1, 1.5, 2) %>% rep(each = 3) %>% rep(n_rep),
-    S = 100,
-    n_pairs = 100
-)
-
 n_treatment = 3*3*5
 n_rep = 1
-input_poolPairs <- tibble(
+input_randomNetworks <- tibble(
     output_dir = "~/Dropbox/lab/invasion-network/simulation/data/raw2/",
     exp_id = 1:(n_treatment*n_rep),
     seed = 1,
@@ -31,7 +17,7 @@ input_poolPairs <- tibble(
     n_pairs = 100
 )
 
-write_csv(input_poolPairs, file = "input_poolPairs.csv")
+write_csv(input_randomNetworks, file = "input_randomNetworks.csv")
 
 
 

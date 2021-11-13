@@ -1,7 +1,6 @@
 import sys
 import pandas as pd
 import numpy as np
-import pickle
 from community_simulator import *
 from community_simulator.usertools import *
 
@@ -141,7 +140,6 @@ def sample_matrices(assumptions, dtype):
     
     # Set all l >0 to 0
     l = l.where(l < 1, 1)
-
     if False:
         l_F0 = np.round(np.random.uniform(assumptions['l1'] - assumptions['l_sd'], assumptions['l1'] + assumptions['l_sd'], assumptions['SA'][0]), 2)
         l_F1 = np.round(np.random.uniform(assumptions['l2'] - assumptions['l_sd'], assumptions['l2'] + assumptions['l_sd'], assumptions['SA'][1]), 2)
@@ -164,7 +162,12 @@ def run(input_row):
     exp_id = int(input_row['exp_id'])
     vamp = float(input_row['vamp'])
     S = int(input_row['S'])
-    n_pairs = int(input_row['n_pairs'])
+    
+    # Read in the pairs to be simulated
+    N0_init = pd.read_csv(output_dir + 'randomNetworks_' + str(exp_id) + '_init.csv')
+    n_pairs = int(N0_init.shape[1])
+
+    #
     np.random.seed(seed)
     
     #Set paramaters in model note some of these paramaters are irrelevant to simulation (c1,c0 etc).
@@ -185,7 +188,7 @@ def run(input_row):
     'response':'type I',
     'waste_type':1,
     'R0_food':1000, #unperturbed fixed point for supplied food
-    'n_wells': n_pairs*2, #Number of independent wells
+    'n_wells': n_pairs, #Number of independent wells
     'S':S, #Number of species per well
     'food':0, #index of food source
     'w':1, #energy content of resource
@@ -195,7 +198,7 @@ def run(input_row):
     'l_sd': 0.1,
     'tau':1, #timescale for esource renewal
     'm' : 1,
-    'sigc': 3 * vamp
+    'sigc': 3 * vamp,
     }
     
     #Generate equations
@@ -209,23 +212,14 @@ def run(input_row):
     np.random.seed(seed)    
     # Sample matrices and l
     D, c, l = sample_matrices(a,1)
-
+    
     #Set initial state
     N0,R0 = MakeInitialState(a)
     #Construct resource environments and update initial state
     N_init = np.zeros(np.shape(N0))
-    # Initial N0 state
-    for i in range(n_pairs):
-        # Only sample in family 1 and 2
-        one_pair = np.random.choice(np.sum([a["SA"][0], a["SA"][1]]), size = 2, replace = False, p = None)
-        one_pair = np.sort(one_pair) 
-        N_init[one_pair, (i*2)] = [0.1, 0.9]
-        N_init[one_pair, (i*2+1)] = [0.9, 0.1]
-    N0 = pd.DataFrame(N_init, index = N0.index, columns = N0.keys())
-    # Output the initial state
-    N0_init = N0.copy()
+    N0_init.index = N0.index
     #Construct resource environments and update initial state
-    init_state = [N0,R0]
+    init_state = [N0_init,R0]
     
     # Params 
     params = MakeParams(a)
@@ -239,8 +233,7 @@ def run(input_row):
     
     # Save Plate data
     Plate.N = round(Plate.N, 2) 
-    N0_init.to_csv(output_dir + 'poolPair_' + str(exp_id) + '_init.csv')
-    Plate.N.to_csv(output_dir + 'poolPair_' + str(exp_id) + '_end.csv')
+    Plate.N.to_csv(output_dir + 'randomNetworks_' + str(exp_id) + '_end.csv')
     return 0
 
 if __name__ == "__main__":
@@ -248,3 +241,4 @@ if __name__ == "__main__":
     row_number = int(sys.argv[2]) # Which row of experiment to run
     input_row = pd.read_csv(input_csv).loc[row_number]
     run(input_row)
+
