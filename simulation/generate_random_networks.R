@@ -4,23 +4,27 @@ source("misc.R")
 # Read data
 input_randomNetworks <- read_csv("input_randomNetworks.csv")
 
-
 S = 300 # number of species in the pool; change this line when the pool size changes
 n_networks = 10
 size_network = 6
-
+set.seed(1)
 species_list <- paste0("S", sample(0:(S-1), size = n_networks * size_network, replace = F))
 well_list <- rep(paste0("W", 0:(n_networks-1)), each = size_network)
+network_list <- rep(1:size_network, each = size_network)
 
 df <- input_randomNetworks[rep(1:nrow(input_randomNetworks), each = n_networks*size_network),] %>%
-    mutate(Well = rep(well_list, nrow(input_randomNetworks)), Species = rep(species_list, nrow(input_randomNetworks)))
+    mutate(Well = rep(well_list, nrow(input_randomNetworks)),
+           Species = rep(species_list, nrow(input_randomNetworks))) %>%
+    group_by(exp_id, Well)
 
 # Generate pairs
 generate_pairs <- function(x) {
     if (length(x) <= 1) return(tibble(Isolate1 = character(), Isolate2 = character()))
     if (length(x) >= 2) {
         x %>%
+            ordered(level = paste0("S", 0:(S-1))) %>%
             sort() %>%
+            as.character() %>%
             combn(2) %>%
             t() %>%
             as_tibble %>%
@@ -35,6 +39,7 @@ df_pairs <- df %>%
     group_by(exp_id, seed, vamp, q2) %>%
     summarize(Pairs = list(bind_rows(Pairs) %>% distinct))
 
+df_pairs$Pairs[[1]]
 
 for (i in 1:nrow(df_pairs)) {
     n_pairs <- nrow(df_pairs$Pairs[i][[1]])

@@ -1,11 +1,6 @@
 library(tidyverse)
 source("misc.R")
 
-# Generate input csv
-input_selfAssembly <- read_csv("input_selfAssembly.csv")
-input_communityPairs <- input_selfAssembly #%>% filter(q2 %in% c(0.1, 0.5, 0.9), vamp %in% c(0.5, 1, 1.5))
-write_csv(input_communityPairs, file = "input_communityPairs.csv")
-
 # Read data
 input_communityPairs <- read_csv("input_communityPairs.csv")
 target_exp_id <- input_communityPairs %>%
@@ -18,10 +13,6 @@ pattern_exp_id <- paste(target_exp_id, collapse = "|") %>% paste0("communityPair
 df_init <- read_simulation_data(input_communityPairs$output_dir[1], paste0(pattern_exp_id, "_init"), cs_output_format = F) %>% mutate(Time = "init")
 df_end <- read_simulation_data(input_communityPairs$output_dir[1], paste0(pattern_exp_id, "_end")) %>% mutate(Time = "end")
 
-"
-plot and find the decent q and q2 (fixed) and a range of vamp
-plot the community pairs versus pool pairs
-"
 # Isolate list
 isolates <- df_init %>% distinct(Experiment, exp_id, Family, Species) %>% arrange(Experiment, exp_id, Family, Species)
 
@@ -58,8 +49,10 @@ df_interaction <- df_sign %>%
     left_join(rename_with(isolates, ~ paste0(., "1"), !contains("Experiment") & !contains("exp_id"))) %>%
     left_join(rename_with(isolates, ~ paste0(., "2"), !contains("Experiment") & !contains("exp_id"))) %>%
     mutate(PairFermenter = ifelse(Family1 == "F0" & Family2 == "F0", "FF", ifelse(Family1 == "F1" & Family2 == "F1", "NN", "FN"))) %>%
-    left_join(select(input_poolPairs, exp_id, seed, vamp, q2, l1))
+    left_join(select(input_communityPairs, exp_id, seed, vamp, q2, l1))
 df_interaction
+
+write_csv(df_interaction, file = "~/Dropbox/lab/invasion-network/simulation/data/temp/pairs_communityPairs.csv")
 
 # Check sample size
 df_interaction %>%
@@ -84,12 +77,10 @@ for (i in 1:5) {
         ggtitle(paste0("l1 = ", l[i]))
     ggsave(paste0("plots/communityPairs_seed1_l1_", i, ".png"), p, width = 10, height = 10)
 }
-p
-ggsave("plots/communityPairs_seed1.png", p, width = 10, height = 10)
 
+#ggsave("plots/communityPairs_seed1.png", p, width = 10, height = 10)
 
-
-
+if (FALSE) {
 
 # Match pairs to communities
 target_exp_id
@@ -103,6 +94,9 @@ df_end_comm %>%
     facet_grid(vamp~q2) +
     theme_classic() +
     guides(alpha = "none")
+
+}
+
 
 
 

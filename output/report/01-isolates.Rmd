@@ -490,6 +490,7 @@ if (run_scripts) source("script/01-isolates-01-read_match_isolate.R")
 Isolates information in one data.frame `isolates`. 68 isolates
 
 ```{r}
+isolates <- read_csv(here::here("data/output/isolates.csv"))
 isolates
 str(isolates)
 ```

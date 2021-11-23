@@ -116,15 +116,17 @@ for (i in 1:nrow(pairs_meta)) {
 
 # Isolates data from 01-isolates ----
 isolates_to_be_joint <- read_csv(here::here("data/output/isolates.csv")) %>%
-    select(Community, Isolate, ID, starts_with("r_"), starts_with("X_"), starts_with("pH_"), starts_with("OD620_"), ends_with("CS"))
+    select(Community, Isolate, ID, starts_with("rmid_"), starts_with("rmax_"), starts_with("X_"), starts_with("pH_"), starts_with("OD620_"), ends_with("CS"))
 
 pairs_meta <- pairs_meta %>%
     left_join(rename_with(isolates_to_be_joint, ~ paste0(., "1"), !contains("Community"))) %>%
     left_join(rename_with(isolates_to_be_joint, ~ paste0(., "2"), !contains("Community"))) %>%
     mutate(
         # Difference in glucose, acetate, lactate, succinate growth rate
-        r_glu_d = r_glucose1 - r_glucose2, r_ace_d = r_acetate1 - r_acetate2,
-        r_lac_d = r_lactate1 - r_lactate2, r_suc_d = r_succinate1 - r_succinate2,
+        rmid_glu_d = rmid_glucose1 - rmid_glucose2, rmid_ace_d = rmid_acetate1 - rmid_acetate2,
+        rmid_lac_d = rmid_lactate1 - rmid_lactate2, rmid_suc_d = rmid_succinate1 - rmid_succinate2,
+        rmax_glu_d = rmax_glucose1 - rmax_glucose2, rmax_ace_d = rmax_acetate1 - rmax_acetate2,
+        rmax_lac_d = rmax_lactate1 - rmax_lactate2, rmax_suc_d = rmax_succinate1 - rmax_succinate2,
         # Matched CS
         MatchedCS = PreferredCS1 == PreferredCS2,
         # Difference in pH

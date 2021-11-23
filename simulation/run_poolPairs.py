@@ -216,7 +216,7 @@ def run(input_row):
     N_init = np.zeros(np.shape(N0))
     # Initial N0 state
     for i in range(n_pairs):
-        # Only sample in family 1 and 2
+        # Only sample in family 1 and 2. I might get duplicated pairs
         one_pair = np.random.choice(np.sum([a["SA"][0], a["SA"][1]]), size = 2, replace = False, p = None)
         one_pair = np.sort(one_pair) 
         N_init[one_pair, (i*2)] = [0.1, 0.9]

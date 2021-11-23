@@ -318,6 +318,32 @@ communities <- read_csv(here::here("data/output/communities.csv"))
 load(here::here("data/output/network_community.Rdata"))
 ```
 
+
+## Convert the graph file into txt 
+
+So that the graph is readable in python
+
+```{r}
+load(here::here("data/output/network_community.Rdata"))
+load(here::here("data/output/motif_list.Rdata"))
+
+# Only use those that are 
+library(igraph)
+for (i in 1:length(net_list)) {
+    write_graph(net_list[[i]], here::here(paste0("data/temp/networks/", names(net_list)[i], ".txt")))
+}
+for (i in 1:length(motif_list)) {
+    write_graph(motif_list[[i]], here::here(paste0("data/temp/networks/motif", i, ".txt")))
+}
+
+
+write_graph(net_list[[i]], here::here(paste0("data/temp/networks/", names(net_list)[i], ".txt")))
+write_graph(motif_list[[i]], here::here(paste0("data/temp/networks/", names(net_list)[i], ".txt")))
+
+```
+
+
+
 ## Plot network in matrix
 
 Upper half matrices

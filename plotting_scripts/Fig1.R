@@ -3,6 +3,8 @@
 library(tidyverse)
 library(tidymodels)
 library(cowplot)
+library(ggraph)
+library(tidygraph)
 library(ggsci)
 source(here::here("plotting_scripts/network_functions.R"))
 
@@ -14,6 +16,7 @@ pairs_freq <- read_csv(here::here("data/output/pairs_freq.csv"))
 interaction_type <- c("exclusion", "coexistence", "neutrality", "mutual exclusion", "frequency-dependent\ncoexistence")
 interaction_color = c("#DB7469", "#557BAA", "#8650C4", "red", "blue")
 names(interaction_color) <- interaction_type
+networks_motif <- read_csv(here::here("data/output/networks_motif.csv"))
 
 
 # Figure 1A
@@ -99,7 +102,7 @@ p_pairs_interaction_random <- temp %>%
     scale_y_continuous(expand = c(0,0), breaks = c(0, .5, 1)) +
     theme_classic() +
     theme(axis.title.x = element_blank(), legend.position = "right", axis.text.x = element_text(size = 10)) +
-    labs(x = "", y  = "Percentage", fill = "")
+    labs(x = "", y  = "Fraction", fill = "")
 ggsave(here::here("plots/Fig1-random_assembly.png"), p_pairs_interaction_random, width = 4.5, height = 4.5)
 ## Stat
 observed_stat <- pairs %>%
@@ -116,11 +119,36 @@ null_stat %>%
 
 
 
-#
+# Nontransitivity
+p1 <- networks_motif %>%
+    mutate(Community = factor(Community)) %>% mutate(Motif = as.character(Motif)) %>%
+    group_by(Community) %>%
+    filter(Motif %in% 2) %>%
+    ggplot(aes(x = Motif, y = Fraction)) +
+    geom_boxplot() +
+    geom_jitter(shape = 21, size = 2, width = 0.2, height = 0, color = "red") +
+    geom_text(x = -Inf, y = Inf, label = paste0("n = ", length(unique(networks_motif$Community))), vjust = 1, hjust = -0.1) +
+    scale_x_discrete(labels = c("Motif1" = "Nontransitive", "Motif2" = "Transitive")) +
+    scale_y_continuous(breaks = c(0, 0.5, 1), limits = c(-0.05,1), expand = c(0,0)) +
+    #scale_color_npg(labels = c("communityPairs" = "Community", "randomNetworks" = "Species pool")) +
+    theme_classic() +
+    theme(legend.position = "right", legend.title = element_blank(), strip.text = element_blank(),
+          panel.spacing = unit(0, "pt"),
+          axis.text.x = element_blank(),
+          axis.title.y = element_text(size = 11), axis.text.y = element_text(size = 10),
+          legend.text = element_text(size = 10)) +
+    labs(x = "", y = "Hierarchy")
+p1
+ggsave("../plots/Fig1-motif.png", plot = p1, width = 2, height = 3)
+
+
+
+  #
 p_top <- plot_grid(p_A, p_B, nrow = 1, rel_widths = c(1, 2), scale = .9)
 p_middle <- plot_grid(p_C, p_D, nrow = 1, rel_widths = c(2, 1), axis = "tb", align = "vh", scale = .9)
 p <- plot_grid(p_top, p_middle, ncol = 1, rel_heights = c(1, 2))
 ggsave(here::here("plots/Fig1.pdf"), p, width = 12, height = 10)
+
 
 
 

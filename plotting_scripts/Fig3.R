@@ -13,8 +13,6 @@ interaction_color = c("#DB7469", "#557BAA")
 names(interaction_color) <- interaction_type
 
 # Coexistence more likely in pairs alike
-
-#
 isolates %>%
     ggplot() +
     geom_histogram(aes(x = X_sum_16hr, fill = Fermenter), color = 1) +
@@ -25,9 +23,9 @@ isolates %>%
 # r_glu
 p1 <- pairs_meta %>%
     filter(!is.na(PairFermenter)) %>%
-    select(PairFermenter, InteractionType, r_glucose1, r_glucose2) %>%
-    pivot_longer(cols = starts_with("r_glucose"), names_to = "Isolate", values_to = "r_glucose") %>%
-    ggplot(aes(x = InteractionType, y = r_glucose, fill = Isolate)) +
+    select(PairFermenter, InteractionType, rmid_glucose1, rmid_glucose2) %>%
+    pivot_longer(cols = starts_with("rmid_glucose"), names_to = "Isolate", values_to = "rmid_glucose") %>%
+    ggplot(aes(x = InteractionType, y = rmid_glucose, fill = Isolate)) +
     geom_boxplot() +
     geom_point(shape = 1, size = 2, position = position_jitterdodge(jitter.width = 0.2)) +
     scale_fill_npg(labels = c("dominant", "subdominant"), name = "Isolate") +
@@ -52,12 +50,13 @@ p2 <- pairs_meta %>%
     theme(legend.title = element_blank(), legend.position = "none") +
     labs(x = "", y = expression(X[sum]))
 p2
+
 # Scatter r_glu vs. sum_acids
 p3 <- isolates %>%
     filter(!is.na(Fermenter)) %>%
     ggplot() +
-    geom_segment(data = pairs_meta, aes(x = r_glucose1, xend = r_glucose2, y = X_sum_16hr1, yend = X_sum_16hr2, color = InteractionType, linetype = InteractionType)) +
-    geom_point(aes(x = r_glucose, y = X_sum_16hr, shape = Fermenter), stroke = 1, size = 2) +
+    geom_segment(data = pairs_meta, aes(x = rmid_glucose1, xend = rmid_glucose2, y = X_sum_16hr1, yend = X_sum_16hr2, color = InteractionType, linetype = InteractionType)) +
+    geom_point(aes(x = rmid_glucose, y = X_sum_16hr, shape = Fermenter), stroke = 1, size = 2) +
     scale_color_manual(values = c("coexistence" = "black", "exclusion" = "grey")) +
     scale_linetype_manual(values = c("coexistence" = 1, "exclusion" = 3)) +
     scale_shape_manual(values = c(`TRUE` = 1, `FALSE` = 2), labels = c("Fermenter", "Respirator")) +
@@ -74,40 +73,39 @@ p4 <- pairs_meta %>%
     ggplot() +
     geom_vline(xintercept = 0, linetype = 2) +
     geom_hline(yintercept = 0, linetype = 2) +
-    geom_point(aes(x = r_glu_d, y = X_sum_16hr_d, shape = InteractionType, color = PairFermenter), size = 2, stroke = .5) +
-    #scale_color_manual(values = interaction_color) +
+    geom_point(aes(x = rmid_glu_d, y = X_sum_16hr_d, shape = InteractionType, color = PairFermenter), size = 2, stroke = .5) +
     scale_shape_manual(values = c(coexistence = 16, exclusion = 1)) +
     scale_color_npg(labels = c("Fermenter-Fermenter", "Fermenter-Respirator", "Respirator-Respirator")) +
     theme_classic() +
     theme(legend.title = element_blank()) +
     labs(x = expression(r[A]-r[B]), y = expression(X[A]-X[B]))
 p4
-#ggsave(here::here("plots/Fig_pairs-glu_acids_d_scatter.png"), p4, width = 6, height = 4)
+ggsave(here::here("plots/Fig_pairs-glu_acids_d_scatter.png"), p4, width = 6, height = 4)
 
 
 #
 p <- plot_grid(p1, p2, align = "v", axis = "lr", ncol = 1)
-#ggsave(here::here("plots/Fig3.png"), p, width = 8, height = 8)
+ggsave(here::here("plots/Fig3.png"), p, width = 8, height = 8)
 
 
 # Stats
-pairs_meta <- pairs_meta %>%
-    mutate_if(is.character, as.factor)
-
-
 pairs_meta %>%
-
-    #filter(PairFermenter == "FF") %>% filter(!is.na(InteractionType)) %>%
+    mutate_if(is.character, as.factor) %>%
+    filter(PairFermenter == "FF") %>% filter(!is.na(InteractionType)) %>%
+    #filter(PairFermenter == "FN") %>% filter(!is.na(InteractionType)) %>%
     mutate(InteractionType = ifelse(InteractionType == "coexistence", 1, 0)) %>%
-    glm(formula = InteractionType ~ r_glu_d * X_sum_16hr_d, data = ., family = "binomial") %>%
+    glm(formula = InteractionType ~  rmid_glu_d * X_sum_16hr_d, data = ., family = "binomial") %>%
     broom::tidy() %>%
     #select(term, estimate, p.value) %>%
     {.}
 
+if (FALSE) {
+
 logistic_reg() %>%
     set_engine("glm") %>%
     fit(InteractionType ~ r_glu_d * X_sum_16hr_d, data = pairs_meta) %>%
-    tidy() %>%
+    tidy()
+}
 
 
 

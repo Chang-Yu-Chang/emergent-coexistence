@@ -1,6 +1,5 @@
 #' Read isolate monoculture growth rates in various carbon sources
 library(tidyverse)
-library(tidyverse)
 
 isolates_ID_match <- read_csv(here::here("data/temp/isolates_ID_match.csv"))
 # Growth rate data from Jean
@@ -18,14 +17,21 @@ isolates_OD_DW <- read_csv("~/Dropbox/lab/invasion-network/data/raw/growth_rate/
     mutate(CS = sub("[LD]-", "", CS) %>% tolower() %>% paste0("OD620_16h_", .))
 
 # Jean's growth rate data. Use the fitted Rmid ----
-isolates_growth_w <- isolates_growth %>%
+isolates_growth_w_mid <- isolates_growth %>%
     separate(col = SID, sep = "_", into  = c("ID", "CS"), convert = T) %>%
     select(-SangerID, -Family) %>%
     select(ID, CS, RMid) %>%
     filter(CS %in% c("D-Glucose", "Acetate", "D-Lactate", "Succinate", "Gluconate", "2-Ketogluconate")) %>%
     # names to lower case
     mutate(CS = CS %>% sub("2-", "", .) %>% sub("D-", "", .) %>% tolower()) %>%
-    pivot_wider(names_from = CS, values_from = RMid, names_prefix = "r_")
+    pivot_wider(names_from = CS, values_from = RMid, names_prefix = "rmid_")
+
+# Sylvie's growth rate. Use Rmax
+isolates_growth_w_max <- isolates_growth_syl %>%
+    select(ID = SangerID, cs, gr_max) %>%
+    pivot_wider(names_from = cs, values_from = gr_max, names_prefix = "rmax_")
+
+
 
 # Isolate's OD at 16 hr in DW96 plate. Jean's data ----
 isolates_OD_DW_w <- isolates_OD_DW %>%
@@ -231,7 +237,8 @@ isolates_leakiness <- isolates_byproduct_time %>%
 
 # Combine growth rate, OD, pH, preference, secretion data
 isolates_growth_traits <- isolates_ID_match %>%
-    left_join(isolates_growth_w) %>%
+    left_join(isolates_growth_w_mid) %>%
+    left_join(isolates_growth_w_max) %>%
     left_join(isolates_acids) %>%
     left_join(isolates_byproduct_time_sum) %>%
     left_join(isolates_OD_DW_w) %>%

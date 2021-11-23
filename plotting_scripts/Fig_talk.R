@@ -3,7 +3,9 @@
 library(tidyverse)
 library(tidygraph)
 library(ggraph)
+library(ggforce)
 library(cowplot)
+library(ggsci)
 source("network_functions.R")
 interaction_type <- c("exclusion", "coexistence", "lose", "bistability", "neutrality", "self", "undefined")
 interaction_color = c("#DB7469", "#557BAA", "#73C966", "#EECF6D", "#8650C4", "black", "grey80")
@@ -164,54 +166,58 @@ p <- plot_grid(p1, p2, p3, ncol = 1, labels = paste0("Community ", 1:3))
 ggsave("../plots/talk-example.png", plot = p, width = 12, height = 10)
 
 
-# Network with hiererachy
+# Network with hierarchy
 load(here::here("data/output/network_community.Rdata"))
-
 
 node_size = 10
 example_graph <- net_list$C11R1 %>%
     activate("nodes") %>%
     arrange(PlotRank)
-graph_layout <- create_layout(example_graph, layout = "auto") %>%
-    arrange(PlotRank) %>%
-    mutate(x = c(-.5, .5, 0, -1, 1, -2, 2, -1, 1),
-           y = c(5, 5, 4, 3, 3, 2, 2, 1, 1))
-example_graph %>%
-    ggraph(layout = graph_layout) +
-    geom_node_point(aes(x = x, y = y), size = node_size, shape = 21, fill = "gray", colour = "black", stroke = node_size/5) +
-    geom_edge_link(aes(color = InteractionType), width = node_size/10,
-                   arrow = arrow(length = unit(node_size/2, "mm"), type = "closed", angle = 30, ends = "last"),
-                   start_cap = circle(node_size/2+1, "mm"),
-                   end_cap = circle(node_size/2+1, "mm")) +
-    scale_edge_color_manual(values = interaction_color) +
-    theme_void() +
-    theme(legend.position = "none", plot.margin = margin(0,0,0,0)) +
-    labs(x = "")
+if (FALSE) {
+    graph_layout <- create_layout(example_graph, layout = "auto") %>%
+        arrange(PlotRank) %>%
+        mutate(x = c(-.5, .5, 0, -1, 1, -2, 2, -1, 1),
+               y = c(5, 5, 4, 3, 3, 2, 2, 1, 1))
+    example_graph %>%
+        ggraph(layout = graph_layout) +
+        geom_node_point(aes(x = x, y = y), size = node_size, shape = 21, fill = "gray", colour = "black", stroke = node_size/5) +
+        geom_edge_link(aes(color = InteractionType), width = node_size/10,
+                       arrow = arrow(length = unit(node_size/2, "mm"), type = "closed", angle = 30, ends = "last"),
+                       start_cap = circle(node_size/2+1, "mm"),
+                       end_cap = circle(node_size/2+1, "mm")) +
+        scale_edge_color_manual(values = interaction_color) +
+        theme_void() +
+        theme(legend.position = "none", plot.margin = margin(0,0,0,0)) +
+        labs(x = "")
 
+}
 
 p <- example_graph %>%
+    activate(edges) %>%
+    #filter(from < to) %>%
     ggraph(layout = "linear") +
-    geom_node_point(size = node_size, shape = 21, fill = "gray", colour = "black", stroke = node_size/5) +
+    geom_node_point(aes(alpha = Rank), size = node_size, shape = 21, fill = "gray", colour = "black", stroke = node_size/5) +
     #geom_node_text(aes(label = Isolate), size = 10) +
     geom_edge_arc(aes(color = InteractionType, alpha = InteractionType), edge_width = node_size / 10,
                   arrow = arrow(length = unit(node_size/2, "mm"), type = "open", angle = 30, ends = "last"),
                   start_cap = circle(node_size/2+1, "mm"), end_cap = circle(node_size/2+1, "mm")) +
     coord_flip() +
-    scale_edge_color_manual(values = interaction_color) +
-    scale_edge_alpha_manual(values = c("coexistence" = 0.3, "exclusion" = 0.9)) +
+    scale_alpha(range = c(1,0.2), breaks = c(1, 5, 9)) +
+    scale_edge_color_manual(values = interaction_color, name = "") +
+    scale_edge_alpha_manual(values = c("coexistence" = 0.3, "exclusion" = 0.9), name = "") +
     scale_y_continuous(limits = c(-4, 2)) +
     scale_x_reverse() +
-    scale_color_manual(values = c(`TRUE` = "#DB7469", `FALSE` = "#557BAA")) +
     guides(color = "none") +
     theme_void() +
     theme(legend.position = "right", plot.background = element_rect(fill = "white", color = NA),
-          legend.title = element_blank(), plot.margin = margin(10,30,10,10, unit = "pt"),
+          legend.title = element_text(size = 20),
+          plot.margin = margin(10,30,10,10, unit = "pt"),
           legend.text = element_text(size = 20)) +
     labs(x = "")
 p
 ggsave("../plots/talk-example_hiererchy.png", p, width = 9, height = 5)
 
-# Expectation plot for coexisence pairs
+# Expectation plot for coexistence pairs
 p <- tibble(InteractionType = c("coexistence", "exclusion"), Count = c(130, 0)) %>%
     ggplot() +
     geom_col(aes(x = InteractionType, y = Count, fill = InteractionType), color = 1) +
@@ -265,9 +271,9 @@ ggsave(here::here("plots/talk-pairwise_mechanisms.png"), p, width = 9, height = 
 
 set.seed(2)
 p <- tbl_graph(nodes = tibble(Isolate = 1:6),
-          edges = as_tibble(t(combn(6, 2))) %>%
-              setNames(c("From", "To")) %>%
-              mutate(InteractionType = sample(c("coexistence", "exclusion"), size = n(), replace = T))) %>%
+               edges = as_tibble(t(combn(6, 2))) %>%
+                   setNames(c("From", "To")) %>%
+                   mutate(InteractionType = sample(c("coexistence", "exclusion"), size = n(), replace = T))) %>%
     ggraph(layout = "circle") +
     geom_node_point(shape = 21, size = node_size, fill = "gray", stroke = node_size/5) +
     geom_edge_link(aes(color = InteractionType), width = node_size/5,
@@ -284,6 +290,284 @@ p <- tbl_graph(nodes = tibble(Isolate = 1:6),
     labs(x = "")
 
 ggsave(here::here("plots/talk-pairwise_mechanisms_network.png"), p, width = 3, height = 3)
+
+
+
+# Example of global networks
+if (FALSE) {
+
+    example_graph <- tbl_graph(nodes = tibble(Isolate = 1:n_species,
+                                              x = 1:n_species, y = rep(0, n_species),
+                                              InCommunity = factor(c(rep(1,5), 2 ,2, 2, 2, 2, rep(1,n_species-10)))),
+                               edges = as_tibble(t(combn(n_species, 2))) %>%
+                                   setNames(c("From", "To")) %>%
+                                   mutate(InteractionType = sample(c("coexistence", "exclusion"), choose(n_species, 2), replace = T)))
+    p <- example_graph %>%
+        ggraph(layout = "linear") +
+        geom_node_point(size = node_size, shape = 21, fill = "gray", colour = "black", stroke = node_size/5) +
+        geom_edge_arc(aes(color = InteractionType, alpha = InteractionType), edge_width = node_size / 10,
+                      arrow = arrow(length = unit(node_size/2, "mm"), type = "open", angle = 30, ends = "last"),
+                      start_cap = circle(node_size/2+1, "mm"), end_cap = circle(node_size/2+1, "mm")) +
+        coord_flip() +
+        scale_edge_color_manual(values = interaction_color) +
+        scale_edge_alpha_manual(values = c("coexistence" = 0.3, "exclusion" = 0.9)) +
+        scale_y_continuous(limits = c(-8, 2)) +
+        scale_x_reverse() +
+        scale_color_manual(values = c(`TRUE` = "#DB7469", `FALSE` = "#557BAA")) +
+        guides(color = "none", fill = "none") +
+        theme_void() +
+        theme(legend.position = "right", plot.background = element_rect(fill = "white", color = NA),
+              legend.title = element_blank(), plot.margin = margin(10,30,10,10, unit = "pt"),
+              legend.text = element_text(size = 20)) +
+        labs(x = "")
+    ggsave(here::here("plots/talk-global_network.png"), p, width = 10, height = 8)
+    p
+    p <- example_graph %>%
+        ggraph(layout = "linear") +
+        geom_mark_hull(aes(x = x, y = y, fill = InCommunity, filter = InCommunity == 2), expand = unit(node_size/3*2, "mm"), concavity = 10) +
+        geom_node_point(size = node_size, shape = 21, fill = "gray", colour = "black", stroke = node_size/5) +
+        geom_edge_arc(aes(color = InteractionType, alpha = InteractionType), edge_width = node_size / 10,
+                      arrow = arrow(length = unit(node_size/2, "mm"), type = "open", angle = 30, ends = "last"),
+                      start_cap = circle(node_size/2+1, "mm"), end_cap = circle(node_size/2+1, "mm")) +
+        coord_flip() +
+        scale_edge_color_manual(values = interaction_color) +
+        scale_edge_alpha_manual(values = c("coexistence" = 0.3, "exclusion" = 0.9)) +
+        scale_y_continuous(limits = c(-8, 2)) +
+        scale_x_reverse() +
+        scale_color_manual(values = c(`TRUE` = "#DB7469", `FALSE` = "#557BAA")) +
+        guides(color = "none", fill = "none") +
+        theme_void() +
+        theme(legend.position = "right", plot.background = element_rect(fill = "white", color = NA),
+              legend.title = element_blank(), plot.margin = margin(10,30,10,10, unit = "pt"),
+              legend.text = element_text(size = 20)) +
+        labs(x = "")
+
+
+    ggsave(here::here("plots/talk-global_network_highlight.png"), p, width = 10, height = 8)
+
+
+    p <- example_graph %>%
+        activate(nodes) %>% filter(InCommunity == 2) %>%
+        ggraph(layout = "linear") +
+        geom_mark_hull(aes(x = x, y = y, fill = InCommunity, filter = InCommunity == 2), expand = unit(node_size/3*2, "mm"), concavity = 10) +
+        geom_node_point(size = node_size, shape = 21, fill = "gray", colour = "black", stroke = node_size/5) +
+        geom_edge_arc(aes(color = InteractionType, alpha = InteractionType), edge_width = node_size / 10,
+                      arrow = arrow(length = unit(node_size/2, "mm"), type = "open", angle = 30, ends = "last"),
+                      start_cap = circle(node_size/2+1, "mm"), end_cap = circle(node_size/2+1, "mm")) +
+        coord_flip() +
+        scale_edge_color_manual(values = interaction_color) +
+        scale_edge_alpha_manual(values = c("coexistence" = 0.3, "exclusion" = 0.9)) +
+        scale_y_continuous(limits = c(-2, 2)) +
+        scale_x_continuous(limits = c(0, 6)) +
+        scale_color_manual(values = c(`TRUE` = "#DB7469", `FALSE` = "#557BAA")) +
+        guides(color = "none", fill = "none") +
+        theme_void() +
+        theme(legend.position = "none", plot.background = element_rect(fill = "white", color = NA),
+              legend.title = element_blank(), plot.margin = margin(10,30,10,10, unit = "pt"),
+              legend.text = element_text(size = 20)) +
+        labs(x = "")
+
+    ggsave(here::here("plots/talk-global_network_community.png"), p, width = 5, height = 4)
+
+
+    example_graph2 <- tbl_graph(nodes = tibble(Isolate = 1:n_species,
+                                               x = 1:n_species, y = rep(0, n_species),
+                                               InCommunity = factor(c(rep(1,5), 2 ,2, 2, 2, 2, rep(1,n_species-10)))),
+                                edges = as_tibble(t(combn(n_species, 2))) %>%
+                                    setNames(c("From", "To")) %>%
+                                    mutate(InteractionType = sample(c("exclusion"), choose(n_species, 2), replace = T)))
+    p <- example_graph2 %>%
+        ggraph(layout = "linear") +
+        geom_node_point(size = node_size, shape = 21, fill = "gray", colour = "black", stroke = node_size/5) +
+        geom_edge_arc(aes(color = InteractionType, alpha = InteractionType), edge_width = node_size / 10,
+                      arrow = arrow(length = unit(node_size/2, "mm"), type = "open", angle = 30, ends = "last"),
+                      start_cap = circle(node_size/2+1, "mm"), end_cap = circle(node_size/2+1, "mm")) +
+        coord_flip() +
+        scale_edge_color_manual(values = interaction_color) +
+        scale_edge_alpha_manual(values = c("coexistence" = 0.3, "exclusion" = 0.9)) +
+        scale_y_continuous(limits = c(-8, 2)) +
+        scale_x_reverse() +
+        scale_color_manual(values = c(`TRUE` = "#DB7469", `FALSE` = "#557BAA")) +
+        guides(color = "none", fill = "none") +
+        theme_void() +
+        theme(legend.position = "right", plot.background = element_rect(fill = "white", color = NA),
+              legend.title = element_blank(), plot.margin = margin(10,30,10,10, unit = "pt"),
+              legend.text = element_text(size = 20)) +
+        labs(x = "")
+    ggsave(here::here("plots/talk-global_network.png"), p, width = 10, height = 8)
+    p
+    p <- example_graph2 %>%
+        ggraph(layout = "linear") +
+        geom_mark_hull(aes(x = x, y = y, fill = InCommunity, filter = InCommunity == 2), expand = unit(node_size/3*2, "mm"), concavity = 10) +
+        geom_node_point(size = node_size, shape = 21, fill = "gray", colour = "black", stroke = node_size/5) +
+        geom_edge_arc(aes(color = InteractionType, alpha = InteractionType), edge_width = node_size / 10,
+                      arrow = arrow(length = unit(node_size/2, "mm"), type = "open", angle = 30, ends = "last"),
+                      start_cap = circle(node_size/2+1, "mm"), end_cap = circle(node_size/2+1, "mm")) +
+        coord_flip() +
+        scale_edge_color_manual(values = interaction_color) +
+        scale_edge_alpha_manual(values = c("coexistence" = 0.3, "exclusion" = 0.9)) +
+        scale_y_continuous(limits = c(-8, 2)) +
+        scale_x_reverse() +
+        scale_color_manual(values = c(`TRUE` = "#DB7469", `FALSE` = "#557BAA")) +
+        guides(color = "none", fill = "none") +
+        theme_void() +
+        theme(legend.position = "right", plot.background = element_rect(fill = "white", color = NA),
+              legend.title = element_blank(), plot.margin = margin(10,30,10,10, unit = "pt"),
+              legend.text = element_text(size = 20)) +
+        labs(x = "")
+
+
+    ggsave(here::here("plots/talk-global_network_highlight.png"), p, width = 10, height = 8)
+
+
+    p <- example_graph2 %>%
+        activate(nodes) %>% filter(InCommunity == 2) %>%
+        ggraph(layout = "linear") +
+        geom_mark_hull(aes(x = x, y = y, fill = InCommunity, filter = InCommunity == 2), expand = unit(node_size/3*2, "mm"), concavity = 10) +
+        geom_node_point(size = node_size, shape = 21, fill = "gray", colour = "black", stroke = node_size/5) +
+        geom_edge_arc(aes(color = InteractionType, alpha = InteractionType), edge_width = node_size / 10,
+                      arrow = arrow(length = unit(node_size/2, "mm"), type = "open", angle = 30, ends = "last"),
+                      start_cap = circle(node_size/2+1, "mm"), end_cap = circle(node_size/2+1, "mm")) +
+        coord_flip() +
+        scale_edge_color_manual(values = interaction_color) +
+        scale_edge_alpha_manual(values = c("coexistence" = 0.3, "exclusion" = 0.9)) +
+        scale_y_continuous(limits = c(-2, 2)) +
+        scale_x_continuous(limits = c(0, 6)) +
+        scale_color_manual(values = c(`TRUE` = "#DB7469", `FALSE` = "#557BAA")) +
+        guides(color = "none", fill = "none") +
+        theme_void() +
+        theme(legend.position = "none", plot.background = element_rect(fill = "white", color = NA),
+              legend.title = element_blank(), plot.margin = margin(10,30,10,10, unit = "pt"),
+              legend.text = element_text(size = 20)) +
+        labs(x = "")
+
+    ggsave(here::here("plots/talk-global_network_community.png"), p, width = 5, height = 4)
+
+}
+node_size = 8
+set.seed(1)
+n_species <- 10
+
+example_graph <- tbl_graph(nodes = tibble(Isolate = 1:n_species,
+                                          x = 1:n_species, y = rep(0, n_species),
+                                          InCommunity = factor(c(rep(1,5), 2 ,2, 2, 2, 2, rep(1,n_species-10)))),
+                           edges = as_tibble(t(combn(n_species, 2))) %>%
+                               setNames(c("From", "To")) %>%
+                               mutate(InteractionType = sample(c("coexistence", "exclusion"), choose(n_species, 2), replace = T)))
+set.seed(1)
+p <- example_graph %>%
+    ggraph(layout = "circle") +
+    geom_edge_link(aes(color = InteractionType), edge_width = node_size / 10,
+                  arrow = arrow(length = unit(node_size/2, "mm"), type = "open", angle = 30, ends = "last"),
+                  start_cap = circle(node_size/2+1, "mm"), end_cap = circle(node_size/2+1, "mm")) +
+    geom_node_point(fill = "grey", size = node_size, shape = 21, colour = "black", stroke = node_size/5) +
+    scale_edge_color_manual(values = interaction_color) +
+    scale_color_manual(values = c(`TRUE` = "#DB7469", `FALSE` = "#557BAA")) +
+    scale_x_continuous(limits = c(-1.5, 1.5)) +
+    scale_y_continuous(limits = c(-1.5, 1.5)) +
+    guides(color = "none", fill = "none") +
+    theme_void() +
+    theme(legend.position = "none", plot.background = element_rect(fill = "white", color = NA),
+          legend.title = element_blank(), plot.margin = margin(10,30,10,10, unit = "pt"),
+          legend.text = element_text(size = 20)) +
+    labs(x = "")
+p
+ggsave(here::here("plots/talk-global_network.png"), p, width = 5, height = 5)
+
+
+p <- example_graph %>%
+    activate(nodes) %>% filter(InCommunity == 2) %>%
+    ggraph(layout = "circle") +
+    geom_node_point(size = node_size, shape = 21, fill = "gray", colour = "black", stroke = node_size/5) +
+    geom_edge_link(aes(color = InteractionType), edge_width = node_size / 10,
+                  arrow = arrow(length = unit(node_size/2, "mm"), type = "open", angle = 30, ends = "last"),
+                  start_cap = circle(node_size/2+1, "mm"), end_cap = circle(node_size/2+1, "mm")) +
+    scale_edge_color_manual(values = interaction_color) +
+    scale_color_manual(values = c(`TRUE` = "#DB7469", `FALSE` = "#557BAA")) +
+    scale_x_continuous(limits = c(-1.5, 1.5)) +
+    scale_y_continuous(limits = c(-1.5, 1.5)) +
+    guides(color = "none", fill = "none") +
+    theme_void() +
+    theme(legend.position = "bottom", plot.background = element_rect(fill = "white", color = NA),
+          legend.direction = "vertical",
+          legend.title = element_blank(), plot.margin = margin(10,30,10,10, unit = "pt"),
+          legend.text = element_text(size = 15)) +
+    labs(x = "")
+p
+ggsave(here::here("plots/talk-global_network_community.png"), p, width = 3, height = 3)
+
+
+
+# Two network structures
+load(here::here("data/output/motif_list.Rdata"))
+node_size = 15
+p1 <- motif_list[[7]] %>%
+    ggraph(layout = "circle") +
+    geom_node_point(shape = 21, size = node_size, fill = "gray", stroke = node_size/5) +
+    geom_edge_link(aes(color = InteractionType), width = node_size/5,
+                   arrow = arrow(length = unit(node_size/2, "mm"), type = "closed", angle = 30, ends = "last"),
+                   start_cap = circle(node_size/2+3, "mm"),
+                   end_cap = circle(node_size/2+3, "mm")) +
+    geom_text(x = 0.25, y = 0.433, label = "coexistence", angle = -25, vjust = -1, fontface = "bold", size = 15, color = interaction_color["coexistence"]) +
+    scale_edge_color_manual(values = interaction_color) +
+    scale_color_manual(values = c("black" = "black", "white" = NA)) +
+    scale_shape_manual(values = c("real" = 21, "fake" = NA)) +
+    scale_x_continuous(limits = c(-1.2, 1.2)) +
+    scale_y_continuous(limits = c(-1.2, 1.2)) +
+    theme_void() +
+    theme(legend.position = "none", plot.background = element_rect(fill = NA, color = NA), plot.margin = margin(0,0,0,0, unit = "pt")) +
+    labs(x = "")
+
+p2 <- motif_list[[1]] %>%
+    ggraph(layout = "circle") +
+    geom_node_point(shape = 21, size = node_size, fill = "gray", stroke = node_size/5) +
+    geom_edge_link(aes(color = InteractionType), width = node_size/5,
+                   arrow = arrow(length = unit(node_size/2, "mm"), type = "closed", angle = 30, ends = "last"),
+                   start_cap = circle(node_size/2+3, "mm"),
+                   end_cap = circle(node_size/2+3, "mm")) +
+    geom_text(x = 0.25, y = 0.433, label = "exclusion", angle = -25, vjust = -1, fontface = "bold", size = 15, color = interaction_color["exclusion"]) +
+    scale_edge_color_manual(values = interaction_color) +
+    scale_color_manual(values = c("black" = "black", "white" = NA)) +
+    scale_shape_manual(values = c("real" = 21, "fake" = NA)) +
+    scale_x_continuous(limits = c(-1.2, 1.2)) +
+    scale_y_continuous(limits = c(-1.2, 1.2)) +
+    theme_void() +
+    theme(legend.position = "none", plot.background = element_rect(fill = NA, color = NA), plot.margin = margin(0,0,0,0, unit = "pt")) +
+    labs(x = "")
+
+p <- plot_grid(p1, p2, nrow = 1)
+ggsave(here::here("plots/talk-motifs.png"), p, width = 10, height = 4)
+
+
+
+
+igraph::transitivity(motif_list[[7]])
+igraph::transitivity()
+ggraph(g, layout = "circle") + geom_node_point() + geom_edge_link()
+
+library(igraph)
+is.dag(motif_list[[2]])
+
+load(here::here("data/output/network_community.Rdata"))
+net_list[[1]] %>%
+    activate(edges) %>%
+    filter(InteractionType == "coexistence") %>%
+    transitivity(type = "global")
+
+
+write_graph(motif_list[[1]], file = here::here("data/temp/motif1.txt"))
+
+
+if (FALSE) {
+    # Run the code here in python
+    read("../data/temp/motif1.txt").feedback_arc_set()
+}
+
+
+
+
+
+
 
 
 

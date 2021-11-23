@@ -1,40 +1,6 @@
 library(tidyverse)
 source("misc.R")
 
-n_treatment = 3*4
-n_rep = 20
-
-# Generate input csv
-input_poolPairs <- tibble(
-    output_dir = "~/Dropbox/lab/invasion-network/simulation/data/raw/",
-    exp_id = 1:(n_rep*n_treatment),
-    seed = rep(1:n_rep, each = n_treatment),
-    q = 0.9,
-    q2 = c(0.1, 0.5, 0.9) %>% rep(4) %>% rep(n_rep),
-    vamp = c(0.5, 1, 1.5, 2) %>% rep(each = 3) %>% rep(n_rep),
-    S = 100,
-    n_pairs = 100
-)
-
-n_treatment = 3*3*5
-n_rep = 1
-input_poolPairs <- tibble(
-    output_dir = "~/Dropbox/lab/invasion-network/simulation/data/raw2/",
-    exp_id = 1:(n_treatment*n_rep),
-    seed = 1,
-    q = 0.9,
-    q2 = c(0.1, 0.5, 0.9) %>% rep(5) %>% rep(3) %>% rep(n_rep),
-    l1 = c(0, 0.1, 0.5, 0.9, 1) %>% rep(3) %>% rep(each = 3) %>% rep(n_rep),
-    l2 = 0.1,
-    vamp = c(0.5, 1, 1.5) %>% rep(each = 3) %>% rep(each = 5) %>% rep(n_rep),
-    S = 100,
-    n_pairs = 100
-)
-
-write_csv(input_poolPairs, file = "input_poolPairs.csv")
-
-
-
 # Read data
 input_poolPairs <- read_csv("input_poolPairs.csv")
 target_exp_id <- input_poolPairs %>%
@@ -55,6 +21,7 @@ isolates <- df_init %>% distinct(Experiment, exp_id, Family, Species) %>% arrang
 # Compute frequency changes
 df_freq <- bind_rows(df_init, df_end) %>%
     pivot_wider(names_from = Time, names_prefix = "T", values_from = Abundance) %>%
+    mutate(Well = factor(Well, levels = paste0("W", 0:1000))) %>%
     arrange(Experiment, exp_id, Well) %>%
     group_by(Experiment, exp_id, Well) %>%
     mutate(Tend = Tend/sum(Tend, na.rm = T)) %>%
@@ -69,11 +36,14 @@ df_sign <- df_freq %>%
     mutate(temp = c("1", "2")) %>%
     select(-Tinit, -Tend) %>%
     pivot_wider(names_from = temp, values_from = c(Species, Family, Sign), names_sep = "") %>%
-    select(Experiment, exp_id, Species1, Species2, Well, Sign1)
+    select(Experiment, exp_id, Species1, Species2, Well, Sign1) %>%
+    ungroup() %>%
+    # Generate a unique pair id to sidestep the issue of duplicated pairs
+    mutate(Pair = rep(1:(nrow(.)/2), each = 2))
 
 # Determine interactions
 df_interaction <- df_sign %>%
-    group_by(Experiment, exp_id, Species1, Species2) %>%
+    group_by(Experiment, exp_id, Pair, Species1, Species2) %>%
     mutate(temp = c("Freq1", "Freq2")) %>%
     pivot_wider(id_cols = -Well, names_from = temp, values_from = Sign1) %>%
     mutate(InteractionType = ifelse(Freq1 == 1 & Freq2 == 1, "exclusion",
@@ -87,6 +57,9 @@ df_interaction <- df_sign %>%
     mutate(PairFermenter = ifelse(Family1 == "F0" & Family2 == "F0", "FF", ifelse(Family1 == "F1" & Family2 == "F1", "NN", "FN"))) %>%
     left_join(select(input_poolPairs, exp_id, seed, vamp, q2, l1))
 df_interaction
+
+
+write_csv(df_interaction, file = "~/Dropbox/lab/invasion-network/simulation/data/temp/pairs_poolPairs.csv")
 
 "
 check the sign of changes and if F0 is always the winner
@@ -116,75 +89,74 @@ for (i in 1:5) {
         ggtitle(paste0("l1 = ", l[i]))
     ggsave(paste0("plots/poolPairs_seed1_l1_", i, ".png"), p, width = 10, height = 10)
 }
-p
-#ggsave("plots/poolPairs_seed1.png", p, width = 10, height = 10)
+
 
 
 
 if (FALSE) {
 
-df_summary <- df_interaction %>%
-    left_join(select(input_poolPairs, exp_id, vamp, seed)) %>%
-    group_by(Experiment, seed, vamp, PairFermenter, InteractionType) %>%
-    summarize(Count = n()) %>%
-    group_by(Experiment, seed, vamp, PairFermenter) %>%
-    arrange(Experiment, seed, vamp, PairFermenter) %>%
-    mutate(Fraction = Count / sum(Count)) %>%
-    filter(InteractionType == "coexistence") %>%
-    group_by(Experiment, vamp, PairFermenter) %>%
-    summarize(MeanFraction = mean(Fraction), SdFraction = sd(Fraction), SampleSize = n())
+    df_summary <- df_interaction %>%
+        left_join(select(input_poolPairs, exp_id, vamp, seed)) %>%
+        group_by(Experiment, seed, vamp, PairFermenter, InteractionType) %>%
+        summarize(Count = n()) %>%
+        group_by(Experiment, seed, vamp, PairFermenter) %>%
+        arrange(Experiment, seed, vamp, PairFermenter) %>%
+        mutate(Fraction = Count / sum(Count)) %>%
+        filter(InteractionType == "coexistence") %>%
+        group_by(Experiment, vamp, PairFermenter) %>%
+        summarize(MeanFraction = mean(Fraction), SdFraction = sd(Fraction), SampleSize = n())
     {.}
 
-df_summary %>%
-    ggplot() +
-    geom_col(aes(x = PairFermenter, y = MeanFraction)) +
-    #geom_col(aes(x = PairFermenter, y= Count, fill = InteractionType), position = "fill") +
-    facet_wrap(.~vamp) +
-    scale_y_continuous(limits = c(0, 1)) +
-    scale_fill_manual(values = interaction_color, breaks = c("coexistence", "exclusion")) +
-    theme_classic() +
-    labs(x = "", fill = "")
+    df_summary %>%
+        ggplot() +
+        geom_col(aes(x = PairFermenter, y = MeanFraction)) +
+        #geom_col(aes(x = PairFermenter, y= Count, fill = InteractionType), position = "fill") +
+        facet_wrap(.~vamp) +
+        scale_y_continuous(limits = c(0, 1)) +
+        scale_fill_manual(values = interaction_color, breaks = c("coexistence", "exclusion")) +
+        theme_classic() +
+        labs(x = "", fill = "")
 
 
 
 
 
-# Plot by q
-df_interaction %>%
-    left_join(select(input_csv, exp_id, q, q2, seed)) %>%
-    group_by(Experiment, seed, q, q2, PairFermenter, InteractionType) %>%
-    summarize(Count = n()) %>%
-    #filter(seed == ) %>%
-    ggplot() +
-    geom_col(aes(x = PairFermenter, y= Count, fill = InteractionType)) +
-    #geom_col(aes(x = PairFermenter, y= Count, fill = InteractionType), position = "fill") +
-    facet_grid(q~q2, scales = "free_y") +
-    scale_fill_manual(values = interaction_color, breaks = c("coexistence", "exclusion")) +
-    theme_classic() +
-    labs(x = "", fill = "")
+    # Plot by q
+    df_interaction %>%
+        left_join(select(input_csv, exp_id, q, q2, seed)) %>%
+        group_by(Experiment, seed, q, q2, PairFermenter, InteractionType) %>%
+        summarize(Count = n()) %>%
+        #filter(seed == ) %>%
+        ggplot() +
+        geom_col(aes(x = PairFermenter, y= Count, fill = InteractionType)) +
+        #geom_col(aes(x = PairFermenter, y= Count, fill = InteractionType), position = "fill") +
+        facet_grid(q~q2, scales = "free_y") +
+        scale_fill_manual(values = interaction_color, breaks = c("coexistence", "exclusion")) +
+        theme_classic() +
+        labs(x = "", fill = "")
 
 
 
-#
-df_interaction %>%
-    filter(Seed %in% 1:5) %>%
-    ggplot() +
-    geom_bar(aes(x = PairFermenter, fill = InteractionType), position = "fill") +
-    facet_grid(Seed~., scales = "free_y") +
-    scale_fill_manual(values = interaction_color, breaks = c("coexistence", "exclusion")) +
-    theme_classic() +
-    labs(x = "", fill = "")
+    #
+    df_interaction %>%
+        filter(Seed %in% 1:5) %>%
+        ggplot() +
+        geom_bar(aes(x = PairFermenter, fill = InteractionType), position = "fill") +
+        facet_grid(Seed~., scales = "free_y") +
+        scale_fill_manual(values = interaction_color, breaks = c("coexistence", "exclusion")) +
+        theme_classic() +
+        labs(x = "", fill = "")
 
 
 
 
-if (FALSE) {
-read_csv("data/raw/1_end.csv", col_types = cols()) %>%
-    select(Species = `...2`, starts_with("W")) %>%
-    na_if(0) %>%
-    pivot_longer(cols = -Species, names_to = "Well", values_to = "Abundance", values_drop_na = T)
+    if (FALSE) {
+        read_csv("data/raw/1_end.csv", col_types = cols()) %>%
+            select(Species = `...2`, starts_with("W")) %>%
+            na_if(0) %>%
+            pivot_longer(cols = -Species, names_to = "Well", values_to = "Abundance", values_drop_na = T)
 
-}
+    }
 
 }
 
