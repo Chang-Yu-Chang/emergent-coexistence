@@ -264,12 +264,12 @@ isolates_growth_traits <- read_csv(here::here("data/temp/isolates_growth_traits.
 ```
 
 `isolates_growth_traits` contains many columns. CS is a wildcard for any carbon source measured.
-    - `r_CS`: the Rmid growth rate on a CS. Data from Jean `data/raw/growth_rate/Growthcurver.csv`.
-    - `X_CS_*hr`: secreted acids (acetate, lactate, succinate) amount at 0, 16, 28, 48 hr. Data from Sylvie `data/raw/growth_rate/Estrela_2021_isolates_ph_OAs.csv`.
-    - `OD620_16h_CS`: the 620 nm OD at 16 hr on a CS. Data from Jean `data/raw/growth_rate/OD_Data_MH2.csv`.
+    - `r_CS_*hr`: growth rates on carbon sources at 12, 16, 28, 48 hr, measured from the growth curve data. Data from Sylvie `data/raw/growth_rate/raw_gcurves_all_sylvies.csv`.
+    - `X_CS_*hr`: secreted acids (acetate, lactate, succinate) amount at 0, 16, 28, 48 hr. Data from Sylvie `data/raw/growth_rate/Estrela_2021_isolates_ph_OAs.csv`
     - `pH_*hr`: pH measured at 0, 16, 28, 48 hr. Data from Sylvie `data/raw/growth_rate/Estrela_2021_isolates_ph_OAs.csv`.
     - `PreferredCS` and `SecretedCS`: acid preference determined by the sequence of acid used, manually corrected by eyeballing the figure `01D-byproduct_conc.png`. Data from Sylvie `data/raw/growth_rate/Estrela_2021_isolates_ph_OAs.csv`.
-    - `ByproductSum_*hr`: sum of acids produced at 0, 16, 28, 48 hr. Data from Sylvie `data/raw/growth_rate/Estrela_2021_isolates_ph_OAs.csv`.
+    - `ByproductSum_*hr`: sum of acids produced at 0, 16, 28, 48 hr. Data from Sylvie  `data/raw/growth_rate/raw_gcurves_all_sylvies`.
+
 
 ## Acids production over time
 
@@ -441,9 +441,10 @@ communities_abundance_syl %>%
 ESV abundances of 13 communities used in the competition assay
 
 ```{r}
+communities <- read_csv(here::here("data/output/communities.csv"))
 communities_abundance_syl %>% 
   filter(CarbonSource == "Glucose") %>% 
-  filter(Community %in% communities_name) %>%
+  filter(Community %in% communities$Community) %>%
   plot_abundance(label_x = "Community", label_y = "RelativeAbundance", fill = "Family")
 ```
 Abundances of ESVs matched to Sangers.
@@ -557,16 +558,26 @@ isolates %>%
 ```
 
 
-### Plot isolates' tree and traits (Deprecated as the ggtree always causes crash on 20211021)
+## Plot isolates' tree 
 
 ```{r}
-if (run_scripts) source("script/01-isolates-03-phylogeny_growth_trait.R")
+if (run_scripts) source("script/01-isolates-03-tree.R")
 ```
 
-```{r, fig.width=4, fig.height=6}
-p_heat
+```{r}
+
 ```
 
-```{r, fig.width=4}
-p_heat_large
-```
+
+
+
+
+
+
+
+
+
+
+
+
+

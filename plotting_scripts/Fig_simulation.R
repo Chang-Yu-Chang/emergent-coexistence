@@ -148,7 +148,7 @@ df_motif <- df_graph %>%
     group_by(Experiment, Community) %>%
     mutate(Fraction = Count / sum(Count))
 
-# Plot motif
+# Plot transitive motif
 p1 <- df_motif %>%
     mutate(Community = factor(Community), Experiment = ordered(Experiment, c("randomNetworks", "communityPairs"))) %>%
     mutate(Motif = as.character(Motif)) %>%
@@ -171,6 +171,32 @@ p1 <- df_motif %>%
     labs(x = "", y = "Hierarchy")
 p1
 ggsave("../plots/Fig_simulation-motif_pool.png", plot = p1, width = 3, height = 5)
+
+# Plot non transitive motif
+p2 <- df_motif %>%
+    mutate(Community = factor(Community), Experiment = ordered(Experiment, c("randomNetworks", "communityPairs"))) %>%
+    mutate(Motif = as.character(Motif)) %>%
+    filter(Motif %in% c(1)) %>%
+    ggplot(aes(x = Experiment, y = Fraction, color = Experiment)) +
+    geom_boxplot(position = position_dodge(width = 1)) +
+    geom_jitter(shape = 21, size = 2, width = 0.2, height = 0) +
+    #geom_signif(y_position = 1.1, xmin = 1, xmax = 2, annotation = c("NS"), color = "black") +
+    #geom_signif(comparisons = list(c("randomNetworks", "communityPairs")), test = "wilcox.test", map_signif_level = T, color = "black", tip_length = 0.01) +
+    scale_y_continuous(breaks = c(0, 0.5, 1), limits = c(0, 1.1)) +
+    scale_color_manual(values = c("randomNetworks" = "orange", "communityPairs" = "cornflower blue")) +
+    scale_x_discrete(labels = c("communityPairs" = "Communities", "randomNetworks" = "Random\nspecies")) +
+    #facet_grid(.~Experiment, scales = "free_x") +
+    theme_classic() +
+    theme(legend.position = "none", legend.title = element_blank(), strip.text = element_blank(),
+          panel.spacing = unit(0, "pt"),
+          axis.text.x = element_text(size = 12),
+          axis.title.y = element_text(size = 12), axis.text.y = element_text(size = 12),
+          legend.text = element_text(size = 12)) +
+    labs(x = "", y = "Fraction of rock-paper-scissors")
+p2
+ggsave("../plots/Fig_simulation-motif_pool_nontransitive.png", plot = p2, width = 3, height = 5)
+
+
 
 
 # Stat

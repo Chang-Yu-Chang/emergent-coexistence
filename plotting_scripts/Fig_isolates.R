@@ -14,7 +14,7 @@ p <- isolates %>%
     mutate(Fermenter = ifelse(Fermenter, "fermenter", "respirator")) %>%
     ggplot() +
     geom_boxplot(aes(x = Fermenter, y = leakiness_16hr, color = Fermenter)) +
-    geom_jitter(aes(x = Fermenter, y = leakiness_16hr, color = Fermenter), shape = 1, width =  0.5) +
+    geom_jitter(aes(x = Fermenter, y = leakiness_16hr, color = Fermenter), shape = 1, width = 0.5) +
     scale_color_npg() +
     theme_classic() +
     guides(color = "none") +

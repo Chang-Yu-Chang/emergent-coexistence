@@ -2,42 +2,80 @@
 library(tidyverse)
 
 isolates_ID_match <- read_csv(here::here("data/temp/isolates_ID_match.csv"))
-# Growth rate data from Jean
-isolates_growth <- read_csv("~/Dropbox/lab/invasion-network/data/raw/growth_rate/Growthcurver.csv")
-# Growth rate data from Sylvie
-isolates_growth_syl <- read_csv("~/Dropbox/lab/invasion-network/data/raw/growth_rate/Estrela_2021_isolates_grmax.csv")
 # Byproduct measurement on glucose. Data from Sylvie
 isolates_byproduct <- read_csv("~/Dropbox/lab/invasion-network/data/raw/growth_rate/By_Products_Glucose.csv") %>%
     select(OD620_16h = OD620, ID = SangerID, Glucose_perc, acetate_mM, succinate_mM, lactate_mM, gluconate_mM, ketogluconate_mM)
 isolates_byproduct_time <- read_csv("~/Dropbox/lab/invasion-network/data/raw/growth_rate/Estrela_2021_isolates_ph_OAs.csv") %>%
     select(ID = SangerID, Time = time_hours, OD620, pH, Glucose_perc, acetate_mM, succinate_mM, lactate_mM)
+# Growth curve data from Sylvie
+isolates_curves <- read_csv("~/Dropbox/lab/invasion-network/data/raw/growth_rate/raw_gcurves_all_sylvies.csv") %>%
+    select(Date = date, ID = seq, Well = well, CS = csource, Time = t, OD620 = abs) %>%
+    filter(ID %in% isolates_ID_match$ID) %>%
+    mutate(CS = str_replace(CS, "Dlactate", "lactate")) %>%
+    # Use the latest measured replicates
+    group_by(ID, CS, Time) %>%
+    filter(Date == max(Date))
+
+
+if (FALSE) {
 # OD data from Jean. Filter the 16hr data only
 isolates_OD_DW <- read_csv("~/Dropbox/lab/invasion-network/data/raw/growth_rate/OD_Data_MH2.csv") %>%
     filter(Time == 16) %>% select(ID = Sequence, CS = Carbon_Source, OD) %>%
     mutate(CS = sub("[LD]-", "", CS) %>% tolower() %>% paste0("OD620_16h_", .))
+    # Isolate's OD at 16 hr in DW96 plate. Jean's data
+isolates_OD_DW_w <- isolates_OD_DW %>%
+    filter(!is.na(ID), ID != "N/A") %>%
+    mutate(ID = as.numeric(ID)) %>%
+    pivot_wider(names_from = CS, values_from = OD)
 
-# Jean's growth rate data. Use the fitted Rmid ----
-isolates_growth_w_mid <- isolates_growth %>%
+
+}
+
+# Growth curve and growth rates -----
+calculate_r <- function(N0, N1, T0, T1) (log10(N1) - log10(N0)) / (T1 - T0)
+isolates_curves_T0 <- isolates_curves %>%
+    group_by(ID, Well, CS) %>%
+    filter(Time == min(Time)) %>%
+    mutate(T0 = ifelse(Time == min(Time), 0, Time), N0 = OD620) %>%
+    select(-Time, -OD620)
+isolates_growth <- isolates_curves %>%
+    filter(Time %in% c(12, 16, 28)) %>%
+    group_by(ID, CS) %>%
+    arrange(ID, CS) %>%
+    mutate(T1 = Time, N1 = OD620) %>%
+    left_join(isolates_curves_T0) %>%
+    # Calculate r
+    mutate(r = calculate_r(N0, N1, T0, T1)) %>%
+    select(Date, ID, Well, CS, Time = T1, r) %>%
+    # Remove contamination
+    filter(r>0) %>%
+    # Average
+    group_by(ID, CS, Time) %>%
+    summarize(r = mean(r)) %>%
+    pivot_wider(names_from = c(Time, CS), values_from = r, names_glue = "r_{CS}_{Time}hr") %>%
+    ungroup()
+
+# Jean's growth rate data. Use the fitted Rmid
+# Growth rate data from Jean
+isolates_growth_mid <- read_csv("~/Dropbox/lab/invasion-network/data/raw/growth_rate/Growthcurver.csv")
+isolates_growth_w_mid <- isolates_growth_mid %>%
     separate(col = SID, sep = "_", into  = c("ID", "CS"), convert = T) %>%
     select(-SangerID, -Family) %>%
     select(ID, CS, RMid) %>%
     filter(CS %in% c("D-Glucose", "Acetate", "D-Lactate", "Succinate", "Gluconate", "2-Ketogluconate")) %>%
     # names to lower case
     mutate(CS = CS %>% sub("2-", "", .) %>% sub("D-", "", .) %>% tolower()) %>%
-    pivot_wider(names_from = CS, values_from = RMid, names_prefix = "rmid_")
+    pivot_wider(names_from = CS, values_from = RMid, names_glue = "r_{CS}_midhr")
+
 
 # Sylvie's growth rate. Use Rmax
-isolates_growth_w_max <- isolates_growth_syl %>%
-    select(ID = SangerID, cs, gr_max) %>%
-    pivot_wider(names_from = cs, values_from = gr_max, names_prefix = "rmax_")
+# Growth rate data from Sylvie
+isolates_growth_max <- read_csv("~/Dropbox/lab/invasion-network/data/raw/growth_rate/Estrela_2021_isolates_grmax.csv")
+isolates_growth_w_max <- isolates_growth_max %>%
+    select(ID = SangerID, CS = cs, gr_max) %>%
+    pivot_wider(names_from = CS, values_from = gr_max, names_glue = "r_{CS}_maxhr")
 
 
-
-# Isolate's OD at 16 hr in DW96 plate. Jean's data ----
-isolates_OD_DW_w <- isolates_OD_DW %>%
-    filter(!is.na(ID), ID != "N/A") %>%
-    mutate(ID = as.numeric(ID)) %>%
-    pivot_wider(names_from = CS, values_from = OD)
 
 # Isolate preference----
 ## Match the most secreted CS of the dominant strain to the most preferred CS of the subdominant
@@ -239,13 +277,17 @@ isolates_leakiness <- isolates_byproduct_time %>%
 isolates_growth_traits <- isolates_ID_match %>%
     left_join(isolates_growth_w_mid) %>%
     left_join(isolates_growth_w_max) %>%
+    left_join(isolates_growth) %>%
     left_join(isolates_acids) %>%
     left_join(isolates_byproduct_time_sum) %>%
-    left_join(isolates_OD_DW_w) %>%
+    #left_join(isolates_OD_DW_w) %>%
     left_join(isolates_pH) %>%
     left_join(isolates_preference) %>%
     left_join(isolates_leakiness)
 
-write_csv(isolates_growth_traits, file = here::here("data/temp/isolates_growth_traits.csv"))
 
+
+
+write_csv(isolates_growth_traits, file = here::here("data/temp/isolates_growth_traits.csv"))
+write_csv(isolates_curves, file = here::here("data/output/isolates_curves.csv"))
 

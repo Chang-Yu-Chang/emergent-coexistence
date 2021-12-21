@@ -36,9 +36,9 @@ pairs_coexist_dominant <- pairs %>%
     select(Community, Isolate1, Isolate2, Isolate1Dominant)
 
 pairs <- left_join(pairs, pairs_coexist_dominant) %>%
-        mutate(Assembly = ifelse(str_detect(Community, "C\\d+R\\d+"), "self_assembly",
-                                 ifelse(str_detect(Community, "AcrAss"), "across_community",
-                                        ifelse(str_detect(Community, "RanAss"), "random_assembly", NA)))) %>%
+    mutate(Assembly = ifelse(str_detect(Community, "C\\d+R\\d+"), "self_assembly",
+                             ifelse(str_detect(Community, "AcrAss"), "across_community",
+                                    ifelse(str_detect(Community, "RanAss"), "random_assembly", NA)))) %>%
     select(Assembly, everything())
 
 
@@ -116,17 +116,36 @@ for (i in 1:nrow(pairs_meta)) {
 
 # Isolates data from 01-isolates ----
 isolates_to_be_joint <- read_csv(here::here("data/output/isolates.csv")) %>%
-    select(Community, Isolate, ID, starts_with("rmid_"), starts_with("rmax_"), starts_with("X_"), starts_with("pH_"), starts_with("OD620_"), ends_with("CS"))
+    select(Community, Isolate, Score, Rank, PlotRank, starts_with("X_"), starts_with("pH_"), ends_with("dCS"), ends_with("hr"))
 
 pairs_meta <- pairs_meta %>%
     left_join(rename_with(isolates_to_be_joint, ~ paste0(., "1"), !contains("Community"))) %>%
     left_join(rename_with(isolates_to_be_joint, ~ paste0(., "2"), !contains("Community"))) %>%
+    select(Assembly, Community, Isolate1, Isolate2, InteractionType, InteractionTypeFiner, From, To,
+           PairFermenter, PairFamily, SeqDifference, SeqLength, Isolate1Dominant,
+           ends_with("1"), ends_with("2")) %>%
     mutate(
         # Difference in glucose, acetate, lactate, succinate growth rate
-        rmid_glu_d = rmid_glucose1 - rmid_glucose2, rmid_ace_d = rmid_acetate1 - rmid_acetate2,
-        rmid_lac_d = rmid_lactate1 - rmid_lactate2, rmid_suc_d = rmid_succinate1 - rmid_succinate2,
-        rmax_glu_d = rmax_glucose1 - rmax_glucose2, rmax_ace_d = rmax_acetate1 - rmax_acetate2,
-        rmax_lac_d = rmax_lactate1 - rmax_lactate2, rmax_suc_d = rmax_succinate1 - rmax_succinate2,
+        # rmid_glu_d = rmid_glucose1 - rmid_glucose2, rmid_ace_d = rmid_acetate1 - rmid_acetate2,
+        # rmid_lac_d = rmid_lactate1 - rmid_lactate2, rmid_suc_d = rmid_succinate1 - rmid_succinate2,
+        # rmax_glu_d = rmax_glucose1 - rmax_glucose2, rmax_ace_d = rmax_acetate1 - rmax_acetate2,
+        # rmax_lac_d = rmax_lactate1 - rmax_lactate2, rmax_suc_d = rmax_succinate1 - rmax_succinate2,
+        r_acetate_midhr_d = r_acetate_midhr1 - r_acetate_midhr2, r_acetate_maxhr_d = r_acetate_maxhr1 - r_acetate_maxhr2,
+        r_glucose_midhr_d = r_glucose_midhr1 - r_glucose_midhr2, r_glucose_maxhr_d = r_glucose_maxhr1 - r_glucose_maxhr2,
+        r_lactate_midhr_d = r_lactate_midhr1 - r_lactate_midhr2, r_lactate_maxhr_d = r_lactate_maxhr1 - r_lactate_maxhr2,
+        r_succinate_midhr_d = r_succinate_midhr1 - r_succinate_midhr2, r_succinate_maxhr_d = r_succinate_maxhr1 - r_succinate_maxhr2,
+        r_acetate_12hr_d = r_acetate_12hr1 - r_acetate_12hr2,
+        r_acetate_16hr_d = r_acetate_16hr1 - r_acetate_16hr2,
+        r_acetate_28hr_d = r_acetate_28hr1 - r_acetate_28hr2,
+        r_glucose_12hr_d = r_glucose_12hr1 - r_glucose_12hr2,
+        r_glucose_16hr_d = r_glucose_16hr1 - r_glucose_16hr2,
+        r_glucose_28hr_d = r_glucose_28hr1 - r_glucose_28hr2,
+        r_lactate_12hr_d = r_lactate_12hr1 - r_lactate_12hr2,
+        r_lactate_16hr_d = r_lactate_16hr1 - r_lactate_16hr2,
+        r_lactate_28hr_d = r_lactate_28hr1 - r_lactate_28hr2,
+        r_succinate_12hr_d = r_succinate_12hr1 - r_succinate_12hr2,
+        r_succinate_16hr_d = r_succinate_16hr1 - r_succinate_16hr2,
+        r_succinate_28hr_d = r_succinate_28hr1 - r_succinate_28hr2,
         # Matched CS
         MatchedCS = PreferredCS1 == PreferredCS2,
         # Difference in pH

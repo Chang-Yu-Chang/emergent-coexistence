@@ -1,685 +1,462 @@
-# Simulation. Random trios in species pool
-
-library(cowplot)
-library(tidygraph)
-library(ggraph)
+# Figure 2: pairs alike coexist more than pairs dissimilar
 library(tidyverse)
-library(data.table)
-source("network_functions.R")
-#source("analysis-pair-culturable_random.R")
-#source("analysis-trio-culturable_random.R")
-#source("analysis-pair-from_top_down_community.R")
-whether_save_temp_file <- T
+library(tidymodels)
+library(tidygraph)
+library(cowplot)
+library(ggsci)
+library(ggpubr)
+library(ggtree)
+source(here::here("plotting_scripts/network_functions.R"))
 
-# input_independent <- fread("../data/raw/simulation/mapping_files/input_independent.csv")
-# input_independent_trios <- input_independent %>% filter(grepl("trio-culturable_isolates", exp_id)) %>% filter(seed == 2)
-# interaction_color <- assign_interaction_color()
+isolates <- read_csv(here::here("data/output/isolates.csv"))
+pairs <- read_csv(here::here("data/output/pairs.csv")) %>% mutate(InteractionType = ifelse(InteractionType == "neutrality", "coexistence", InteractionType))
+pairs_meta <- read_csv(here::here("data/output/pairs_meta.csv")) %>% mutate(InteractionType = ifelse(InteractionType == "neutrality", "coexistence", InteractionType))
+communities <- read_csv(here::here("data/output/communities.csv"))
+load(here::here("data/output/network_community.Rdata"))
+
+# Figure 2A: Coexistence more likely in pairs alike
+pairs_coexistence <- pairs %>%
+    filter(!is.na(PairFermenter)) %>%
+    filter(Assembly == "self_assembly")
+pairs_count <- pairs_coexistence %>%
+    group_by(PairFermenter) %>%
+    summarize(Count = n())
+
+p_A <- pairs_coexistence %>%
+    ggplot() +
+    geom_bar(aes(x = PairFermenter, fill = InteractionType), color = 1, position = position_fill()) +
+    geom_text(data = pairs_count, aes(x = PairFermenter, y = 1, label = paste0("n=", Count)), vjust = -.5) +
+    geom_rect(xmin = -Inf, xmax = Inf, ymin = 0, ymax = 1, color = grey(0.1), fill = NA, size = .5) +
+    scale_fill_manual(values = assign_interaction_color(level = "simple")) +
+    scale_x_discrete(labels = c(FF = "Fermenter-\nFermenter", FN = "Fermenter-\nRespirator", NN = "Respirator-\nRespirator")) +
+    scale_y_continuous(breaks = c(0,.5,1), limit = c(0, 1.15), expand = c(0,0)) +
+    theme_classic() +
+    theme(axis.title.x = element_blank(), axis.line.y = element_blank(),
+          legend.title = element_blank(), legend.position = "top") +
+    labs(y = "Fraction")
+ggsave(here::here("plots/Fig2A-pairs_alike.png"), p_A, width = 3, height = 3)
+
+
+# Figure 2B: r_glu_midhr per isolate
+p_B <- pairs_meta %>%
+    filter(!is.na(PairFermenter)) %>%
+    select(PairFermenter, InteractionType, r_glucose_midhr1, r_glucose_midhr2) %>%
+    pivot_longer(cols = starts_with("r_glucose_midhr"), names_to = "Isolate", values_to = "r_glucose_midhr") %>%
+    filter(!is.na(r_glucose_midhr)) %>%
+    ggplot(aes(x = InteractionType, y = r_glucose_midhr, fill = Isolate)) +
+    geom_boxplot() +
+    geom_point(shape = 1, size = 1, position = position_jitterdodge(jitter.width = 0.2)) +
+    # p value
+    ggpubr::stat_compare_means(aes(group = Isolate), label = "p.format", vjust = -.5, method = "t.test") +
+    scale_fill_npg(labels = c("dominant", "subdominant"), name = "Isolate") +
+    scale_y_continuous(expand = expansion(mult = .1, add = 0)) +
+    facet_grid(.~PairFermenter, scales = "free_y", labeller = labeller(PairFermenter = c(FF = "Fermenter-Fermenter", FN = "Fermenter-Respirator", NN = "Respirator-Respirator"))) +
+    theme_classic() +
+    theme(legend.title = element_blank(), legend.position = "top",
+          panel.border = element_rect(color = 1, fill = NA, size = .5)) +
+    labs(x = "", y = expression(r[glu]))
+ggsave(here::here("plots/Fig2B-r_glu.png"), p_B, width = 6, height = 4)
+
+
+## Stats: does difference in r_glu explain pairwise coexistence?
+pairs_meta %>%
+    mutate_if(is.character, as.factor) %>%
+    filter(!is.na(InteractionType)) %>%
+    mutate(InteractionType = ifelse(InteractionType == "coexistence", 1, 0)) %>%
+    glm(formula = InteractionType ~  r_glucose_midhr_d * PairFermenter, data = ., family = "binomial") %>%
+    broom::tidy() %>%
+    {.}
+
+
+# Figure 2C: Amount of total acid secretion. X_sum_16hr
+p_C <- pairs_meta %>%
+    select(InteractionType, PairFermenter, starts_with("X_sum") & !ends_with("d")) %>%
+    pivot_longer(cols = c(-InteractionType, -PairFermenter), names_to = c("Time", "Isolate"), names_pattern = "X_sum_(.*)hr(.)", names_transform = list(Time = as.numeric), values_to = "X_sum") %>%
+    filter(!is.na(PairFermenter)) %>%
+    filter(Time == 16) %>%
+    filter(!is.na(X_sum)) %>%
+    ggplot(aes(x = InteractionType, y = X_sum, fill = Isolate)) +
+    geom_boxplot() +
+    geom_point(shape = 1, size = 1, position = position_jitterdodge(jitter.width = 0.2)) +
+    ggpubr::stat_compare_means(aes(group = Isolate), label = "p.format", vjust = -.5, method = "t.test") +
+    scale_fill_npg(labels = c("dominant", "subdominant"), name = "Isolate") +
+    scale_y_continuous(expand = expansion(mult = .1, add = 0)) +
+    facet_grid(Time~PairFermenter, scales = "free_y", labeller = labeller(PairFermenter = c(FF = "Fermenter-Fermenter", FN = "Fermenter-Respirator", NN = "Respirator-Respirator"))) +
+    theme_classic() +
+    theme(legend.title = element_blank(), legend.position = "top",
+          strip.text.y = element_blank(),
+          panel.border = element_rect(color = 1, fill = NA, size = .5)) +
+    labs(x = "", y = expression(X[sum]))
+ggsave(here::here("plots/Fig2C-secretion_total.png"), p_C, width = 6, height = 4)
+
+## Stats: does difference in X_sum explain pairwise coexistence?
+pairs_meta %>%
+    mutate_if(is.character, as.factor) %>%
+    filter(!is.na(InteractionType)) %>%
+    #filter(PairFermenter == "FF") %>%
+    mutate(InteractionType = ifelse(InteractionType == "coexistence", 1, 0)) %>%
+    glm(formula = InteractionType ~  X_sum_16hr_d * PairFermenter, data = ., family = "binomial") %>%
+    broom::tidy() %>%
+    {.}
+
+## Stats: does difference in r_glu*X_sum explain pairwise coexistence?
+pairs_meta %>%
+    mutate_if(is.character, as.factor) %>%
+    filter(!is.na(InteractionType)) %>%
+    #filter(PairFermenter == "FF") %>%
+    mutate(InteractionType = ifelse(InteractionType == "coexistence", 1, 0)) %>%
+    glm(formula = InteractionType ~  r_glucose_midhr_d*X_sum_16hr_d * PairFermenter, data = ., family = "binomial") %>%
+    broom::tidy() %>%
+    {.}
+
+# Figure 2D: Scatter r_glu_midhr vs. sum_acids
+p_D <- isolates %>%
+    filter(!is.na(Fermenter)) %>%
+    ggplot() +
+    geom_segment(data = pairs_meta, aes(x = r_glucose_midhr1, xend = r_glucose_midhr2, y = X_sum_16hr1, yend = X_sum_16hr2, linetype = InteractionType)) +
+    geom_point(aes(x = r_glucose_midhr, y = X_sum_16hr, color = Fermenter), stroke = 1.5, size = 2, shape = 1) +
+    scale_color_npg(labels = c(`TRUE` = "fermenter", `FALSE` = "respirator")) +
+    scale_linetype_manual(values = c("coexistence" = 1, "exclusion" = 2)) +
+    scale_x_continuous(breaks = scales::pretty_breaks(n = 3)) +
+    scale_y_continuous(breaks = scales::pretty_breaks(n = 3)) +
+    theme_classic() +
+    theme(legend.title = element_blank(), legend.position = "right") +
+    labs(x = expression(r[glu]), y = expression(2*acetate + 3*lactate + 4*succinate(mM)))
+ggsave(here::here("plots/Fig2D-r_glu_secretion.png"), p_D, width = 6, height = 4)
+
+# Figure 2E: Scatter r_glu_d vs. sum_acids_d
+p_E <- pairs_meta %>%
+    filter(!is.na(PairFermenter)) %>%
+    ggplot() +
+    geom_vline(xintercept = 0, linetype = 2) +
+    geom_hline(yintercept = 0, linetype = 2) +
+    geom_point(aes(x = r_glucose_midhr_d, y = X_sum_16hr_d, shape = InteractionType, color = PairFermenter), size = 2, stroke = .5) +
+    scale_shape_manual(values = c(coexistence = 16, exclusion = 1)) +
+    scale_color_npg(labels = c("Fermenter-Fermenter", "Fermenter-Respirator", "Respirator-Respirator")) +
+    theme_classic() +
+    theme(legend.title = element_blank()) +
+    labs(x = expression(r[A]-r[B]), y = expression(X[A]-X[B]))
+ggsave(here::here("plots/Fig2E-r_glu_secretion_d.png"), p_E, width = 5, height = 3)
+
+# Stats: does difference in r_glu and X_sum explain pairwise coexistence?
+pairs_meta %>%
+    mutate_if(is.character, as.factor) %>%
+    filter(PairFermenter == "FF") %>%
+    filter(!is.na(InteractionType)) %>%
+    mutate(InteractionType = ifelse(InteractionType == "coexistence", 1, 0)) %>%
+    glm(formula = InteractionType ~  r_glucose_midhr_d * X_sum_16hr_d, data = ., family = "binomial") %>%
+    broom::tidy() %>%
+    {.}
 
 
 
+# Figure 2F: leakiness
+p_F <- isolates %>%
+    filter(!is.na(Fermenter), !is.na(leakiness_16hr)) %>%
+    ggplot() +
+    geom_boxplot(aes(x = Fermenter, y = leakiness_16hr, color = Fermenter), outlier.size = 2) +
+    geom_jitter(aes(x = Fermenter, y = leakiness_16hr, color = Fermenter), shape = 1, size = 2, width = 0.3) +
+    ggpubr::stat_compare_means(aes(group = Fermenter, x = Fermenter, y = leakiness_16hr)) +
+    scale_x_discrete(labels = c("TRUE" = "Fermenter", "FALSE" = "Respirator")) +
+    scale_y_continuous(limits = c(0, 0.65)) +
+    scale_color_npg() +
+    theme_classic() +
+    theme(axis.title.x = element_blank(), legend.position = "none") +
+    labs(y = "Leakiness")
+ggsave(here::here("plots/Fig2F-isolate_leakiness.png"), p_F, width = 3, height = 3)
+
+# Figure 2G: r_glu vs. leakiness
+p_G <- isolates %>%
+    filter(!is.na(Fermenter), !is.na(leakiness_16hr)) %>%
+    ggplot(aes(x = r_glucose_midhr, y = leakiness_16hr, color = Fermenter)) +
+    geom_point(shape = 1, size = 2) +
+    geom_smooth(method = "lm") +
+    scale_color_npg(labels = c("TRUE" = "Fermenter", "FALSE" = "Respirator")) +
+    scale_x_continuous(breaks = scales::pretty_breaks(n = 3)) +
+    scale_y_continuous(breaks = scales::pretty_breaks(n = 3)) +
+    theme_classic() +
+    theme(legend.title = element_blank(), legend.position = "top") +
+    labs(x = expression(r[glu]), y = "Leakiness")
+ggsave(here::here("plots/Fig2G-r_glu_leakiness.png"), p_G, width = 3, height = 3)
+
+## Stats: do the fermenters follow pareto front?
+isolates %>%
+    filter(!is.na(Fermenter), !is.na(leakiness_16hr)) %>%
+    glm(formula = leakiness_16hr ~  r_glucose_midhr * Fermenter, data = .) %>%
+    broom::tidy() %>%
+    {.}
 
 
-if (FALSE) {
+# Figure 2H: r_acids
+p_H <- pairs_meta %>%
+    filter(!is.na(PairFermenter)) %>%
+    mutate(Pair = 1:n()) %>%
+    select(Pair, PairFermenter, InteractionType, starts_with("r_") & contains("midhr") & !ends_with("d")) %>%
+    pivot_longer(cols = contains("hr"), names_to = c("CarbonSource", "Isolate"), names_pattern = "r_(.*)_midhr(.)", values_drop_na = T, values_to = "r") %>%
+    ggplot(aes(x = InteractionType, y = r, fill = Isolate)) +
+    geom_boxplot() +
+    geom_point(shape = 1, size = 1, position = position_jitterdodge(jitter.width = 0.2)) +
+    # p value
+    ggpubr::stat_compare_means(aes(group = Isolate), label = "p.signif", vjust = -.5, method = "t.test") +
+    scale_fill_npg(labels = c("dominant", "subdominant"), name = "Isolate") +
+    scale_y_continuous(breaks = scales::pretty_breaks(n = 4), expand = expansion(mult = .2, add = 0)) +
+    facet_grid(CarbonSource~PairFermenter, scales = "free_y", labeller = labeller(PairFermenter = c(FF = "Fermenter-Fermenter", FN = "Fermenter-Respirator", NN = "Respirator-Respirator"))) +
+    theme_classic() +
+    theme(legend.title = element_blank(), legend.position = "right",
+          panel.border = element_rect(color = 1, fill = NA, size = 1)) +
+    labs(x = "", y = expression(r))
+ggsave(here::here("plots/Fig2H-r_acids.png"), p_H, width = 8, height = 12)
 
-    # Panel A: cartoon and temporal dynamics of pairs and trios
-    p1 <- ggdraw() + draw_image("../plots/cartoons/Fig1A.png")
 
-    # Panel B: motif count of trios in the pool
-    temp_list <- rep(list(NA), nrow(input_independent_trios))
-    names(temp_list) <- unique(input_independent_trios$seed)
-    for (i in 1:nrow(input_independent_trios)) {
-        cat("\nexp_id = ", input_independent_trios$exp_id[i])
-        cat(",\tseed = ", input_independent_trios$seed[i])
-        current_seed <- input_independent_trios$seed[i]
+# Figure 2I: rmax_glu vs. number of wins
+## raw
+p1 <- isolates %>%
+    ggplot(aes(x = r_glucose_maxhr, y = Score)) +
+    geom_point(shape = 1, size = 2) +
+    geom_smooth(method = "lm") +
+    scale_x_continuous(breaks = scales::pretty_breaks(n = 3)) +
+    theme_classic() +
+    labs(x = expression(r[glu]), y = "Competitive score") +
+    ggpubr::stat_cor(label.x = .7, label.y = -10, method = "pearson")
+## standardized
+p2 <- isolates %>%
+    ggplot(aes(x = r_glucose_maxhr, y = Score/Game)) +
+    geom_point(shape = 1, size = 2) +
+    geom_smooth(method = "lm") +
+    scale_x_continuous(breaks = scales::pretty_breaks(n = 3)) +
+    theme_classic() +
+    labs(x = expression(r[glu]), y = "Standardized score") +
+    ggpubr::stat_cor(label.x = .7, label.y = -1, method = "pearson")
 
-        # Trio
-        df_trio_list <- fread(paste0("../data/raw/simulation/trio-culturable-", current_seed, ".txt")) %>%
-            read_trio_list()
-        df_trio_competition <- fread(paste0("../data/raw/simulation/trio-culturable_isolates-", current_seed, "_composition.txt")) %>%
-            read_trio_competition(df_trio_list)
-        df_trio_outcome <- determine_trio_outcome(df_trio_competition)
+p_I <- plot_grid(p1, p2, labels = LETTERS[1:2], nrow = 1)
+ggsave(here::here("plots/Fig2I-r_glu_score.png"), p_I, width = 8, height = 3.5)
 
-        # Pairs from trios
-        df_pair_from_trio_list <- fread(paste0("../data/raw/simulation/pair-culturable_from_trio-", current_seed, ".txt")) %>%
-            read_pair_from_trio_list()
-        df_pair_from_trio_competition <- fread(paste0("../data/raw/simulation/pair-culturable_from_trio-", current_seed, "_composition.txt")) %>%
-            read_pair_from_trio_competition(df_pair_from_trio_list)
-        df_pair_from_trio_outcome <- determine_pair_from_trio_outcome(df_pair_from_trio_competition, df_pair_from_trio_list)
-        df_trio_motif <- df_pair_from_trio_outcome %>%
-            split.data.frame(f=.$Trio) %>%
-            lapply(determine_trio_motif) %>%
-            bind_rows(.id = "Trio") %>%
-            filter(Count != 0) %>%
-            select(Trio, Motif)
+# Figure 2J: matrix with species name
+append_meta_data <- function(graph, community_name, isolates, pairs) {
+    graph %>%
+        activate(nodes) %>%
+        mutate(Community = community_name) %>%
+        left_join(isolates) %>%
+        activate(edges) %>%
+        mutate(Community = community_name, From = from, To = to) %>%
+        left_join(pairs)
+}
+plot_adjacent_matrix <- function(graph) {
+    graph_ranked <- graph %>%
+        activate(nodes) %>%
+        select(Isolate, PlotRank) %>%
+        activate(edges) %>%
+        mutate(
+            fromRank = .N()$PlotRank[match(from, .N()$Isolate)],
+            toRank = .N()$PlotRank[match(to, .N()$Isolate)])
+    isolates_comm <- graph %>%
+        igraph::vertex.attributes() %>%
+        as_tibble()
+    n_nodes <- nrow(isolates_comm)
 
-        temp_list[[i]] <- df_trio_motif
+    axis_label <- isolates_comm %>%
+        #mutate(Discription = glue("{Genus}\twin = {Win}, draw = {Draw}, lose = {Lose}")) %>%
+        #mutate(Discription = paste0(Genus, "\nwin = ", Win,", draw = ", Draw,", lose = ", Lose)) %>%
+        mutate(Discription = Genus) %>%
+        select(Isolate, PlotRank, Discription) %>%
+        arrange(PlotRank) %>%
+        pull(Discription)
 
-    }
-    df_trio_motif_aggregate <- bind_rows(temp_list, .id = "Seed") %>%
-        left_join(df_trio_outcome) %>%
-        mutate(Coexistence = ifelse(Richness == 3, "trio coexists", "trio does not coexist"))
-    trio_counts <- df_trio_motif_aggregate %>%
-        group_by(Seed) %>% summarize(Count = n())
+    # Color lable fermenter and respirator
+    color_logic <- isolates_comm %>%
+        arrange(PlotRank) %>%
+        pull(Fermenter) %>%
+        ifelse("#C3423F", "#2978A0")
 
-    if (whether_save_temp_file) fwrite(df_pair_from_trio_outcome, "../data/temp/df_pair_from_trio_outcome.txt")
-    if (whether_save_temp_file) fwrite(df_trio_motif_aggregate, "../data/temp/df_trio_motif_aggregate.txt")
-
-    p_base <- df_trio_motif_aggregate %>%
-        filter(!is.na(Richness)) %>%
+    graph_ranked %>%
+        filter(fromRank <= toRank) %>%
+        bind_edges(tibble(from = 1:n_nodes, to = 1:n_nodes, fromRank = 1:n_nodes, toRank = 1:n_nodes, InteractionType = "self")) %>%
+        as_tibble() %>%
         ggplot() +
-        geom_text(data = trio_counts, aes(label = paste0("n=", Count)), x = Inf, y = Inf, hjust = 1, vjust = 2) +
-        scale_x_continuous(limits = c(0,8), breaks = 1:7, expand = c(0,0)) +
-        scale_fill_manual(values = c("trio coexists" = "#557BAA", "trio does not coexist" = "#DB7469")) +
-        facet_wrap(Seed~., scales = "free", ncol = 1) +
-        theme_cowplot() +
-        theme(legend.position = c(.4, .8), strip.background = element_blank(), strip.text = element_blank()) +
-        guides(fill = guide_legend(title = ""))
-
-    p2 <- p_base + geom_bar(aes(x = Motif), stat = "count", fill = NA, color = 1)
-    p2_supp <- p_base + geom_bar(aes(x = Motif, fill = Coexistence), stat = "count", color = 1)
-    ggsave("../plots/Fig1B.png", plot = p2, width = 4, height = 4)
-    ggsave("../plots/Fig1B_supp.png", plot = p2_supp, width = 4, height = 4)
-    #p <- plot_grid(p1, p2, nrow = 1, rel_widths = c(4, 4), axis = "tblr", align = "h")
-    #ggsave("../plots/Fig1.png", plot = p, width = 8, height = 4)
-
-
-    ## Motif count of trios from pool
-    motif_counts <- df_trio_motif_aggregate %>%
-        group_by(Seed, Motif) %>%
-        summarise(Count = n()) %>%
-        group_by(Seed) %>%
-        mutate(RelativeMotifCount = Count / sum (Count))
-
-    df_trio_motif_counts <- df_trio_motif_aggregate %>%
-        filter(!is.na(Richness)) %>%
-        group_by(Seed, Motif, Coexistence) %>%
-        summarize(Count = n()) %>%
-        group_by(Seed, Motif) %>%
-        mutate(FractionTrioCoexistence = Count / sum(Count)) %>%
-        filter(Coexistence == "trio coexists") %>%
-        select(Seed, FractionTrioCoexistence) %>%
-        left_join(motif_counts) %>%
-        mutate(Experiment = "Species pool")
-
-
-    if (whether_save_temp_file)  fwrite(df_trio_motif_counts, "../data/temp/df_trio_motif_counts.txt")
+        geom_tile(aes(x = toRank, y = fromRank, fill = InteractionType), width = 0.9, height = 0.9) +
+        scale_x_continuous(breaks = 1:n_nodes, labels = axis_label, expand = c(0,0), position = "top") +
+        scale_y_reverse(breaks = 1:n_nodes, labels = axis_label, position = "right", expand = c(0,0)) +
+        scale_fill_manual(values = assign_interaction_color(level = "matrix")) +
+        theme_classic() +
+        theme(legend.position = "none",
+              axis.title = element_blank(),
+              axis.line = element_blank(), axis.ticks = element_blank(),
+              axis.text.x.top = element_text(size = 15, angle = 90, face = "bold.italic", color = color_logic),
+              axis.text.y = element_text(size = 15, face = "bold.italic", color = color_logic),
+              plot.margin = margin(10,10,10,10, "mm")) +
+        labs()
 
 }
 
-if (FALSE) {
-    # Trio coexistence
-    motif_counts <- df_trio_motif_aggregate %>%
-        filter(!is.na(Richness)) %>%
-        group_by(Motif) %>%
-        summarize(Count = n())
+communities_network <- communities %>%
+    filter(str_detect(Community, "C\\d")) %>%
+    mutate(graph = net_list[str_detect(names(net_list), "C\\d")]) %>%
+    rowwise() %>%
+    mutate(graph_meta = list(append_meta_data(graph, Community, isolates, pairs))) %>%
+    mutate(p_net_matrix_list = list(plot_adjacent_matrix(graph_meta)))
+p_J <- plot_grid(plotlist = communities_network$p_net_matrix_list, nrow = 4, labels = communities_network$Community) +
+    theme(plot.background = element_rect(fill = "white", color = NA))
+ggsave(here::here("plots/Fig2J-matrix_taxa.png"), p_J, width = 20, height = 20)
 
-    ps2 <- df_trio_motif_aggregate %>%
-        filter(!is.na(Richness)) %>%
-        group_by(Motif, Coexistence) %>%
-        summarize(Count = n()) %>%
-        group_by(Motif) %>%
-        mutate(FractionTrioCoexistence = Count / sum(Count)) %>%
-        ggplot() +
-        geom_bar(aes(x = Motif, y = FractionTrioCoexistence, fill = Coexistence), stat = "identity", color = 1) +
-        #geom_text(data = trio_counts, aes(label = paste0("n=", Count)), x = Inf, y = Inf, hjust = 1, vjust = 2) +
-        geom_text(data = motif_counts, aes(x = Motif, y = 1.1, label = paste0("n=", Count)), hjust = 0.5, vjust = 2) +
-        scale_x_continuous(limits = c(0,8), breaks = 1:7, expand = c(0,0)) +
-        scale_y_continuous(limits = c(0, 1.1)) +
-        scale_fill_manual(values = c("trio coexists" = "#557BAA", "trio does not coexist" = "#DB7469")) +
-        #facet_wrap(Seed~., scales = "free", ncol = 1) +
-        theme_cowplot() +
-        theme(legend.position = "top", strip.background = element_blank(), strip.text = element_blank()) +
-        guides(fill = guide_legend(title = ""))
-    ggsave("../plots/FigS2.png", plot = ps2, width = 4, height = 4)
+# Figure 2K: isolate byproduct acids measure
+isolates_byproduct <- isolates %>%
+    filter(Assembly == "self_assembly") %>%
+    select(Community, Isolate, ID, Fermenter, ends_with("hr")) %>%
+    pivot_longer(cols = ends_with("hr"), names_pattern = "(.*)_(.*)hr", names_to = c("Measure", "Time"), values_to = "Value") %>%
+    filter(!is.na(Value))
+p1 <- isolates_byproduct %>%
+    # Only use acids
+    filter(str_detect(Measure, "X_"), !str_detect(Measure, "sum")) %>%
+    mutate(Measure = str_replace(Measure, "X_", "")) %>%
+    ggplot(aes(x = Time, y = Value, group = ID, color = Fermenter, alpha = ID)) +
+    geom_point() +
+    geom_line() +
+    scale_color_npg(labels = c("TRUE" = "Fermenter", "FALSE" = "Respirator"), breaks = c(T, F)) +
+    facet_wrap(Measure~., nrow = 1, scales = "free_y") +
+    theme_classic() +
+    theme(legend.title = element_blank(), legend.position = "top",
+          strip.background = element_rect(color = NA, fill = NA),
+          panel.border = element_rect(fill = NA, color = 1)) +
+    guides(alpha = "none") +
+    labs(x = "Time (hr)", y = "Concentration (mM)")
+p_upper <- get_legend(p1)
+p1 <- p1 + theme(legend.position = "none")
 
+p2 <- isolates_byproduct %>%
+    filter(Measure == "pH") %>%
+    ggplot(aes(x = Time, y = Value, group = ID, color = Fermenter, alpha = ID)) +
+    geom_point() +
+    geom_line() +
+    scale_color_npg(labels = c("TRUE" = "Fermenter", "FALSE" = "Respirator"), breaks = c(T, F)) +
+    facet_wrap(Measure~., nrow = 1, scales = "free_y") +
+    theme_classic() +
+    theme(legend.title = element_blank(), legend.position = "none",
+          strip.background = element_rect(color = NA, fill = NA),
+          panel.border = element_rect(fill = NA, color = 1)) +
+    guides(alpha = "none") +
+    labs(x = "Time (hr)", y = "pH")
+
+p_lower <- plot_grid(p1, p2, nrow = 1, rel_widths = c(3,1), axis = "tb", align = "h")
+p_K <- plot_grid(p_upper, p_lower, ncol = 1, rel_heights = c(1, 5)) + theme(plot.background = element_rect(fill = "white", color = NA))
+ggsave(here::here("plots/Fig2K-byproduct.png"), p_K, width = 9, height = 3)
+
+
+# Figure 2L: tree, all
+load(here::here("data/output/tree.Rdata"))
+p_L <- tree_meta %>%
+    #ggtree(branch.length = "none", layout = "circular") +
+    ggtree(branch.length = "none") +
+    geom_tippoint(aes(colour = Fermenter), size = 3) +
+    scale_color_npg(name = "", label = c("TRUE" = "fermenter", "FALSE" = "respirator")) +
+    ggnewscale::new_scale_color() +
+    geom_tiplab(aes(label = paste0(Community, " ", Genus, " sp.")), offset = 1) +
+    scale_x_continuous(limits = c(0, 30)) +
+    theme_void() +
+    theme(plot.background = element_rect(fill = "white", color = NA)) +
+    labs()
+ggsave(here::here("plots/Fig2L-tree.png"), p_L, width = 10, height = 10)
+
+# Figure 2M: tree for each community
+plot_tree <- function(tree) {
+    tree %>%
+        #ggtree(branch.length = "none") +
+        ggtree() +
+        geom_tippoint(aes(colour = Fermenter), size = 5) +
+        scale_color_npg(name = "", label = c("TRUE" = "Fermenter", "FALSE" = "Respirator")) +
+        new_scale_color() +
+        geom_tiplab(aes(label = paste0(Genus, " sp.")), offset = 0.05) +
+        scale_x_continuous(expand = expansion(.5, .1)) +
+        theme_void() +
+        theme(legend.position = "none")
 }
+here::here("data/output/tree.Rdata")
+## Get legend from fig 2L
+l <- get_legend(p_L  + theme(legend.text = element_text(size = 20)))
+p_M <- plot_grid(plotlist = c(communities_tree$tree_plot, list(l)), labels = communities_tree$Community, ncol = 2) +
+    theme(plot.background = element_rect(fill = "white", color = NA))
+ggsave(here::here("plots/Fig2M-tree_community.png"), p_M, width = 15, height = 15)
+
+
+# Figure 2N: growth trait differences in a community
+isolates_plot <- isolates %>% filter(Assembly == "self_assembly") %>% filter(!is.na(Fermenter))
+pairs_plot <- pairs_meta %>% filter(Assembly == "self_assembly")
+p_N <- isolates_plot %>%
+    ggplot(aes(x = Rank, y = r_glucose_midhr)) +
+    geom_segment(data = pairs_plot, aes(x = Rank1, xend = Rank2, y = r_glucose_midhr1, yend = r_glucose_midhr2, linetype = InteractionType)) +
+    geom_point(aes(color = Fermenter), shape = 1, size = 3, stroke = 2) +
+    scale_color_npg(name = "", label = c("TRUE" = "fermenter", "FALSE" = "respirator")) +
+    scale_linetype_manual(name = "", values = c("coexistence" = 1, "exclusion" = 0)) +
+    scale_x_continuous(breaks = 1:12) +
+    facet_wrap(Community ~., scales = "free") +
+    theme_classic() +
+    theme(panel.border = element_rect(color = 1, fill = NA, size = 1)) +
+    labs(x = "Rank", y = expression(r[glu]))
+ggsave(here::here("plots/Fig2N-r_glu_rank.png"), p_N, width = 10, height = 8)
+
+# Figure 2O: r_glu versus rank for C11R2
+isolates_plot <- isolates %>% filter(Assembly == "self_assembly", Community == "C11R2") %>% filter(!is.na(Fermenter))
+pairs_plot <- pairs_meta %>% filter(Assembly == "self_assembly", Community == "C11R2")
+p_O <- isolates_plot %>%
+    ggplot(aes(x = Rank, y = r_glucose_midhr)) +
+    geom_segment(data = pairs_plot, aes(x = Rank1, xend = Rank2, y = r_glucose_midhr1, yend = r_glucose_midhr2, linetype = InteractionType)) +
+    geom_point(aes(color = Fermenter), shape = 1, size = 3, stroke = 2) +
+    scale_color_npg(name = "", label = c("TRUE" = "fermenter", "FALSE" = "respirator")) +
+    scale_linetype_manual(name = "", values = c("coexistence" = 1, "exclusion" = 0)) +
+    scale_x_continuous(breaks = 1:12) +
+    theme_classic() +
+    theme(panel.border = element_rect(color = 1, fill = NA, size = 1)) +
+    labs(x = "Rank", y = expression(r[glu]))
+ggsave(here::here("plots/Fig2O-r_glu_rank_C11R2.png"), p_O, width = 4, height = 3)
+
+
+# Figure 2P: growth curves, alpha by ranks
+isolates_curves <- isolates %>%
+    filter(str_detect(Community, "C\\d")) %>%
+    mutate(Isolate = factor(Isolate)) %>%
+    # Standardize rank
+    group_by(Community) %>%
+    mutate(Rank = Rank / Game) %>%
+    left_join(read_csv(here::here("data/output/isolates_curves.csv"))) %>%
+    filter(CS == "glucose") %>%
+    group_by(ID, CS, Time) %>%
+    arrange(ID, CS, Time)
+
+## Replicate dummy variable
+temp <- isolates_curves %>%
+    distinct(Community, Isolate, Well) %>%
+    group_by(ID, CS, Well) %>%
+    summarize() %>%
+    group_by(ID, CS) %>%
+    mutate(Replicate = factor(1:n()))
+
+p_P <- isolates_curves %>%
+    left_join(temp) %>%
+    filter(Replicate == 1) %>%
+    mutate(Community = factor(Community, communities$Community)) %>%
+    ggplot() +
+    #geom_point(aes(x = Time, y = OD620, color = Replicate, group = Isolate), shape = 1) +
+    geom_line(aes(x = Time, y = OD620, group = interaction(Isolate,Replicate), alpha = Rank), size = 1) +
+    scale_alpha_continuous(range = c(1,.2), breaks = 1:12) +
+    scale_y_continuous(breaks = scales::pretty_breaks(n = 3)) +
+    facet_wrap(Community~., ncol = 2) +
+    theme_classic() +
+    theme(panel.border = element_rect(fill = NA, color = 1), legend.position = "none") +
+    labs(x = "Time (hr)", y = "OD (620 nm)")
+
+ggsave(here::here("plots/Fig2P-growth_curves.png"), p_P, width = 4, height = 12)
+
+#
 
-if (FALSE){
-    # pair and trio temporal?
-    df_trio_competition <- fread(paste0("../data/raw/simulation/trio-culturable_isolates-2_composition.txt"))
-    df_trio_competition %>%
-        filter(Well == "W0", Type == "consumer") %>%
-        mutate(ID = factor(ID)) %>%
-        group_by(Well, Transfer) %>%
-        mutate(RelativeAbundance = Abundance / sum(Abundance)) %>%
-        ggplot() +
-        #geom_line() + geom_point() +
-        geom_bar(aes(x = Transfer, y = RelativeAbundance, fill = ID, group = ID), stat = "identity") +
-        scale_x_continuous(breaks = 1:10, expand = c(0,0)) +
-        scale_y_continuous(expand = c(0,0)) +
-        theme_bw()
 
-    temp_list <- rep(list(NA), nrow(input_independent_pairs))
-    for (i in 1:nrow(input_independent_pairs)) {
-        cat("\nexp_id = ", input_independent_pairs$exp_id[i])
-        cat(",\tseed = ", input_independent_pairs$seed[i])
-        current_seed <- input_independent_trios$seed[i]
-        df_pair_list <- fread(paste0("../data/raw/simulation/pair-culturable-", current_seed, ".txt")) %>%
-            read_pair_list()
 
-        df_pair_competition <-
-            fread(paste0("../data/raw/simulation/pair-culturable_isolates-", current_seed, "_composition.txt")) %>%
-            read_pair_competition(df_pair_list)
 
-        df_pair_outcome <- determine_pair_outcome(df_pair_competition, df_pair_list)
 
-        temp_list[[i]] <- df_pair_outcome
-    }
-    df_pair_outcomes <- bind_rows(temp_list, .id = "Seed")
 
-    # Panel A: random pairs
-    temp_list <- rep(list(NA), nrow(input_independent_pairs))
-    for (i in 1:nrow(input_independent_pairs)) {
-        cat("\nexp_id = ", input_independent_pairs$exp_id[i])
-        cat(",\tseed = ", input_independent_pairs$seed[i])
-        df_pair_list <- fread(paste0("../data/raw/simulation/pair-culturable-", i, ".txt")) %>%
-            read_pair_list()
 
-        df_pair_competition <-
-            fread(paste0("../data/raw/simulation/pair-culturable_isolates-", i, "_composition.txt")) %>%
-            read_pair_competition(df_pair_list)
 
-        df_pair_outcome <- determine_pair_outcome(df_pair_competition, df_pair_list)
 
-        temp_list[[i]] <- df_pair_outcome
-    }
-    df_pair_outcomes <- bind_rows(temp_list, .id = "Seed")
 
-    p1 <- df_pair_outcomes %>%
-        mutate(InteractionType = ifelse(is.na(InteractionType), "no-growth", InteractionType)) %>%
-        group_by(Seed, InteractionType) %>%
-        summarise(Count = n()) %>%
-        #filter(Seed %in% c(1,3)) %>%
-        ggplot() +
-        geom_bar(aes(x = Seed, y = Count, fill = InteractionType), stat = "identity", color = 1) +
-        scale_x_discrete(expand = c(0,0)) +
-        scale_y_continuous(expand = c(0,0)) +
-        scale_fill_manual(values = interaction_color) +
-        facet_wrap(Seed~., scales = "free_x", ncol = 1) +
-        theme_cowplot() +
-        theme(legend.position = "right", legend.title = element_blank(), strip.background = element_blank(), strip.text = element_blank()) +
-        panel_border(color = 1) +
-        ggtitle("Random culturable pairs")
-    p1
-    ggsave("../plots/Fig2A.png", plot = p1, width = 5, height = 5)
 
-    if(FALSE) {
-        p1 <- df_pair_outcomes %>%
-            group_by(Seed, InteractionType) %>%
-            summarise(Count = n()) %>%
-            ggplot() +
-            geom_bar(aes(x = Seed, y = Count, fill = InteractionType), stat = "identity") +
-            scale_x_discrete(expand = c(0,0)) +
-            scale_y_continuous(expand = c(0,0)) +
-            theme_cowplot() +
-            theme(legend.position = "top", legend.title = element_blank()) +
-            panel_border(color = 1) +
-            ggtitle("Random pairs of culturable isolates")
-    }
-
-
-    # Panel B: random trios
-    temp_list <- rep(list(NA), nrow(input_independent_trios))
-    for (i in 1:nrow(input_independent_trios)) {
-        cat("\nexp_id = ", input_independent_trios$exp_id[i])
-        cat(",\tseed = ", input_independent_trios$seed[i])
-
-        # Trio
-        df_trio_list <- fread(paste0("../data/raw/simulation/trio-culturable-", i, ".txt")) %>%
-            read_trio_list()
-        df_trio_competition <- fread(paste0("../data/raw/simulation/trio-culturable_isolates-", i, "_composition.txt")) %>%
-            read_trio_competition(df_trio_list)
-        df_trio_outcome <- determine_trio_outcome(df_trio_competition)
-
-        # Pairs from trios
-        df_pair_from_trio_list <- fread(paste0("../data/raw/simulation/pair-culturable_from_trio-", i, ".txt")) %>%
-            read_pair_from_trio_list()
-        df_pair_from_trio_competition <- fread(paste0("../data/raw/simulation/pair-culturable_from_trio-", i, "_composition.txt")) %>%
-            read_pair_from_trio_competition(df_pair_from_trio_list)
-        df_pair_from_trio_outcome <- determine_pair_from_trio_outcome(df_pair_from_trio_competition, df_pair_from_trio_list)
-        df_trio_motif <- df_pair_from_trio_outcome %>%
-            split.data.frame(f=.$Trio) %>%
-            lapply(determine_trio_motif) %>%
-            bind_rows(.id = "Trio") %>%
-            filter(Count != 0) %>%
-            select(Trio, Motif)
-
-        temp_list[[i]] <- df_trio_motif
-
-    }
-    df_trio_motif_aggregate <- bind_rows(temp_list, .id = "Seed") %>%
-        left_join(df_trio_outcome) %>%
-        mutate(Coexistence = ifelse(Richness == 3, "trio coexists", "trio does not coexist"))
-    trio_counts <- df_trio_motif_aggregate %>%
-        group_by(Seed) %>% summarize(Count = n())
-
-    p2 <- df_trio_motif_aggregate %>%
-        filter(!is.na(Richness)) %>%
-        ggplot() +
-        geom_bar(aes(x = Motif, fill = Coexistence), stat = "count", color = 1) +
-        geom_text(data = trio_counts, aes(label = paste0("n=", Count)), x = -Inf, y = Inf, hjust = -1, vjust = 2) +
-        scale_x_continuous(limits = c(0,8), breaks = 1:7, expand = c(0,0)) +
-        scale_fill_manual(values = c("trio coexists" = "#557BAA", "trio does not coexist" = "#DB7469")) +
-        facet_wrap(Seed~., scales = "free", ncol = 1) +
-        theme_cowplot() +
-        theme(legend.position = c(.05, .9), strip.background = element_blank(), strip.text = element_blank()) +
-        guides(fill = guide_legend(title = "")) +
-        ggtitle("Random culturable trios")
-    p2
-    #p2 <- plot_grid(p_trio_motifs, p_trio_motifs_coexist, nrow = 1, axis = "tb", align = "vh")
-
-    ggsave("../plots/Fig2B.png", plot = p2, width = 5, height = 5)
-
-    if (FALSE) {
-
-        p_trio_motifs <- df_trio_motif_aggregate %>%
-            ggplot() +
-            geom_bar(aes(x = Motif), stat = "count", color = 1, fill = NA) +
-            annotate("text", x = -Inf, y = Inf, label = paste0("n=", nrow(df_trio_motif_aggregate)), hjust = -0.5, vjust = 2) +
-            scale_x_continuous(limits = c(0,8), breaks = 1:7, expand = c(0,0)) +
-            theme_cowplot() +
-            theme(legend.position = "top") +
-
-            ps1 <- df_trio_motif_aggregate %>%
-                left_join(df_trio_outcome) %>%
-                ggplot() +
-                geom_jitter(aes(x = Motif, y = Richness), shape = 21, width = 0.2, height = 0.2, size = 3) +
-                scale_x_continuous(limits = c(1,7), breaks = 1:7) +
-                scale_y_continuous(limits = c(0.5,3.5), breaks = 1:3) +
-                facet_grid(.~Seed, scales = "free_y") +
-                theme_bw() +
-                theme(panel.grid.minor = element_blank())
-            ps1
-
-            #    ggsave("../plots/Fig2B.png", plot = p2, width = 10, height = 4)
-    }
-
-    # Panel C: top-down assembled communities
-    community_motif_list <- rep(list(NA), nrow(input_independent_community))
-    community_pair_list <- rep(list(NA), nrow(input_independent_community))
-    names(community_motif_list) <- input_independent_community$seed
-    names(community_pair_list) <- input_independent_community$seed
-    for (i in 1:nrow(input_independent_community)) {
-        cat("\nexp_id = ", input_independent_community$exp_id[i])
-        cat(",\tseed = ", input_independent_community$seed[i])
-        comm_seed <- input_independent_community$seed[i]
-        input_independent_pair_from_comm <- input_independent %>% filter(grepl("pair-from_top_down", exp_id), seed == comm_seed)
-        n_comms <- nrow(input_independent_pair_from_comm)
-        #    if (i == 1) n_comms = 9 else n_comms <- 10
-        comms <- input_independent_pair_from_comm %>%
-            filter(seed == i) %>%
-            pull(exp_id) %>%
-            gsub(paste0("pair-from_top_down_community-", comm_seed, "-community"), "", .)
-
-        temp_list <- rep(list(NA), n_comms)
-        temp_list2 <- rep(list(NA), n_comms)
-
-        for (j in 1:length(comms)) {
-            #        if (i == 1 & j >=10) next
-            cat("\n community = Community", comms[j])
-            # Community
-            df_community_list <- fread(paste0("../data/raw/simulation/community-top_down-", i, "_composition.txt")) %>%
-                read_community_list()
-
-            # Pairs from trios
-            df_pair_from_community_list <- fread(paste0("../data/raw/simulation/pair-from_top_down_community-", comm_seed, "-community", comms[j], ".txt")) %>%
-                read_pair_from_commmunity_list()
-
-            df_pair_from_community_competition <- fread(paste0("../data/raw/simulation/pair-from_top_down_community-", comm_seed, "-community", comms[j], "_composition.txt")) %>%
-                read_pair_from_community_competition(df_pair_from_community_list)
-
-            df_pair_from_community_outcome <- determine_pair_from_community_outcome(df_pair_from_community_competition, df_pair_from_community_list)
-
-            df_community_motif <- determine_community_motif(df_pair_from_community_outcome) %>%
-                mutate(Community = paste0("Community", comms[j])) %>%
-                filter(Count != 0) %>%
-                select(Community, Motif, Count)
-
-            temp_list[[j]] <- df_community_motif
-            temp_list2[[j]] <- df_pair_from_community_outcome
-        }
-        community_motif_list[[i]] <- rbindlist(temp_list)
-        community_pair_list[[i]] <- rbindlist(temp_list2)
-    }
-
-    community_pair <- rbindlist(community_pair_list, idcol = "Seed")
-    community_motif <- rbindlist(community_motif_list, idcol = "Seed")
-
-
-    p3 <- community_pair %>%
-        mutate(InteractionType = ifelse(is.na(InteractionType), "no-growth", InteractionType)) %>%
-        group_by(Seed, InteractionType) %>%
-        summarise(Count = n()) %>%
-        ggplot() +
-        geom_bar(aes(x = Seed, y = Count, fill = InteractionType), stat = "identity", color = 1) +
-        scale_x_discrete(expand = c(0,0)) +
-        scale_y_continuous(expand = c(0,0)) +
-        scale_fill_manual(values = interaction_color) +
-        facet_wrap(Seed~., scales = "free", ncol = 1) +
-        theme_cowplot() +
-        theme(legend.position = "right", legend.title = element_blank(), strip.background = element_blank(), strip.text = element_blank()) +
-        panel_border(color = 1) +
-        ggtitle("Pairs in top-down communities")
-
-    p4 <- community_motif %>%
-        mutate(Community = gsub("Community", "", Community)) %>%
-        ggplot() +
-        geom_bar(aes(x = Motif, y = Count, fill = Community), stat = "identity", color = 1) +
-        scale_x_continuous(limits = c(0,8), breaks = 1:7, expand = c(0,0)) +
-        facet_wrap(Seed~., scales = "free", ncol = 1) +
-        theme_cowplot() +
-        theme(legend.position = "right", strip.background = element_blank(), strip.text = element_blank()) +
-        ggtitle("")
-
-    p_random <- plot_grid(p1, p2, nrow = 1, rel_widths = c(4, 8), axis = "tblr", align = "h")
-    p_community <- plot_grid(p3, p4, nrow = 1, rel_widths = c(4, 8), axis = "tblr", align = "h")
-    p <- plot_grid(p_random, p_community, nrow = 1, axis = "tb")
-    ggsave("../plots/Fig2C.png", plot = p_random, width = 8, height = 8)
-    ggsave("../plots/Fig2D.png", plot = p_community, width = 8, height = 8)
-    ggsave("../plots/Fig2.png", plot = p, width = 16, height = 8)
-
-
-
-
-
-
-
-
-
-
-
-    seed_subset <- c(3)
-    n_seeds <- length(seed_subset)
-
-    p1 <- df_pair_outcomes %>%
-        mutate(InteractionType = ifelse(is.na(InteractionType), "no-growth", InteractionType)) %>%
-        filter(Seed %in% seed_subset) %>%
-        group_by(Seed, InteractionType) %>%
-        summarise(Count = n()) %>%
-        mutate(Medium = ifelse(Seed == 1, "rich medium", "single supplied resource")) %>%
-        #filter(Seed %in% c(1,3)) %>%
-        ggplot() +
-        geom_bar(aes(x = Seed, y = Count, fill = InteractionType), stat = "identity", color = 1) +
-        scale_x_discrete(expand = c(0,0)) +
-        scale_y_continuous(expand = c(0,0)) +
-        scale_fill_manual(values = interaction_color) +
-        facet_wrap(Medium~., scales = "free_x", ncol = 1) +
-        theme_cowplot() +
-        theme(legend.position = "right", legend.title = element_blank()) +
-        panel_border(color = 1) +
-        ggtitle("Random culturable pairs")
-
-
-    p2 <- df_trio_motif_aggregate %>%
-        filter(!is.na(Richness)) %>%
-        filter(Seed %in% seed_subset) %>%
-        mutate(Medium = ifelse(Seed == 1, "rich medium", "single supplied resource")) %>%
-        ggplot() +
-        geom_bar(aes(x = Motif, fill = Coexistence), stat = "count", color = 1) +
-        geom_text(data = mutate(filter(trio_counts, Seed %in% seed_subset), Medium = ifelse(Seed == 1, "rich medium", "single supplied resource")), aes(label = paste0("n=", Count)), x = -Inf, y = Inf, hjust = -1, vjust = 2) +
-        scale_x_continuous(limits = c(0,8), breaks = 1:7, expand = c(0,0)) +
-        scale_fill_manual(values = c("trio coexists" = "#557BAA", "trio does not coexist" = "#DB7469")) +
-        facet_wrap(Medium~., scales = "free", ncol = 1) +
-        theme_cowplot() +
-        theme(legend.position = c(.5, .9)) +
-        guides(fill = guide_legend(title = "")) +
-        ggtitle("Random culturable trios")
-
-    p3 <- community_pair %>%
-        mutate(InteractionType = ifelse(is.na(InteractionType), "no-growth", InteractionType)) %>%
-        filter(Seed %in% seed_subset) %>%
-        group_by(Seed, InteractionType) %>%
-        summarise(Count = n()) %>%
-        mutate(Medium = ifelse(Seed == 1, "rich medium", "single supplied resource")) %>%
-        ggplot() +
-        geom_bar(aes(x = Seed, y = Count, fill = InteractionType), stat = "identity", color = 1) +
-        scale_x_discrete(expand = c(0,0)) +
-        scale_y_continuous(expand = c(0,0)) +
-        scale_fill_manual(values = interaction_color) +
-        facet_wrap(Medium~., scales = "free", ncol = 1) +
-        theme_cowplot() +
-        theme(legend.position = "right", legend.title = element_blank()) +
-        panel_border(color = 1) +
-        ggtitle("Pairs in top-down communities")
-
-    p4 <- community_motif %>%
-        mutate(Community = gsub("Community", "", Community)) %>%
-        filter(Seed %in% seed_subset) %>%
-        mutate(Medium = ifelse(Seed == 1, "rich medium", "single supplied resource")) %>%
-        ggplot() +
-        geom_bar(aes(x = Motif, y = Count, fill = Community), stat = "identity", color = 1) +
-        scale_x_continuous(limits = c(0,8), breaks = 1:7, expand = c(0,0)) +
-        facet_wrap(Medium~., scales = "free", ncol = 1) +
-        theme_cowplot() +
-        theme(legend.position = "right") +
-        ggtitle("")
-
-    p_random <- plot_grid(p1, p2, nrow = 1, rel_widths = c(4, 8), axis = "tblr", align = "h")
-    p_community <- plot_grid(p3, p4, nrow = 1, rel_widths = c(4, 8), axis = "tblr", align = "h")
-    p <- plot_grid(p_random, p_community, nrow = 1, axis = "tb")
-    ggsave("../plots/Fig2C_subset.png", plot = p_random, width = 8, height = 4*n_seeds)
-    ggsave("../plots/Fig2D_subset.png", plot = p_community, width = 8, height = 4*n_seeds)
-    ggsave("../plots/Fig2_subset.png", plot = p, width = 16, height = 4*n_seeds)
-}
-
-if (FALSE) {
-    plot_community_temporal <- function(community_composition) {
-        community_composition %>%
-            filter(Well %in% paste0("W", 0:5)) %>%
-            filter(Type == "consumer") %>%
-            mutate(ID = factor(ID)) %>%
-            group_by(Well, Transfer) %>%
-            mutate(RelativeAbundance = Abundance /sum(Abundance)) %>%
-            ggplot() +
-            geom_bar(aes(x = Transfer, y = RelativeAbundance, fill = ID), stat = "identity", color = 1) +
-            facet_wrap(Well~.) +
-            scale_x_continuous(expand = c(0,0)) +
-            scale_y_continuous(expand = c(0,0)) +
-            theme_bw() +
-            theme(legend.position = "none")
-    }
-    fread(paste0("../data/raw/simulation/community-top_down-2_composition.txt")) %>%
-        plot_community_temporal()
-
-
-    fread(paste0("../data/raw/simulation/pair-from_top_down_community-1-community1_composition.txt")) %>%
-        #    filter(ID == 65) %>%
-        #    filter(Type == "consumer")
-        #filter(Well %in% paste0("W", c(91:92)))
-        plot_community_temporal()
-
-    fread(paste0("../data/raw/simulation/pair-from_top_down_community-", comm_seed, "-community", comms[j], "_composition.txt")) %>%
-        read_pair_from_community_competition(df_pair_from_community_list)
-
-
-    filter(Type == "consumer") %>%
-        left_join(select(pair_from_community_list, Well, Community, Pair, InitialFrequency), by = "Well") %>%
-        group_by(Community, Pair, InitialFrequency, Transfer) %>%
-        mutate(ID = factor(ID)) %>%
-        mutate(TotalAbundance = sum(Abundance), RelativeAbundance = Abundance/TotalAbundance) %>%
-        select(Community, Pair, InitialFrequency, Transfer, ID, RelativeAbundance) %>%
-        ungroup()
-
-    plot_pair_temporal <- function(pair_composition) {
-        pair_composition %>%
-            #filter(Well %in% paste0("W", 0:100)) %>%
-            #filter(Type == "consumer") %>%
-            #mutate(ID = factor(ID)) %>%
-            group_by(Community, Pair, InitialFrequency, Transfer) %>%
-            #mutate(RelativeAbundance = Abundance /sum(Abundance)) %>%
-            ggplot() +
-            geom_bar(aes(x = Transfer, y = RelativeAbundance, fill = ID), stat = "identity", color = 1) +
-            facet_grid(InitialFrequency~Pair) +
-            scale_x_continuous(expand = c(0,0)) +
-            scale_y_continuous(expand = c(0,0)) +
-            theme_bw() +
-            theme(legend.position = "none")
-    }
-
-
-    df_pair_from_community_competition %>%
-        filter(Community == 10) %>%
-        filter(Pair %in% paste0("Pair", 1:10)) %>%
-        plot_pair_temporal()
-
-
-    fread("../data/raw/simulation/community-top_down-2_composition.txt") %>%
-        plot_community_temporal()
-
-
-    # Panel XX: motif distribution, compared to randomized network
-    b = 100
-
-    cat("\n Randomizing the empirical graphs")
-    temp_list <- rep(list(rep(list(NA), b)), length(graph_list))
-    names(temp_list) <- names(graph_list)
-    for (j in 1:length(graph_list)){
-        cat("\ngraph:", names(graph_list)[j], "\n")
-        for (i in 1:b) {
-            temp_list[[j]][[i]] <- count_motif(randomize_network(graph_list[[j]]))
-            if (i%%10 == 0) cat(i, " ")
-        }
-    }
-    motif_counts <- temp_list %>%
-        lapply(function(x) {
-            lapply(x, function(y) {tibble(Motif = factor(1:7), Count = y)}) %>%
-                rbindlist(idcol = "Seed")
-        }) %>%
-        bind_rows(.id = "Community")
-
-    motif_counts_p95 <- motif_counts %>%
-        group_by(Community, Motif) %>%
-        filter(Count >= quantile(Count, 0.95)) %>%
-        distinct(Community, Motif, Count) %>%
-        arrange(Community, Motif, Count) %>%
-        slice_min(Count) %>%
-        mutate(Percentile = "p95")
-    motif_counts_p05 <- motif_counts %>%
-        group_by(Community, Motif) %>%
-        filter(Count <= quantile(Count, 0.05)) %>%
-        distinct(Community, Motif, Count) %>%
-        arrange(Community, Motif, Count) %>%
-        slice_max(Count) %>%
-        mutate(Percentile = "p05")
-    motif_counts_percentile <- bind_rows(motif_counts_p05, motif_counts_p95) %>%
-        mutate(Community = ordered(Community, levels = community_names_ordered_by_size))
-
-
-    colors <- c("observed" = "red", "random [5th and 95th percentiles]" = "black")
-
-    p3 <- summary_network_motifs %>%
-        mutate(Community = ordered(Community, levels = community_names_ordered_by_size)) %>%
-        ggplot(aes(x = Motif, y = Count)) +
-        geom_point(data = motif_counts_percentile, aes(x = Motif, y = Count, color = "random [5th and 95th percentiles]")) +
-        geom_segment(data = pivot_wider(motif_counts_percentile, names_from = Percentile, values_from = Count),
-            aes(x = Motif, xend = Motif, y = p05, yend = p95, color = "random [5th and 95th percentiles]")) +
-        geom_point(aes(color = "observed")) +
-        scale_color_manual(values = colors) +
-        facet_wrap(Community~., scales = "free_y", nrow = 2) +
-        theme_cowplot() +
-        theme(legend.position = "bottom") +
-        panel_border(color = "black") +
-        labs(color = "")
-    p3
-
-    ggsave("../plots/Fig2C.png", plot = p3, width = 14, height = 4)
-
-
-    # Panel XX: pooled networks
-    motif_counts_aggregated <- motif_counts %>%
-        group_by(Seed, Motif) %>%
-        summarize(Count = sum(Count))
-
-    motif_counts_aggregated_p95 <- motif_counts_aggregated %>%
-        group_by(Motif) %>%
-        filter(Count >= quantile(Count, 0.95)) %>%
-        distinct(Motif, Count) %>%
-        arrange(Motif, Count) %>%
-        slice_min(Count) %>%
-        mutate(Percentile = "p95")
-    motif_counts_aggregated_p05 <- motif_counts_aggregated %>%
-        group_by(Motif) %>%
-        filter(Count <= quantile(Count, 0.05)) %>%
-        distinct(Motif, Count) %>%
-        arrange(Motif, Count) %>%
-        slice_min(Count) %>%
-        mutate(Percentile = "p05")
-    motif_counts_aggregated_percentile <- bind_rows(motif_counts_aggregated_p05, motif_counts_aggregated_p95)
-
-    summary_network_motifs_aggregated <- summary_network_motifs %>%
-        group_by(Motif) %>%
-        summarize(Count = sum(Count))
-
-
-    plot_example_motifs <- function(node_size=5) {
-        temp_list <- rep(list(NA), 7)
-        temp_id <- c(11, 7, 8, 12, 13, 14, 15)
-
-        for (i in 1:7) {
-            g <- as_tbl_graph(igraph::graph.isocreate(size = 3, temp_id[i]))
-            layout <- create_layout(g, layout = 'circle')
-            g <- activate(g, edges) %>% mutate(InteractionType = ifelse(edge_is_mutual(), "coexistence", "exclusion"))
-            temp_list[[i]] <- g %>% activate(nodes) %>% mutate(x = layout$x, y = layout$y, graph = paste0(i))
-        }
-
-        merged_graph <- bind_graphs(temp_list)
-
-        plot_competitive_network(merged_graph, layout = "example_motif", node_size = node_size) +
-            facet_nodes(~graph, nrow = 1)
-    }
-    p_example <- plot_example_motifs(node_size = 3)
-
-
-    colors <- c("observed" = "red", "random [5th and 95th percentiles]" = "black")
-    p4 <- summary_network_motifs_aggregated %>%
-        ggplot(aes(x = Motif, y = Count)) +
-        geom_point(data = motif_counts_aggregated_percentile, aes(x = Motif, y = Count, color = "random [5th and 95th percentiles]"), size = 3) +
-        geom_segment(data = pivot_wider(motif_counts_aggregated_percentile, names_from = Percentile, values_from = Count),
-            aes(x = Motif, xend = Motif, y = p05, yend = p95, color = "random [5th and 95th percentiles]")) +
-        geom_point(aes(color = "observed"), size = 3) +
-        scale_color_manual(values = colors) +
-        facet_grid(.~Motif, scales = "free_x") +
-        theme_cowplot() +
-        theme(legend.position = "bottom", strip.text = element_blank(), strip.background = element_blank(),
-            axis.text.x = element_blank()) +
-        labs(color = "")
-
-    p <- plot_grid(p_example, p4, ncol = 1, axis = "rl", align = "vh", rel_heights = c(2, 7))
-    p
-    ggsave("../plots/Fig2D.png", plot = p, width = 8, height = 5)
-
-
-
-    # Combining the plots
-    p <- plot_grid(p2, p3, ncol = 1, align = "v", rel_heights = c(1, 2))
-
-    ggsave("../plots/Fig2.png", plot = p, width = 10, height = 5)
-
-
-
-
-
-
-    graph_list[[11]] %>%
-        plot_competitive_network()
-
-    # BArplot
-    motif_counts %>%
-        mutate(Community = ordered(Community, level = community_names)) %>%
-        group_by(Community, Seed) %>%
-        mutate(TotalMotifCount = sum(Count)) %>%
-        group_by(Community, Seed, Motif) %>%
-        summarize(RelativeMotifCount = Count/TotalMotifCount) %>%
-        ggplot(aes(x = Seed, y = RelativeMotifCount, fill = Motif)) +
-        geom_bar(position = "stack", stat = "identity") +
-        scale_x_continuous(expand = c(0,0)) +
-        scale_y_continuous(expand = c(0,0)) +
-        facet_grid(Community~.) +
-        theme_bw()
-
-
-}
- #
 
 
 

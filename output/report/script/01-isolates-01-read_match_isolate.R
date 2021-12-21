@@ -15,7 +15,8 @@ isolates_RDP <- read_csv(here::here("data/temp/isolates_RDP.csv"))
 isolates_epsilon <- read_csv(here::here("data/temp/isolates_epsilon.csv"))
 
 ## From 01D
-isolates_growth_traits <- read_csv(here::here("data/temp/isolates_growth_traits.csv"))
+isolates_growth_traits <- read_csv(here::here("data/temp/isolates_growth_traits.csv")) %>%
+    select(-Assembly, -ExpID, -Family, -Genus)
 
 ## From 02D
 isolates_tournament <- read_csv(here::here("data/temp/isolates_tournament.csv"))
@@ -23,12 +24,12 @@ isolates_tournament <- read_csv(here::here("data/temp/isolates_tournament.csv"))
 # Match isolates' information ----
 ## 68 isolates
 isolates <- isolates_ID_match %>%
-    select(ExpID, ID, Community, Isolate) %>%
+    select(Assembly, ExpID, ID, Community, Isolate) %>%
     left_join(isolates_RDP, by = c("ID")) %>%
     left_join(isolates_epsilon, by = c("Community", "Isolate")) %>%
     left_join(isolates_tournament, by = c("Community", "Isolate")) %>%
     select(-OD620) %>%
-    left_join(isolates_growth_traits, by = c("Family", "Genus", "ExpID", "ID", "Community", "Isolate")) %>%
+    left_join(isolates_growth_traits, by = c("ID", "Community", "Isolate")) %>%
     mutate(Community = ordered(Community, levels = communities$Community)) %>%
     filter(!(!grepl("JVN", ExpID) & is.na(Community))) %>%
     select(Assembly, everything()) %>%

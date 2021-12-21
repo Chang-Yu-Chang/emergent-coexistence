@@ -1,11 +1,25 @@
 # R functions making, randomizing, plotting network
 
 # Assign interaction link colors
-assign_interaction_color <- function () {
-    interaction_type <- c("exclusion", "coexistence", "lose", "bistability", "neutrality", "self", "undefined")
-    interaction_color <- c("#DB7469", "#557BAA", "#73C966", "#EECF6D", "#8650C4", "black", "grey80")
-    names(interaction_color) <- interaction_type
-    return(interaction_color)
+assign_interaction_color <- function (level = "simple") {
+    if (level == "simple") {
+        interaction_type <- c("exclusion", "coexistence")
+        interaction_color <- c("#DB7469", "#557BAA")
+        names(interaction_color) <- interaction_type
+        return(interaction_color)
+    }
+    if (level == "matrix") {
+        interaction_type <- c("exclusion", "coexistence", "lose", "bistability", "neutrality", "self", "undefined")
+        interaction_color <- c("#DB7469", "#557BAA", "#73C966", "#EECF6D", "#8650C4", "black", "grey80")
+        names(interaction_color) <- interaction_type
+        return(interaction_color)
+    }
+    if (level == "finer") {
+        interaction_type <- c("competitive exclusion", "stable coexistence", "neutrality", "mutual exclusion", "frequency-dependent coexistence")
+        interaction_color <- c("#DB7469", "#557BAA", "#8650C4", "#F7AEF8", "#72DDF7")
+        names(interaction_color) <- interaction_type
+        return(interaction_color)
+    }
 }
 
 # Assign motif colors
@@ -100,9 +114,9 @@ plot_competitive_network <- function(g, node_size = 10, g_layout = "circle") {
             ggraph(layout = "nicely") +
             geom_node_point(aes(fill = Isolate), size = node_size, shape = 21, colour = "black", stroke = node_size/5) +
             geom_edge_link(aes(color = InteractionType), width = node_size/10,
-                arrow = arrow(length = unit(node_size/2, "mm"), type = "closed", angle = 30, ends = "last"),
-                start_cap = circle(node_size/2+1, "mm"),
-                end_cap = circle(node_size/2+1, "mm")) +
+                           arrow = arrow(length = unit(node_size/2, "mm"), type = "closed", angle = 30, ends = "last"),
+                           start_cap = circle(node_size/2+1, "mm"),
+                           end_cap = circle(node_size/2+1, "mm")) +
             scale_edge_color_manual(values = interaction_color) +
             #scale_fill_manual(values = c("white", "grey40")) +
             scale_x_continuous(limits = nodex_axis_x*1.2) +
@@ -120,9 +134,9 @@ plot_competitive_network <- function(g, node_size = 10, g_layout = "circle") {
             ggraph(layout = "nicely") +
             geom_node_point(fill = "grey", size = node_size, shape = 21, colour = "black", stroke = node_size/5) +
             geom_edge_arc(aes(color = InteractionType), width = node_size/10,
-                arrow = arrow(length = unit(node_size/2, "mm"), type = "closed", angle = 30, ends = "last"),
-                start_cap = circle(node_size/2+1, "mm"),
-                end_cap = circle(node_size/2+1, "mm")) +
+                          arrow = arrow(length = unit(node_size/2, "mm"), type = "closed", angle = 30, ends = "last"),
+                          start_cap = circle(node_size/2+1, "mm"),
+                          end_cap = circle(node_size/2+1, "mm")) +
             scale_edge_color_manual(values = interaction_color) +
             scale_x_continuous(limits = nodex_axis_x*1.2) +
             #scale_y_continuous(limits = nodex_axis_y*1.2) +
@@ -140,9 +154,9 @@ plot_competitive_network <- function(g, node_size = 10, g_layout = "circle") {
             ggraph(layout = "nicely") +
             geom_node_point(fill = "grey", size = node_size, shape = 21, colour = "black", stroke = node_size/5) +
             geom_edge_link(aes(color = InteractionType), width = node_size/10,
-                arrow = arrow(length = unit(node_size/2, "mm"), type = "closed", angle = 30, ends = "last"),
-                start_cap = circle(node_size/2+1, "mm"),
-                end_cap = circle(node_size/2+1, "mm")) +
+                           arrow = arrow(length = unit(node_size/2, "mm"), type = "closed", angle = 30, ends = "last"),
+                           start_cap = circle(node_size/2+1, "mm"),
+                           end_cap = circle(node_size/2+1, "mm")) +
             scale_edge_color_manual(values = interaction_color) +
             scale_x_continuous(limits = nodex_axis_x*1.3) +
             scale_y_continuous(limits = nodex_axis_y*1.3) +
@@ -239,8 +253,8 @@ plot_adjacent_matrix <- function(graph, show.legend = F, show.axis = F, show_lab
             fromRank = .N()$PlotRank[match(from, .N()$Isolate)],
             toRank = .N()$PlotRank[match(to, .N()$Isolate)])
 
-            # fromLabel = .N()[match(from, .N()$Isolate), show_label],
-            # toLabel = .N()[match(to, .N()$Isolate), show_label])
+    # fromLabel = .N()[match(from, .N()$Isolate), show_label],
+    # toLabel = .N()[match(to, .N()$Isolate), show_label])
 
     #label_ID <- igraph::get.vertex.attribute(graph)$ID %>% setNames(igraph::get.vertex.attribute(graph)$PlotRank)
 
@@ -265,4 +279,49 @@ plot_adjacent_matrix <- function(graph, show.legend = F, show.axis = F, show_lab
         {if (show.legend) {theme(legend.position = "top")} else theme(legend.position = "none")} +
         NULL
 }
+
+
+# Compute the rank of an isolate based on its number of wins and lose in pairwise competition
+tournament_rank <- function(pairs) {
+    if (igraph::is.igraph(pairs)) {
+        net <- pairs
+        pairs <- as_tibble(get.edgelist(net)) %>%
+            setNames(c("From", "To")) %>%
+            mutate(InteractionType = get.edge.attribute(net)$InteractionType) %>%
+            rowwise() %>%
+            mutate(Isolate1 = min(From, To), Isolate2 = max(From, To))
+    }
+    isolate_name <- pairs %>% select(Isolate1, Isolate2) %>% unlist %>% unique %>% sort()
+    # Isolates' ranks in the tournament
+    tour_rank <- data.frame(
+        Isolate = isolate_name,
+        # Win
+        Win = filter(pairs, InteractionType == "exclusion") %>%
+            select(From) %>% unlist() %>% factor(isolate_name) %>% table() %>% as.vector(),
+        # Lose
+        Lose = filter(pairs, InteractionType == "exclusion") %>%
+            select(To) %>% unlist() %>% factor(isolate_name) %>% table() %>% as.vector(),
+        # Draw; Note that I consider neturality and bistability as draw in the tournament
+        Draw = filter(pairs, InteractionType %in% c("coexistence", "neutrality", "bistability")) %>%
+            select(From, To) %>% unlist() %>% factor(isolate_name) %>% table() %>% as.vector())
+
+    # Arrange the df by score
+    tour_rank <- tour_rank %>%
+        mutate(Score = Win - Lose + 0 * Draw, Game = Win + Lose + Draw) %>%
+        arrange(desc(Score))
+
+    # Calculate rank by score; same scores means the same ranks
+    temp_score <- ordered(tour_rank$Score, levels = sort(unique(tour_rank$Score), decreasing = T))
+    temp_score_table <- table(temp_score)
+    temp <- NULL; temp_counter = 1
+    for (i in 1:length(temp_score_table)) {
+        temp <- c(temp, rep(temp_counter, temp_score_table[i]))
+        temp_counter <- temp_counter + temp_score_table[i]
+    }
+
+    tour_rank$Rank <- temp
+    tour_rank$PlotRank <- 1:nrow(tour_rank)
+    return(tour_rank)
+}
+
 

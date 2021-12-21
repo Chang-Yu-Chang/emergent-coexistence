@@ -14,6 +14,9 @@ library(tidyverse)
 library(cowplot)
 run_scripts <- F
 communities <- read_csv(here::here("data/output/communities.csv"))
+interaction_type <- c("exclusion", "coexistence", "neutrality")
+interaction_color = c("#DB7469", "#557BAA", "#8650C4")
+names(interaction_color) <- interaction_type
 ```
 
 
@@ -131,7 +134,16 @@ Each plate has 96 rows and has the following variables
 plates <- read_csv(here::here("data/output/plates.csv"))
 plates
 ```
-plates for across-community and random assembly
+
+```{r}
+plates %>% 
+    
+```
+
+
+
+
+Plates for across-community and random assembly
 
 ```{r}
 plates_random <- read_csv(here::here("data/output/plates_random.csv"))
@@ -677,18 +689,41 @@ CASEU_RN4
 ```
 
 
-## Random netwokr, caseu batch 5
+## Random network, caseu batch 5
 
 - Genewiz submission code: 
-- Plate layout: T3 BD P3
+- Plate layout:
     - T0 BD P2
-    - T3 C P3
-- Description: XX
 
 ```{r}
 
 ```
 
+
+
+## CASEU six plates
+
+- Genewiz submission code: CASEU_RN_5 (which is not correct because these are not RN plates)
+- Plates:
+    - B2 T7 933 P2
+    - B2 T7 444 P2
+    - C2 T7 13A P2
+    - C2 T7 13B P2
+    - D T7 75 P2
+    - D T7 5543 P2
+- Notes: the plates must be placed in order!!
+
+```{r}
+# Generate sequencing csv
+if (FALSE) {
+genewiz_table <- tibble(Sample = 1:(96*6), 
+       `DNA Name` = paste0(rep(c("B2_T7_933_P2", "B2_T7_444_P2", "C2_T7_13A_P2", "C2_T7_13B_P2",  "D_T7_75_P2", "D_T7_5543_P2"), each = 96), "_", rep(1:96, 6)), 
+       `Length (bp)` = 1000, `Concentration (ng/uL)` = 0.83, Primer = "27F")
+
+write_csv(genewiz_table, file = here::here("output/protocol/tab_fig/20211202_Sanger_seq_prep-genewiz_table_CYC.csv"))
+    
+}
+```
 
 
 
@@ -1004,8 +1039,6 @@ interaction_type_finer <- c("competitive exclusion", "mutual exclusion", "stable
 ```
 
 ```{r}
-# pairs_list <- pairs_example_outcomes
-# pairs_freq_df <- pairs_freq
 # R function for plotting frequency changes
 plot_pairs_freq <- function(pairs_list, pairs_freq_df, show_strip = TRUE) {
   # A list of pairs with Community, Isolate1, and Isolate2
@@ -1100,9 +1133,6 @@ The frequencies of coexistence vs. exclusion
 
 ```{r fig.width = 3, fig.height = 5}
 pairs <- read_csv(here::here("data/output/pairs.csv"))
-interaction_type <- c("exclusion", "coexistence", "neutrality", "mutual exclusion", "frequency-dependent\ncoexistence")
-interaction_color = c("#DB7469", "#557BAA", "#8650C4", "red", "blue")
-names(interaction_color) <- interaction_type
 
 p_pairs_interaction <- pairs %>%
     mutate(InteractionType = ifelse(InteractionType == "neutrality", "coexistence", InteractionType)) %>%
@@ -1148,29 +1178,40 @@ ggsave(here::here("output/report/figure/02-pairs-pairs_outcomes.pdf"), p, width 
 ```
 
 
-## Pairs taxonomy vs. outcome of pairwise competition
-
-```{r}
-if (run_scripts) source("script/02-pairs-03-taxonomy.R")
-```
-
+## Taxonomy vs. pairwise competition
 
 ### RDP taxonomy
 
 Fermenter vs. Interaction type
 
-```{r fig.width=3, fig.height=3}
-load(here::here("data/temp/pairs_bar_plots.Rdata"))
-p_pairs_interaction_fermenter
-ggsave(here::here("output/report/figure/02-pairs-fermenter_interaction.pdf"), p_pairs_interaction_fermenter, width = 5, height = 5)
-
+```{r fig.width=3, fig.height=2}
+pairs <- read_csv(here::here("data/output/pairs.csv"))
+pairs_meta <- read_csv(here::here("data/output/pairs_meta.csv"))
+pairs_meta %>%
+    filter(Assembly == "self_assembly") %>%
+    filter(!is.na(PairFermenter)) %>%
+    ggplot() +
+    geom_bar(aes(x = PairFermenter, fill = InteractionType), color = 1, position = "fill") +
+    scale_fill_manual(values = interaction_color) +
+    theme_classic() +
+    theme(legend.position = "top") +
+    labs(fill = "")
 ```
 
 Family vs. Interaction type
 
-```{r fig.width=3, fig.height=3}
-p_pairs_interaction_family
-ggsave(here::here("output/report/figure/02-pairs-family_interaction.pdf"), p_pairs_interaction_family, width = 5, height = 5)
+```{r fig.width=3, fig.height=2}
+pairs <- read_csv(here::here("data/output/pairs.csv"))
+pairs_meta <- read_csv(here::here("data/output/pairs_meta.csv"))
+pairs_meta %>%
+    filter(Assembly == "self_assembly") %>%
+    filter(!is.na(PairFamily)) %>%
+    ggplot() +
+    geom_bar(aes(x = PairFamily, fill = InteractionType), color = 1, position = "fill") +
+    scale_fill_manual(values = interaction_color) +
+    theme_classic() +
+    theme(legend.position = "top") +
+    labs(fill = "")
 ```
 
 ### Pairwise 16S differences
@@ -1181,48 +1222,17 @@ Pairwise 16S differences
 pairs %>%
   filter(!is.na(SeqDifference)) %>% 
   ggplot(aes(x = SeqDifference, fill = PairFermenter)) +
-  geom_histogram(col = "black", binwidth = 2) +
-  theme_bw() +
+  geom_histogram(col = "black", binwidth = 5) +
+  theme_classic() +
   theme(legend.position = "top") +
-  labs(x = "pairwise 16S base pair differences") +
-  ggtitle("")
+  labs(x = "pairwise 16S base pair differences", fill = "") 
 ```
 
-Coarsed-grained 16S sequence difference
+
+# Relative abundance within pairs (unfinished)
 
 ```{r}
-pairs %>%
-  filter(!is.na(SeqDifference)) %>% 
-  ggplot(aes(x = SeqDifference, fill = PairFermenter)) +
-  geom_histogram(col = "black", binwidth = 10) +
-  theme_bw() +
-  theme(legend.position = "top") +
-  labs(x = "pairwise 16S base pair differences") +
-  ggtitle("")
-
-```
-
-
-```{r include = F}
-# 16S sequence difference vs. Interaction type
-pairs_interaction_16S_cut %>%
-  ggplot(aes(x = SeqDifference, y = FracCoext)) +
-  geom_col(col = "black", fill = "white") +
-  theme_bw() +
-  theme(legend.position = "top")
-```
-
-
-```{r fig.width=5, fig.height=5}
-p_pairs_interaction_16S_cut
-```
-
-
-
-# Relative abundance within pairs 
-
-```{r}
-if (run_scripts) source("script/02-pairs-04-pairs_relative_abundance.R")
+if (run_scripts) source("script/02-pairs-03-pairs_relative_abundance.R")
 ```
 
 

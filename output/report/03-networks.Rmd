@@ -42,25 +42,9 @@ if (run_scripts) source("script/03A-make_network-01-make_pairwise_network.R")
 
 
 ```{r fig.width=10, fig.height=8}
-p_net_list <- lapply(net_list, FUN = plot_competitive_network)
+load(here::here("data/output/network_community.Rdata"))
+p_net_list <- lapply(net_list, plot_competitive_network) %>% suppressWarnings()
 plot_grid(plotlist = p_net_list, ncol = 4)
-```
-
-
-
-## Pairwise matrice
-
-```{r}
-if (run_scripts) source("script/03A-make_network-02-pairwise_matrix.R")
-```
-
-
-Plot the communities' pairwise matrix, whose axis are ordered by competitive ranks
-
-```{r fig.width=10, fig.height=3}
-p <- plot_grid(plotlist = p_net_matrix_plot_list, nrow = 2)
-p
-ggsave("figure/03A-adjacent_matrix.png", plot = p, width = 10, height = 3)
 ```
 
 
@@ -83,27 +67,13 @@ net_randomized_list$C11R2[[1]] %>% plot_adjacent_matrix()
 ```
 
 
-# 03B-network_motifs
-
-```{r}
-# Data
-isolates <- read_csv(here::here("data/output/isolates.csv"))
-pairs <- read_csv(here::here("data/output/pairs.csv"))
-communities <- read_csv(here::here("data/output/communities.csv"))
-communities_name <- communities$Community
-communities_size <- communities$CommunitySize
-communities_name_pool <- c(paste0("C", 1:12, "Rpool"), paste0("C", rep(1:12, each = 8), "R", rep(1:8, 12)))
-families_name <- c("Aeromonadaceae", "Alcaligenaceae", "Bradyrhizobiaceae", "Brucellaceae", "Burkholderiaceae", "Caulobacteraceae", "Cellulomonadaceae", "Chitinophagaceae", "Chthoniobacteraceae", "Comamonadaceae", "Cryomorphaceae", "Enterobacteriaceae", "Enterococcaceae", "Flavobacteriaceae", "Hyphomicrobiaceae", "Listeriaceae", "Microbacteriaceae", "Moraxellaceae", "Nocardiaceae", "Obscuribacterales.17", "Oxalobacteraceae", "Paenibacillaceae", "Phyllobacteriaceae", "Porphyromonadaceae", "Pseudomonadaceae", "Rhizobiaceae", "Sanguibacteraceae", "Sphingobacteriaceae", "Sphingomonadaceae", "Xanthomonadaceae")
-
-```
-
+# 03B-network_measure
 
 ## Detect motifs in networks
 
-
 ```{r eval = F}
 # This may take ~5 minutes for 10000 bootstrapping
-if (run_scripts) source("script/03B-invasion_network-01-detect_motif.R")
+if (run_scripts) source("script/03B-network_measure-01-detect_motif.R")
 ```
 
 - `networks_motif`: data.frame
@@ -123,88 +93,22 @@ networks_motif_randomized <- read_csv(here::here("data/output/networks_motif_ran
 networks_motif_randomized
 ```
 
-
-
-## Motif distributions
+## Competitive hierarchy
 
 ```{r}
-if (run_scripts) source("script/03B-invasion_network-02-plot_motif.R")
+if (run_scripts) source("script/03B-network_measure-02-competitive_hierarchy.R")
 ```
 
+See Higgins2017 for the hierarchy score calculation. Briefly, the hierarchy score is based on the relative abundance of each pair and it ranges from 0.5 (pure non-hierarchy with all pairs coexist at 50%:50%) to 1 (pure hierarchy with all pairs being exclusion and forming a transitive network).
 
-```{r fig.width = 8, fig.height = 1.5}
-load(here::here("data/output/motif_list.Rdata"))
-p_motif_example <- plot_grid(plotlist = lapply(motif_list, function(x) plot_competitive_network(x, node_size=3)), nrow = 1)
-p_motif_example
-ggsave("figure/03B-example_motifs.png", p_motif_example, width = 10, height = 1.5)
-```
+The hierarchy score of each communities is compared to a set of 1000 randomized networks which keeps the same relative abundances of each pairs but shuffled. 
 
-
-Detect motifs in randomized networks
-
-```{r fig.width=5, fig.height=5}
-# Plot observations and 5% and 95% percentiles ----
-p_motif_randomized <-
-  ggplot() +
-  # 5% and 95% percentiles in randomized networks
-  geom_point(data = networks_motif_randomized_percentile, aes(x = Motif, y = CountMotif, group = Motif), col = "black") +
-  geom_segment(data = spread(networks_motif_randomized_percentile, Percentile, CountMotif),
-               aes(x = Motif, xend = Motif, y = p5, yend = p95), col = "black") +
-  # Observations
-  geom_point(data = networks_motif, aes(x = Motif, y = CountMotif), col = "red") +
-  #  scale_colour_manual(name="Error Bars",values=c("black", "red")) +
-  facet_wrap(Community ~., scale = "free_y") +
-  theme_bw() +
-  ggtitle("Motif counts in the invasion networks") +
-  labs(x = "motif", y = "Count")
-
-p_motif_randomized
-ggsave("figure/03B-motif_randomized.png", p_motif_randomized, width = 10, height = 10)
-```
-
-Plot the histogram of randomized network motifs 
-
-```{r fig.width = 10, fig.height = 15}
-# Plot histogram in motif count distribution ----
-p_motif_randomized_histo <-
-  networks_motif_randomized %>%
-#  filter(Community == "C11R1") %>%
-  ggplot() +
-  geom_histogram(aes(CountMotif), fill = NA, col = 1) +
-  geom_vline(data = networks_motif, aes(xintercept = CountMotif), col = "red") +
-  facet_grid(Community ~ Motif, scale = "free") +
-  coord_flip() +
-  theme_bw() +
-  theme(strip.text.x = element_blank(),
-        panel.grid.minor = element_blank(),
-        axis.text.x = element_text(angle = 90)) +
-  labs(x = "motif counts", y = "counts in randomization")
-p_motif_randomized_histo
-ggsave("figure/03B-motif_histogram.png", p_motif_randomized_histo, width = 20, height = 30); 
-```
-
-
-
-
-# 03C-diagonal_analysis
-
-## Competitive hierarchy (unfinished)
-
-```{r}
-if (run_scripts) source("script/03C-diagnonal_analysis-01-competitive_hierarchy.R")
-```
-
-The competitive scores for all pairs are converted into a pairwise competitive matrix, with a value of "1" representing a win and a value of "0" representing a loss. Pairings that resulted on a draw were assingned a value of 0.5, representing coexistence.
-
-The competitive intransitivity is determined as follow
-
-$$\frac{\sum I{a_{ij}<a_{ji}}}{n(n-1)/2}$$
 
 ## Diagonal analysis
 
 ```{r}
 # It takes 26 minutes to run this script for 10000 bootstraps
-if (run_scripts) source("script/03C-diagnonal_analysis-02-distance_to_diagonal.R")
+if (run_scripts) source("script/03B-network_measure-03-distance_to_diagonal.R")
 ```
 
 For record, it took 1655 seconds ~= 26 minutes to compute the diagonal measures for 13 communities X 10000 randomization, merge them into one single data frame.
@@ -229,75 +133,6 @@ networks_diag_randomized
 ```{r}
 networks_diag_randomized <- read_csv(here::here("data/output/networks_diag_randomized.csv"))
 networks_diag_randomized
-```
-
-
-
-## Plot the diagonal analysis
-
-```{r}
-if (run_scripts) source("script/03C-diagnonal_analysis-03-plot_diagonal_analysis.R")
-```
-
-
-```{r fig.width = 5, fig.height = 5}
-# R function for plotting boxplot
-plot_boxplot <- function(networks_diag, networks_diag_randomized, facet_by_community = TRUE) {
-  ggplot() +
-    # Random networks
-    geom_boxplot(data = networks_diag_randomized, aes(x = DistanceToDiagonal, y = CountCoexistence, group = DistanceToDiagonal)) +
-    # Observed networks
-    geom_point(data = networks_diag, aes(x = DistanceToDiagonal, y = CountCoexistence, group = DistanceToDiagonal), col = "red", size = 2) +
-    geom_line(data = networks_diag, aes(x = DistanceToDiagonal, y = CountCoexistence), col = "red") +
-    {if (facet_by_community) facet_wrap(Community~., scale = "free") } +
-    # Asethetic setup
-    theme_bw() +
-    theme(panel.grid.minor = element_blank()) +
-    labs(x = "distance to diagional (|i-j|)", y = "count of coexistence")
-}
-
-networks_diag <- read_csv(here::here("data/output/networks_diag.csv")) %>% mutate(Community = ordered(Community, communities$Community))
-networks_diag_randomized <- read_csv(here::here("data/output/networks_diag_randomized.csv")) %>% mutate(Community = ordered(Community, communities$Community))
-
-# Individual community
-p_networks_diag <- plot_boxplot(networks_diag, networks_diag_randomized, facet_by_community = T) +
-  ggtitle("13 communities")
-
-# Network pool
-## Pool all communities
-networks_diag_pool <- networks_diag %>% group_by(DistanceToDiagonal) %>% summarize(CountCoexistence = sum(CountCoexistence))
-networks_diag_randomized_pool <- networks_diag_randomized %>% group_by(Randomization, DistanceToDiagonal) %>% summarize(CountCoexistence = sum(CountCoexistence))
-p_networks_diag_pool1 <- plot_boxplot(networks_diag_pool, networks_diag_randomized_pool, facet_by_community = F) +
-  ggtitle("13 communities pooled together")
-
-## Pool small communities
-networks_diag_pool <- networks_diag %>% filter(!Community %in% c("C11R1", "C11R2")) %>% group_by(DistanceToDiagonal) %>% summarize(CountCoexistence = sum(CountCoexistence))
-networks_diag_randomized_pool <- networks_diag_randomized %>% filter(!Community %in% c("C11R1", "C11R2")) %>% group_by(Randomization, DistanceToDiagonal) %>% summarize(CountCoexistence = sum(CountCoexistence))
-p_networks_diag_pool2 <- plot_boxplot(networks_diag_pool, networks_diag_randomized_pool, facet_by_community = F) +
-  ggtitle("11 small communities pooled together")
-
-## Pool small communities
-networks_diag_pool <- networks_diag %>% filter(!Community %in% c("C1R7", "C11R1", "C11R2")) %>% group_by(DistanceToDiagonal) %>% summarize(CountCoexistence = sum(CountCoexistence))
-networks_diag_randomized_pool <- networks_diag_randomized %>% filter(!Community %in% c("C1R7", "C11R1", "C11R2")) %>% group_by(Randomization, DistanceToDiagonal) %>% summarize(CountCoexistence = sum(CountCoexistence))
-p_networks_diag_pool3 <- plot_boxplot(networks_diag_pool, networks_diag_randomized_pool, facet_by_community = F) +
-  ggtitle("10 small communities pooled together")
-
-
-```
-
-
-```{r fig.width = 5, fig.height = 5}
-p_networks_diag
-ggsave("figure/03C-networks_diagonal.png", p_networks_diag, width = 10, height = 10)
-```
-
-
-
-```{r fig.width = 9, fig.height = 3}
-p_networks_diag_pool <- plot_grid(p_networks_diag_pool1, p_networks_diag_pool2, p_networks_diag_pool3, ncol = 3, align = "h")
-p_networks_diag_pool
-ggsave("figure/03C-networks_diagonal_pool.png", p_networks_diag_pool, width = 10, height = 3)
-
 ```
 
 

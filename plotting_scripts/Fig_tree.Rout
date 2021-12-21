@@ -1,0 +1,78 @@
+
+R version 4.1.1 (2021-08-10) -- "Kick Things"
+Copyright (C) 2021 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin17.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> library(treedataverse)
+── Attaching packages ─────────────────────────────────── treedataverse 0.0.1 ──
+✔ ape         5.5        ✔ treeio      1.16.2
+✔ dplyr       1.0.7      ✔ ggtree      3.0.4 
+✔ ggplot2     3.3.5      ✔ ggtreeExtra 1.2.3 
+✔ tidytree    0.3.6      
+── Conflicts ────────────────────────────────────── treedataverse_conflicts() ──
+✖ treeio::drop.tip() masks ape::drop.tip()
+✖ tidytree::filter() masks dplyr::filter(), stats::filter()
+✖ dplyr::lag()       masks stats::lag()
+✖ ggtree::rotate()   masks ape::rotate()
+> library(tidyverse)
+── Attaching packages ─────────────────────────────────────── tidyverse 1.3.1 ──
+✔ tibble  3.1.6     ✔ purrr   0.3.4
+✔ tidyr   1.1.4     ✔ stringr 1.4.0
+✔ readr   2.1.1     ✔ forcats 0.5.1
+── Conflicts ────────────────────────────────────────── tidyverse_conflicts() ──
+✖ tidyr::expand()    masks ggtree::expand()
+✖ tidytree::filter() masks dplyr::filter(), stats::filter()
+✖ dplyr::lag()       masks stats::lag()
+> # library(ggtree)
+> # library(tidytree)
+> load(here::here("data/temp/isolates_sanger_seq.Rdata"))
+> 
+> isolates <- read_csv(here::here("data/output/isolates.csv"))
+Rows: 100 Columns: 68
+── Column specification ────────────────────────────────────────────────────────
+Delimiter: ","
+chr  (8): Assembly, ExpID, Community, Family, Genus, Sequence, PreferredCS, ...
+dbl (58): ID, Isolate, GenusScore, ColonyCount, DilutionFactor, Epsilon, Win...
+lgl  (2): Fermenter, GramPositive
+
+ℹ Use `spec()` to retrieve the full column specification for this data.
+ℹ Specify the column types or set `show_col_types = FALSE` to quiet this message.
+> tree_meta <- tree %>%
++     as_tibble() %>%
++     mutate(ID = as.numeric(label)) %>%
++     left_join(isolates %>% select(Community, ID)) %>%
++     as.treedata()
+Joining, by = "ID"
+> ggtree(tree)
+> ggtree(tree_meta)
+
+ *** caught segfault ***
+address 0x7f81a9f06b30, cause 'memory not mapped'
+
+Traceback:
+ 1: reorderRcpp(x$edge, as.integer(nb.tip), as.integer(nb.tip + 1L),     io)
+ 2: .reorder_ape(x, order, index.only, length(x$tip.label), io)
+ 3: reorder.phylo(phy)
+ 4: reorder(phy)
+ 5: ladderize(x, right = right)
+ 6: fortify.phylo(model, data, layout = layout, yscale = yscale,     ladderize = ladderize, right = right, branch.length = branch.length,     mrsd = mrsd, as.Date = as.Date, ...)
+ 7: fortify.treedata(data, ...)
+ 8: fortify(data, ...)
+ 9: ggplot.default(tr, mapping = mapping, layout = layout, mrsd = mrsd,     as.Date = as.Date, yscale = yscale, yscale_mapping = yscale_mapping,     ladderize = ladderize, right = right, branch.length = branch.length,     root.position = root.position, ...)
+10: ggplot(tr, mapping = mapping, layout = layout, mrsd = mrsd, as.Date = as.Date,     yscale = yscale, yscale_mapping = yscale_mapping, ladderize = ladderize,     right = right, branch.length = branch.length, root.position = root.position,     ...)
+11: ggtree(tree_meta)
+An irrecoverable exception occurred. R is aborting now ...
