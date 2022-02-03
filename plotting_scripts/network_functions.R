@@ -113,7 +113,7 @@ plot_competitive_network <- function(g, node_size = 10, g_layout = "circle") {
             mutate(Isolate = factor(Isolate)) %>%
             ggraph(layout = "nicely") +
             geom_node_point(aes(fill = Isolate), size = node_size, shape = 21, colour = "black", stroke = node_size/5) +
-            geom_edge_link(aes(color = InteractionType), width = node_size/10,
+            geom_edge_link(aes(color = InteractionType, fill = InteractionType), width = node_size/10,
                            arrow = arrow(length = unit(node_size/2, "mm"), type = "closed", angle = 30, ends = "last"),
                            start_cap = circle(node_size/2+1, "mm"),
                            end_cap = circle(node_size/2+1, "mm")) +
@@ -133,7 +133,7 @@ plot_competitive_network <- function(g, node_size = 10, g_layout = "circle") {
         g %>%
             ggraph(layout = "nicely") +
             geom_node_point(fill = "grey", size = node_size, shape = 21, colour = "black", stroke = node_size/5) +
-            geom_edge_arc(aes(color = InteractionType), width = node_size/10,
+            geom_edge_arc(aes(color = InteractionType, fill = InteractionType), width = node_size/10,
                           arrow = arrow(length = unit(node_size/2, "mm"), type = "closed", angle = 30, ends = "last"),
                           start_cap = circle(node_size/2+1, "mm"),
                           end_cap = circle(node_size/2+1, "mm")) +
@@ -153,7 +153,7 @@ plot_competitive_network <- function(g, node_size = 10, g_layout = "circle") {
         g %>%
             ggraph(layout = "nicely") +
             geom_node_point(fill = "grey", size = node_size, shape = 21, colour = "black", stroke = node_size/5) +
-            geom_edge_link(aes(color = InteractionType), width = node_size/10,
+            geom_edge_link(aes(color = InteractionType, fill = InteractionType), width = node_size/10,
                            arrow = arrow(length = unit(node_size/2, "mm"), type = "closed", angle = 30, ends = "last"),
                            start_cap = circle(node_size/2+1, "mm"),
                            end_cap = circle(node_size/2+1, "mm")) +
