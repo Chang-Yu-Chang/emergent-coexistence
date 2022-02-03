@@ -440,17 +440,15 @@ shared_legend_matrix <- get_legend(plot_example_matrix(net_list[[1]]) + theme(le
 ## Get legend for line
 p_temp <- plot_motif_count(1) + theme(legend.position = "right", legend.title = element_blank(), legend.text = element_text(size = 15))
 shared_legend_line <- cowplot::get_legend(p_temp)
-p1 <- plot_grid(plotlist = c(list(p_example_matrix), list(shared_legend_matrix), rep(list(NULL), 3)), nrow = 1)
+p1 <- plot_grid(plotlist = c(list(p_example_matrix), list(shared_legend_matrix), rep(list(NULL), 3)), nrow = 1) + theme(plot.background = element_rect(fill = "white", color = NA))
 p2 <- list(p_list[1:5], p_motif_count_list[1:5],
              p_list[6:10], p_motif_count_list[6:10],
              p_list[11:13], rep(list(NULL), 2),
              p_motif_count_list[11:13], list(shared_legend_line)) %>%
     unlist(recursive = F) %>%
     plot_grid(plotlist = ., labels = c(communities$Community[1:5], rep("", 5), communities$Community[6:10], rep("", 5), communities$Community[11:13], rep("", 7)),
-              ncol = 5, axis = "tbrl", align = "v", scale = 0.9) +
-    theme(plot.background = element_rect(fill = "white", color = NA))
-p_S5 <- plot_grid(p1, p2, ncol = 1, rel_heights = c(1,6))
-
+              ncol = 5, axis = "tbrl", align = "v")
+p_S5 <- plot_grid(p1, p2, ncol = 1, rel_heights = c(1,6)) + theme(plot.background = element_rect(fill = "white", color = NA))
 ggsave(here::here("plots/FigS5-networks_matrix.png"), p_S5, width = 10, height = 12)
 
 
