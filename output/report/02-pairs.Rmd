@@ -922,7 +922,7 @@ pairs_interaction_fitness %>%
 Interaction table
 
 ```{r}
-pairs_interaction_table <- read_csv(here::here("data/temp/pairs_interaction_table.csv"))
+pairs_interaction_table <- read_csv(here::here("data/output/pairs_interaction_table.csv"))
 pairs_interaction_table
 ```
 

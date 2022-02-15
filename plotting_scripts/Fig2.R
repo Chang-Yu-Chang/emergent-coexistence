@@ -13,70 +13,158 @@ pairs <- read_csv(here::here("data/output/pairs.csv")) %>% mutate(InteractionTyp
 pairs_meta <- read_csv(here::here("data/output/pairs_meta.csv")) %>% mutate(InteractionType = ifelse(InteractionType == "neutrality", "coexistence", InteractionType))
 communities <- read_csv(here::here("data/output/communities.csv"))
 load(here::here("data/output/network_community.Rdata"))
+fermenter_color <- c("fermenter" = "#8A89C0", "respirator" = "#FFCB77")
+dominant_color <- c("dominant" = "grey20", "subdominant" = "grey90")
 
 # Figure 2A: diagram cartoon
-#p_A <- ggdraw() + draw_image(here::here("plots/cartoons/Fig1A.png")) + theme(plot.background = element_rect(fill = "white", color = NA))
-p_A <-  ggplot(mtcars, aes(x = wt, y = mpg)) + annotate("text", x = 0 , y = 0, label = "Cartoon for\nfermenters and respirators") + theme_void() + theme(plot.background = element_rect(fill = "white", color = NA))
-ggsave(here::here("plots/Fig2A-functional_groups.png"), p_A, width = 2, height = 2)
+p_A <- ggdraw() + draw_image(here::here("plots/cartoons/Fig2A.png")) + theme(plot.background = element_rect(fill = "white", color = NA))
+#p_A <-  ggplot(mtcars, aes(x = wt, y = mpg)) + annotate("text", x = 0 , y = 0, label = "Cartoon for\nfermenters and respirators") + theme_void() + theme(plot.background = element_rect(fill = "white", color = NA))
+ggsave(here::here("plots/Fig2A-functional_groups.png"), p_A, width = 5, height = 5)
 
 
 # Figure 2B: Coexistence more likely in pairs alike
-pairs_coexistence <- pairs %>%
+pairs_coexistence <- pairs_meta %>%
     filter(!is.na(PairFermenter)) %>%
-    filter(Assembly == "self_assembly")
+    filter(Assembly == "self_assembly") %>%
+    mutate(PairConspecific = ifelse(PairFermenter == "FF" | PairFermenter == "NN", "conspecific", ifelse(PairFermenter == "FN", "heterospecific", NA)))
 pairs_count <- pairs_coexistence %>%
-    group_by(PairFermenter) %>%
+    group_by(PairConspecific) %>%
     summarize(Count = n())
 
 p_B <- pairs_coexistence %>%
+    group_by(InteractionType, PairConspecific) %>%
+    summarize(Count = n()) %>%
+    group_by(PairConspecific) %>%
+    mutate(Fraction = Count / sum(Count)) %>%
+    #filter(InteractionType == "coexistence") %>%
     ggplot() +
-    geom_bar(aes(x = PairFermenter, fill = InteractionType), color = 1, position = position_fill()) +
-    geom_text(data = pairs_count, aes(x = PairFermenter, y = 1, label = paste0("n=", Count)), vjust = -.5) +
-    geom_rect(xmin = -Inf, xmax = Inf, ymin = 0, ymax = 1, color = grey(0.1), fill = NA, size = .5) +
+    geom_col(aes(x = PairConspecific, y = Fraction, fill = factor(InteractionType, c("exclusion", "coexistence"))), color = 1, width = .7, position = position_dodge(width = 0.8)) +
+    # percentage
+    geom_text(aes(x = PairConspecific, y = Fraction, label = paste0(round(Fraction, 3) * 100,"%"), group = factor(InteractionType, c("exclusion", "coexistence"))), size = 3, vjust = -1, position = position_dodge(width = 0.8)) +
+    # sample size
+    geom_text(data = pairs_count, aes(x = PairConspecific, y = 1, label = paste0("n=", Count)), vjust = 1) +
     scale_fill_manual(values = assign_interaction_color(level = "simple")) +
-    #scale_x_discrete(labels = c(FF = "Fermenter-\nFermenter", FN = "Fermenter-\nRespirator", NN = "Respirator-\nRespirator")) +
-    scale_y_continuous(breaks = c(0,.5,1), limit = c(0, 1.15), expand = c(0,0)) +
+    scale_y_continuous(breaks = c(0,.5,1), limit = c(0, 1), expand = c(0,0), labels = c("0%", "50%", "100%")) +
     theme_classic() +
-    theme(axis.title.x = element_blank(), axis.line.y = element_blank(),
-          axis.text = element_text(size = 10, color = 1),
-          legend.title = element_blank(), legend.position = "top") +
-    guides(fill = F) +
-    labs(y = "Fraction")
+    theme(axis.title.x = element_blank(), axis.title.y = element_text(size = 12),
+          axis.ticks.x = element_blank(),
+          axis.text = element_text(size = 12, color = 1),
+          axis.text.x = element_text(size = 12, color = 1, angle = 30, vjust = 1, hjust = 1)
+    ) +
+    guides(fill = "none") +
+    labs(y = "Percentage") +
+    draw_image(here::here("plots/cartoons/Fig2B_FF.png"), x = 1, y = 0, scale = .6, vjust = .4, hjust = .5) +
+    draw_image(here::here("plots/cartoons/Fig2B_FR.png"), x = 2, y = 0, scale = .6, vjust = .4, hjust = .5) +
+    draw_image(here::here("plots/cartoons/Fig2B_RR.png"), x = 1, y = 0, scale = .6, vjust = .25, hjust = .5)
+
 ggsave(here::here("plots/Fig2B-pairs_alike.png"), p_B, width = 3, height = 3)
 
 
-# Figure 2C: Scatter r_glu_d vs. sum_acids_d
-p_C <- pairs_meta %>%
-    filter(!is.na(PairFermenter)) %>%
-    # Use only FF pairs
-    filter(PairFermenter == "FF") %>%
-    ggplot() +
-    geom_vline(xintercept = 0, linetype = 2) +
-    geom_hline(yintercept = 0, linetype = 2) +
-    geom_point(aes(x = r_glucose_midhr_d, y = X_sum_16hr_d, color = InteractionType),
-               shape = 21, size = 2, stroke = 1) +
-    #scale_shape_manual(values = c(coexistence = 16, exclusion = 1)) +
-    #scale_color_npg(labels = c("Fermenter-Fermenter", "Fermenter-Respirator", "Respirator-Respirator")) +
-    scale_color_manual(values = assign_interaction_color(level = "simple")) +
+## Stat: whether FF and RR pairs coexist more often than FR pairs
+### observation
+observed_indep_statistic <- pairs_coexistence %>%
+    select(PairConspecific, InteractionType) %>%
+    specify(InteractionType ~ PairConspecific, success = "coexistence") %>%
+    calculate(stat = "Chisq", order = c("conspecific", "heterospecific"))
+### null
+null_distribution_simulated <- pairs_coexistence %>%
+    select(PairConspecific, InteractionType) %>%
+    specify(InteractionType ~ PairConspecific, success = "coexistence") %>%
+    hypothesize(null = "independence") %>%
+    generate(reps = 1000, type = "permute") %>%
+    calculate(stat = "Chisq", order = c("conspecific", "heterospecific"))
+### p
+null_distribution_simulated %>% get_p_value(obs_stat = observed_indep_statistic, direction = "greater")
+
+
+
+# Figure 2C: r_glu_midhr per isolate
+p_C <- pairs_coexistence %>%
+    filter(PairConspecific == "conspecific") %>%
+    filter(!is.na(r_glucose_midhr_d)) %>%
+    ggplot(aes(x = InteractionType, y = r_glucose_midhr_d, fill = InteractionType)) +
+    geom_hline(yintercept = 0, linetype = 2, color = "grey") +
+    geom_boxplot(width = .5) +
+    geom_point(aes(group = InteractionType), shape = 1, size = 1, position = position_jitterdodge(jitter.width = 0.3)) +
+    # p value
+    ggpubr::stat_compare_means(aes(group = InteractionType), label = "p.format", vjust = 0, method = "t.test") +
+    scale_fill_manual(values = assign_interaction_color()) +
+    scale_y_continuous(expand = expansion(mult = .1, add = 0), limits = c(-0.1, 0.14), breaks = scales::pretty_breaks(n = 3)) +
     theme_classic() +
-    theme(legend.title = element_blank(), legend.position = "top", axis.text = element_text(color = 1)) +
-    labs(x = expression(r[A]-r[B]), y = expression(X[A]-X[B]))
-ggsave(here::here("plots/Fig2C-r_glu_secretion_d.png"), p_C, width = 4, height = 3)
+    theme(legend.title = element_blank(), legend.position = "top",
+          axis.text = element_text(size = 12, color = 1),
+          axis.title = element_text(size = 15, color = 1),
+          axis.text.x = element_text(size = 12, color = 1, angle = 30, vjust = 1, hjust = 1),
+          panel.border = element_rect(color = NA, fill = NA, size = 1)) +
+    guides(alpha = "none", fill = "none", color = "none") +
+    labs(x = "", y = expression(r[A]-r[B]))
+p_C
+ggsave(here::here("plots/Fig2C-r_glu.png"), p_C, width = 4, height = 4)
 
-# Stats: does difference in r_glu and X_sum explain pairwise coexistence?
-pairs_meta %>%
-    mutate_if(is.character, as.factor) %>%
-    filter(PairFermenter == "FF") %>%
-    filter(!is.na(InteractionType)) %>%
-    mutate(InteractionType = ifelse(InteractionType == "coexistence", 1, 0)) %>%
-    glm(formula = InteractionType ~  r_glucose_midhr_d * X_sum_16hr_d, data = ., family = "binomial") %>%
-    broom::tidy() %>%
-    {.}
+## Stats: among conspecific, whether the dominant has a higher r_glu than subdominant
+temp <- pairs_coexistence %>%
+    filter(PairConspecific == "conspecific") %>%
+    tidyr::drop_na(r_glucose_midhr_d) %>%
+    select(InteractionType, r_glucose_midhr_d)
+### One sample
+temp %>%
+    filter(InteractionType == "coexistence") %>%
+    t_test(response = r_glucose_midhr_d)
+temp %>%
+    filter(InteractionType == "exclusion") %>%
+    t_test(response = r_glucose_midhr_d)
+### CI
+x <- filter(temp, InteractionType == "exclusion") %>% pull(r_glucose_midhr_d)
+t.test(x)
+mean(x) + qt(0.975, length(x) - 1) * sd(x) / sqrt(length(x))
+### Two sample
+temp %>%
+    t_test(r_glucose_midhr_d ~ InteractionType, order = c("coexistence", "exclusion"))
 
 
-p <- plot_grid(p_A, p_B, p_C, nrow = 1, axis = "lrbt", align = "hv", rel_widths = c(1.5,2,2),
-               labels = LETTERS[1:3], scale = .9) + theme(plot.background = element_rect(fill = "white", color = NA))
-ggsave(here::here("plots/Fig2.png"), p, width = 8, height = 3)
+
+# Figure 2D: Amount of total acid secretion. X_sum_16hr
+p_D <- pairs_coexistence %>%
+    filter(PairConspecific == "conspecific") %>%
+    tidyr::drop_na(X_sum_16hr_d) %>%
+    ggplot(aes(x = InteractionType, y = X_sum_16hr_d, fill = InteractionType)) +
+    geom_hline(yintercept = 0, linetype = 2, color = "grey") +
+    geom_boxplot(width = 0.5) +
+    geom_point(aes(group = InteractionType), shape = 1, size = 1, position = position_jitterdodge(jitter.width = 0.3)) +
+    # p value
+    ggpubr::stat_compare_means(aes(group = InteractionType), label = "p.format", vjust = 0, method = "t.test") +
+    scale_fill_manual(values = assign_interaction_color()) +
+    scale_y_continuous(expand = expansion(mult = .1, add = 0), limits = c(-20, 20), breaks = scales::pretty_breaks(n = 3)) +
+    theme_classic() +
+    theme(legend.title = element_blank(), legend.position = "top",
+          axis.text = element_text(size = 12, color = 1),
+          axis.title = element_text(size = 15, color = 1),
+          axis.text.x = element_text(size = 12, color = 1, angle = 30, vjust = 1, hjust = 1),
+          panel.border = element_rect(color = NA, fill = NA, size = 1)) +
+    guides(alpha = "none", fill = "none", color = "none") +
+    labs(x = "", y = expression(X[A]-X[B]))
+
+ggsave(here::here("plots/Fig2D-secretion_total.png"), p_D, width = 4, height = 4)
+
+## Stats: whether the dominant has a higher X_sum than subdominant
+temp <- pairs_coexistence %>%
+    filter(PairConspecific == "conspecific") %>%
+    tidyr::drop_na(X_sum_16hr_d) %>%
+    select(InteractionType, X_sum_16hr_d)
+### One sample
+temp %>%
+    filter(InteractionType == "coexistence") %>%
+    t_test(response = X_sum_16hr_d)
+temp %>%
+    filter(InteractionType == "exclusion") %>%
+    t_test(response = X_sum_16hr_d)
+### two sample
+temp %>% t_test(X_sum_16hr_d ~ InteractionType, order = c("coexistence", "exclusion"))
+
+
+
+p <- plot_grid(p_A, p_B, p_C, p_D, nrow = 1, labels = LETTERS[1:4], rel_widths = c(1.5, 1.5, 1, 1), axis = "tb", align = "h", scale = .9) + theme(plot.background = element_rect(fill = "white", color = NA))
+ggsave(here::here("plots/Fig2.png"), p, width = 10, height = 3)
 
 
 
@@ -106,14 +194,16 @@ p_S8 <- isolates_curves %>%
     left_join(temp) %>%
     filter(Replicate == 1) %>%
     mutate(Community = factor(Community, communities$Community)) %>%
+    drop_na(Fermenter) %>%
+    mutate(Fermenter = ifelse(Fermenter, "fermenter", "respirator")) %>%
     ggplot() +
-    #geom_point(aes(x = Time, y = OD620, color = Replicate, group = Isolate), shape = 1) +
-    geom_line(aes(x = Time, y = OD620, group = interaction(Isolate,Replicate), alpha = Rank), size = 1) +
-    #scale_alpha_continuous(range = c(1,0.2), labels = c("")) +
+    geom_line(aes(x = Time, y = OD620, color = Fermenter, group = interaction(Isolate,Replicate)), size = 1) +
+    scale_color_manual(values = fermenter_color) +
     scale_y_continuous(breaks = scales::pretty_breaks(n = 3)) +
     facet_wrap(Community~., ncol = 4) +
+    guides(color = guide_legend(title = "")) +
     theme_classic() +
-    theme(panel.border = element_rect(fill = NA, color = 1), legend.position = "none") +
+    theme(panel.border = element_rect(fill = NA, color = 1), legend.position = "top") +
     labs(x = "Time (hr)", y = "OD (620 nm)")
 
 ggsave(here::here("plots/FigS8-growth_curves.png"), p_S8, width = 8, height = 8)
@@ -121,27 +211,115 @@ ggsave(here::here("plots/FigS8-growth_curves.png"), p_S8, width = 8, height = 8)
 
 
 # Figure S9: r_glu_midhr per isolate
-p_S9 <- pairs_meta %>%
-    filter(!is.na(PairFermenter)) %>%
-    select(PairFermenter, InteractionType, r_glucose_midhr1, r_glucose_midhr2) %>%
-    pivot_longer(cols = starts_with("r_glucose_midhr"), names_to = "Isolate", values_to = "r_glucose_midhr") %>%
-    filter(!is.na(r_glucose_midhr)) %>%
-    ggplot(aes(x = InteractionType, y = r_glucose_midhr, fill = Isolate)) +
+## isolate r_glu
+p1 <- isolates %>%
+    filter(Assembly == "self_assembly") %>%
+    drop_na(Fermenter, r_glucose_midhr) %>%
+    mutate(Fermenter = ifelse(Fermenter, "fermenter", "respirator")) %>%
+    ggplot(aes(x = Fermenter, y = r_glucose_midhr, fill = Fermenter)) +
     geom_boxplot() +
-    geom_point(shape = 1, size = 1, position = position_jitterdodge(jitter.width = 0.2)) +
-    # p value
-    ggpubr::stat_compare_means(aes(group = Isolate), label = "p.format", vjust = -.5, method = "t.test") +
-    scale_fill_npg(labels = c("dominant", "subdominant"), name = "Isolate") +
-    scale_y_continuous(expand = expansion(mult = .1, add = 0)) +
-    facet_grid(.~PairFermenter, scales = "free_y", labeller = labeller(PairFermenter = c(FF = "Fermenter-Fermenter", FN = "Fermenter-Respirator", NN = "Respirator-Respirator"))) +
+    geom_jitter(shape = 1, size = 1, stroke = 1) +
+    ggpubr::stat_compare_means(comparisons = list(c("fermenter", "respirator")), label = "p.signif", method = "t.test", ) +
+    scale_fill_manual(values = fermenter_color) +
+    scale_y_continuous(limits = c(0, 0.23), breaks = scales::pretty_breaks(n = 3)) +
     theme_classic() +
-    theme(legend.title = element_blank(), legend.position = "top",
+    theme(axis.title.x = element_blank()) +
+    guides(fill = "none") +
+    labs(y = expression(r))
+
+## interaction outcome as a function of  difference in r_glu
+temp <- pairs_meta %>%
+    filter(Assembly == "self_assembly") %>%
+    drop_na(InteractionType, PairFermenter, r_glucose_midhr_d) %>%
+    mutate(Coexistence = ifelse(InteractionType == "coexistence", 1, ifelse(InteractionType == "exclusion", 0, NA)))
+p2 <- temp %>%
+    ggplot(aes(x = r_glucose_midhr_d, y = Coexistence)) +
+    geom_point(shape = 1, size = 2) +
+    geom_smooth(formula = y ~ x, method = "glm") +
+    ggpubr::stat_cor(label.x = -.1, label.y = 1.1, method = "pearson") +
+    scale_y_continuous(breaks = c(0,1), labels = c("exclusion", "coexistence")) +
+    theme_classic() +
+    theme(axis.title.y = element_blank()) +
+    labs(x = expression(r[A]-r[B]))
+## Stats: correlation
+cor.test(temp$r_glucose_midhr_d, temp$Coexistence) %>% broom::tidy()
+
+
+## isolate r_glu in pairFermenter and InteractionType
+p3 <- pairs_meta %>%
+    filter(Assembly == "self_assembly") %>%
+    select(PairFermenter, InteractionType, r_glucose_midhr1, r_glucose_midhr2) %>%
+    pivot_longer(cols = starts_with("r_glucose_midhr"), names_pattern = "r_glucose_midhr(.)", names_to = "Isolate", values_to = "r_glucose_midhr") %>%
+    drop_na(PairFermenter, r_glucose_midhr) %>%
+    mutate(Isolate = ifelse(Isolate == 1, "dominant", "subdominant")) %>%
+    ggplot(aes(x = InteractionType, y = r_glucose_midhr, fill = InteractionType, alpha = Isolate)) +
+    geom_boxplot() +
+    geom_point(aes(group = Isolate), alpha = 1, shape = 1, size = 1, stroke = 1, position = position_jitterdodge(jitter.width = 0.2)) +
+    # p value
+    ggpubr::stat_compare_means(aes(group = Isolate), label = "p.signif", method = "t.test") +
+    scale_alpha_manual(values = c("dominant" = 1, "subdominant" = .2)) +
+    scale_fill_manual(values = assign_interaction_color()) +
+    scale_y_continuous(expand = expansion(mult = .1, add = 0)) +
+    facet_grid(.~PairFermenter, labeller = labeller(PairFermenter = c(FF = "Fermenter-Fermenter", FN = "Fermenter-Respirator", NN = "Respirator-Respirator"))) +
+    theme_classic() +
+    theme(legend.title = element_blank(), legend.position = "right",
+          strip.background = element_blank(),
           panel.border = element_rect(color = 1, fill = NA, size = .5)) +
-    labs(x = "", y = expression(r[glu]))
-ggsave(here::here("plots/FigS9-r_glu.png"), p_S9, width = 6, height = 4)
+    guides(fill = "none", alpha = "none") +
+    labs(x = "", y = expression(r))
+
+#
+p4 <- pairs_meta %>%
+    filter(Assembly == "self_assembly") %>%
+    drop_na(PairFermenter, r_glucose_midhr_d) %>%
+    ggplot(aes(x = InteractionType, y = r_glucose_midhr_d, fill = InteractionType)) +
+    geom_hline(yintercept = 0, linetype = 2, color = "grey") +
+    geom_boxplot(width = .5) +
+    geom_point(aes(group = InteractionType), shape = 1, size = 1, stroke = 1, position = position_jitterdodge(jitter.width = 0.3)) +
+    # p value
+    ggpubr::stat_compare_means(aes(group = InteractionType), label = "p.signif", method = "t.test") +
+    scale_fill_manual(values = assign_interaction_color()) +
+    scale_y_continuous(expand = expansion(mult = .1, add = 0), breaks = scales::pretty_breaks(n = 3)) +
+    facet_grid(.~PairFermenter, labeller = labeller(PairFermenter = c(FF = "Fermenter-Fermenter", FN = "Fermenter-Respirator", NN = "Respirator-Respirator"))) +
+    theme_classic() +
+    theme(legend.title = element_blank(), legend.position = "right",
+          strip.background = element_blank(),
+          panel.border = element_rect(color = 1, fill = NA, size = .5)) +
+    guides(alpha = "none", fill = "none", color = "none") +
+    labs(x = "", y = expression(r[A]-r[B]))
+
+## Stats
+### FF
+pairs_meta %>%
+    filter(Assembly == "self_assembly") %>%
+    drop_na(PairFermenter, r_glucose_midhr_d) %>%
+    filter(PairFermenter == "FN") %>%
+    select(InteractionType, r_glucose_midhr_d) %>%
+    t_test(r_glucose_midhr_d ~ InteractionType, order = c("coexistence", "exclusion"))
+### FR
+pairs_meta %>%
+    filter(Assembly == "self_assembly") %>%
+    drop_na(PairFermenter, r_glucose_midhr_d) %>%
+    filter(PairFermenter == "FN") %>%
+    select(InteractionType, r_glucose_midhr_d) %>%
+    t_test(r_glucose_midhr_d ~ InteractionType, order = c("coexistence", "exclusion"))
+### RR
+pairs_meta %>%
+    filter(Assembly == "self_assembly") %>%
+    drop_na(PairFermenter, r_glucose_midhr_d) %>%
+    filter(PairFermenter == "NN") %>%
+    select(InteractionType, r_glucose_midhr_d) %>%
+    t_test(r_glucose_midhr_d ~ InteractionType, order = c("coexistence", "exclusion"))
+
+
+p_upper <- plot_grid(p1, p2, nrow = 1, labels = c(LETTERS[1:2], ""), rel_widths = c(1,1.5), axis = "tb", align = "h", scale = .9)
+p_S9 <- plot_grid(p_upper, p3, p4, ncol = 1, labels = c("", LETTERS[3:4]),
+                  rel_heights = c(1,1,1)) + theme(plot.background = element_rect(fill = "white", color = NA))
+ggsave(here::here("plots/FigS9-r_glu.png"), p_S9, width = 6, height = 8)
 
 
 ## Stats: does difference in r_glu explain pairwise coexistence?
+if (FALSE) {
 pairs_meta %>%
     mutate_if(is.character, as.factor) %>%
     filter(!is.na(InteractionType)) %>%
@@ -150,47 +328,68 @@ pairs_meta %>%
     broom::tidy() %>%
     {.}
 
+}
+temp <- pairs_meta %>%
+    filter(Assembly == "self_assembly") %>%
+    tidyr::drop_na(r_glucose_midhr_d) %>%
+    oelect(PairFermenter, InteractionType, r_glucose_midhr_d)
+### one-sample
+temp %>%
+    filter(PairFermenter == "FF") %>%
+    filter(InteractionType == "coexistence") %>%
+    t_test(response = r_glucose_midhr_d)
+temp %>%
+    filter(PairFermenter == "FF") %>%
+    filter(InteractionType == "exclusion") %>%
+    t_test(response = r_glucose_midhr_d)
+temp %>%
+    filter(PairFermenter == "FN") %>%
+    t_test(response = r_glucose_midhr_d)
+temp %>%
+    filter(PairFermenter == "NN") %>%
+    t_test(response = r_glucose_midhr_d)
 
-# Figure S10: Amount of total acid secretion. X_sum_16hr
-p_S10 <- pairs_meta %>%
-    select(InteractionType, PairFermenter, starts_with("X_sum") & !ends_with("d")) %>%
-    pivot_longer(cols = c(-InteractionType, -PairFermenter), names_to = c("Time", "Isolate"), names_pattern = "X_sum_(.*)hr(.)", names_transform = list(Time = as.numeric), values_to = "X_sum") %>%
-    filter(!is.na(PairFermenter)) %>%
-    filter(Time == 16) %>%
-    filter(!is.na(X_sum)) %>%
-    ggplot(aes(x = InteractionType, y = X_sum, fill = Isolate)) +
-    geom_boxplot() +
-    geom_point(shape = 1, size = 1, position = position_jitterdodge(jitter.width = 0.2)) +
-    ggpubr::stat_compare_means(aes(group = Isolate), label = "p.format", vjust = -.5, method = "t.test") +
-    scale_fill_npg(labels = c("dominant", "subdominant"), name = "Isolate") +
-    scale_y_continuous(expand = expansion(mult = .1, add = 0)) +
-    facet_grid(Time~PairFermenter, scales = "free_y", labeller = labeller(PairFermenter = c(FF = "Fermenter-Fermenter", FN = "Fermenter-Respirator", NN = "Respirator-Respirator"))) +
+### two-sample
+temp %>%
+    filter(PairFermenter == "FF") %>%
+    t_test(r_glucose_midhr_d ~ InteractionType, order = c("coexistence", "exclusion"))
+temp %>%
+    filter(PairFermenter == "FN") %>%
+    t_test(r_glucose_midhr_d ~ InteractionType, order = c("coexistence", "exclusion"))
+temp %>%
+    filter(PairFermenter == "NN") %>%
+    t_test(r_glucose_midhr_d ~ InteractionType, order = c("coexistence", "exclusion"))
+
+
+# Figure S10: rmid_glu vs. number of wins
+temp <- isolates %>%
+    filter(Assembly == "self_assembly") %>%
+    drop_na(r_glucose_midhr)
+## raw
+p1 <- temp %>%
+    ggplot(aes(x = r_glucose_midhr, y = Score)) +
+    geom_point(shape = 1, size = 2) +
+    geom_smooth(method = "lm") +
+    scale_x_continuous(breaks = scales::pretty_breaks(n = 3)) +
     theme_classic() +
-    theme(legend.title = element_blank(), legend.position = "top",
-          strip.text.y = element_blank(),
-          panel.border = element_rect(color = 1, fill = NA, size = .5)) +
-    labs(x = "", y = expression(X[sum]))
-ggsave(here::here("plots/FigS10-secretion_total.png"), p_S10, width = 6, height = 4)
+    labs(x = expression(r[glu]), y = "Competitive score") +
+    ggpubr::stat_cor(label.x = .1, label.y = -10, method = "pearson")
+## standardized
+p2 <- temp %>%
+    ggplot(aes(x = r_glucose_midhr, y = Score/Game)) +
+    geom_point(shape = 1, size = 2) +
+    geom_smooth(method = "lm") +
+    scale_x_continuous(breaks = scales::pretty_breaks(n = 3)) +
+    theme_classic() +
+    labs(x = expression(r[glu]), y = "Standardized score") +
+    ggpubr::stat_cor(label.x = .1, label.y = -1, method = "pearson")
 
-## Stats: does difference in X_sum explain pairwise coexistence?
-pairs_meta %>%
-    mutate_if(is.character, as.factor) %>%
-    filter(!is.na(InteractionType)) %>%
-    #filter(PairFermenter == "FF") %>%
-    mutate(InteractionType = ifelse(InteractionType == "coexistence", 1, 0)) %>%
-    glm(formula = InteractionType ~  X_sum_16hr_d * PairFermenter, data = ., family = "binomial") %>%
-    broom::tidy() %>%
-    {.}
+p_S10 <- plot_grid(p1, p2, labels = LETTERS[1:2], nrow = 1, scale = .9) + theme(plot.background = element_rect(fill = "white", color = NA))
+ggsave(here::here("plots/FigS10-r_glu_score.png"), p_S10, width = 8, height = 3.5)
 
-## Stats: does difference in r_glu*X_sum explain pairwise coexistence?
-pairs_meta %>%
-    mutate_if(is.character, as.factor) %>%
-    filter(!is.na(InteractionType)) %>%
-    #filter(PairFermenter == "FF") %>%
-    mutate(InteractionType = ifelse(InteractionType == "coexistence", 1, 0)) %>%
-    glm(formula = InteractionType ~  r_glucose_midhr_d*X_sum_16hr_d * PairFermenter, data = ., family = "binomial") %>%
-    broom::tidy() %>%
-    {.}
+## Stats: correlation
+cor.test(temp$Score, temp$r_glucose_midhr, alternative = "two.sided", method = "pearson") %>% broom::tidy()
+cor.test(temp$Score/temp$Game, temp$r_glucose_midhr, alternative = "two.sided", method = "pearson") %>% broom::tidy()
 
 
 # Figure S11: isolate byproduct acids measure
@@ -219,7 +418,6 @@ p_upper <- get_legend(p1)
 p1 <- p1 + theme(legend.position = "none")
 
 ## Total acids production
-names(isolates)
 p2 <- isolates %>%
     select(ID, Fermenter, starts_with("X_sum")) %>%
     pivot_longer(cols = c(-ID, -Fermenter), names_to = c("Measure", "Time"), names_pattern = "(.*)_(.*)hr", values_to = "Value") %>%
@@ -272,14 +470,15 @@ p_S11 <- plot_grid(p_upper, p1, p_lower, ncol = 1, rel_heights = c(1, 5, 5)) + t
 ggsave(here::here("plots/FigS11-byproduct.png"), p_S11, width = 9, height = 6)
 
 
-
 # Figure S12: leakiness
-p_S12 <- isolates %>%
-    filter(!is.na(Fermenter), !is.na(leakiness_16hr)) %>%
+temp <- isolates %>%
+    filter(Assembly == "self_assembly") %>%
+    drop_na(Fermenter, leakiness_16hr)
+p_S12 <- temp %>%
     ggplot() +
     geom_boxplot(aes(x = Fermenter, y = leakiness_16hr, color = Fermenter), outlier.size = 2) +
     geom_jitter(aes(x = Fermenter, y = leakiness_16hr, color = Fermenter), shape = 1, size = 2, width = 0.3) +
-    ggpubr::stat_compare_means(aes(group = Fermenter, x = Fermenter, y = leakiness_16hr)) +
+    ggpubr::stat_compare_means(aes(group = Fermenter, x = Fermenter, y = leakiness_16hr), method = "t.test") +
     scale_x_discrete(labels = c("TRUE" = "Fermenter", "FALSE" = "Respirator")) +
     scale_y_continuous(limits = c(0, 0.65)) +
     scale_color_npg() +
@@ -288,6 +487,214 @@ p_S12 <- isolates %>%
     labs(y = "Leakiness")
 ggsave(here::here("plots/FigS12-isolate_leakiness.png"), p_S12, width = 3, height = 3)
 
+## Stats: are respirators less leakier than fermenters?
+temp %>% t_test(leakiness_16hr ~ Fermenter, order = c("TRUE", "FALSE"))
+
+
+
+
+
+
+
+
+# Figure S13: Amount of total acid secretion. X_sum_16hr
+## isolate X_sum
+p1 <- isolates %>%
+    filter(Assembly == "self_assembly") %>%
+    drop_na(Fermenter, X_sum_16hr) %>%
+    mutate(Fermenter = ifelse(Fermenter, "fermenter", "respirator")) %>%
+    ggplot(aes(x = Fermenter, y = X_sum_16hr, fill = Fermenter)) +
+    geom_boxplot() +
+    geom_jitter(shape = 1, size = 1, stroke = 1) +
+    ggpubr::stat_compare_means(comparisons = list(c("fermenter", "respirator")), label = "p.signif", method = "t.test", ) +
+    scale_fill_manual(values = fermenter_color) +
+    scale_y_continuous(limits = c(0, 45), breaks = scales::pretty_breaks(n = 3)) +
+    theme_classic() +
+    theme(axis.title.x = element_blank()) +
+    guides(fill = "none") +
+    labs(y = expression(X))
+
+## interaction outcome as a function of difference in X_sum
+temp <- pairs_meta %>%
+    filter(Assembly == "self_assembly") %>%
+    drop_na(InteractionType, PairFermenter, X_sum_16hr_d) %>%
+    mutate(Coexistence = ifelse(InteractionType == "coexistence", 1, ifelse(InteractionType == "exclusion", 0, NA)))
+p2 <- temp %>%
+    ggplot(aes(x = X_sum_16hr_d, y = Coexistence)) +
+    geom_point(shape = 1, size = 2) +
+    geom_smooth(formula = y ~ x, method = "glm") +
+    ggpubr::stat_cor(label.x = -20, label.y = 1.1, method = "pearson") +
+    scale_y_continuous(breaks = c(0,1), labels = c("exclusion", "coexistence")) +
+    theme_classic() +
+    theme(axis.title.y = element_blank()) +
+    labs(x = expression(X[A]-X[B]))
+## Stats: correlation
+cor.test(temp$X_sum_16hr_d, temp$Coexistence) %>% broom::tidy()
+
+
+## isolate r_glu in pairFermenter and InteractionType
+p3 <- pairs_meta %>%
+    filter(Assembly == "self_assembly") %>%
+    select(PairFermenter, InteractionType, X_sum_16hr1, X_sum_16hr2) %>%
+    pivot_longer(cols = starts_with("X_sum_16hr"), names_pattern = "X_sum_16hr(.)", names_to = "Isolate", values_to = "X_sum_16hr") %>%
+    drop_na(PairFermenter, X_sum_16hr) %>%
+    mutate(Isolate = ifelse(Isolate == 1, "dominant", "subdominant")) %>%
+    ggplot(aes(x = InteractionType, y = X_sum_16hr, fill = InteractionType, alpha = Isolate)) +
+    geom_boxplot() +
+    geom_point(aes(group = Isolate), alpha = 1, shape = 1, size = 1, stroke = 1, position = position_jitterdodge(jitter.width = 0.2)) +
+    # p value
+    ggpubr::stat_compare_means(aes(group = Isolate), label = "p.signif", method = "t.test") +
+    scale_alpha_manual(values = c("dominant" = 1, "subdominant" = .2)) +
+    scale_fill_manual(values = assign_interaction_color()) +
+    scale_y_continuous(expand = expansion(mult = .1, add = 0)) +
+    facet_grid(.~PairFermenter, labeller = labeller(PairFermenter = c(FF = "Fermenter-Fermenter", FN = "Fermenter-Respirator", NN = "Respirator-Respirator"))) +
+    theme_classic() +
+    theme(legend.title = element_blank(), legend.position = "right",
+          strip.background = element_blank(),
+          panel.border = element_rect(color = 1, fill = NA, size = .5)) +
+    guides(fill = "none") +
+    labs(x = "", y = expression(X))
+
+#
+p4 <- pairs_meta %>%
+    filter(Assembly == "self_assembly") %>%
+    drop_na(PairFermenter, X_sum_16hr_d) %>%
+    ggplot(aes(x = InteractionType, y = X_sum_16hr_d, fill = InteractionType)) +
+    geom_hline(yintercept = 0, linetype = 2, color = "grey") +
+    geom_boxplot(width = .5) +
+    geom_point(aes(group = InteractionType), shape = 1, size = 1, stroke = 1, position = position_jitterdodge(jitter.width = 0.3)) +
+    # p value
+    ggpubr::stat_compare_means(aes(group = InteractionType), label = "p.signif", method = "t.test") +
+    scale_fill_manual(values = assign_interaction_color()) +
+    scale_y_continuous(expand = expansion(mult = .1, add = 0), breaks = scales::pretty_breaks(n = 3)) +
+    facet_grid(.~PairFermenter, labeller = labeller(PairFermenter = c(FF = "Fermenter-Fermenter", FN = "Fermenter-Respirator", NN = "Respirator-Respirator"))) +
+    theme_classic() +
+    theme(legend.title = element_blank(), legend.position = "right",
+          strip.background = element_blank(),
+          panel.border = element_rect(color = 1, fill = NA, size = .5)) +
+    guides(alpha = "none", fill = "none", color = "none") +
+    labs(x = "", y = expression(X[A]-X[B]))
+
+## Stats
+### FF
+pairs_meta %>%
+    filter(Assembly == "self_assembly") %>%
+    drop_na(PairFermenter, X_sum_16hr_d) %>%
+    filter(PairFermenter == "FN") %>%
+    select(InteractionType, X_sum_16hr_d) %>%
+    t_test(X_sum_16hr_d ~ InteractionType, order = c("coexistence", "exclusion"))
+### FR
+pairs_meta %>%
+    filter(Assembly == "self_assembly") %>%
+    drop_na(PairFermenter, X_sum_16hr_d) %>%
+    filter(PairFermenter == "FN") %>%
+    select(InteractionType, X_sum_16hr_d) %>%
+    t_test(X_sum_16hr_d ~ InteractionType, order = c("coexistence", "exclusion"))
+### RR
+pairs_meta %>%
+    filter(Assembly == "self_assembly") %>%
+    drop_na(PairFermenter, X_sum_16hr_d) %>%
+    filter(PairFermenter == "NN") %>%
+    select(InteractionType, X_sum_16hr_d) %>%
+    t_test(X_sum_16hr_d ~ InteractionType, order = c("coexistence", "exclusion"))
+
+
+p_upper <- plot_grid(p1, p2, nrow = 1, labels = c(LETTERS[1:2], ""), rel_widths = c(1,1.5), axis = "tb", align = "h", scale = .9)
+p_S13 <- plot_grid(p_upper, p3, p4, ncol = 1, labels = c("", LETTERS[3:4]),
+                  rel_heights = c(1,1,1), axis = "lr", align = "v") + theme(plot.background = element_rect(fill = "white", color = NA))
+ggsave(here::here("plots/FigS13-secretion_total.png"), p_S13, width = 8, height = 8)
+
+if (FALSE) {
+
+temp <- pairs_meta %>%
+    select(InteractionType, PairFermenter, starts_with("X_sum_16") & !ends_with("d")) %>%
+    pivot_longer(cols = c(-InteractionType, -PairFermenter), names_to = c("Time", "Isolate"), names_pattern = "X_sum_(.*)hr(.)", names_transform = list(Time = as.numeric), values_to = "X_sum") %>%
+    drop_na(PairFermenter, X_sum) %>%
+    mutate(Isolate = ifelse(Isolate == 1, "dominant", "subdominant"))
+p_S13 <- temp %>%
+    ggplot(aes(x = InteractionType, y = X_sum, fill = Isolate)) +
+    geom_boxplot() +
+    geom_point(shape = 1, size = 1, position = position_jitterdodge(jitter.width = 0.2)) +
+    ggpubr::stat_compare_means(aes(group = Isolate), label = "p.format", vjust = -.5, method = "t.test") +
+    scale_fill_npg(labels = c("dominant", "subdominant"), name = "Isolate") +
+    scale_y_continuous(expand = expansion(mult = .1, add = 0)) +
+    facet_grid(Time~PairFermenter, scales = "free_y", labeller = labeller(PairFermenter = c(FF = "Fermenter-Fermenter", FN = "Fermenter-Respirator", NN = "Respirator-Respirator"))) +
+    theme_classic() +
+    theme(legend.title = element_blank(), legend.position = "top",
+          strip.text.y = element_blank(),
+          panel.border = element_rect(color = 1, fill = NA, size = .5)) +
+    labs(x = "", y = expression(X[sum]))
+ggsave(here::here("plots/FigS13-secretion_total.png"), p_S13, width = 6, height = 4)
+
+### one-sample
+temp %>%
+    filter(PairFermenter == "FF") %>%
+    filter(InteractionType == "coexistence") %>%
+    t_test(X_sum ~ Isolate, order = c("dominant", "subdominant"))
+temp %>%
+    filter(PairFermenter == "FF") %>%
+    filter(InteractionType == "exclusion") %>%
+    t_test(X_sum ~ Isolate, order = c("dominant", "subdominant"))
+temp %>%
+    filter(PairFermenter == "FN") %>%
+    t_test(response = r_glucose_midhr_d)
+temp %>%
+    filter(PairFermenter == "NN") %>%
+    t_test(response = r_glucose_midhr_d)
+}
+
+
+# Figure S14: Scatter r_glu_d vs. sum_acids_d
+p_S14 <- pairs_coexistence %>%
+    drop_na(PairFermenter, r_glucose_midhr_d, X_sum_16hr_d) %>%
+    ggplot() +
+    geom_vline(xintercept = 0, linetype = 2) +
+    geom_hline(yintercept = 0, linetype = 2) +
+    geom_point(aes(x = r_glucose_midhr_d, y = X_sum_16hr_d, color = InteractionType), shape = 21, size = 2, stroke = 1) +
+    scale_color_manual(values = assign_interaction_color(level = "simple")) +
+    facet_wrap(.~PairConspecific, scale = "free") +
+    theme_classic() +
+    theme(legend.title = element_blank(), legend.position = "top",
+          axis.text = element_text(color = 1),
+          strip.background = element_blank(),
+          panel.background = element_rect(color = 1, fill = NA)) +
+    labs(x = expression(r[A]-r[B]), y = expression(X[A]-X[B]))
+ggsave(here::here("plots/FigS14-r_glu_secretion_d.png"), p_S14, width = 5, height = 3)
+
+# Stats: does difference in r_glu and X_sum explain pairwise coexistence?
+pairs_meta %>%
+    mutate_if(is.character, as.factor) %>%
+    filter(PairFermenter == "FF") %>%
+    filter(!is.na(InteractionType)) %>%
+    mutate(InteractionType = ifelse(InteractionType == "coexistence", 1, 0)) %>%
+    glm(formula = InteractionType ~  r_glucose_midhr_d * X_sum_16hr_d, data = ., family = "binomial") %>%
+    broom::tidy() %>%
+    {.}
+#p_top <- plot_grid(p_A, p_B, nrow = 1, labels = LETTERS[1:2], rel_widths = c(1.5,1), scale = .9)
+#p_bottom <- plot_grid(p_C, p_D, nrow = 1, labels = LETTERS[3:5], axis = "tb", align = "h", scale = .9)
+#p <- plot_grid(p_top, p_bottom, nrow = 1, rel_widths = c(3,2), axis = "tb", align = "h") + theme(plot.background = element_rect(fill = "white", color = NA))
+
+
+
+## Stats: does difference in X_sum explain pairwise coexistence?
+pairs_meta %>%
+    mutate_if(is.character, as.factor) %>%
+    filter(!is.na(InteractionType)) %>%
+    #filter(PairFermenter == "FF") %>%
+    mutate(InteractionType = ifelse(InteractionType == "coexistence", 1, 0)) %>%
+    glm(formula = InteractionType ~  X_sum_16hr_d * PairFermenter, data = ., family = "binomial") %>%
+    broom::tidy() %>%
+    {.}
+
+## Stats: does difference in r_glu*X_sum explain pairwise coexistence?
+pairs_meta %>%
+    mutate_if(is.character, as.factor) %>%
+    filter(!is.na(InteractionType)) %>%
+    #filter(PairFermenter == "FF") %>%
+    mutate(InteractionType = ifelse(InteractionType == "coexistence", 1, 0)) %>%
+    glm(formula = InteractionType ~  r_glucose_midhr_d*X_sum_16hr_d * PairFermenter, data = ., family = "binomial") %>%
+    broom::tidy() %>%
+    {.}
 
 
 
@@ -377,28 +784,6 @@ p_H <- pairs_meta %>%
 ggsave(here::here("plots/Fig2H-r_acids.png"), p_H, width = 8, height = 12)
 
 
-# Figure 2I: rmax_glu vs. number of wins
-## raw
-p1 <- isolates %>%
-    ggplot(aes(x = r_glucose_maxhr, y = Score)) +
-    geom_point(shape = 1, size = 2) +
-    geom_smooth(method = "lm") +
-    scale_x_continuous(breaks = scales::pretty_breaks(n = 3)) +
-    theme_classic() +
-    labs(x = expression(r[glu]), y = "Competitive score") +
-    ggpubr::stat_cor(label.x = .7, label.y = -10, method = "pearson")
-## standardized
-p2 <- isolates %>%
-    ggplot(aes(x = r_glucose_maxhr, y = Score/Game)) +
-    geom_point(shape = 1, size = 2) +
-    geom_smooth(method = "lm") +
-    scale_x_continuous(breaks = scales::pretty_breaks(n = 3)) +
-    theme_classic() +
-    labs(x = expression(r[glu]), y = "Standardized score") +
-    ggpubr::stat_cor(label.x = .7, label.y = -1, method = "pearson")
-
-p_I <- plot_grid(p1, p2, labels = LETTERS[1:2], nrow = 1)
-ggsave(here::here("plots/Fig2I-r_glu_score.png"), p_I, width = 8, height = 3.5)
 
 # Figure 2J: matrix with species name
 append_meta_data <- function(graph, community_name, isolates, pairs) {

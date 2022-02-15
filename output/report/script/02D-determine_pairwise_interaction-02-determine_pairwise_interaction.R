@@ -193,43 +193,6 @@ pairs_interaction_fitness[Community == "C11R2" & Isolate1 == 3 & Isolate2 == 6, 
 pairs_interaction_fitness[Community == "C2R8" & Isolate1 == 3 & Isolate2 == 4, c("InteractionType", "InteractionTypeFiner", "From", "To") := list("coexistence", "stable coexistence", Isolate1, Isolate2)]
 
 
-# Old code
-if (FALSE) {
-
-    ## Competitive exclusion
-    pairs_interaction_fitness[FreqFunc %in% c("1_1_1"),
-                              c("InteractionType", "InteractionTypeFiner", "From", "To") := list("exclusion", "competitive exclusion", Isolate1, Isolate2)]
-    pairs_interaction_fitness[FreqFunc %in% c("-1_-1_-1"),
-                              c("InteractionType", "InteractionTypeFiner", "From", "To") := list("exclusion", "competitive exclusion", Isolate2, Isolate1)]
-    pairs_interaction_fitness[Community == "C11R2" & Isolate1 == 3 & Isolate2 == 6, c("InteractionType", "InteractionTypeFiner", "From", "To") := list("exclusion", "competitive exclusion", Isolate2, Isolate1)] ### C11R2 isolate 3 and 6 freq 5:95 has contamination so its FreqFunc is not complete
-
-    ## Neutrality
-    pairs_interaction_fitness[FreqFunc %in% c("0_0_0"),
-                              c("InteractionType", "InteractionTypeFiner", "From", "To") := list("neutrality", "neutrality", Isolate1, Isolate2)]
-
-    ## Stable coexistence
-    pairs_interaction_fitness[FreqFunc %in% c("1_1_-1", "1_0_0", "1_-1_-1", "1_0_-1", "1_1_0", "0_-1_-1", "0_0_-1"),
-                              c("InteractionType", "InteractionTypeFiner", "From", "To") := list("coexistence", "stable coexistence", Isolate1, Isolate2)]
-    pairs_interaction_fitness[Community == "C2R8" & Isolate1 == 3 & Isolate2 == 4, c("InteractionType", "InteractionTypeFiner", "From", "To") := list("coexistence", "stable coexistence", Isolate1, Isolate2)] ### C2R8 isolate 3 and 4 freq 50:50 has contamination so its FreqFunc is not complete
-
-    ## Coexistence; pairs are possible to coexist but it depends on inital frequencies
-    pairs_interaction_fitness[FreqFunc %in% c("-1_1_-1", "-1_1_0", "-1_-1_0","-1_0_-1"),
-                              c("InteractionType", "InteractionTypeFiner", "From", "To") := list("coexistence", "frequency-dependent coexistence", Isolate1, Isolate2)]
-
-    ## Coexisence: two coexistence states
-    pairs_interaction_fitness[FreqFunc %in% c("0_1_-1"),
-                              c("InteractionType", "InteractionTypeFiner", "From", "To") := list("coexistence", "bistable coexistence", Isolate1, Isolate2)]
-
-    ## Bistability: two exclusion
-    pairs_interaction_fitness[FreqFunc %in% c("-1_1_1", "-1_-1_1"),
-                              c("InteractionType", "InteractionTypeFiner", "From", "To") := list("bistability", "mutual exclusion", Isolate1, Isolate2)]
-
-    ## Pairs present but undefined yet
-    #pairs_interaction_fitness[FreqFunc %in% c("1_0_0"), c("InteractionType", "From", "To") := list("undefined", Isolate1, Isolate2)]
-
-}
-
-
 # Update interaction types by the final frequencies ----
 pairs_interaction_fitness[Isolate1Win == TRUE, c("InteractionType", "InteractionTypeFiner", "From", "To") := list("exclusion", "competitive exclusion", Isolate1, Isolate2)]
 pairs_interaction_fitness[Isolate1Win == FALSE, c("InteractionType", "InteractionTypeFiner", "From", "To") := list("exclusion", "competitive exclusion", Isolate2, Isolate1)]
@@ -237,15 +200,12 @@ pairs_interaction_fitness[Isolate1Win == FALSE, c("InteractionType", "Interactio
 pairs_interaction <- pairs_interaction_fitness %>%
     select(Community, Isolate1, Isolate2, InteractionType, InteractionTypeFiner, From, To)
 
-if(FALSE) {
 
-
-# Interaction tables
-
+# Interaction tables ----
 # Fitness function: signs of frequencies changes in pairs
 temp_df <- pairs_interaction_fitness %>%
     filter(!is.na(FreqFunc)) %>%
-    group_by(FreqFunc, InteractionType) %>%
+    group_by(FreqFunc, InteractionType, InteractionTypeFiner) %>%
     summarize(Count = n())
 
 # Define the interaction table
@@ -280,9 +240,10 @@ ff <- function(x) {
 pairs_interaction_table$FromRare <- ff(pairs_interaction_table$FromRare)
 pairs_interaction_table$FromMedium <- ff(pairs_interaction_table$FromMedium)
 pairs_interaction_table$FromAbundant <- ff(pairs_interaction_table$FromAbundant)
-}
+pairs_interaction_table <- pairs_interaction_table %>% drop_na(InteractionType)
+
 
 write_csv(pairs_interaction, file = here::here("data/temp/pairs_interaction.csv"))
 write_csv(interaction_type, file = here::here("data/temp/interaction_type.csv"))
 write_csv(pairs_interaction_fitness, file = here::here("data/temp/pairs_interaction_fitness.csv"))
-#fwrite(pairs_interaction_table, file = here::here("data/temp/pairs_interaction_table.csv"))
+write_csv(pairs_interaction_table, file = here::here("data/output/pairs_interaction_table.csv"))

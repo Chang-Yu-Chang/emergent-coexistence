@@ -1,6 +1,5 @@
 # Generate the input_csv files
 
-
 output_dir = "~/Dropbox/lab/invasion-network/simulation/data/raw2/"
 
 # Pairs in species pool
