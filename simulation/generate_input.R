@@ -1,7 +1,7 @@
 library(tidyverse)
 
 # Generate the input_csv files ----
-output_dir = "~/Dropbox/lab/invasion-network/simulation/data/raw4/"
+output_dir = "~/Dropbox/lab/invasion-network/simulation/data/raw7/"
 
 # Example parameters
 input_parameters <- tibble(
@@ -10,19 +10,22 @@ input_parameters <- tibble(
     init_R0 = NA,
     exp_id = 1,
     seed = 1,
-    sa = 100,
-    ma = 20, # ma = 20,
-    S = 5,
+    sa = 500,
+    ma = 20,
+    S = 10,
     q1 = 0.9,
     q2 = 0.9,
     l1 = 0.5,
     l2 = 0,
     l1_var = 0.1,
     l2_var = 0.001,
+    c_symmetry = "asymmetry",
+    muc1 = 10,
+    muc2 = 20,
     sigc = 5,
     n_communities = 20,
-    n_wells = 10, # Note that the well number (column number) of init_N0 has to match n_wells
-    metabolism = "common",
+    n_wells = 100, # Note that the well number (column number) of init_N0 has to match n_wells
+    metabolism = "two-families", # "common", "two-families", "specific"
     rs = 0,
 )
 
@@ -36,7 +39,7 @@ temp1 <- input_parameters %>%
 # Self-assembly
 temp2 <- input_parameters %>%
     slice(rep(1, 1)) %>%
-    mutate(init_N0 = paste0("selfAssembly-1_init.csv"), exp_id = 1, n_wells = 20, S = 30) #S=30
+    mutate(init_N0 = paste0("selfAssembly-1_init.csv"), exp_id = 1, n_wells = 20, S = 50) #S=30
 bind_rows(temp1, temp2) %>% write_csv(here::here("simulation/input_independent.csv"))
 
 # Pairs from the pool
@@ -83,17 +86,15 @@ write_csv(N_mono, file = paste0(output_dir, "monoculture-1_init.csv"))
 # Self-assembly. Draw a fix number of S
 input_row <- input_independent %>% filter(str_detect(init_N0, "selfAssembly"))
 draw_community <- function(input_row, candidate_species = NA) {
+    S <- input_row$S
+    n_communities <- input_row$n_communities
     if (all(is.na(candidate_species))) {
-        S <- input_row$S
-        n_communities <- input_row$n_communities
         # Draw species. Default using a fix number of S. Identical to community-simulator
         species <- rep(list(NA), n_communities)
         for (i in 1:n_communities) species[[i]] <- sample(0:(2*sa-1), size = S, replace = F) %>% sort
         species <- unlist(species)
     }
     if (!all(is.na(candidate_species)) & is.vector(candidate_species)) {
-        S <- input_row$S
-        n_communities <- input_row$n_communities
         candidate_species <- str_replace(candidate_species, "S", "") %>% as.numeric()
         # Draw species. Default using a fix number of S. Identical to community-simulator
         species <- rep(list(NA), n_communities)
@@ -121,9 +122,17 @@ write_csv(N_community, file = paste0(output_dir, "selfAssembly-1_init.csv"))
 
 
 
+
+
+
+
+
+
+
+
 # Execute this chunk when monoculture is done
 # Pool pairs. Use isolates that can grow in monoculture
-input_row <- input_independent %>% filter(str_detect(init_N0, "poolPairs")) %>% slice(1)
+input_row <- input_pairs %>% filter(str_detect(init_N0, "poolPairs")) %>% slice(1)
 draw_pairs_from_community <- function(N_community_long) {
     # Communities with no or only one species
     if (nrow(N_community_long) <= 1) N_pairs <- sal %>% mutate(W0 = 0)
