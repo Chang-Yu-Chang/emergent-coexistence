@@ -77,7 +77,7 @@ p_pairs_example_outcomes <- pairs_example_outcomes %>%
     filter(InteractionType != "neutrality") %>%
     left_join(pairs_freq, by = c("Community", "Isolate1", "Isolate2")) %>%
     mutate(Isolate1InitialODFreq = factor(Isolate1InitialODFreq)) %>%
-    mutate(InteractionType = factor(InteractionType, c("coexistence", "exclusion"))) %>%
+    mutate(InteractionType = factor(InteractionType, c("exclusion", "coexistence"))) %>%
     ggplot(aes(x = Time, y = Isolate1MeasuredFreq, color = Isolate1InitialODFreq, group = Isolate1InitialODFreq)) +
     geom_point(size = 1) +
     geom_line(size = .5) +
@@ -92,12 +92,12 @@ p_pairs_example_outcomes <- pairs_example_outcomes %>%
 ## The frequencies of coexistence vs. exclusion
 temp <- pairs %>% filter(Assembly == "self_assembly") %>%
     mutate(InteractionType = ifelse(InteractionType == "neutrality", "coexistence", InteractionType)) %>%
-    mutate(InteractionType = factor(InteractionType, c("coexistence", "exclusion"))) %>%
+    mutate(InteractionType = factor(InteractionType, c("exclusion", "coexistence"))) %>%
     group_by(InteractionType) %>% summarize(Count = n()) %>% ungroup() %>% mutate(Fraction = Count / sum(Count))
 p_pairs_interaction <- temp %>%
     ggplot() +
     geom_col(aes(x = InteractionType, y = Count, fill = InteractionType), color = 1) +
-    geom_text(x = -Inf, y = Inf, label = paste0("n = ", sum(temp$Count)), vjust = 1, hjust = -0.1) +
+    geom_text(x = Inf, y = Inf, label = paste0("n = ", sum(temp$Count)), vjust = 1, hjust = 1.5) +
     geom_text(aes(x = InteractionType, y = Count, label = paste0(round(Fraction, 3) * 100,"%")), nudge_y = 10) +
     scale_fill_manual(values = assign_interaction_color(level = "simple")) +
     scale_y_continuous(limits = c(0, 150), expand = c(0,0)) +
@@ -179,14 +179,7 @@ p_D <- communities_hierarchy %>%
 p_D
 ggsave(here::here("plots/Fig1D-hierarchy_metrics.png"), p_D, width = 5, height = 5)
 
-if (FALSE) {
-    # two rows
-p_upper <- plot_grid(p_A, p_B, nrow = 1, labels = LETTERS[1:2], scale = c(.7, .9), rel_widths = c(1, 2))
-p_lower <- plot_grid(p_C, p_D, nrow = 1, axis = "lrtb", align = "hv", labels = LETTERS[3:4], scale = .9)
-p <- plot_grid(p_upper, p_lower, nrow = 2, rel_heights = c(1.3, 1)) + theme(plot.background = element_rect(fill = "white", color = NA))
-ggsave(here::here("plots/Fig1.png"), p, width = 5, height = 6)
-}
-
+#
 p_aligned <- plot_grid(p_C, p_D, nrow = 1, scale = .9,  labels = LETTERS[3:4], axis = "lrtb", align = "hv")
 p <- plot_grid(p_A, p_B, p_aligned, nrow = 1, scale = c(.7, .9, 1), rel_widths = c(1,1.5,3), labels = c(LETTERS[1:2],"")) + theme(plot.background = element_rect(fill = "white", color = NA))
 ggsave(here::here("plots/Fig1.png"), p, width = 9, height = 3)
@@ -608,7 +601,8 @@ ft1 <- read_csv(here::here("data/output/pairs_interaction_table.csv")) %>%
 
 save_as_image(ft1, here::here("plots/TableS1.png"))
 
-
+read_csv(here::here("data/output/pairs_interaction_table.csv")) %>%
+    pull(Count) %>% sum
 
 
 if (FALSE) {

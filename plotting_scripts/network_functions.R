@@ -34,10 +34,13 @@ assign_motif_color <- function () {
 # Make network from pairs and isolates data
 make_network <- function(isolates, pairs) {
     # Nodes
-    nodes <- isolates %>% select(Isolate, Rank, PlotRank)
+    nodes <- isolates %>% select(Isolate, ID, Rank, PlotRank)
 
     # Edges
-    edges <- pairs %>% mutate(from=From, to=To) %>% select(from, to, InteractionType) #Isolate1, Isolate2, Isolate1Freq)
+    ## Remove no-growth
+    edges <- pairs %>%
+        filter(InteractionType %in% c("coexistence", "exclusion")) %>%
+        mutate(from=From, to=To) %>% select(from, to, InteractionType)
     edges_coext <- edges[edges$InteractionType == "coexistence",]
     edges_coext[,c("from", "to")] <- edges_coext[,c("to", "from")] # Add the mutual edges for coexistence links
     edges <- rbind(edges, edges_coext)

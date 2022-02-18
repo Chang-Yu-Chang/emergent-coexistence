@@ -113,7 +113,11 @@ class Community:
                     else:
                         self.params[item]=self.params[item].values
                 elif isinstance(self.params[item],list):
-                    self.params[item]=np.asarray(self.params[item])
+                    ### FIXME: second condition (if item != 'D') added to allow for input lists of pd.DataFrames (metabolic matrices) in the 'D' item of the params list
+                    if item != 'D': ### FIXME: if item is a list but it is not D, proceed as usual (turn list into np.array)
+                        self.params[item]=np.asarray(self.params[item])
+                    else: ### FIXME: if item is a list and is indeed D, turn every matrix in the list into a np.array (but keep the list structure to wrap all matrices, now np.arrays, together)
+                        self.params[item]=pd.Series(self.params[item]).apply(lambda x: np.asarray(x)).tolist()   
             if 'D' not in params:#supply dummy values for D and l if D is not specified
                 self.params['D'] = np.ones((self.M,self.M))
                 self.params['l'] = 0

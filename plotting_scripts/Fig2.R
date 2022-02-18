@@ -3,7 +3,6 @@ library(tidyverse)
 library(tidymodels)
 library(tidygraph)
 library(cowplot)
-library(ggsci)
 library(ggpubr)
 library(ggtree)
 source(here::here("plotting_scripts/network_functions.R"))
@@ -38,11 +37,11 @@ p_B <- pairs_coexistence %>%
     mutate(Fraction = Count / sum(Count)) %>%
     #filter(InteractionType == "coexistence") %>%
     ggplot() +
-    geom_col(aes(x = PairConspecific, y = Fraction, fill = factor(InteractionType, c("exclusion", "coexistence"))), color = 1, width = .7, position = position_dodge(width = 0.8)) +
+    geom_col(aes(x = PairConspecific, y = Fraction, fill = factor(InteractionType, c("exclusion", "coexistence"))), color = 1, width = .7, position = "fill") +
     # percentage
-    geom_text(aes(x = PairConspecific, y = Fraction, label = paste0(round(Fraction, 3) * 100,"%"), group = factor(InteractionType, c("exclusion", "coexistence"))), size = 3, vjust = -1, position = position_dodge(width = 0.8)) +
+    #geom_text(aes(x = PairConspecific, y = Fraction, label = paste0(round(Fraction, 3) * 100,"%"), group = factor(InteractionType, c("exclusion", "coexistence"))), size = 3, vjust = -1, position = position_dodge(width = 0.8)) +
     # sample size
-    geom_text(data = pairs_count, aes(x = PairConspecific, y = 1, label = paste0("n=", Count)), vjust = 1) +
+    geom_text(data = pairs_count, aes(x = PairConspecific, y = 1, label = paste0("n=", Count)), vjust = 2) +
     scale_fill_manual(values = assign_interaction_color(level = "simple")) +
     scale_y_continuous(breaks = c(0,.5,1), limit = c(0, 1), expand = c(0,0), labels = c("0%", "50%", "100%")) +
     theme_classic() +
@@ -52,7 +51,7 @@ p_B <- pairs_coexistence %>%
           axis.text.x = element_text(size = 12, color = 1, angle = 30, vjust = 1, hjust = 1)
     ) +
     guides(fill = "none") +
-    labs(y = "Percentage") +
+    labs(y = "Fracrion of coexistence") +
     draw_image(here::here("plots/cartoons/Fig2B_FF.png"), x = 1, y = 0, scale = .6, vjust = .4, hjust = .5) +
     draw_image(here::here("plots/cartoons/Fig2B_FR.png"), x = 2, y = 0, scale = .6, vjust = .4, hjust = .5) +
     draw_image(here::here("plots/cartoons/Fig2B_RR.png"), x = 1, y = 0, scale = .6, vjust = .25, hjust = .5)
@@ -82,6 +81,7 @@ null_distribution_simulated %>% get_p_value(obs_stat = observed_indep_statistic,
 p_C <- pairs_coexistence %>%
     filter(PairConspecific == "conspecific") %>%
     filter(!is.na(r_glucose_midhr_d)) %>%
+    mutate(InteractionType = factor(InteractionType, c("exclusion", "coexistence"))) %>%
     ggplot(aes(x = InteractionType, y = r_glucose_midhr_d, fill = InteractionType)) +
     geom_hline(yintercept = 0, linetype = 2, color = "grey") +
     geom_boxplot(width = .5) +
@@ -98,7 +98,7 @@ p_C <- pairs_coexistence %>%
           panel.border = element_rect(color = NA, fill = NA, size = 1)) +
     guides(alpha = "none", fill = "none", color = "none") +
     labs(x = "", y = expression(r[A]-r[B]))
-p_C
+
 ggsave(here::here("plots/Fig2C-r_glu.png"), p_C, width = 4, height = 4)
 
 ## Stats: among conspecific, whether the dominant has a higher r_glu than subdominant
@@ -126,7 +126,8 @@ temp %>%
 # Figure 2D: Amount of total acid secretion. X_sum_16hr
 p_D <- pairs_coexistence %>%
     filter(PairConspecific == "conspecific") %>%
-    tidyr::drop_na(X_sum_16hr_d) %>%
+    drop_na(X_sum_16hr_d) %>%
+    mutate(InteractionType = factor(InteractionType, c("exclusion", "coexistence"))) %>%
     ggplot(aes(x = InteractionType, y = X_sum_16hr_d, fill = InteractionType)) +
     geom_hline(yintercept = 0, linetype = 2, color = "grey") +
     geom_boxplot(width = 0.5) +
