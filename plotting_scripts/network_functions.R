@@ -1,4 +1,4 @@
-# R functions making, randomizing, plotting network
+# R functions making, randomizing, and plotting networks
 
 # Assign interaction link colors
 assign_interaction_color <- function (level = "simple") {
@@ -30,6 +30,20 @@ assign_motif_color <- function () {
     return(motif_color)
 }
 
+# Assign category colors
+assign_category_color <- function() {
+    c(sugar = "#ED6A5A", acid = "#03CEA4", waste = "#51513D", fermenter = "#8A89C0", respirator = "#FFCB77", F0 = "#8A89C0", F1 = "#FFCB77")
+}
+
+motif_color <- assign_motif_color()
+interaction_color <- assign_interaction_color()
+category_color <- assign_category_color()
+fermenter_color <- c("fermenter" = "#8A89C0", "respirator" = "#FFCB77")
+dominant_color <- c("dominant" = "grey20", "subdominant" = "grey90")
+
+
+# Paint white backgorund for plot_grid
+paint_white_background <- function(x) theme(plot.background = element_rect(color = NA, fill = "white"))
 
 # Make network from pairs and isolates data
 make_network <- function(isolates, pairs) {
@@ -245,6 +259,29 @@ make_random_network <- function (
 
 # Count motif
 count_motif <- function(net) igraph::triad_census(net)[c(10, 9, 12, 14, 13, 15, 16)]
+
+# Count node degree. only coexistence links considered
+count_degree <- function(net) {
+    net %>%
+    activate(edges) %>%
+    filter(InteractionType == "coexistence") %>%
+    filter(from < to) %>%
+    igraph::degree()
+}
+
+# Count number of connected components. One network has one value
+count_component <- function(net) {
+    net %>%
+        activate(edges) %>%
+        filter(InteractionType == "coexistence") %>%
+        filter(from < to) %>%
+        igraph::components() %>%
+        `[[`("no")
+}
+
+
+
+
 
 # Plot adjacent matrix
 plot_adjacent_matrix <- function(graph, show.legend = F, show.axis = F, show_label = "ID") {

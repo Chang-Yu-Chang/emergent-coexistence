@@ -135,6 +135,44 @@ networks_diag_randomized <- read_csv(here::here("data/output/networks_diag_rando
 networks_diag_randomized
 ```
 
+## Node degree in coexistence-only network
+
+```{r}
+if (run_scripts) source("script/03B-network_measure-04-node_degree.R")
+```
+
+
+```{r}
+networks_degree <- read_csv(here::here("data/output/networks_degree.csv"))
+networks_degree
+```
+
+```{r}
+networks_degree_randomized <- read_csv(here::here("data/output/networks_degree_randomized.csv"))
+networks_degree_randomized
+```
+
+
+
+
+## Network component of coexistence-only networks
+
+```{r}
+if (run_scripts) source("script/03B-network_measure-05-component_count.R")
+```
+
+
+```{r}
+networks_component <- read_csv(here::here("data/output/networks_component.csv"))
+networks_component
+```
+
+
+```{r}
+networks_component_randomized <- read_csv(here::here("data/output/networks_component_randomized.csv"))
+networks_component_randomized
+
+```
 
 
 
