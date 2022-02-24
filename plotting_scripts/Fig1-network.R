@@ -181,7 +181,7 @@ ggsave(here::here("plots/Fig1D-all_networks.png"), pD, width = 10, height = 3)
 #
 p_upper <- plot_grid(pA, pB, pC, nrow = 1, scale = c(1.1, 0.9, 1.1),  rel_widths = c(1,1,2), labels = LETTERS[1:3], axis = "tb", align = "hv")
 p <- plot_grid(p_upper, pD, nrow = 2, scale = c(1, .9), rel_heights = c(1,.8), labels = c("", "D")) + paint_white_background()
-ggsave(here::here("plots/Fig1.png"), p, width = 8, height = 6)
+ggsave(here::here("plots/Fig1.png"), p, width = 8, height = 5)
 
 
 
