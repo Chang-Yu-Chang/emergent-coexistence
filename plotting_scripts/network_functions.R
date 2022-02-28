@@ -102,7 +102,7 @@ summarize_network_motif <- function(graph) {
 }
 
 # Plot the competitive network. Take output from make_network()
-plot_competitive_network <- function(g, node_size = 10, g_layout = "circle") {
+plot_competitive_network <- function(g, node_size = 10, edge_width = 1, g_layout = "circle") {
     # g_layout
     if (g_layout == "hierarchy") {
         graph_layout <- create_layout(g, g_layout = "")
@@ -130,10 +130,10 @@ plot_competitive_network <- function(g, node_size = 10, g_layout = "circle") {
             mutate(Isolate = factor(Isolate)) %>%
             ggraph(layout = "nicely") +
             geom_node_point(aes(fill = Isolate), size = node_size, shape = 21, colour = "black", stroke = node_size/5) +
-            geom_edge_link(aes(color = InteractionType, fill = InteractionType), width = node_size/10,
-                           arrow = arrow(length = unit(node_size/2, "mm"), type = "closed", angle = 30, ends = "last"),
-                           start_cap = circle(node_size/2+1, "mm"),
-                           end_cap = circle(node_size/2+1, "mm")) +
+            geom_edge_link(aes(color = InteractionType, fill = InteractionType), width = edge_width,
+                           arrow = arrow(length = unit(edge_width, "mm"), type = "closed", angle = 30, ends = "last"),
+                           start_cap = circle(node_size/2, "mm"),
+                           end_cap = circle(node_size/2, "mm")) +
             scale_edge_color_manual(values = interaction_color) +
             #scale_fill_manual(values = c("white", "grey40")) +
             scale_x_continuous(limits = nodex_axis_x*1.2) +
@@ -150,10 +150,10 @@ plot_competitive_network <- function(g, node_size = 10, g_layout = "circle") {
         g %>%
             ggraph(layout = "nicely") +
             geom_node_point(fill = "grey", size = node_size, shape = 21, colour = "black", stroke = node_size/5) +
-            geom_edge_arc(aes(color = InteractionType, fill = InteractionType), width = node_size/10,
-                          arrow = arrow(length = unit(node_size/2, "mm"), type = "closed", angle = 30, ends = "last"),
-                          start_cap = circle(node_size/2+1, "mm"),
-                          end_cap = circle(node_size/2+1, "mm")) +
+            geom_edge_arc(aes(color = InteractionType, fill = InteractionType), width = edge_width,
+                          arrow = arrow(length = unit(edge_width, "mm"), type = "closed", angle = 30, ends = "last"),
+                          start_cap = circle(node_size/2, "mm"),
+                          end_cap = circle(node_size/2, "mm")) +
             scale_edge_color_manual(values = interaction_color) +
             scale_x_continuous(limits = nodex_axis_x*1.2) +
             #scale_y_continuous(limits = nodex_axis_y*1.2) +
@@ -170,10 +170,10 @@ plot_competitive_network <- function(g, node_size = 10, g_layout = "circle") {
         g %>%
             ggraph(layout = "nicely") +
             geom_node_point(fill = "grey", size = node_size, shape = 21, colour = "black", stroke = node_size/5) +
-            geom_edge_link(aes(color = InteractionType, fill = InteractionType), width = node_size/10,
-                           arrow = arrow(length = unit(node_size/2, "mm"), type = "closed", angle = 30, ends = "last"),
-                           start_cap = circle(node_size/2+1, "mm"),
-                           end_cap = circle(node_size/2+1, "mm")) +
+            geom_edge_link(aes(color = InteractionType, fill = InteractionType), width = edge_width,
+                           arrow = arrow(length = unit(edge_width, "mm"), type = "closed", angle = 30, ends = "last"),
+                           start_cap = circle(node_size/2, "mm"),
+                           end_cap = circle(node_size/2, "mm")) +
             scale_edge_color_manual(values = interaction_color) +
             scale_x_continuous(limits = nodex_axis_x*1.3) +
             scale_y_continuous(limits = nodex_axis_y*1.3) +

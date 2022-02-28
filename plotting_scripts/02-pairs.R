@@ -6,6 +6,8 @@ library(cowplot)
 library(ggsci)
 library(ggpubr)
 library(ggtree)
+library(tidygraph)
+library(ggraph)
 source(here::here("plotting_scripts/network_functions.R"))
 
 isolates <- read_csv(here::here("data/output/isolates.csv"), col_types = cols())
@@ -16,19 +18,146 @@ load(here::here("data/output/network_community.Rdata"))
 load("~/Dropbox/lab/invasion-network/data/output/network_randomized.Rdata") # Randomized networks
 
 
+# Figure 3A: one example community of crossfeeding netorks
+## growth rate and secretion
+temp <- isolates %>%
+    filter(Assembly == "self_assembly") %>%
+    select(ID, Fermenter, starts_with("r_"), starts_with("X_")) %>%
+    select(ID, Fermenter, ends_with("midhr"), ends_with("16hr")) %>%
+    drop_na(r_glucose_16hr, X_acetate_16hr)
+# Fermenter
+temp2 <- isolates %>%
+    mutate(Node = as.character(ID), Fermenter = ifelse(Fermenter, "fermenter", ifelse(Fermenter == FALSE, "respirator", NA))) %>%
+    select(Node, Community, Fermenter)
+
+
+isolates_in <- temp %>%
+    select(ID, Fermenter, ends_with("midhr")) %>%
+    pivot_longer(cols = starts_with("r_"), names_to = "CarbonSource", names_pattern = "r_(.+)_", values_to = "GrowthRate") %>%
+    filter(!CarbonSource %in% c("ketogluconate", "gluconate")) %>%
+    mutate(ID = as.character(ID)) %>%
+    mutate(CarbonSource = factor(CarbonSource, c("glucose", "acetate", "lactate", "succinate"))) %>%
+    arrange(Fermenter, ID, CarbonSource) %>%
+    mutate(FermenterID = rep(1:(n()/4), each = 4))
+isolates_out <- temp %>%
+    select(ID, Fermenter, ends_with("16hr") & starts_with("X")) %>%
+    pivot_longer(cols = starts_with("X_"), names_to = "CarbonSource", names_pattern = "X_(.+)_", values_to = "Secretion") %>%
+    filter(CarbonSource != "sum", !CarbonSource %in% c("ketogluconate", "gluconate")) %>%
+    mutate(CarbonSource = factor(CarbonSource, c("glucose", "acetate", "lactate", "succinate"))) %>%
+    mutate(ID = as.character(ID)) %>%
+    arrange(Fermenter, ID, CarbonSource) %>%
+    mutate(FermenterID = rep(1:(n()/3), each = 3))
+
+## Make the big bipartite network
+nodes <- bind_rows(
+    tibble(Node = unique(isolates_in$ID)) %>% mutate(Type = "consumer"),
+    tibble(Node = unique(isolates_in$CarbonSource)) %>% mutate(Type = "resource")
+) %>%
+    left_join(temp2)
+edges <- bind_rows(
+    isolates_in %>% mutate(from = CarbonSource, to = ID, Strength = GrowthRate, Direction = "consumed", .keep = "unused"),
+    isolates_out %>% mutate(from = ID, to = CarbonSource, Strength = Secretion, Direction = "secreted", .keep = "unused")
+) %>%
+    mutate(BinaryStrength = ifelse(Strength == 0, 0, 1)) %>%
+    select(from, to, everything())
+
+example_comm <- "C1R2"
+nodes_example <- nodes %>% filter(Community == example_comm | Type == "resource") %>%
+edges_example <- edges %>% filter(from %in% nodes_example$Node & to %in% nodes_example$Node) %>%
+    mutate(from = match(from, nodes_example$Node), to = match(to, nodes_example$Node))
+
+g <- tbl_graph(nodes_example, edges_example) %>%
+    activate(nodes) %>%
+    mutate(showResourceID = ifelse(Type == "resource", Node, ""),
+           showNode = ifelse(Type == "resource", F, T))
+
+node_size = 5
+pA <- g %>%
+    activate(nodes) %>%
+    group_by(Type) %>%
+    mutate(x = 1:n(), y = ifelse(Type == "consumer", 1, 0)) %>%
+    activate(edges) %>%
+    filter(Strength != 0) %>%
+    ggraph(layout = "nicely") +
+    geom_node_point(aes(shape ), size = node_size, shape = 21) +
+    geom_node_text(aes(label = showResourceID), size = node_size) +
+    #geom_edge_arc(aes(color = Direction), strength = 0.02) +
+    geom_edge_arc(aes(color = Direction), strength = 0.02, width = 1, start_cap = circle(node_size/2+1, "mm"), end_cap = circle(node_size/2+1, "mm")) +
+    #scale_color_manual(values = fermenter_color) +
+    scale_fill_manual(values = c("consumer" = "grey50", "resource" = "grey90")) +
+    scale_edge_color_manual(values = c("consumed" = "#557BAA", "secreted" = "#DB7469")) +
+    scale_y_continuous(limits = c(0, 1.1)) +
+    theme_void() +
+    theme(legend.title = element_blank(), legend.position = "top") +
+    #guides(width = "none") +
+    labs() +
+    paint_white_background()
+
+ggsave(here::here("plots/Fig3A-example_crossfeeding.png"), pA, width = 5, height = 5)
+
+
+# Figure 3B: d_r explains ranking
+pairs_coexistence <- pairs_meta %>%
+    filter(!is.na(PairFermenter)) %>%
+    filter(Assembly == "self_assembly") %>%
+    mutate(PairConspecific = ifelse(PairFermenter == "FF" | PairFermenter == "NN", "conspecific", ifelse(PairFermenter == "FN", "heterospecific", NA))) %>%
+    mutate(Rank_d = Rank1 - Rank2, Score_d = Score1 - Score2)
+
+pB <- pairs_coexistence %>%
+    ggplot(aes(x = abs(r_glucose_midhr_d), y = abs(Rank_d))) +
+    geom_point(size = 2, shape = 21, stroke = 1) +
+    geom_smooth(method = "lm") +
+    theme_classic() +
+    labs(x = expression(r[1]-r[2]), y = expression(Rank[1]-Rank[2]))
+
+# Figure 3C: d_X explaos ranking
+pC <- pairs_coexistence %>%
+    ggplot(aes(x = X_sum_16hr_d, y = Rank_d)) +
+    geom_point(size = 2, shape = 21, stroke = 1) +
+    geom_smooth(method = "lm") +
+    theme_classic() +
+    labs(x = expression(X[1]-X[2]), y = expression(Rank[1]-Rank[2]))
+
+# Figure 3D: together
+pD <- pairs_coexistence %>%
+    drop_na(PairFermenter, r_glucose_midhr_d, X_sum_16hr_d) %>%
+    ggplot() +
+    geom_vline(xintercept = 0, linetype = 2) +
+    geom_hline(yintercept = 0, linetype = 2) +
+    geom_point(aes(x = r_glucose_midhr_d, y = X_sum_16hr_d, color = InteractionType), shape = 21, size = 2, stroke = 1) +
+    scale_color_manual(values = assign_interaction_color(level = "simple")) +
+    #facet_wrap(.~PairConspecific, scale = "free") +
+    theme_classic() +
+    theme(legend.title = element_blank(), legend.position = "top",
+          axis.text = element_text(color = 1),
+          strip.background = element_blank(),
+          panel.background = element_rect(color = 1, fill = NA)) +
+    labs(x = expression(r[1]-r[2]), y = expression(X[1]-X[2]))
+
+
+p <- plot_grid(pA, pB, pC, pD, nrow = 2, labels = LETTERS[1:4], scale = c(.8, .9, .9, .9),
+               axis = "lrtb", align = "hv") + paint_white_background()
+ggsave(here::here("plots/Fig3.png"), p, width = 6, height = 6)
+
+
+
+
+
+
+
+
+
+
+
+
+
+#---------------------------------------------
+
 # Figure 2S1: fermenter and respirator cartoon
 pS1 <- ggdraw() + draw_image(here::here("plots/cartoons/Fig2A.png")) + theme(plot.background = element_rect(fill = "white", color = NA))
 ggsave(here::here("plots/Fig2S1-functional_groups.png"), pS1, width = 5, height = 5)
 
 # Figure 2S2:
-pairs_coexistence <- pairs_meta %>%
-    filter(!is.na(PairFermenter)) %>%
-    filter(Assembly == "self_assembly") %>%
-    mutate(PairConspecific = ifelse(PairFermenter == "FF" | PairFermenter == "NN", "conspecific", ifelse(PairFermenter == "FN", "heterospecific", NA)))
-pairs_count <- pairs_coexistence %>%
-    group_by(PairConspecific) %>%
-    summarize(Count = n())
-
 pS2 <- pairs_coexistence %>%
     group_by(InteractionType, PairConspecific) %>%
     summarize(Count = n()) %>%
@@ -1054,6 +1183,55 @@ ggsave(here::here("plots/Fig2S23-crossfeeding_network.png"), pS23, width = 8, he
 
 
 
+# Figure 2S24: cross-feeding networks in heatmaps
+temp <- isolates %>%
+    filter(Assembly == "self_assembly") %>%
+    select(ID, Fermenter, starts_with("r_"), starts_with("X_")) %>%
+    select(ID, Fermenter, ends_with("midhr"), ends_with("16hr")) %>%
+    drop_na(r_glucose_16hr, X_acetate_16hr)
+temp2 <- isolates %>%
+    mutate(Node = as.character(ID), Fermenter = ifelse(Fermenter, "fermenter", ifelse(Fermenter == FALSE, "respirator", NA)), .keep = "used") %>%
+    select(Node, Fermenter)
+
+isolates_in <- temp %>%
+    select(ID, Fermenter, ends_with("midhr")) %>%
+    pivot_longer(cols = starts_with("r_"), names_to = "CarbonSource", names_pattern = "r_(.+)_", values_to = "GrowthRate") %>%
+    filter(!CarbonSource %in% c("ketogluconate", "gluconate")) %>%
+    mutate(ID = as.character(ID)) %>%
+    mutate(CarbonSource = factor(CarbonSource, c("glucose", "acetate", "lactate", "succinate"))) %>%
+    arrange(Fermenter, ID, CarbonSource) %>%
+    mutate(FermenterID = rep(1:(n()/4), each = 4))
+isolates_out <- temp %>%
+    select(ID, Fermenter, ends_with("16hr") & starts_with("X")) %>%
+    pivot_longer(cols = starts_with("X_"), names_to = "CarbonSource", names_pattern = "X_(.+)_", values_to = "Secretion") %>%
+    filter(CarbonSource != "sum", !CarbonSource %in% c("ketogluconate", "gluconate")) %>%
+    mutate(CarbonSource = factor(CarbonSource, c("glucose", "acetate", "lactate", "succinate"))) %>%
+    mutate(ID = as.character(ID)) %>%
+    arrange(Fermenter, ID, CarbonSource) %>%
+    mutate(FermenterID = rep(1:(n()/3), each = 3))
+
+# Growth rate
+p1 <- isolates_in %>%
+    ggplot() +
+    geom_tile(aes(x = CarbonSource, y = FermenterID, fill = GrowthRate), color = 1) +
+    scale_fill_gradient2() +
+    scale_y_continuous(limits = c(0, 60), breaks = 1:59) +
+    theme_classic() +
+    theme(legend.position = "top") +
+    labs()
+
+# Secretion
+p2 <- isolates_out %>%
+    ggplot() +
+    geom_tile(aes(x = CarbonSource, y = FermenterID, fill = Secretion), color = 1) +
+    scale_fill_gradient2() +
+    scale_y_continuous(limits = c(0, 60), breaks = 1:59) +
+    theme_classic() +
+    theme(legend.position = "top", axis.title.y = element_blank()) +
+    labs()
+
+pS24 <- plot_grid(p1, p2, ncol = 2, scale = .9, labels = c("", "")) + paint_white_background()
+ggsave(here::here("plots/Fig2S24-cross_feeding.png"), pS24, width = 8, height = 10)
 
 
 
