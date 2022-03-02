@@ -17,67 +17,20 @@ pairs <- read_csv(here::here("data/output/pairs.csv"), col_types = cols()) %>% m
 pairs_freq <- read_csv(here::here("data/output/pairs_freq.csv"), col_types = cols())
 load(here::here("data/output/network_community.Rdata"))
 
-# Figure 1A: two example networks
-n_species = 6
-node_size = 0
-edge_width = 1
-make_example_graph <- function(n_species, prob = c(1,1)) {
-    # Probability = {"coexistence", "exclusion"}
-    nodes <- tibble(Isolate = 1:n_species,
-                    x = 1:n_species, y = rep(0, n_species))
-    edges <- tibble(From = 1:n_species, To = 1:n_species) %>%
-        expand(From, To) %>%
-        filter(From < To) %>%
-        mutate(InteractionType = sample(c("coexistence", "exclusion"), choose(n_species, 2), replace = T, prob = prob))
-    edges_coexistence <- edges %>%
-        filter(InteractionType == "coexistence") %>%
-        mutate(temp = From, From = To, To = temp, .keep = "unused") %>% select(-temp)
-    edges <- bind_rows(edges, edges_coexistence)
-    example_graph <- tbl_graph(nodes, edges)
-    return(example_graph)
-}
-plot_example_graph <- function(example_graph, node_size, edge_width) {
-    example_graph %>%
-        ggraph(layout = "circle") +
-        geom_edge_link(aes(color = InteractionType), edge_width = edge_width,
-                       arrow = arrow(length = unit(edge_width, "mm"), type = "closed", angle = 30, ends = "last"),
-                       start_cap = circle(node_size/2, "mm"), end_cap = circle(node_size/2, "mm")) +
-        geom_node_point(fill = "grey", size = node_size, shape = 21, colour = "black", stroke = node_size/5) +
-        scale_edge_color_manual(values = interaction_color) +
-        scale_color_manual(values = c(`TRUE` = "#DB7469", `FALSE` = "#557BAA")) +
-        scale_x_continuous(limits = c(-1.1, 1.1)) +
-        scale_y_continuous(limits = c(-1.1, 1.1)) +
-        guides(color = "none", fill = "none") +
-        theme_void() +
-        theme(legend.position = "none", plot.background = element_rect(fill = "white", color = NA),
-              legend.title = element_blank(), plot.margin = margin(10,30,10,10, unit = "pt"),
-              legend.text = element_text(size = 20)) +
-        labs(x = "")
-}
-set.seed(1)
-p1 <- make_example_graph(n_species, c(1,0)) %>% plot_example_graph(node_size, edge_width)
-p2 <- make_example_graph(n_species, c(2,3)) %>% plot_example_graph(node_size, edge_width)
-p3 <- cowplot::get_legend(p2 + theme(legend.position = "bottom", legend.text = element_text(size = 10), legend.direction = "vertical"))
-pA <- plot_grid(p1, p2, p3, ncol = 1, scale = 1, rel_heights = c(2,2,1), axis = "tb", align = "v") + paint_white_background()
-ggsave(here::here("plots/Fig1A-two_networks.png"), pA, width = 3, height = 5)
+# Figure 1A: diagram
+pA <- ggdraw() + draw_image(here::here("plots/cartoons/Fig1A.png")) + theme(plot.background = element_rect(fill = "white", color = NA))
 
-# Figure 1B:
-pB <- ggdraw() + draw_image(here::here("plots/cartoons/FigS2.png")) + theme(plot.background = element_rect(fill = "white", color = NA))
-ggsave(here::here("plots/Fig1B-pairwise_experiment_cartoon.png"), pB, width = 4, height = 3)
-
-
-# Figure 1C: networks of one community. C1R2
-#networks_motif <- read_csv(here::here("data/output/networks_motif.csv")) %>% filter(str_detect(Community, "C\\d"))
-#networks_motif_randomized <- read_csv(here::here("data/output/networks_motif_randomized.csv")) %>% filter(str_detect(Community, "C\\d")) %>% mutate(Community = ordered(Community, communities$Community))
+# Figure 1B: networks of one community. C1R2
+## Main network
 net <- net_list$C1R2 %>%
     activate(nodes) %>%
     mutate(x = c(0, 0, 1, 1), y = c(1, 0, 1, 0))
-node_size = 5
+node_size = 12
 p1 <- net %>%
     ggraph(layout = "nicely") +
-    geom_node_point(fill = "grey", size = node_size, shape = 21, colour = "black", stroke = node_size/5) +
+    #geom_node_point(fill = "grey", size = node_size, shape = 21, colour = "black", stroke = node_size/5) +
     #geom_node_text(aes(label = Isolate)) +
-    geom_edge_link(aes(color = InteractionType), width = node_size/10,
+    geom_edge_link(aes(color = InteractionType), width = node_size/5,
                    arrow = arrow(length = unit(node_size/2, "mm"), type = "closed", angle = 30, ends = "last"),
                    start_cap = circle(node_size/2+1, "mm"),
                    end_cap = circle(node_size/2+1, "mm")) +
@@ -85,10 +38,16 @@ p1 <- net %>%
     scale_x_continuous(limits = c(-0.4, 1.4), breaks = c(0, .5, 1)) +
     scale_y_continuous(limits = c(-0.4, 1.4), breaks = c(0, .5, 1)) +
     theme_void() +
+    #theme_bw() +
     theme(legend.position = "none", panel.background = element_blank(),
           plot.margin=unit(c(3,3,3,3),"mm"), plot.background = element_rect(fill = NA, color = NA)) +
-    labs()
+    labs() +
+    draw_image(here::here("plots/cartoons/Fig1B_1.png"), x = -0.5, y = 0.75, vjust = 0.25, hjust = 0, clip = "on", scale = .3) +
+    draw_image(here::here("plots/cartoons/Fig1B_2.png"), x = -0.5, y = -0.25, vjust = 0.25, hjust = 0, clip = "on", scale = .3) +
+    draw_image(here::here("plots/cartoons/Fig1B_3.png"), x = 0.5, y = 0.75, vjust = 0.25, hjust = 0, clip = "on", scale = .3) +
+    draw_image(here::here("plots/cartoons/Fig1B_4.png"), x = 0.5, y = -0.25, vjust = 0.25, hjust = 0, clip = "on", scale = .3)
 
+## frequency plots
 pairs_example_freq <- pairs %>%
     filter(Community == "C1R2") %>%
     select(Community, starts_with("Isolate"), starts_with("Interaction")) %>%
@@ -96,14 +55,14 @@ pairs_example_freq <- pairs %>%
     left_join(pairs_freq, by = c("Community", "Isolate1", "Isolate2")) %>%
     mutate(Isolate1InitialODFreq = factor(Isolate1InitialODFreq)) %>%
     mutate(InteractionType = factor(InteractionType, c("exclusion", "coexistence")))
-
-
 plot_example_freq <- function(pairs_freq) {
     pairs_freq %>%
+        mutate(Isolate1InitialODFreq = factor(Isolate1InitialODFreq, c(95,50,5))) %>%
         ggplot(aes(x = Time, y = Isolate1MeasuredFreq, color = Isolate1InitialODFreq, group = Isolate1InitialODFreq)) +
         geom_point(size = 2) +
         geom_line(size = 1) +
         scale_y_continuous(breaks = c(0, .5, 1), limits = c(0,1)) +
+        scale_color_manual(values = frequency_color, label = c("95%", "50%", "5%")) +
         facet_wrap(.~Pair) +
         theme_bw() +
         theme(panel.spacing = unit(2, "mm"), strip.text.x = element_blank(),
@@ -117,55 +76,54 @@ plot_example_freq <- function(pairs_freq) {
         guides(color = "none") +
         labs(x = "Time", y = "Frequency")
 }
-
 p_pairs_example_freq_list <- pairs_example_freq %>%
     group_split(Pair) %>%
     lapply(plot_example_freq)
+p_pairs_example_freq_list[[1]] <- p_pairs_example_freq_list[[1]] + theme(axis.text = element_text(size = 5), axis.title = element_text(size = 8))
+p_legend <- cowplot::get_legend(p_pairs_example_freq_list[[1]] +
+                                    theme(legend.background = element_blank()) +
+                                    guides(color = guide_legend(title = "Initial frequencies")))
+
+
 ss <- .2
-pC <- ggdraw(p1) +
-    draw_plot(p_pairs_example_freq_list[[1]], x = .15, y = .5, width = ss, height = ss, hjust = .5, vjust = .5) +
+pB <- ggdraw(p1) +
+    draw_plot(p_pairs_example_freq_list[[1]], x = .1, y = .5, width = ss*1.5, height = ss*1.5, hjust = .5, vjust = .5) +
     draw_plot(p_pairs_example_freq_list[[2]], x = .5, y = .85, width = ss, height = ss, hjust = .5, vjust = .5) +
     draw_plot(p_pairs_example_freq_list[[3]], x = .4, y = .6, width = ss, height = ss, hjust = .5, vjust = .5) +
     draw_plot(p_pairs_example_freq_list[[4]], x = .6, y = .6, width = ss, height = ss, hjust = .5, vjust = .5) +
     draw_plot(p_pairs_example_freq_list[[5]], x = .5, y = .15, width = ss, height = ss, hjust = .5, vjust = .5) +
     draw_plot(p_pairs_example_freq_list[[6]], x = .85, y = .5, width = ss, height = ss, hjust = .5, vjust = .5) +
+    draw_plot(p_legend, x = .15, y = .85, width = ss, height = ss, hjust = .5, vjust = .5) +
     theme(panel.background = element_blank(), plot.background = element_rect(color = NA, fill = "white"))
+pB
+ggsave(here::here("plots/Fig1B-example_network.png"), pB, width = 5, height = 5)
 
-ggsave(here::here("plots/Fig1C-example_network.png"), pC, width = 5, height = 5)
-
-# Figure 1D: All networks
-p_net_matrix_list <- lapply(net_list, function(x) plot_adjacent_matrix(x) + theme(plot.margin = grid::unit(c(5,0,3,0), "mm")))
-p_net_list <- lapply(net_list, function(x) plot_competitive_network(x, node_size = 0, edge_width = .8) + theme(plot.background = element_rect(fill = NA)))
+# Figure 1C: All networks
+#p_net_matrix_list <- lapply(net_list, function(x) plot_adjacent_matrix(x) + theme(plot.margin = grid::unit(c(5,0,3,0), "mm")))
+p_net_list <- lapply(seq_along(net_list), function(i) {
+    net_list[[i]] %>%
+        plot_competitive_network(node_size = 0, edge_width = .8) +
+        theme(plot.background = element_rect(fill = "grey90", color = NA),
+              panel.background = element_rect(fill = "grey90", color = NA))
+    #annotate("text", x = -Inf, y = Inf, label = names(net_list)[[i]], vjust = 2, hjust = -.5) +
+    #ggtitle(names(net_list)[[i]])
+}) %>%
+    setNames(communities$Community)
 p_net_list <- p_net_list %>% `[`(communities %>% arrange(CommunitySize) %>% filter(str_detect(Community, "C")) %>% pull(Community))
-pD <- plot_grid(plot_grid(plotlist = p_net_list[1:5], nrow = 1),
-                plot_grid(plotlist = p_net_list[6:10], nrow = 1),
-                plot_grid(plotlist = p_net_list[11:13], nrow = 1),
-                 ncol = 1, rel_heights = c(1,1,1.5), scale = c(1,1, 1.2)) + paint_white_background()
-ggsave(here::here("plots/Fig1D-all_networks.png"), pD, width = 10, height = 3)
+pC_title <- ggdraw() +
+    draw_label("Pairwise networks of 13 replicate communities",fontface = 'bold',x = 0,hjust = 0) +
+    theme(plot.margin = margin(0, 0, 0, 7))
+pC <- plot_grid(pC_title,
+                plot_grid(plotlist = p_net_list[1:10], nrow = 1, labels = 1:10),
+                plot_grid(plotlist = p_net_list[11:13], nrow = 1, labels = 11:13),
+                ncol = 1, rel_heights = c(.1,1,2.5), scale = .9) +
+    paint_white_background()
+
+ggsave(here::here("plots/Fig1C-all_networks.png"), pC, width = 10, height = 4)
 
 
 
-# Figure 1E: pairwise outcomes
-if (FALSE) {
-## Plot pairs example dynamics
-p_pairs_example_outcomes <- pairs_example_outcomes %>%
-    filter(InteractionType != "neutrality") %>%
-    left_join(pairs_freq, by = c("Community", "Isolate1", "Isolate2")) %>%
-    mutate(Isolate1InitialODFreq = factor(Isolate1InitialODFreq)) %>%
-    mutate(InteractionType = factor(InteractionType, c("exclusion", "coexistence"))) %>%
-    ggplot(aes(x = Time, y = Isolate1MeasuredFreq, color = Isolate1InitialODFreq, group = Isolate1InitialODFreq)) +
-    geom_point(size = 1) +
-    geom_line(size = .5) +
-    scale_y_continuous(breaks = c(0, .5, 1), limits = c(0,1)) +
-    facet_grid(.~InteractionType) +
-    theme_bw() +
-    theme(panel.spacing = unit(2, "mm"), strip.text.x = element_blank(),
-          panel.border = element_rect(color = 1, fill = NA, size = 1),
-          axis.title = element_text(size = 10), axis.text = element_text(color = 1, size = 8)) +
-    guides(color = "none") +
-    labs(x = "Time", y = "Frequency")
-}
-## The frequencies of coexistence vs. exclusion
+# Figure 1D: pairwise outcomes
 temp <- pairs %>% filter(Assembly == "self_assembly") %>%
     mutate(InteractionType = ifelse(InteractionType == "neutrality", "coexistence", InteractionType)) %>%
     mutate(InteractionType = factor(InteractionType, c("exclusion", "coexistence"))) %>%
@@ -182,15 +140,15 @@ p_pairs_interaction <- temp %>%
           axis.text = element_text(size = 8, color = "black"),
           legend.position = "none") +
     labs(x = "", y = "Number of pairs", fill = "")
-#p_C <- plot_grid(p_pairs_interaction, p_pairs_example_outcomes, ncol = 1, axis = "lf", align = "h", rel_heights = c(2,1))
-pE <- p_pairs_interaction
-ggsave(here::here("plots/Fig1E-pairwise_competition.png"), pE, width = 3, height = 4)
+
+pD <- p_pairs_interaction
+ggsave(here::here("plots/Fig1D-pairwise_competition.png"), pD, width = 3, height = 4)
 
 #
-p_top <- plot_grid(pA, pB, pC, nrow = 1, labels = LETTERS[1:3], scale = c(.9, 1, .9), rel_widths = c(1,2,2), axis = "tb", align = "hv")
-p_bottom <- plot_grid(pD, pE, nrow = 1, labels = LETTERS[4:5], scale = c(1, .8), rel_widths = c(3,2), axis = "tb", align = "hv")
+p_top <- plot_grid(pA, pB, nrow = 1, labels = LETTERS[1:2], scale = c(1, .9), rel_widths = c(3,2), axis = "tb", align = "hv")
+p_bottom <- plot_grid(pC, pD, nrow = 1, labels = LETTERS[3:4], scale = c(1, .8), rel_widths = c(3,1), axis = "tb", align = "hv")
 p <- plot_grid(p_top, p_bottom, nrow = 2, rel_heights = c(1,.8)) + paint_white_background()
-ggsave(here::here("plots/Fig1.png"), p, width = 8, height = 6)
+ggsave(here::here("plots/Fig1.png"), p, width = 12, height = 8)
 
 
 
@@ -199,10 +157,65 @@ ggsave(here::here("plots/Fig1.png"), p, width = 8, height = 6)
 
 # Figure 2A: one network in matrix form for example
 net <- net_list$C11R1
-p_net_matrix <- plot_adjacent_matrix(net) + theme(plot.margin = grid::unit(c(5,0,3,0), "mm"))
-p_net <- plot_competitive_network(net, node_size = 0) + theme(plot.background = element_rect(fill = NA))
+n_nodes <- igraph::vcount(net)
+net_rank <- net %>%  activate(nodes) %>% arrange(Rank) %>% pull(Rank)
+p_net_matrix <- net %>%
+    activate(nodes) %>%
+    select(Isolate, PlotRank) %>%
+    activate(edges) %>%
+    mutate(fromRank = .N()$PlotRank[match(from, .N()$Isolate)], toRank = .N()$PlotRank[match(to, .N()$Isolate)]) %>%
+    filter(fromRank <= toRank) %>%
+    bind_edges(tibble(from = 1:n_nodes, to = 1:n_nodes, fromRank = 1:n_nodes, toRank = 1:n_nodes, InteractionType = "self")) %>%
+    mutate(fromRank = factor(fromRank, 9:1), toRank = factor(toRank)) %>%
+    as_tibble() %>%
+    ggplot() +
+    geom_tile(aes(x = toRank, y = fromRank, fill = InteractionType), width = 0.9, height = 0.9) +
+    scale_x_discrete(position = "top", expand = c(0,0), labels = net_rank) +
+    scale_y_discrete(position = "right", expand = c(0,0), labels = rev(net_rank)) +
+    scale_fill_manual(values = c(assign_interaction_color(), "self" = "black"), breaks = c("exclusion", "coexistence")) +
+    theme_classic() +
+    theme(axis.line = element_blank(),
+          legend.position = "top") +
+    guides(fill = guide_legend(title = "")) +
+    labs(x = "", y = "Strain rank")
+
+plot_example_graph <- function(g, node_size, edge_width) {
+    g <- g %>% activate(nodes) %>% arrange(Rank)
+    #
+    graph_layout <- create_layout(g, "circle")
+    mean_x_coord <- mean(graph_layout$x)
+    mean_y_coord <- mean(graph_layout$x)
+    g <- g %>% activate(nodes) %>% mutate(x = graph_layout$x - mean_x_coord, y = graph_layout$y - mean_y_coord)
+    nodex_axis_x <- activate(g, nodes) %>% pull(x) %>% range()
+    nodex_axis_y <- activate(g, nodes) %>% pull(y) %>% range()
+
+    g %>%
+        #mutate(Isolate = factor(Isolate)) %>%
+        ggraph(layout = "nicely") +
+        geom_node_point(fill = "white", size = node_size, shape = 21, colour = "black", stroke = node_size/5) +
+        geom_node_text(aes(label = Rank)) +
+        geom_edge_link(aes(color = InteractionType), width = edge_width,
+                       arrow = arrow(length = unit(edge_width, "mm"), type = "closed", angle = 30, ends = "last"),
+                       start_cap = circle(node_size/2+1, "mm"),
+                       end_cap = circle(node_size/2+1, "mm")) +
+        scale_edge_color_manual(values = interaction_color) +
+        #scale_fill_manual(values = c("white", "grey40")) +
+        scale_x_continuous(limits = nodex_axis_x*1.2) +
+        theme_graph() +
+        theme(
+            legend.position = "none",
+            legend.direction = "none",
+            legend.title = element_blank(),
+            panel.background = element_blank(),
+            strip.text = element_blank(),
+            plot.margin=unit(c(3,3,3,3),"mm")
+        ) +
+        theme(plot.background = element_rect(fill = NA))
+}
+p_net <- plot_example_graph(net, 5, 1)
+
 p_A <- ggdraw(p_net_matrix) +
-    draw_plot(p_net, x = -.1, y = -.1, width = 0.7, height = 0.7) +
+    draw_plot(p_net, x = 0, y = 0, width = 0.5, height = 0.4) +
     paint_white_background()
 ggsave(here::here("plots/Fig2A-example_matrix.png"), p_A, width = 5, height = 5)
 
@@ -283,7 +296,9 @@ ggsave(here::here("plots/Fig2C-diagonal_analysis.png"), p_C, width = 4, height =
 
 
 #
-p <- plot_grid(p_A, p_B, p_C, nrow = 1, labels = LETTERS[1:3], rel_widths = c(1.5, 1, 1.5), axis = "tb", align = "h", scale = .9) + theme(plot.background = element_rect(fill = "white", color = NA))
+
+p_right <- plot_grid(p_B, p_C, nrow = 1, labels = LETTERS[2:3], rel_widths = c(1, 1.5), axis = "tb", align = "h", scale = .9)
+p <- plot_grid(p_A, p_right, nrow = 1, labels = c("A", ""), rel_widths = c(1.5,2.5), scale = c(.9, 1)) + paint_white_background()
 ggsave(here::here("plots/Fig2.png"), p, width = 10, height = 5)
 
 
@@ -966,7 +981,76 @@ read_csv(here::here("data/output/pairs_interaction_table.csv")) %>% pull(Count) 
 
 
 
+if (FALSE) {
+    # Figure 1A: t1wo example networks.
+    n_species = 4
+    make_example_graph <- function(n_species, prob = c(1,1)) {
+        # Probability = {"coexistence", "exclusion"}
+        nodes <- tibble(Isolate = 1:n_species, x = 1:n_species, y = rep(0, n_species))
+        edges <- tibble(From = 1:n_species, To = 1:n_species) %>%
+            tidyr::expand(From, To) %>%
+            filter(From < To) %>%
+            mutate(InteractionType = sample(c("coexistence", "exclusion"), choose(n_species, 2), replace = T, prob = prob))
+        edges_coexistence <- edges %>%
+            filter(InteractionType == "coexistence") %>%
+            mutate(temp = From, From = To, To = temp, .keep = "unused") %>% select(-temp)
+        edges <- bind_rows(edges, edges_coexistence)
+        example_graph <- tbl_graph(nodes, edges)
+        return(example_graph)
+    }
+    plot_example_graph <- function(example_graph, node_size, edge_width) {
+        example_graph %>%
+            ggraph(layout = "nicely") +
+            geom_edge_link(aes(color = InteractionType), edge_width = edge_width,
+                           arrow = arrow(length = unit(edge_width, "mm"), type = "closed", angle = 30, ends = "last"),
+                           start_cap = circle(node_size/2, "mm"), end_cap = circle(node_size/2, "mm")) +
+            geom_node_point(fill = "grey", size = node_size, shape = 21, colour = "black", stroke = node_size/5) +
+            scale_edge_color_manual(values = interaction_color) +
+            scale_color_manual(values = c(`TRUE` = "#DB7469", `FALSE` = "#557BAA")) +
+            scale_x_continuous(limits = c(-1.1, 1.1)) +
+            scale_y_continuous(limits = c(-1.1, 1.1)) +
+            guides(color = "none", fill = "none") +
+            theme_void() +
+            theme(legend.position = "none", plot.background = element_rect(fill = "white", color = NA),
+                  legend.title = element_blank(), plot.margin = margin(10,30,10,10, unit = "pt"),
+                  legend.text = element_text(size = 20)) +
+            labs(x = "")
+    }
+    set.seed(1)
+    p1 <- make_example_graph(n_species, c(1,0)) %>%
+        activate(nodes) %>%
+        mutate(x = c(-1,-1,1,1), y = c(-1,1,-1,1)) %>%
+        plot_example_graph(node_size = 10, edge_width = 2) +
+        # annotate("text", x = 0, y = 1, label = "Not Emergent", vjust = 0, size = 3) +
+        scale_y_continuous(limits = c(-1, 1.3))
+    p2 <- make_example_graph(n_species, c(1,1)) %>%
+        activate(nodes) %>%
+        mutate(x = c(-1,-1,1,1), y = c(-1,1,-1,1)) %>%
+        plot_example_graph(node_size = 10, edge_width = 2) +
+        scale_y_continuous(limits = c(-1, 1.3))
+    p3 <- cowplot::get_legend(p2 + theme(legend.position = "bottom", legend.text = element_text(size = 10), legend.direction = "vertical"))
+    pA <- plot_grid(p1, p2, p3, ncol = 1, scale = 1, rel_heights = c(2,2,1), axis = "tb", align = "v") + paint_white_background()
+    #ggsave(here::here("plots/Fig1A-two_networks.png"), pA, width = 3, height = 5)
+    ggsave(here::here("plots/cartoons/Fig1A-two_networks.pdf"), pA, width = 3, height = 5)
 
+    ## Plot pairs example dynamics
+    p_pairs_example_outcomes <- pairs_example_outcomes %>%
+        filter(InteractionType != "neutrality") %>%
+        left_join(pairs_freq, by = c("Community", "Isolate1", "Isolate2")) %>%
+        mutate(Isolate1InitialODFreq = factor(Isolate1InitialODFreq)) %>%
+        mutate(InteractionType = factor(InteractionType, c("exclusion", "coexistence"))) %>%
+        ggplot(aes(x = Time, y = Isolate1MeasuredFreq, color = Isolate1InitialODFreq, group = Isolate1InitialODFreq)) +
+        geom_point(size = 1) +
+        geom_line(size = .5) +
+        scale_y_continuous(breaks = c(0, .5, 1), limits = c(0,1)) +
+        facet_grid(.~InteractionType) +
+        theme_bw() +
+        theme(panel.spacing = unit(2, "mm"), strip.text.x = element_blank(),
+              panel.border = element_rect(color = 1, fill = NA, size = 1),
+              axis.title = element_text(size = 10), axis.text = element_text(color = 1, size = 8)) +
+        guides(color = "none") +
+        labs(x = "Time", y = "Frequency")
+}
 
 
 

@@ -30,6 +30,29 @@ read_wide_file <- function(x) {
 }
 paint_white_background <- function(x) theme(plot.background = element_rect(color = NA, fill = "white"))
 
+
+# Figure 3E?: scatterplot of the pairwise competition
+pE <- pairs_pool_meta %>%
+    ggplot() +
+    geom_vline(xintercept = 0, linetype = 2) +
+    geom_hline(yintercept = 0, linetype = 2) +
+    geom_point(aes(x = d_ConsumptionRate, y = d_CrossFeedingPotential, color = InteractionType), shape = 21, size = 2, stroke = .5) +
+    scale_color_manual(values = c(assign_interaction_color())) +
+#    facet_grid(.~PairConspecific) +
+    theme_classic() +
+    theme(legend.position = "top", strip.background = element_blank(), panel.background = element_rect(color = 1)) +
+    guides(color = "none") +
+    labs()
+
+
+
+
+
+
+
+
+# =========================================================================================================
+
 # Figure 3A: diagram cartoon
 #p_A <- ggdraw() + draw_image(here::here("plots/cartoons/Fig3A.png")) + theme(plot.background = element_rect(fill = "white", color = NA))
 p_A <-  ggplot(mtcars, aes(x = wt, y = mpg)) + annotate("text", x = 0 , y = 0, label = "Cartoon for\nmodel") + theme_void() + theme(plot.background = element_rect(fill = "white", color = NA))
@@ -63,7 +86,7 @@ p1 <- Dml %>%
     geom_segment(aes(color = "acid"), x = "spacer", xend = "spacer", y = paste0("R", ma), yend = paste0("R", 2*ma-1), lwd = 2) +
     geom_segment(aes(color = "waste"), x = "spacer", xend = "spacer", y = paste0("R", 2*ma), yend = paste0("R", 3*ma-1), lwd = 2) +
     scale_fill_gradient(high = "black", low = "white") +
-    scale_color_manual(values = category_colors, breaks = c("sugar", "acid", "waste")) +
+    scale_color_manual(values = category_color, breaks = c("sugar", "acid", "waste")) +
     scale_x_discrete(limits = c("spacer", mal$Resource)) +
     scale_y_discrete(limits = c("spacer", mal$Resource)) +
     theme_classic() +
@@ -88,7 +111,7 @@ p2 <- cml %>%
     geom_segment(aes(color = "fermenter"), x = "spacer", xend = "spacer", y = "S0", yend = paste0("S", sa-1), lwd = 2) +
     geom_segment(aes(color = "respirator"), x = "spacer", xend = "spacer", y = paste0("S", sa), yend = paste0("S", 2*sa-1), lwd = 2) +
     scale_fill_gradient(high = "black", low = "white") +
-    scale_color_manual(values = category_colors) +
+    scale_color_manual(values = category_color) +
     scale_x_discrete(limits = c("spacer", mal$Resource)) +
     scale_y_discrete(limits = c("spacer", sal$Species)) +
     theme_classic() +
@@ -100,7 +123,7 @@ p2 <- cml %>%
 cml %>%
     ggplot() +
     geom_histogram(aes(x = ConsumptionRate, fill = Family)) +
-    scale_fill_manual(values = category_colors) +
+    scale_fill_manual(values = category_color) +
     scale_y_log10() +
     theme_classic() +
     #guides(fill = "none") +
@@ -122,7 +145,7 @@ p3 <- lml %>%
     geom_segment(aes(color = "fermenter"), x = "spacer", xend = "spacer", y = "S0", yend = paste0("S", sa-1), lwd = 2) +
     geom_segment(aes(color = "respirator"), x = "spacer", xend = "spacer", y = paste0("S", sa), yend = paste0("S", 2*sa-1), lwd = 2) +
     scale_fill_gradient(high = "black", low = "white") +
-    scale_color_manual(values = category_colors) +
+    scale_color_manual(values = category_color) +
     scale_x_discrete(limits = c("spacer", mal$Resource)) +
     scale_y_discrete(limits = c("spacer", sal$Species)) +
     theme_classic() +
@@ -135,7 +158,7 @@ lml %>%
     filter(Class != "T2") %>%
     ggplot() +
     geom_histogram(aes(x = Leakiness, fill = Family)) +
-    scale_fill_manual(values = category_colors) +
+    scale_fill_manual(values = category_color) +
     theme_classic() +
     guides(fill = "none") +
     labs()
@@ -184,7 +207,7 @@ p_C <- bind_rows(df_comm_init %>% mutate(Time = "init"),
     mutate(Time = factor(Time, c("init", "end"))) %>%
     ggplot() +
     geom_col(aes(x = Community, y = Abundance, fill = Family, group = Species), color = 1, position = "fill") +
-    scale_fill_manual(values = category_colors, breaks = c("F0", "F1")) +
+    scale_fill_manual(values = category_color, breaks = c("F0", "F1")) +
     scale_y_continuous(breaks = c(0, .5, 1)) +
     facet_grid(Time~.) +
     theme_classic() +
@@ -206,7 +229,7 @@ p_D <- df_mono %>%
     group_by(Family, Growth) %>%
     ggplot() +
     geom_bar(aes(x = Family, fill = Family, alpha = Growth), color = 1) +
-    scale_fill_manual(values = category_colors, breaks = c("F0", "F1")) +
+    scale_fill_manual(values = category_color, breaks = c("F0", "F1")) +
     scale_alpha_manual(values = c("culturable" = 1, "unculturable" = .1)) +
     theme_classic() +
     guides(fill = guide_legend(title = ""),

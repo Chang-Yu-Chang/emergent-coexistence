@@ -62,7 +62,7 @@ edges <- bind_rows(
     select(from, to, everything())
 
 example_comm <- "C1R2"
-nodes_example <- nodes %>% filter(Community == example_comm | Type == "resource") %>%
+nodes_example <- nodes %>% filter(Community == example_comm | Type == "resource")
 edges_example <- edges %>% filter(from %in% nodes_example$Node & to %in% nodes_example$Node) %>%
     mutate(from = match(from, nodes_example$Node), to = match(to, nodes_example$Node))
 
@@ -79,8 +79,8 @@ pA <- g %>%
     activate(edges) %>%
     filter(Strength != 0) %>%
     ggraph(layout = "nicely") +
-    geom_node_point(aes(shape ), size = node_size, shape = 21) +
-    geom_node_text(aes(label = showResourceID), size = node_size) +
+    geom_node_point(size = node_size, shape = 21) +
+    geom_node_text(aes(label = showResourceID), size = node_size/2) +
     #geom_edge_arc(aes(color = Direction), strength = 0.02) +
     geom_edge_arc(aes(color = Direction), strength = 0.02, width = 1, start_cap = circle(node_size/2+1, "mm"), end_cap = circle(node_size/2+1, "mm")) +
     #scale_color_manual(values = fermenter_color) +
@@ -134,10 +134,26 @@ pD <- pairs_coexistence %>%
           panel.background = element_rect(color = 1, fill = NA)) +
     labs(x = expression(r[1]-r[2]), y = expression(X[1]-X[2]))
 
+# Figure 3E: simulation
+pE <- pairs_pool_meta %>%
+    #filter(InteractionType != "no-growth") %>%
+    ggplot() +
+    geom_vline(xintercept = 0, linetype = 2) +
+    geom_hline(yintercept = 0, linetype = 2) +
+    geom_point(aes(x = d_ConsumptionRate, y = d_CrossFeedingPotential, color = InteractionType), shape = 21, size = 2, stroke = .5) +
+    scale_color_manual(values = c(assign_interaction_color())) +
+    # facet_grid(.~PairConspecific) +
+    theme_classic() +
+    theme(legend.position = "top", strip.background = element_blank(), panel.background = element_rect(color = 1)) +
+    guides(color = "none") +
+    labs()
 
-p <- plot_grid(pA, pB, pC, pD, nrow = 2, labels = LETTERS[1:4], scale = c(.8, .9, .9, .9),
-               axis = "lrtb", align = "hv") + paint_white_background()
-ggsave(here::here("plots/Fig3.png"), p, width = 6, height = 6)
+
+p <- plot_grid(pA, pB, pC, pD, pE, nrow = 2, labels = LETTERS[1:5], scale = c(.8, .9, .9, .9, .9),
+               axis = "lrt", align = "h") + paint_white_background()
+
+
+ggsave(here::here("plots/Fig3.png"), p, width = 9, height = 6)
 
 
 
