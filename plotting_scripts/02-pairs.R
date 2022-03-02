@@ -1110,7 +1110,6 @@ ggsave(here::here("plots/Fig2S22-isolate_trait.png"), pS22, width = 3, height = 
 
 
 # Figure 2S23: cross-feeding networks
-## Using the cross-feeding assay from Sylvie
 ## Using the secretion profile from Sylvie
 temp <- isolates %>%
     filter(Assembly == "self_assembly") %>%
@@ -1196,6 +1195,66 @@ p3 <- g %>%
 
 pS23 <- plot_grid(p1, p2, p3, ncol = 1, scale = .9, labels = c("A", "", "")) + paint_white_background()
 ggsave(here::here("plots/Fig2S23-crossfeeding_network.png"), pS23, width = 8, height = 10)
+
+
+# Figure 2S24: cross-feeding. Using the cross-feeding assay from Sylvie
+gr <- read_csv("~/Dropbox/lab/invasion-network/data/raw/growth_rate/growth_od_processed_SE.csv")
+cs <- read_csv("~/Dropbox/lab/invasion-network/data/raw/growth_rate/crossfeeding_processed_SE.csv")
+
+gr %>%
+    filter(gluConc == 0.2) %>%
+    filter(str_detect(CommunityReplicate, "C\\d")) %>%
+    filter(replicate == "R1") %>%
+    filter(strain_type == "F") %>%
+    ggplot(aes(x = timepoint, y = abs.mean, group = SangerID)) +
+    geom_point() +
+    geom_line() +
+    facet_wrap(.~gluConc) +
+    theme_classic() +
+    labs()
+
+gr_subset <- gr %>%
+    filter(gluConc == 0.2) %>%
+    filter(str_detect(CommunityReplicate, "C\\d")) %>%
+    filter(replicate == "R1") %>%
+    filter(strain_type == "F") %>%
+    filter(timepoint == "T3") %>%
+    select(CommunityReplicate, strain_type, SangerID, Genus, replicate, timepoint, abs.mean)
+
+cs_subset <- cs %>%
+    filter(gluConc == 0.2) %>%
+    filter(str_detect(CommunityReplicate, "C\\d")) %>%
+    filter(replicate == "R1") %>%
+    select(CommunityReplicate, strain_type, SangerID, Genus, replicate, timepoint, abs.mean)
+
+temp <- bind_rows(gr_subset, cs_subset) %>%
+    pivot_wider(id_cols = CommunityReplicate, names_from = strain_type, values_from = abs.mean) %>%
+    mutate(Dummy = "haha") %>%
+    mutate(Community = factor(CommunityReplicate, communities$Community), .keep = "unused") %>%
+    drop_na(Community)
+
+pS24 <- temp %>%
+    ggplot() +
+    geom_tile(aes(x = Community, y = Dummy, fill = R)) +
+    scale_fill_gradient(low = "black", high = "grey90", limits = c(0, 0.15)) +
+    scale_y_discrete(expand = c(0,0)) +
+    theme_classic() +
+    theme(axis.text.x = element_text(angle = 90, vjust = .5),
+          axis.text.y = element_blank(),
+          axis.title = element_blank(),
+          axis.line.y = element_blank(),
+          axis.ticks.y = element_blank()) +
+    guides(fill = guide_colourbar(title = "OD at 16hr")) +
+    labs()
+
+ggsave(here::here("plots/Fig2S24-crossfeeding_assay.png"), pS24, width = 4, height = 2)
+
+
+
+
+
+
+
 
 
 
