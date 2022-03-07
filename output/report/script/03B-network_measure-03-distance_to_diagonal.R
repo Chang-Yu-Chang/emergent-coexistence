@@ -46,7 +46,7 @@ adj_from_net <- function(net) {
   return(net_m)
 }
 ## Find the fraction of coexistence as a function of distance to diagonal
-diag_distance <- function (net) {
+diag_distance <- function (net, observation = F) {
   # Convert network to matrix
   temp_matrix <- adj_from_net(net)
 
@@ -55,16 +55,32 @@ diag_distance <- function (net) {
   temp_matrix <- temp_matrix[temp_rank, temp_rank]
 
   # Order the matrix axis by competitive score
-  which(temp_matrix == "coexistence", arr.ind = T) %>%
+  t1 <- which(temp_matrix == "coexistence", arr.ind = T) %>%
     as_tibble() %>%
     filter(col > row) %>%
     mutate(DistanceToDiagonal = abs(row - col)) %>%
     group_by(DistanceToDiagonal) %>%
     summarize(CountCoexistence = n())
-}
 
+  # Total count for each distance
+  t2 <- which(temp_matrix == "win" | temp_matrix == "lose" | temp_matrix == "coexistence", arr.ind = T) %>%
+      as_tibble() %>%
+      filter(col > row) %>%
+      mutate(DistanceToDiagonal = abs(row - col)) %>%
+      group_by(DistanceToDiagonal) %>%
+      summarize(TotalCount = n())
+
+  #
+  if (observation) {
+      full_join(t1, t2, by = "DistanceToDiagonal") %>%
+          replace_na(list(CountCoexistence = 0)) %>%
+          return()
+  } else {
+      return(t1)
+  }
+}
 # Count the distance to diagonal in observed networks
-networks_diag <- lapply(net_list, diag_distance) %>% bind_rows(.id = "Community")
+networks_diag <- lapply(net_list, function(x) diag_distance(x, observation = T)) %>% bind_rows(.id = "Community")
 
 # Count the distance to diagonal in randomized networks
 networks_diag_randomized_list <- rep(list(NA), length(net_list))

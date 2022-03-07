@@ -71,7 +71,7 @@ g <- tbl_graph(nodes_example, edges_example) %>%
     mutate(showResourceID = ifelse(Type == "resource", Node, ""),
            showNode = ifelse(Type == "resource", F, T))
 
-node_size = 5
+node_size = 10
 pA <- g %>%
     activate(nodes) %>%
     group_by(Type) %>%
@@ -79,21 +79,22 @@ pA <- g %>%
     activate(edges) %>%
     filter(Strength != 0) %>%
     ggraph(layout = "nicely") +
-    geom_node_point(size = node_size, shape = 21) +
     geom_node_text(aes(label = showResourceID), size = node_size/2) +
-    #geom_edge_arc(aes(color = Direction), strength = 0.02) +
-    geom_edge_arc(aes(color = Direction), strength = 0.02, width = 1, start_cap = circle(node_size/2+1, "mm"), end_cap = circle(node_size/2+1, "mm")) +
-    #scale_color_manual(values = fermenter_color) +
-    scale_fill_manual(values = c("consumer" = "grey50", "resource" = "grey90")) +
-    scale_edge_color_manual(values = c("consumed" = "#557BAA", "secreted" = "#DB7469")) +
-    scale_y_continuous(limits = c(0, 1.1)) +
+    geom_edge_arc(aes(linetype = Direction), strength = 0.03, width = 1, start_cap = circle(node_size/2+1, "mm"), end_cap = circle(node_size/2+1, "mm")) +
+    scale_x_continuous(limits = c(.5, 4.5)) +
+    scale_y_continuous(limits = c(-.1, 1.1)) +
     theme_void() +
-    theme(legend.title = element_blank(), legend.position = "top") +
+    #theme_bw() +
+    theme(legend.title = element_blank(), legend.position = "top", axis.title = element_blank()) +
     #guides(width = "none") +
     labs() +
+    draw_image(here::here("plots/cartoons/Fig1B_1.png"), x = 0.5, y = .5, vjust = 0, hjust = 0, clip = "on", scale = .5) +
+    draw_image(here::here("plots/cartoons/Fig1B_2.png"), x = 1.5, y = .5, vjust = 0, hjust = 0, clip = "on", scale = .5) +
+    draw_image(here::here("plots/cartoons/Fig1B_3.png"), x = 2.5, y = .5, vjust = 0, hjust = 0, clip = "on", scale = .5) +
+    draw_image(here::here("plots/cartoons/Fig1B_4.png"), x = 3.5, y = .5, vjust = 0, hjust = 0, clip = "on", scale = .5) +
     paint_white_background()
 
-ggsave(here::here("plots/Fig3A-example_crossfeeding.png"), pA, width = 5, height = 5)
+ggsave(here::here("plots/Fig3A-example_crossfeeding.png"), pA, width = 5, height = 3)
 
 
 # Figure 3B: d_r explains ranking
@@ -104,21 +105,29 @@ pairs_coexistence <- pairs_meta %>%
     mutate(Rank_d = Rank1 - Rank2, Score_d = Score1 - Score2)
 
 pB <- pairs_coexistence %>%
+    drop_na(r_glucose_midhr_d) %>%
     ggplot(aes(x = abs(r_glucose_midhr_d), y = abs(Rank_d))) +
-    geom_point(size = 2, shape = 21, stroke = 1) +
+    geom_point(aes(color = InteractionType), size = 2, shape = 21, stroke = 1) +
     geom_smooth(method = "lm") +
+    scale_color_manual(values = interaction_color) +
     theme_classic() +
+    theme(legend.title = element_blank(), legend.position = "top") +
     labs(x = expression(r[1]-r[2]), y = expression(Rank[1]-Rank[2]))
 
 # Figure 3C: d_X explaos ranking
 pC <- pairs_coexistence %>%
+    drop_na(X_sum_16hr_d) %>%
     ggplot(aes(x = X_sum_16hr_d, y = Rank_d)) +
-    geom_point(size = 2, shape = 21, stroke = 1) +
+    geom_point(aes(color = InteractionType), size = 2, shape = 21, stroke = 1) +
     geom_smooth(method = "lm") +
+    scale_color_manual(values = interaction_color) +
     theme_classic() +
+    theme(legend.title = element_blank(), legend.position = "top") +
     labs(x = expression(X[1]-X[2]), y = expression(Rank[1]-Rank[2]))
 
 # Figure 3D: together
+if (FALSE) {
+
 pD <- pairs_coexistence %>%
     drop_na(PairFermenter, r_glucose_midhr_d, X_sum_16hr_d) %>%
     ggplot() +
@@ -126,14 +135,52 @@ pD <- pairs_coexistence %>%
     geom_hline(yintercept = 0, linetype = 2) +
     geom_point(aes(x = r_glucose_midhr_d, y = X_sum_16hr_d, color = InteractionType), shape = 21, size = 2, stroke = 1) +
     scale_color_manual(values = assign_interaction_color(level = "simple")) +
-    #facet_wrap(.~PairConspecific, scale = "free") +
     theme_classic() +
     theme(legend.title = element_blank(), legend.position = "top",
           axis.text = element_text(color = 1),
           strip.background = element_blank(),
           panel.background = element_rect(color = 1, fill = NA)) +
     labs(x = expression(r[1]-r[2]), y = expression(X[1]-X[2]))
+}
+## Model prediction
+pairs_fit <- pairs_coexistence %>%
+    #mutate_if(is.character, as.factor) %>%
+    #filter(PairFermenter == "FF") %>%
+    filter(!is.na(InteractionType)) %>%
+    mutate(InteractionType = ifelse(InteractionType == "coexistence", 1, 0)) %>%
+    glm(formula = InteractionType ~  r_glucose_midhr_d + X_sum_16hr_d, data = ., family = "binomial") %>%
+    broom::tidy()
 
+pairs_model <- function (glu_d, X_d) {
+    pairs_fit$estimate[pairs_fit$term == "(Intercept)"] +
+    pairs_fit$estimate[pairs_fit$term == "r_glucose_midhr_d"] * glu_d +
+    pairs_fit$estimate[pairs_fit$term == "X_sum_16hr_d"] * X_d
+    #pairs_fit$estimate[pairs_fit$term == "r_glucose_midhr_d:X_sum_16hr_d"] * glu_d *X_d
+}
+x_range <- range(pairs_coexistence$r_glucose_midhr_d, na.rm = T) * 1.1
+y_range <- range(pairs_coexistence$X_sum_16hr_d, na.rm = T) * 1.1
+pairs_predicted <- tibble(x = seq(x_range[1], x_range[2], length.out = 100), y = seq(y_range[1], y_range[2], length.out = 100)) %>%
+    tidyr::expand(x, y) %>%
+    mutate(value = pairs_model(x, y))
+
+## Figure
+pD <- pairs_predicted %>%
+    ggplot() +
+    geom_tile(aes(x = x, y = y, fill = value)) +
+    geom_vline(xintercept = 0, linetype = 2) +
+    geom_hline(yintercept = 0, linetype = 2) +
+    geom_point(data = pairs_coexistence %>% drop_na(PairFermenter, r_glucose_midhr_d, X_sum_16hr_d), aes(x = r_glucose_midhr_d, y = X_sum_16hr_d, color = InteractionType), size = 2, shape = 21, stroke = 1) +
+    scale_fill_gradient2(low = interaction_color["exclusion"], mid = "white", high = interaction_color["coexistence"]) +
+    scale_color_manual(values = interaction_color) +
+    scale_x_continuous(expand = c(0,0)) +
+    scale_y_continuous(expand = c(0,0)) +
+    theme_classic() +
+    theme(legend.title = element_blank(), legend.position = "top") +
+    guides(fill = "none") +
+    labs(x = expression(r[1]-r[2]), y = expression(X[1]-X[2]))
+
+
+if (FALSE) {
 # Figure 3E: simulation
 pE <- pairs_pool_meta %>%
     #filter(InteractionType != "no-growth") %>%
@@ -148,12 +195,12 @@ pE <- pairs_pool_meta %>%
     guides(color = "none") +
     labs()
 
+}
 
-p <- plot_grid(pA, pB, pC, pD, pE, nrow = 2, labels = LETTERS[1:5], scale = c(.8, .9, .9, .9, .9),
-               axis = "lrt", align = "h") + paint_white_background()
+p <- plot_grid(pA, pB, pC, pD, nrow = 1, labels = LETTERS[1:5], scale = c(.8, .9, .9, .9, .9),
+               rel_widths = c(1.5,1,1,1), axis = "lrtb", align = "h") + paint_white_background()
 
-
-ggsave(here::here("plots/Fig3.png"), p, width = 9, height = 6)
+ggsave(here::here("plots/Fig3.png"), p, width = 12, height = 3)
 
 
 
