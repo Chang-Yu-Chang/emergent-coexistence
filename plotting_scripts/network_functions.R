@@ -9,8 +9,8 @@ assign_interaction_color <- function (level = "simple") {
         return(interaction_color)
     }
     if (level == "matrix") {
-        interaction_type <- c("exclusion", "coexistence", "lose", "bistability", "neutrality", "self", "undefined")
-        interaction_color <- c("#DB7469", "#557BAA", "#73C966", "#EECF6D", "#8650C4", "black", "grey80")
+        interaction_type <- c("exclusion", "coexistence", "exclusion violating rank", "bistability", "neutrality", "self", "undefined")
+        interaction_color <- c("#DB7469", "#557BAA", "#FFB7FF", "#EECF6D", "#8650C4", "black", "grey80")
         names(interaction_color) <- interaction_type
         return(interaction_color)
     }
@@ -131,7 +131,7 @@ plot_competitive_network <- function(g, node_size = 10, edge_width = 1, g_layout
             mutate(Isolate = factor(Isolate)) %>%
             ggraph(layout = "nicely") +
             geom_node_point(aes(fill = Isolate), size = node_size, shape = 21, colour = "black", stroke = node_size/5) +
-            geom_edge_link(aes(color = InteractionType, fill = InteractionType), width = edge_width,
+            geom_edge_link(aes(color = InteractionType), width = edge_width,
                            arrow = arrow(length = unit(edge_width, "mm"), type = "closed", angle = 30, ends = "last"),
                            start_cap = circle(node_size/2, "mm"),
                            end_cap = circle(node_size/2, "mm")) +
@@ -151,7 +151,7 @@ plot_competitive_network <- function(g, node_size = 10, edge_width = 1, g_layout
         g %>%
             ggraph(layout = "nicely") +
             geom_node_point(fill = "grey", size = node_size, shape = 21, colour = "black", stroke = node_size/5) +
-            geom_edge_arc(aes(color = InteractionType, fill = InteractionType), width = edge_width,
+            geom_edge_arc(aes(color = InteractionType), width = edge_width,
                           arrow = arrow(length = unit(edge_width, "mm"), type = "closed", angle = 30, ends = "last"),
                           start_cap = circle(node_size/2, "mm"),
                           end_cap = circle(node_size/2, "mm")) +
@@ -171,7 +171,7 @@ plot_competitive_network <- function(g, node_size = 10, edge_width = 1, g_layout
         g %>%
             ggraph(layout = "nicely") +
             geom_node_point(fill = "grey", size = node_size, shape = 21, colour = "black", stroke = node_size/5) +
-            geom_edge_link(aes(color = InteractionType, fill = InteractionType), width = edge_width,
+            geom_edge_link(aes(color = InteractionType), width = edge_width,
                            arrow = arrow(length = unit(edge_width, "mm"), type = "closed", angle = 30, ends = "last"),
                            start_cap = circle(node_size/2, "mm"),
                            end_cap = circle(node_size/2, "mm")) +
@@ -264,24 +264,24 @@ count_motif <- function(net) igraph::triad_census(net)[c(10, 9, 12, 14, 13, 15, 
 # Count node degree. only coexistence links considered
 count_degree <- function(net) {
     net %>%
-    activate(edges) %>%
-    filter(InteractionType == "coexistence") %>%
-    filter(from < to) %>%
-    igraph::degree()
+        activate(edges) %>%
+        filter(InteractionType == "coexistence") %>%
+        filter(from < to) %>%
+        igraph::degree()
 }
 
 # Count number of connected components. One network has one value
 count_component <- function(net) {
-    net %>%
+    component_result <- net %>%
         activate(edges) %>%
         filter(InteractionType == "coexistence") %>%
         filter(from < to) %>%
-        igraph::components() %>%
-        `[[`("no")
+        igraph::components()
+
+    tibble(NumberCluster = component_result$no, # number of components
+           SizeCluster= component_result$csize) %>% # Size of components
+        return()
 }
-
-
-
 
 
 # Plot adjacent matrix
@@ -290,36 +290,45 @@ plot_adjacent_matrix <- function(graph, show.legend = F, show.axis = F, show_lab
         activate(nodes) %>%
         select(Isolate, PlotRank) %>%
         activate(edges) %>%
-        mutate(
-            fromRank = .N()$PlotRank[match(from, .N()$Isolate)],
-            toRank = .N()$PlotRank[match(to, .N()$Isolate)])
-
-    # fromLabel = .N()[match(from, .N()$Isolate), show_label],
-    # toLabel = .N()[match(to, .N()$Isolate), show_label])
-
-    #label_ID <- igraph::get.vertex.attribute(graph)$ID %>% setNames(igraph::get.vertex.attribute(graph)$PlotRank)
+        mutate(fromRank = .N()$PlotRank[match(from, .N()$Isolate)],
+               toRank = .N()$PlotRank[match(to, .N()$Isolate)])
 
     n_nodes <- igraph::vcount(graph_ranked)
-    interaction_type <- c("exclusion", "coexistence", "lose", "bistability", "neutrality", "self", "undefined")
-    interaction_color = c("#DB7469", "#557BAA", "#73C966", "#EECF6D", "#8650C4", "black", "grey80")
-    names(interaction_color) <- interaction_type
+    n_exclusion_violation <- graph_ranked %>%
+        activate(edges) %>%
+        filter(fromRank > toRank, InteractionType == "exclusion") %>%
+        igraph::ecount()
 
+    if (n_exclusion_violation != 0) {
+        pairs_exclusion_violation <- graph_ranked %>%
+            activate(edges) %>%
+            filter(fromRank > toRank, InteractionType == "exclusion") %>%
+            mutate(temp = fromRank, fromRank = toRank, toRank = temp) %>%
+            select(-temp) %>%
+            mutate(InteractionType = "exclusion violating rank") %>%
+            as_tibble
+
+        graph_ranked <- graph_ranked %>%
+            activate(edges) %>%
+            filter(fromRank <= toRank) %>%
+            bind_edges(pairs_exclusion_violation)
+    }
+
+    interaction_color <- assign_interaction_color("matrix")
     graph_ranked %>%
         filter(fromRank <= toRank) %>%
-        #mutate(fromLabel = factor(fromLabel), toLabel = factor(toLabel)) %>%
         bind_edges(tibble(from = 1:n_nodes, to = 1:n_nodes, fromRank = 1:n_nodes, toRank = 1:n_nodes, InteractionType = "self")) %>%
         as_tibble() %>%
         ggplot() +
         geom_tile(aes(x = toRank, y = fromRank, fill = InteractionType), width = 0.9, height = 0.9) +
-        #geom_tile(aes(x = toLabel, y = fromLabel, fill = InteractionType), width = 0.9, height = 0.9) +
-        #scale_x_discrete(labels= label_ID) %>%
-        #scale_x_continuous(position = "top", breaks = 1:n_nodes) +
         scale_y_reverse(breaks = 1:n_nodes) +
         scale_fill_manual(values = interaction_color) +
         {if (show.axis) { theme_minimal()} else theme_void()} +
         {if (show.legend) {theme(legend.position = "top")} else theme(legend.position = "none")} +
         NULL
+
 }
+
 
 
 # Compute the rank of an isolate based on its number of wins and lose in pairwise competition

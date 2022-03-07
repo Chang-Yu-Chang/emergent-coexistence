@@ -18,7 +18,7 @@ load(here::here("data/output/network_community.Rdata"))
 load("~/Dropbox/lab/invasion-network/data/output/network_randomized.Rdata") # Randomized networks
 
 
-# Figure 3A: one example community of crossfeeding netorks
+# Figure 3A: one example community of crossfeeding networks
 ## growth rate and secretion
 temp <- isolates %>%
     filter(Assembly == "self_assembly") %>%
@@ -206,6 +206,48 @@ ggsave(here::here("plots/Fig3.png"), p, width = 12, height = 3)
 
 
 
+
+
+#====================================================================================================
+# Statistic
+data_train <- pairs_meta %>%
+    mutate(InteractionType = ifelse(InteractionType == "coexistence", 1, 0)) %>%
+    dplyr::select(InteractionType, starts_with("Pair"), ends_with("d")) %>%
+    drop_na()
+
+## Full model
+model_full <- glm(InteractionType ~., data = data_train, family = binomial)
+
+## Stepwise variable selection
+model_step <- glm(InteractionType ~., data = data_train, family = binomial) %>%
+    MASS::stepAIC(trace = F)
+
+broom::tidy(model_full) %>% filter(p.value < 0.05)
+broom::tidy(model_step)
+
+# Make predictions
+data_pred <- model_full %>% predict(select(data_train, -InteractionType), type = "response")
+data_pred <- ifelse(data_pred > 0.5, 1, 0)
+table(data_train$InteractionType == data_pred) # Accuracy
+
+tibble(x = data_train$InteractionType, y = data_pred) %>%
+    ggplot() +
+    geom_point(aes(x = x, y = y)) +
+    theme_classic()
+
+
+
+
+# Make predictions
+probabilities <- model %>% predict(test.data, type = "response")
+predicted.classes <- ifelse(probabilities > 0.5, "pos", "neg")
+# Model accuracy
+mean(predicted.classes==test.data$diabetes)
+
+pairs_meta %>%
+    mutate(InteractionType = ifelse(InteractionType == "coexistence", 1, 0)) %>%
+    glm(formula = InteractionType ~ ends_with("d"), family = "binomial") %>%
+    broom::tidy()
 
 
 

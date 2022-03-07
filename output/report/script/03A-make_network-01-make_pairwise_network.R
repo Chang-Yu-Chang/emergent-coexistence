@@ -8,7 +8,7 @@ source(here::here("plotting_scripts/network_functions.R"))
 # Read data ----
 communities <- read_csv(here::here("data/output/communities.csv"))
 isolates <- read_csv(here::here("data/output/isolates.csv"))
-pairs <- read_csv(here::here("data/output/pairs.csv"))
+pairs <- read_csv(here::here("data/output/pairs.csv")) %>% mutate(InteractionType = ifelse(InteractionType == "neutrality", "coexistence", InteractionType))
 
 # Make network, which self-contain all isolates and pairs information
 net_list <- rep(list(NA), length(communities$Community)) # tbl graph object
@@ -25,3 +25,4 @@ p_net_list <- rep(list(NA), length(net_list))
 for (i in 1:length(net_list)) p_net_list[[i]] <- plot_competitive_network(net_list[[i]])
 
 save(net_list, p_net_list, file = here::here("data/output/network_community.Rdata"))
+#save(net_list, p_net_list, file = "~/Dropbox/lab/invasion-network/data/output/network_community.Rdata")
