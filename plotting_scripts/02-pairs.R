@@ -535,7 +535,67 @@ ggsave(here::here("plots/Fig2S3-lasso_regression.png"), pS3, width = 10, height 
 
 
 
-# Figure 2S4. Ranked r vs. ranked
+# Figure 2S4. logistic regression on lasso-selected features
+## All pairs
+feature1 <- lasso1 %>%
+    fit(pairs_train1) %>%
+    tidy() %>%
+    arrange(desc(abs(estimate))) %>%
+    filter(term != "(Intercept)", estimate != 0)
+p1 <- pairs_train1 %>%
+    ggplot(aes(x = r_glucose_midhr_d, y = InteractionType)) +
+    geom_point(shape = 21) +
+    geom_smooth(method = "glm", method.args = list(family = "binomial")) +
+    scale_y_continuous(breaks = c(0,1), labels = c("exclusion", "coexistence")) +
+    theme_classic() +
+    labs(y = "") +
+    ggtitle("All pairs")
+
+## FF pairs
+feature2 <- lasso2 %>%
+    fit(pairs_train2) %>%
+    tidy() %>%
+    arrange(desc(abs(estimate))) %>%
+    filter(term != "(Intercept)", estimate != 0)
+
+pairs_fit <- pairs_train2 %>%
+    glm(formula = InteractionType ~  r_glucose_midhr_d + X_sum_28hr_d, data = ., family = "binomial") %>%
+    broom::tidy()
+pairs_model <- function (glu_d, X_d) {
+    pairs_fit$estimate[pairs_fit$term == "(Intercept)"] +
+        pairs_fit$estimate[pairs_fit$term == "r_glucose_midhr_d"] * glu_d +
+        pairs_fit$estimate[pairs_fit$term == "X_sum_28hr_d"] * X_d
+}
+x_range <- range(pairs_coexistence$r_glucose_midhr_d, na.rm = T) * 1.1
+y_range <- range(pairs_coexistence$X_sum_28hr_d, na.rm = T) * 1.1
+pairs_predicted <- tibble(x = seq(x_range[1], x_range[2], length.out = 100), y = seq(y_range[1], y_range[2], length.out = 100)) %>%
+    tidyr::expand(x, y) %>%
+    mutate(value = pairs_model(x, y))
+
+p2 <- pairs_predicted %>%
+    ggplot() +
+    geom_tile(aes(x = x, y = y, fill = value)) +
+    geom_vline(xintercept = 0, linetype = 2) +
+    geom_hline(yintercept = 0, linetype = 2) +
+    geom_point(data = pairs_train2 %>% drop_na(r_glucose_midhr_d, X_sum_28hr_d) %>% mutate(InteractionType = ifelse(InteractionType == 1, "coexistence", "exclusion")) ,
+               aes(x = r_glucose_midhr_d, y = X_sum_28hr_d, color = InteractionType),
+               size = 2, shape = 21, stroke = 1) +
+    scale_fill_gradient2(low = interaction_color["exclusion"], mid = "white", high = interaction_color["coexistence"]) +
+    scale_color_manual(values = interaction_color) +
+    scale_x_continuous(expand = c(0,0)) +
+    scale_y_continuous(expand = c(0,0)) +
+    theme_classic() +
+    theme(legend.title = element_blank(), legend.position = "right") +
+    guides(fill = "none") +
+    labs(x = "r_glucose_midhr_d" , y = "X_sum_28hr_d") +
+    ggtitle("FF pairs")
+
+pS4 <- plot_grid(p1, p2, nrow = 1, axis = "tbrl", align = "h", labels = c("A", "B"), rel_widths = c(1,1.2))
+ggsave(here::here("plots/Fig2S4-regression.png"), pS4 , width = 8, height = 3)
+
+
+
+# Figure 2S5. Ranked r vs. ranked
 isolate_ranked <- isolates %>%
     filter(Assembly == "self_assembly") %>%
     select(Community, Fermenter, r_glucose_midhr, Rank) %>%
@@ -544,9 +604,16 @@ isolate_ranked <- isolates %>%
     mutate(Fermenter = ifelse(Fermenter, "fermenter", ifelse(!Fermenter, "respirator", NA)))
 
 isolate_ranked %>%
+    lm(Rank ~ r_ranked, data = .) %>%
+    tidy()
+
+cor.test(isolate_ranked$Rank, isolate_ranked$r_ranked) %>%
+    tidy()
+
+pS5 <- isolate_ranked %>%
     ggplot() +
     geom_smooth(aes(x = r_ranked, y = Rank), formula = y ~ x, method = "lm", color = 1) +
-    geom_point(aes(x = r_ranked, y = Rank, color = Fermenter), shape = 21, size = 2, stroke = 2, position = position_jitter(width = .1, height = .1)) +
+    geom_point(aes(x = r_ranked, y = Rank, color = Fermenter), shape = 21, size = 2, stroke = 1, position = position_jitter(width = .1, height = .1)) +
     scale_x_continuous(breaks = 1:12) +
     scale_y_continuous(breaks = 1:12) +
     scale_color_manual(values = fermenter_color) +
@@ -554,12 +621,10 @@ isolate_ranked %>%
     theme(legend.position = "top", legend.title = element_blank()) +
     labs(x = "r_mid rank", y = "Isolate rank")
 
-
-isolate_ranked %>%
-    lm(Rank ~ r_ranked, data = .) %>%
-    tidy()
+ggsave(here::here("plots/Fig2S5-r_rank.png"), pS5, width = 4, height = 4)
 
 
+#======================================================================================================
 
 
 

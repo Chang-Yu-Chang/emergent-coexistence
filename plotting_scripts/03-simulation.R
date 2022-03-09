@@ -8,11 +8,11 @@ library(ggraph)
 source(here::here("plotting_scripts/network_functions.R"))
 
 
-input_independent <- read_csv(("~/Dropbox/lab/invasion-network/simulation/data/raw7/input_independent.csv"), col_types = cols())
-input_pairs <- read_csv(("~/Dropbox/lab/invasion-network/simulation/data/raw7/input_pairs.csv"), col_types = cols())
+input_independent <- read_csv(("~/Dropbox/lab/invasion-network/simulation/data/raw8/input_independent.csv"), col_types = cols())
+input_pairs <- read_csv(("~/Dropbox/lab/invasion-network/simulation/data/raw8/input_pairs.csv"), col_types = cols())
 output_dir <- input_independent$output_dir[1]
 
-input_row <- input_independent[2,]
+input_row <- input_independent[1,]
 # Generate family-species and class-resource matching tibble
 sa <- input_independent$sa[1]
 ma <- input_independent$ma[1]
@@ -30,19 +30,283 @@ read_wide_file <- function(x) {
 }
 paint_white_background <- function(x) theme(plot.background = element_rect(color = NA, fill = "white"))
 
+#
+df_comm_init <- paste0(output_dir, "selfAssembly-1_init.csv") %>%
+    read_csv(col_types = cols()) %>%
+    mutate_all(~replace(., .==0, NA)) %>%
+    pivot_longer(cols = starts_with("W"), names_to = "Well", values_to = "Abundance", values_drop_na = T) %>%
+    mutate(Transfer = 0, Time = 0) %>%
+    mutate(Family = factor(Family, c("F0", "F1"))) %>%
+    mutate(Species = factor(Species, paste0("S", 0:999))) %>%
+    mutate(Community = factor(Well, paste0("W", 0:20)), .keep = "unused")
+df_comm_timepoint <- list.files(output_dir) %>%
+    str_subset("_T\\d+t\\d+") %>%
+    str_subset("selfAssembly") %>%
+    lapply(function(x) {
+        temp <- str_replace(x, "selfAssembly-1_", "") %>%
+            str_replace(".csv", "") %>%
+            str_split("t") %>%
+            unlist()
+        paste0(output_dir, x) %>%
+            read_csv(col_types = cols()) %>%
+            mutate_all(~replace(., .==0, NA)) %>%
+            pivot_longer(cols = starts_with("W"), names_to = "Well", values_to = "Abundance", values_drop_na = T) %>%
+            rename(Family = ...1, Species = ...2) %>%
+            mutate(Transfer = str_replace(temp[1], "T", ""), Time = temp[2]) %>%
+            mutate(across(c("Transfer", "Time"), as.numeric))
+    }) %>%
+    bind_rows() %>%
+    mutate(Family = factor(Family, c("F0", "F1"))) %>%
+    mutate(Species = factor(Species, paste0("S", 0:999))) %>%
+    mutate(Community = factor(Well, paste0("W", 0:20)), .keep = "unused")
+if (FALSE) {
 
-# Figure 3E?: scatterplot of the pairwise competition
-pE <- pairs_pool_meta %>%
+df_comm_end <- paste0(output_dir, "selfAssembly-1_end.csv") %>%
+    read_csv(col_types = cols()) %>%
+    mutate_all(~replace(., .==0, NA)) %>%
+    pivot_longer(cols = starts_with("W"), names_to = "Well", values_to = "Abundance", values_drop_na = T) %>%
+    rename(Family = ...1, Species = ...2) %>%
+    mutate(Transfer = 1, Time = 1) %>%
+    mutate(Family = factor(Family, c("F0", "F1"))) %>%
+    mutate(Species = factor(Species, paste0("S", 0:999))) %>%
+    mutate(Community = factor(Well, paste0("W", 0:20)), .keep = "unused")
+}
+df_comm <- bind_rows(df_comm_init, df_comm_timepoint) %>%
+    group_by(Community, Transfer, Time) %>%
+    filter(Abundance > sum(Abundance)*0.001) %>%
+    ungroup()
+#df_comm <- bind_rows(df_comm_init, df_comm_end)
+
+# Figure 3A. Dynamics of one example community
+df_comm_example <- df_comm %>%
+    filter(Community == "W1") %>%
+    mutate(Time = ifelse(Time != 0 , (Transfer-1)*10+Time, Time)) # Note that this line changes when the growth cycle time changes
+df_comm_example_end <- df_comm_example %>% filter(Time == max(Time)) %>%
+    mutate(PlotColor = Family, PlotAlpha = factor(1:n())) %>%
+    select(Species, PlotColor, PlotAlpha)
+
+p1 <- df_comm_example %>%
+    left_join(df_comm_example_end, by = "Species") %>%
     ggplot() +
-    geom_vline(xintercept = 0, linetype = 2) +
-    geom_hline(yintercept = 0, linetype = 2) +
-    geom_point(aes(x = d_ConsumptionRate, y = d_CrossFeedingPotential, color = InteractionType), shape = 21, size = 2, stroke = .5) +
-    scale_color_manual(values = c(assign_interaction_color())) +
-#    facet_grid(.~PairConspecific) +
+    geom_line(aes(x = Time, y = Abundance, color = PlotColor, alpha = PlotAlpha, group = Species), size = 1) +
+    scale_x_continuous(breaks = scales::pretty_breaks(n=2), expand = c(0,0)) +
+    scale_y_continuous(breaks = scales::pretty_breaks(n=2), expand = c(.1,0)) +
+    scale_color_manual(values = category_color, breaks = c("F0", "F1")) +
+    scale_alpha_manual(values = c("1" = 1, "2" = 1, "3" = .8)) +
     theme_classic() +
-    theme(legend.position = "top", strip.background = element_blank(), panel.background = element_rect(color = 1)) +
-    guides(color = "none") +
+    theme(panel.border = element_rect(color = 1, fill = NA)) +
+    guides(alpha = "none", color = "none") +
     labs()
+
+# Figure 3B. End point composition
+p2 <- df_comm %>%
+    filter(Transfer == max(Transfer), Time == max(Time)) %>%
+    mutate(Community = factor(Community, c("W1", "W0", paste0("W", 2:20)))) %>%
+    ggplot() +
+    geom_col(aes(x = Community, y = Abundance, fill = Family, group = Species), color = 1, position = "fill") +
+    scale_fill_manual(values = category_color, breaks = c("F0", "F1")) +
+    scale_x_discrete(expand = c(0,0), label = 1:20) +
+    scale_y_continuous(breaks = c(0, .5, 1), expand = c(0,0)) +
+    #facet_grid(Time~.) +
+    theme_classic() +
+    theme(panel.border = element_rect(color = 1, fill = NA)) +
+    labs()
+
+p <- plot_grid(p1, p2, nrow = 1, scale = .9, axis = "tb", align = "h", rel_widths = c(1, 1.5)) + paint_white_background()
+ggsave(here::here("plots/Fig3AB-community_composition.png"), p, width = 8, height = 3)
+
+
+
+
+# Figure 3C: pairwise outcome of community pairs
+df_cp_init <- input_pairs %>%
+    filter(str_detect(init_N0, "communityPairs")) %>%
+    pull(init_N0) %>%
+    paste0(output_dir, .) %>%
+    lapply(function(x) {
+        read_wide_file(x) %>%
+            #full_join(sal, by = c("Family", "Species")) %>%
+            #replace_na(list(Abundance = 0)) %>%
+            mutate(Well = factor(Well, paste0("W", 0:1000)), .keep = "unused") %>%
+            mutate(Species = factor(Species, sal$Species)) %>%
+            # Remove rare species (relative abundance <0.01)
+            group_by(Well) %>%
+            mutate(RelativeAbundance = Abundance/sum(Abundance)) %>%
+            #filter(RelativeAbundance > 0.01) %>%
+            arrange(Well, Species) %>%
+            # Community, or network
+            mutate(Community = str_replace(x, paste0(output_dir, "communityPairs_"), "")  %>% str_replace("-1_init.csv", ""))
+    }) %>%
+    bind_rows() %>%
+    mutate(Time = "Tinit")
+
+df_cp_end <- input_pairs %>%
+    filter(str_detect(init_N0, "communityPairs")) %>%
+    pull(init_N0) %>% str_replace("_init.csv", "_end.csv") %>%
+    str_subset("W[1-9]-") %>%
+    paste0(output_dir, .) %>%
+    lapply(function(x) {
+        read_wide_file(x) %>%
+            #full_join(sal, by = c("Family", "Species")) %>%
+            #replace_na(list(Abundance = 0)) %>%
+            mutate(Well = factor(Well, paste0("W", 0:1000)), .keep = "unused") %>%
+            mutate(Species = factor(Species, sal$Species)) %>%
+            # Remove rare species (relative abundance <0.01)
+            group_by(Well) %>%
+            mutate(RelativeAbundance = Abundance/sum(Abundance)) %>%
+            # filter(RelativeAbundance > 0.01) %>%
+            arrange(Well, Species) %>%
+            # Community, or network
+            mutate(Community = str_replace(x, paste0(output_dir, "communityPairs_"), "")  %>% str_replace("-1_end.csv", ""))
+    }) %>%
+    bind_rows() %>%
+    mutate(Time = "Tend")
+
+## Determine outcome
+# pairs_init <- df_cp_init %>% filter(Community == "W0")
+# pairs_end <- df_cp_end %>% filter(Community == "W0")
+determine_interaction <- function(pairs_init, pairs_end) {
+    temp <- bind_rows(pairs_init, pairs_end) %>%
+        select(-Family, -Abundance) %>%
+        pivot_wider(names_from = Time, values_from = RelativeAbundance, names_prefix = "RelativeAbundance_") %>%
+        # Fill abundance = NA with 0
+        replace_na(list(RelativeAbundance_Tend = 0)) %>%
+        # Frequency changes
+        mutate(FrequencyChange = ifelse(RelativeAbundance_Tend - RelativeAbundance_Tinit > 0, "increase", "decrease")) %>%
+        select(-RelativeAbundance_Tinit) %>%
+        group_by(Community, Well) %>%
+        mutate(Isolate = c(1,2)) %>%
+        pivot_wider(names_from = Isolate, values_from = c(Species, FrequencyChange, RelativeAbundance_Tend), names_sep = "") %>%
+        ungroup() %>%
+        select(-FrequencyChange2, -RelativeAbundance_Tend2, -Well) %>%
+        # Frequency changes in each pair
+        mutate(Pair = rep(paste0("P", 1:(n()/2)), each = 2), Replicate = rep(1:2, n()/2)) %>%
+        pivot_wider(names_from = Replicate, values_from = c(FrequencyChange1, RelativeAbundance_Tend1), names_prefix = "Replicate") %>%
+        # Interactions
+        mutate(Outcome = with(., case_when(
+            (FrequencyChange1_Replicate1 == "increase" & FrequencyChange1_Replicate2 == "increase") ~ "win",
+            (FrequencyChange1_Replicate1 == "decrease" & FrequencyChange1_Replicate2 == "decrease") ~ "lose",
+            (FrequencyChange1_Replicate1 == "increase" & FrequencyChange1_Replicate2 == "decrease" & RelativeAbundance_Tend1_Replicate1 > 0.5) ~ "draw and Species 1 dominant",
+            (FrequencyChange1_Replicate1 == "increase" & FrequencyChange1_Replicate2 == "decrease" & RelativeAbundance_Tend1_Replicate1 <= 0.5) ~ "draw and Species 2 dominant",
+            (FrequencyChange1_Replicate1 == "decrease" & FrequencyChange1_Replicate2 == "increase") ~ "mutual",
+            (is.na(FrequencyChange1_Replicate1) | is.na(FrequencyChange1_Replicate2)) ~ "no-growth",
+        )))
+
+    # Coexistence pairs
+    df_coexistence <- temp %>% filter(str_detect(Outcome, "draw")) %>%
+        mutate(InteractionType = "coexistence") %>%
+        mutate(across(starts_with("Species"), as.character)) %>%
+        mutate(temp = ifelse(Outcome == "draw and Species 2 dominant", Species2, NA),
+               Species2 = ifelse(Outcome == "draw and Species 2 dominant", Species1, Species2),
+               Species1 = ifelse(Outcome == "draw and Species 2 dominant", temp, Species1)) %>%
+        select(Community, Species1, Species2, Pair, InteractionType)
+
+    # Exclusion pairs
+    df_exclusion <- temp %>% filter(Outcome == "win" | Outcome == "lose") %>%
+        mutate(InteractionType = "exclusion") %>%
+        mutate(across(starts_with("Species"), as.character)) %>%
+        mutate(temp = ifelse(Outcome == "lose", Species2, NA),
+               Species2 = ifelse(Outcome == "lose", Species1, Species2),
+               Species1 = ifelse(Outcome == "lose", temp, Species1)) %>%
+        select(Community, Species1, Species2, Pair, InteractionType)
+
+    # No-growth pairs
+    df_nogrowth <- temp %>% filter(Outcome == "no-growth") %>%
+        mutate(InteractionType = "no-growth") %>%
+        select(Community, Species1, Species2, Pair, InteractionType)
+    # Mutual exclusion
+    df_mutual <- temp %>% filter(Outcome == "mutual") %>%
+        mutate(InteractionType = "mutual exclusion") %>%
+        select(Community, Species1, Species2, Pair, InteractionType)
+
+    bind_rows(df_coexistence, df_exclusion, df_nogrowth, df_mutual) %>%
+        return()
+}
+
+#
+pairs_comm <- determine_interaction(df_cp_init, df_cp_end) %>%
+    left_join(rename_with(sal, ~paste0(., 1))) %>%
+    left_join(rename_with(sal, ~paste0(., 2))) %>%
+    mutate(PairConspecific = with(., case_when(
+        (Family1 == Family2) ~ "conspecific",
+        (Family1 != Family2) ~ "heterospecific"
+    ))) %>%
+    mutate(Community = factor(Community, paste0("W", 0:1000))) %>%
+    arrange(Community)
+temp <- pairs_comm %>%
+    filter(InteractionType != "no-growth") %>%
+    mutate(InteractionType = factor(InteractionType, c("exclusion", "coexistence"))) %>%
+    group_by(Community, InteractionType, PairConspecific) %>%
+    summarize(Count = n())
+
+## Overall
+p1 <- pairs_comm %>%
+    filter(InteractionType != "no-growth") %>%
+    mutate(InteractionType = factor(InteractionType, c("exclusion", "coexistence"))) %>%
+    group_by(InteractionType) %>%
+    summarize(Count = n()) %>%
+    mutate(Fraction = Count / sum(Count), TotalCount = sum(Count)) %>%
+    ggplot() +
+    geom_col(aes(x = InteractionType, y = Fraction, fill = InteractionType), color = 1) +
+    geom_text(aes(x = InteractionType, y = Fraction, label = paste0("n=",Count)), vjust = -1) +
+    scale_fill_manual(values = assign_interaction_color()) +
+    scale_y_continuous(limits = c(0, 1), breaks = scales::pretty_breaks(n=3)) +
+    theme_classic() +
+    theme(legend.position = "top", axis.title.x = element_blank()) +
+    guides(fill = "none") +
+    labs(y = "Count")
+
+
+## Each community
+p2 <- pairs_comm %>%
+    filter(InteractionType != "no-growth") %>%
+    mutate(InteractionType = factor(InteractionType, c("exclusion", "coexistence"))) %>%
+    group_by(Community, InteractionType) %>%
+    summarize(Count = n()) %>%
+    group_by(Community) %>%
+    mutate(TotalCount = sum(Count)) %>%
+    ggplot() +
+    geom_col(aes(x = Community, y = Count, fill = InteractionType), position = "fill", color = 1) +
+    geom_text(aes(x = Community, label = TotalCount), y = 1, vjust = 2) +
+    scale_fill_manual(values = assign_interaction_color()) +
+    scale_y_continuous(breaks = c(0, 0.5, 1)) +
+    scale_x_discrete(label = 1:20) +
+    theme_classic() +
+    theme(legend.position = "top") +
+    guides(fill = "none") +
+    labs(y = "Fraction")
+p <- plot_grid(p1, p2, nrow = 1, axis = "tb", align = "h", labels = c("A", "B"), scale = .9, rel_widths = c(1,1.5)) + paint_white_background()
+ggsave(here::here("plots/Fig3C-community_pairs.png"), p, width = 8, height = 3)
+
+
+
+'
+measure hiearachy metric
+'
+
+'
+Randomiz the simulated networks, 1) measure motif and 2) diagonal analysis
+'
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

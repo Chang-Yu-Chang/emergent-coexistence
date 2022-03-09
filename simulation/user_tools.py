@@ -359,6 +359,7 @@ def make_consumer_dynamics(assumptions):
 def load_assumptions(input_row):
     # Load Parameters from the input csv
     output_dir = input_row['output_dir']
+    save_timepoint = input_row['save_timepoint']
     sa = int(input_row['sa'])
     ma = int(input_row['ma'])
     S = int(input_row['S'])
@@ -490,7 +491,7 @@ def run_simulations(input_row):
     np.random.seed(seed)
     D, c, l = sample_matrices(a)
     write_matrices(input_row, D, c, l)
-    print("written")
+    print("Matrices written")
 
     # Update params 
     params = MakeParams(a)
@@ -511,8 +512,19 @@ def run_simulations(input_row):
     
     # Make plate object
     Plate = Community(init_state, dynamics, params, parallel = False)
-    Plate.RunExperiment(np.eye(a['n_wells'])/10, T = 24, npass = 5, refresh_resource=True)
-    Plate.N.round(2).to_csv(input_row['output_dir'] + re.sub("init.csv", "end.csv", input_row["init_N0"]))
+    if input_row['save_timepoint']:
+        for i in range(5):
+            for j in range(10):
+                Plate.Propagate(T = 1)
+                Plate.N.round(2).to_csv(input_row['output_dir'] + re.sub("init.csv", "T" + str(i+1) + "t" + str(j+1) + ".csv", input_row["init_N0"]))
+                Plate.Passage(f = np.eye(a['n_wells'])/10)
+                print("T" + str(i+1) + "t" + str(j+1))
+        
+        Plate.N.round(2).to_csv(input_row['output_dir'] + re.sub("init.csv", "end.csv", input_row["init_N0"]))
+    
+    elif input_row['save_timepoint'] == False:
+        Plate.RunExperiment(np.eye(a['n_wells'])/100, T = 10, npass = 5, refresh_resource=True)
+        Plate.N.round(2).to_csv(input_row['output_dir'] + re.sub("init.csv", "end.csv", input_row["init_N0"]))
 
 
 

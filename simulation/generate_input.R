@@ -1,11 +1,12 @@
 library(tidyverse)
 
 # Generate the input_csv files ----
-output_dir = "~/Dropbox/lab/invasion-network/simulation/data/raw7/"
+output_dir = "~/Dropbox/lab/invasion-network/simulation/data/raw8/"
 
 # Example parameters
 input_parameters <- tibble(
     output_dir = output_dir,
+    save_timepoint = T,
     init_N0 = "init_pairs.csv",
     init_R0 = NA,
     exp_id = 1,
@@ -35,25 +36,25 @@ write_csv(input_parameters, file = here::here("simulation/input_parameters.csv")
 temp1 <- input_parameters %>%
     slice(rep(1, 1)) %>%
     mutate(init_N0 = paste0("monoculture-1_init.csv"), exp_id = 1, n_wells = sa*2)
-
 # Self-assembly
 temp2 <- input_parameters %>%
     slice(rep(1, 1)) %>%
     mutate(init_N0 = paste0("selfAssembly-1_init.csv"), exp_id = 1, n_wells = 20, S = 50) #S=30
-bind_rows(temp1, temp2) %>% write_csv(here::here("simulation/input_independent.csv"))
+#bind_rows(temp1, temp2) %>% write_csv(here::here("simulation/input_independent.csv"))
+bind_rows(temp2) %>% write_csv(here::here("simulation/input_independent.csv"))
 
 # Pairs from the pool
+n_comm <- input_parameters$n_communities
 temp3 <- input_parameters %>%
-    slice(rep(1, n_communities)) %>%
-    mutate(init_N0 = paste0("poolPairs_W", 0:(n_communities-1), "-1_init.csv"), exp_id = 1, S = 10)
-
+    slice(rep(1, n_comm)) %>%
+    mutate(init_N0 = paste0("poolPairs_W", 0:(n_comm-1), "-1_init.csv"), exp_id = 1, S = 10)
 # Pairs from self-assembled communities
 temp4 <- input_parameters %>%
-    slice(rep(1, n_communities)) %>%
-    mutate(init_N0 = paste0("communityPairs_W", 0:(n_communities-1), "-1_init.csv"))
+    slice(rep(1, n_comm)) %>%
+    mutate(init_N0 = paste0("communityPairs_W", 0:(n_comm-1), "-1_init.csv"))
 
-bind_rows(temp3, temp4) %>% write_csv(here::here("simulation/input_pairs.csv"))
-
+#bind_rows(temp3, temp4) %>% write_csv(here::here("simulation/input_pairs.csv"))
+bind_rows(temp4) %>% write_csv(here::here("simulation/input_pairs.csv"))
 
 
 # Generate initial composition ----
@@ -131,7 +132,6 @@ write_csv(N_community, file = paste0(output_dir, "selfAssembly-1_init.csv"))
 
 
 # Execute this chunk when monoculture is done
-# Pool pairs. Use isolates that can grow in monoculture
 input_row <- input_pairs %>% filter(str_detect(init_N0, "poolPairs")) %>% slice(1)
 draw_pairs_from_community <- function(N_community_long) {
     # Communities with no or only one species
@@ -159,6 +159,9 @@ draw_pairs_from_community <- function(N_community_long) {
     }
     return(N_pairs)
 }
+
+
+# Pool pairs. Use isolates that can grow in monoculture
 
 ## Use isolates that can grow in monoculture
 set.seed(1)
