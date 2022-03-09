@@ -8,6 +8,7 @@ library(ggpubr)
 library(ggtree)
 library(tidygraph)
 library(ggraph)
+library(vip)
 source(here::here("plotting_scripts/network_functions.R"))
 
 isolates <- read_csv(here::here("data/output/isolates.csv"), col_types = cols())
@@ -17,20 +18,29 @@ pairs_meta <- read_csv(here::here("data/output/pairs_meta.csv"), col_types = col
 load(here::here("data/output/network_community.Rdata"))
 load("~/Dropbox/lab/invasion-network/data/output/network_randomized.Rdata") # Randomized networks
 
+#
+pairs_coexistence <- pairs_meta %>%
+    filter(!is.na(PairFermenter)) %>%
+    filter(Assembly == "self_assembly") %>%
+    mutate(PairConspecific = ifelse(PairFermenter == "FF" | PairFermenter == "NN", "conspecific", ifelse(PairFermenter == "FN", "heterospecific", NA))) %>%
+    mutate(Rank_d = Rank1 - Rank2, Score_d = Score1 - Score2)
+pairs_count <- pairs_coexistence %>%
+    group_by(PairConspecific) %>%
+    count()
+
 
 # Figure 3A: one example community of crossfeeding networks
-## growth rate and secretion
+## Isolate growth rate and secretion
 temp <- isolates %>%
     filter(Assembly == "self_assembly") %>%
     select(ID, Fermenter, starts_with("r_"), starts_with("X_")) %>%
     select(ID, Fermenter, ends_with("midhr"), ends_with("16hr")) %>%
     drop_na(r_glucose_16hr, X_acetate_16hr)
-# Fermenter
+## Community and strain ID
 temp2 <- isolates %>%
     mutate(Node = as.character(ID), Fermenter = ifelse(Fermenter, "fermenter", ifelse(Fermenter == FALSE, "respirator", NA))) %>%
     select(Node, Community, Fermenter)
-
-
+## Fluxes
 isolates_in <- temp %>%
     select(ID, Fermenter, ends_with("midhr")) %>%
     pivot_longer(cols = starts_with("r_"), names_to = "CarbonSource", names_pattern = "r_(.+)_", values_to = "GrowthRate") %>%
@@ -60,7 +70,7 @@ edges <- bind_rows(
 ) %>%
     mutate(BinaryStrength = ifelse(Strength == 0, 0, 1)) %>%
     select(from, to, everything())
-
+## Subset the bipartite network for a community
 example_comm <- "C1R2"
 nodes_example <- nodes %>% filter(Community == example_comm | Type == "resource")
 edges_example <- edges %>% filter(from %in% nodes_example$Node & to %in% nodes_example$Node) %>%
@@ -98,12 +108,6 @@ ggsave(here::here("plots/Fig3A-example_crossfeeding.png"), pA, width = 5, height
 
 
 # Figure 3B: d_r explains ranking
-pairs_coexistence <- pairs_meta %>%
-    filter(!is.na(PairFermenter)) %>%
-    filter(Assembly == "self_assembly") %>%
-    mutate(PairConspecific = ifelse(PairFermenter == "FF" | PairFermenter == "NN", "conspecific", ifelse(PairFermenter == "FN", "heterospecific", NA))) %>%
-    mutate(Rank_d = Rank1 - Rank2, Score_d = Score1 - Score2)
-
 pB <- pairs_coexistence %>%
     drop_na(r_glucose_midhr_d) %>%
     ggplot(aes(x = abs(r_glucose_midhr_d), y = abs(Rank_d))) +
@@ -114,7 +118,7 @@ pB <- pairs_coexistence %>%
     theme(legend.title = element_blank(), legend.position = "top") +
     labs(x = expression(r[1]-r[2]), y = expression(Rank[1]-Rank[2]))
 
-# Figure 3C: d_X explaos ranking
+# Figure 3C: d_X explains ranking
 pC <- pairs_coexistence %>%
     drop_na(X_sum_16hr_d) %>%
     ggplot(aes(x = X_sum_16hr_d, y = Rank_d)) +
@@ -128,19 +132,19 @@ pC <- pairs_coexistence %>%
 # Figure 3D: together
 if (FALSE) {
 
-pD <- pairs_coexistence %>%
-    drop_na(PairFermenter, r_glucose_midhr_d, X_sum_16hr_d) %>%
-    ggplot() +
-    geom_vline(xintercept = 0, linetype = 2) +
-    geom_hline(yintercept = 0, linetype = 2) +
-    geom_point(aes(x = r_glucose_midhr_d, y = X_sum_16hr_d, color = InteractionType), shape = 21, size = 2, stroke = 1) +
-    scale_color_manual(values = assign_interaction_color(level = "simple")) +
-    theme_classic() +
-    theme(legend.title = element_blank(), legend.position = "top",
-          axis.text = element_text(color = 1),
-          strip.background = element_blank(),
-          panel.background = element_rect(color = 1, fill = NA)) +
-    labs(x = expression(r[1]-r[2]), y = expression(X[1]-X[2]))
+    pD <- pairs_coexistence %>%
+        drop_na(PairFermenter, r_glucose_midhr_d, X_sum_16hr_d) %>%
+        ggplot() +
+        geom_vline(xintercept = 0, linetype = 2) +
+        geom_hline(yintercept = 0, linetype = 2) +
+        geom_point(aes(x = r_glucose_midhr_d, y = X_sum_16hr_d, color = InteractionType), shape = 21, size = 2, stroke = 1) +
+        scale_color_manual(values = assign_interaction_color(level = "simple")) +
+        theme_classic() +
+        theme(legend.title = element_blank(), legend.position = "top",
+              axis.text = element_text(color = 1),
+              strip.background = element_blank(),
+              panel.background = element_rect(color = 1, fill = NA)) +
+        labs(x = expression(r[1]-r[2]), y = expression(X[1]-X[2]))
 }
 ## Model prediction
 pairs_fit <- pairs_coexistence %>%
@@ -153,8 +157,8 @@ pairs_fit <- pairs_coexistence %>%
 
 pairs_model <- function (glu_d, X_d) {
     pairs_fit$estimate[pairs_fit$term == "(Intercept)"] +
-    pairs_fit$estimate[pairs_fit$term == "r_glucose_midhr_d"] * glu_d +
-    pairs_fit$estimate[pairs_fit$term == "X_sum_16hr_d"] * X_d
+        pairs_fit$estimate[pairs_fit$term == "r_glucose_midhr_d"] * glu_d +
+        pairs_fit$estimate[pairs_fit$term == "X_sum_16hr_d"] * X_d
     #pairs_fit$estimate[pairs_fit$term == "r_glucose_midhr_d:X_sum_16hr_d"] * glu_d *X_d
 }
 x_range <- range(pairs_coexistence$r_glucose_midhr_d, na.rm = T) * 1.1
@@ -181,19 +185,19 @@ pD <- pairs_predicted %>%
 
 
 if (FALSE) {
-# Figure 3E: simulation
-pE <- pairs_pool_meta %>%
-    #filter(InteractionType != "no-growth") %>%
-    ggplot() +
-    geom_vline(xintercept = 0, linetype = 2) +
-    geom_hline(yintercept = 0, linetype = 2) +
-    geom_point(aes(x = d_ConsumptionRate, y = d_CrossFeedingPotential, color = InteractionType), shape = 21, size = 2, stroke = .5) +
-    scale_color_manual(values = c(assign_interaction_color())) +
-    # facet_grid(.~PairConspecific) +
-    theme_classic() +
-    theme(legend.position = "top", strip.background = element_blank(), panel.background = element_rect(color = 1)) +
-    guides(color = "none") +
-    labs()
+    # Figure 3E: simulation
+    pE <- pairs_pool_meta %>%
+        #filter(InteractionType != "no-growth") %>%
+        ggplot() +
+        geom_vline(xintercept = 0, linetype = 2) +
+        geom_hline(yintercept = 0, linetype = 2) +
+        geom_point(aes(x = d_ConsumptionRate, y = d_CrossFeedingPotential, color = InteractionType), shape = 21, size = 2, stroke = .5) +
+        scale_color_manual(values = c(assign_interaction_color())) +
+        # facet_grid(.~PairConspecific) +
+        theme_classic() +
+        theme(legend.position = "top", strip.background = element_blank(), panel.background = element_rect(color = 1)) +
+        guides(color = "none") +
+        labs()
 
 }
 
@@ -209,72 +213,164 @@ ggsave(here::here("plots/Fig3.png"), p, width = 12, height = 3)
 
 
 #====================================================================================================
-# Statistic
-data_train <- pairs_meta %>%
+# Implement a lasso regression
+## Data
+pairs_train <- pairs_meta %>%
+    filter(Assembly == "self_assembly") %>%
     mutate(InteractionType = ifelse(InteractionType == "coexistence", 1, 0)) %>%
-    dplyr::select(InteractionType, starts_with("Pair"), ends_with("d")) %>%
+    select(InteractionType, ends_with("d")) %>%
+    mutate(across(where(is.character), as_factor)) %>%
+    mutate(Pair = 1:n()) %>%
     drop_na()
 
-## Full model
-model_full <- glm(InteractionType ~., data = data_train, family = binomial)
+## Prepare recipe
+pairs_rec <- recipe(InteractionType ~ ., data = pairs_train) %>%
+    update_role(Pair, new_role = "ID") %>% # Pair identifier
+    step_dummy(all_nominal()) %>% # Create dummy variables for categorical variables
+    step_zv(all_numeric(), -all_numeric()) %>% # Remove numeric variables that have 0 variance
+    step_normalize(all_numeric(), -all_outcomes()) # Normalize (center and rescale) the numeric variables
+pairs_rec <- prepare_recipe(pairs_train)
+summary(pairs_rec)
+pairs_prep <- pairs_rec %>% prep(strings_as_factor = F)
 
-## Stepwise variable selection
-model_step <- glm(InteractionType ~., data = data_train, family = binomial) %>%
-    MASS::stepAIC(trace = F)
+# Create workflow
+wf <- workflow() %>% add_recipe(pairs_rec)
+if (FALSE) {
+    ## Specify and fit the model for one penalty value
+    lasso_spec <- linear_reg(penalty = 0.1, mixture = 1) %>% set_engine("glmnet")
+    lasso_fit <- wf %>% add_model(lasso_spec) %>% fit(data = pairs_train)
+    lasso_fit %>%
+        extract_fit_parsnip() %>%
+        tidy() %>%
+        arrange(desc(abs(estimate)))
+}
+## Specify and fit the model. Tune the lasso parameter: penalty
+set.seed(1)
+pairs_boot <- bootstraps(pairs_train) # Build a set of bootstrap resamples
+tune_spec <- linear_reg(penalty = tune(), mixture = 1) %>% set_engine("glmnet")
+lambda_grid <- grid_regular(penalty(), levels = 50) # a grid of penalty values
+lasso_grid <- tune_grid(wf %>% add_model(tune_spec), resamples = pairs_boot, grid = lambda_grid)
+## Finalize the workflow. Pick the penalty value with lowest rmse (root mean square error)
+lowest_rmse <- lasso_grid %>% select_best("rmse")
+final_lasso <- finalize_workflow(wf %>% add_model(tune_spec), lowest_rmse)
+plot_lasso(final_lasso, pairs_train)
 
-broom::tidy(model_full) %>% filter(p.value < 0.05)
-broom::tidy(model_step)
 
-# Make predictions
-data_pred <- model_full %>% predict(select(data_train, -InteractionType), type = "response")
-data_pred <- ifelse(data_pred > 0.5, 1, 0)
-table(data_train$InteractionType == data_pred) # Accuracy
+if (FALSE) {
+    lasso_grid %>%
+        collect_metrics() %>%
+        ggplot(aes(penalty, mean, color = .metric)) +
+        geom_errorbar(aes(ymin = mean - std_err, ymax = mean + std_err), alpha = 0.5) +
+        geom_line(size = 1.5) +
+        facet_wrap(~.metric, scales = "free", nrow = 2) +
+        scale_x_log10() +
+        theme_classic() +
+        theme(legend.position = "none")
 
-tibble(x = data_train$InteractionType, y = data_pred) %>%
+}
+if (FALSE) {
+    ## Visualize the most important variables
+    final_lasso %>%
+        fit(pairs_train) %>%
+        extract_fit_parsnip() %>%
+        vi(lambda = lowest_rmse$penalty) %>%
+        mutate(Importance = abs(Importance), Variable = fct_reorder(Variable, Importance)) %>%
+        ggplot(aes(x = Importance, y = Variable, fill = Sign)) +
+        geom_col() +
+        labs(y = NULL)
+
+}
+if (FALSE) {
+
+    ## Full model
+    model_full <- glm(InteractionType ~., data = data_train, family = binomial)
+    ## Stepwise variable selection
+    model_step <- glm(InteractionType ~., data = data_train, family = binomial) %>%
+        MASS::stepAIC(trace = F)
+
+    broom::tidy(model_full) %>% filter(p.value < 0.05) %>%
+        arrange(desc(abs(estimate)))
+    broom::tidy(model_step) %>%
+        arrange(desc(abs(estimate)))
+}
+if (FALSE) {
+
+    ## Test multicollinearity
+    data_train_long <- data_train %>%
+        mutate(rowid = 1:n()) %>%
+        select(-c(InteractionType, PairFermenter, PairFamily)) %>%
+        pivot_longer(-rowid) %>%
+        full_join(., ., by = "rowid")
+
+    p1 <- data_train_long %>%
+        ggplot(aes(x = value.x, y = value.y)) +
+        geom_point() +
+        facet_wrap(name.x ~ name.y, scales = "free") +
+        theme_classic() +
+        labs()
+
+    ggsave(here::here("plots/Fig2S0-correlation.png"), p1, width = 20, height = 20)
+
+
+    ##
+    data_train %>%
+        select(-c(InteractionType, PairFermenter, PairFamily)) %>%
+        cor() %>%
+        as_tibble() %>%
+        mutate(Row = colnames(.)) %>%
+        pivot_longer(-Row, names_to = "Column") %>%
+        filter(Row != Column) %>%
+        filter(abs(value) > 0.95)
     ggplot() +
-    geom_point(aes(x = x, y = y)) +
-    theme_classic()
+        geom_histogram(aes(x = value), color = 1, fill = "white") +
+        theme_classic()
+
+
+
+    # Make predictions
+    data_pred <- model_full %>% predict(select(data_train, -InteractionType), type = "response")
+    data_pred <- ifelse(data_pred > 0.5, 1, 0)
+    table(data_train$InteractionType == data_pred) # Accuracy
+
+    tibble(x = data_train$InteractionType, y = data_pred) %>%
+        ggplot() +
+        geom_point(aes(x = x, y = y)) +
+        theme_classic()
 
 
 
 
-# Make predictions
-probabilities <- model %>% predict(test.data, type = "response")
-predicted.classes <- ifelse(probabilities > 0.5, "pos", "neg")
-# Model accuracy
-mean(predicted.classes==test.data$diabetes)
+    # Make predictions
+    probabilities <- model %>% predict(test.data, type = "response")
+    predicted.classes <- ifelse(probabilities > 0.5, "pos", "neg")
+    # Model accuracy
+    mean(predicted.classes==test.data$diabetes)
 
-pairs_meta %>%
-    mutate(InteractionType = ifelse(InteractionType == "coexistence", 1, 0)) %>%
-    glm(formula = InteractionType ~ ends_with("d"), family = "binomial") %>%
-    broom::tidy()
-
-
-
+    pairs_meta %>%
+        mutate(InteractionType = ifelse(InteractionType == "coexistence", 1, 0)) %>%
+        glm(formula = InteractionType ~ ends_with("d"), family = "binomial") %>%
+        broom::tidy()
+}
 
 
 
 
-
-#---------------------------------------------
+#====================================================================================================
 
 # Figure 2S1: fermenter and respirator cartoon
 pS1 <- ggdraw() + draw_image(here::here("plots/cartoons/Fig2A.png")) + theme(plot.background = element_rect(fill = "white", color = NA))
 ggsave(here::here("plots/Fig2S1-functional_groups.png"), pS1, width = 5, height = 5)
 
-# Figure 2S2:
+# Figure 2S2: coexistence fraction in conspecific and heterospecific pairs
 pS2 <- pairs_coexistence %>%
     group_by(InteractionType, PairConspecific) %>%
     summarize(Count = n()) %>%
     group_by(PairConspecific) %>%
     mutate(Fraction = Count / sum(Count)) %>%
-    #filter(InteractionType == "coexistence") %>%
     ggplot() +
     geom_col(aes(x = PairConspecific, y = Fraction, fill = factor(InteractionType, c("exclusion", "coexistence"))), color = 1, width = .7, position = "fill") +
-    # percentage
-    #geom_text(aes(x = PairConspecific, y = Fraction, label = paste0(round(Fraction, 3) * 100,"%"), group = factor(InteractionType, c("exclusion", "coexistence"))), size = 3, vjust = -1, position = position_dodge(width = 0.8)) +
     # sample size
-    geom_text(data = pairs_count, aes(x = PairConspecific, y = 1, label = paste0("n=", Count)), vjust = 2) +
+    geom_text(data = pairs_count, aes(x = PairConspecific, y = 1, label = paste0("n=", n)), vjust = 2) +
     scale_fill_manual(values = assign_interaction_color(level = "simple")) +
     scale_y_continuous(breaks = c(0,.5,1), limit = c(0, 1), expand = c(0,0), labels = c("0%", "50%", "100%")) +
     theme_classic() +
@@ -290,22 +386,207 @@ pS2 <- pairs_coexistence %>%
     draw_image(here::here("plots/cartoons/Fig2B_RR.png"), x = 1, y = 0, scale = .6, vjust = .25, hjust = .5)
 
 ggsave(here::here("plots/Fig2S2-pairs_alike.png"), pS2, width = 3, height = 3)
+if (FALSE) {
 
-## Stat: whether FF and RR pairs coexist more often than FR pairs
-### observation
-observed_indep_statistic <- pairs_coexistence %>%
-    select(PairConspecific, InteractionType) %>%
-    specify(InteractionType ~ PairConspecific, success = "coexistence") %>%
-    calculate(stat = "Chisq", order = c("conspecific", "heterospecific"))
-### null
-null_distribution_simulated <- pairs_coexistence %>%
-    select(PairConspecific, InteractionType) %>%
-    specify(InteractionType ~ PairConspecific, success = "coexistence") %>%
-    hypothesize(null = "independence") %>%
-    generate(reps = 1000, type = "permute") %>%
-    calculate(stat = "Chisq", order = c("conspecific", "heterospecific"))
-### p
-null_distribution_simulated %>% get_p_value(obs_stat = observed_indep_statistic, direction = "greater")
+    ## Stat: whether FF and RR pairs coexist more often than FR pairs
+    ### observation
+    observed_indep_statistic <- pairs_coexistence %>%
+        select(PairConspecific, InteractionType) %>%
+        specify(InteractionType ~ PairConspecific, success = "coexistence") %>%
+        calculate(stat = "Chisq", order = c("conspecific", "heterospecific"))
+    ### null
+    null_distribution_simulated <- pairs_coexistence %>%
+        select(PairConspecific, InteractionType) %>%
+        specify(InteractionType ~ PairConspecific, success = "coexistence") %>%
+        hypothesize(null = "independence") %>%
+        generate(reps = 1000, type = "permute") %>%
+        calculate(stat = "Chisq", order = c("conspecific", "heterospecific"))
+    ### p
+    null_distribution_simulated %>% get_p_value(obs_stat = observed_indep_statistic, direction = "greater")
+}
+
+# Figure 2S3. lasso regression testing whether pairwise coexistence is predicted by metabolic dissimilarity
+## cor plot between all predictors
+factor_level <- c(str_subset(names(pairs_train), "X"),
+                  str_subset(names(pairs_train), "r_glucose"),
+                  str_subset(names(pairs_train), "r_acetate"),
+                  str_subset(names(pairs_train), "r_lactate"),
+                  str_subset(names(pairs_train), "r_succinate"),
+                  str_subset(names(pairs_train), "pH"))
+p0 <- pairs_train %>%
+    select(-Pair, -InteractionType) %>%
+    cor() %>%
+    as_tibble() %>%
+    mutate(Row = names(.)) %>%
+    pivot_longer(cols = -Row, names_to = "Column") %>%
+    mutate(Row = ordered(Row, factor_level) %>% fct_rev(), Column = ordered(Column, factor_level)) %>%
+    ggplot() +
+    geom_tile(aes(x = Column, y = Row, fill = value)) +
+    scale_fill_gradient2() +
+    scale_x_discrete(position = "bottom") +
+    scale_y_discrete(position = "right") +
+    #scale_y_reverse() +
+    theme_classic() +
+    theme(axis.text.x = element_text(angle = 90, vjust = 0), axis.title = element_blank()) +
+    guides(fill = guide_colorbar(title = "r")) +
+    labs()
+
+if (FALSE) {
+## Find penalty parameter with lowest rmse
+p2 <- lasso_grid %>%
+    collect_metrics() %>%
+    drop_na() %>%
+    ggplot(aes(penalty, mean)) +
+    geom_vline(xintercept = lowest_rmse$penalty, color = "red") +
+    geom_errorbar(aes(ymin = mean - std_err, ymax = mean + std_err), alpha = 0.5) +
+    geom_line(size = 1.5) +
+    #geom_text(x = lowest_rmse$penalty, y = Inf, label = paste0("penalty=", round(lowest_rmse$penalty, 3)), vjust = 1) +
+    facet_wrap(~.metric, scales = "free_y", nrow = 2, labeller = labeller(.metric = toupper)) +
+    scale_x_log10() +
+    theme_classic() +
+    theme(legend.position = "none", strip.background = element_rect(color = NA),
+          panel.border = element_rect(fill = NA, color = 1)) +
+    labs()
+
+}
+
+## Lasso result
+# Comprehensive function for implementing lasso
+fit_lasso <- function (pairs_train) {
+    # Prepare recipe
+    pairs_rec <- recipe(InteractionType ~ ., data = pairs_train) %>%
+        update_role(Pair, new_role = "ID") %>% # Pair identifier
+        step_dummy(all_nominal()) %>% # Create dummy variables for categorical variables
+        step_zv(all_numeric(), -all_numeric()) %>% # Remove numeric variables that have 0 variance
+        step_normalize(all_numeric(), -all_outcomes()) # Normalize (center and rescale) the numeric variables
+    pairs_prep <- pairs_rec %>% prep(strings_as_factor = F)
+    # Create workflow
+    wf <- workflow() %>% add_recipe(pairs_rec)
+    ## Specify and fit the model. Tune the lasso parameter: penalty
+    set.seed(1)
+    pairs_boot <- bootstraps(pairs_train) # Build a set of bootstrap resamples
+    tune_spec <- linear_reg(penalty = tune(), mixture = 1) %>% set_engine("glmnet")
+    lambda_grid <- grid_regular(penalty(), levels = 50) # a grid of penalty values
+    lasso_grid <- tune_grid(wf %>% add_model(tune_spec), resamples = pairs_boot, grid = lambda_grid)
+    ## Finalize the workflow. Pick the penalty value with lowest rmse (root mean square error)
+    lowest_rmse <- lasso_grid %>% select_best("rmse")
+    final_lasso <- finalize_workflow(wf %>% add_model(tune_spec), lowest_rmse)
+    return(final_lasso)
+}
+plot_lasso <- function(lasso, pairs) {
+lasso %>%
+    fit(pairs) %>%
+    extract_fit_parsnip() %>%
+    #tidy() %>%
+    #arrange(desc(abs(estimate))) %>%
+    vi(lambda = lowest_rmse$penalty) %>%
+    mutate(Importance = abs(Importance), Variable = fct_reorder(Variable, Importance)) %>%
+    ggplot(aes(x = Importance, y = Variable, fill = Sign)) +
+    geom_col() +
+    theme_bw() +
+    labs(y = NULL)
+
+}
+
+## All pairs, all d
+pairs_train1 <- pairs_meta %>%
+    filter(Assembly == "self_assembly") %>%
+    mutate(InteractionType = ifelse(InteractionType == "coexistence", 1, 0)) %>%
+    select(InteractionType, ends_with("d")) %>%
+    mutate(across(where(is.character), as_factor)) %>%
+    mutate(Pair = 1:n()) %>%
+    drop_na()
+lasso1 <- fit_lasso(pairs_train1)
+p1 <- plot_lasso(lasso1, pairs_train1) +
+    theme(legend.position = "none") +
+    ggtitle("All pairs, all d")
+
+## FF pairs
+pairs_train2 <- pairs_meta %>%
+    filter(Assembly == "self_assembly") %>%
+    mutate(InteractionType = ifelse(InteractionType == "coexistence", 1, 0)) %>%
+    filter(PairFermenter == "FF") %>%
+    select(InteractionType, ends_with("d")) %>%
+    mutate(across(where(is.character), as_factor)) %>%
+    mutate(Pair = 1:n()) %>%
+    drop_na()
+lasso2 <- fit_lasso(pairs_train2)
+p2 <- plot_lasso(lasso2, pairs_train2) +
+    theme(legend.position = "bottom") +
+    ggtitle("FF pairs, all d")
+
+## All pairs, only X_d
+pairs_train3 <- pairs_meta %>%
+    filter(Assembly == "self_assembly") %>%
+    mutate(InteractionType = ifelse(InteractionType == "coexistence", 1, 0)) %>%
+    dplyr::select(InteractionType, ends_with("d") & !starts_with("r")) %>%
+    mutate(across(where(is.character), as_factor)) %>%
+    mutate(Pair = 1:n()) %>%
+    drop_na()
+lasso3 <- fit_lasso(pairs_train3)
+p3 <- plot_lasso(lasso3, pairs_train3) +
+    theme(legend.position = "none") +
+    ggtitle("All pairs, only X_d")
+
+
+p_bottom <- plot_grid(p1, p2, p3, nrow = 1, labels = LETTERS[2:4], scale = .9, axis = "tb", align = "h")
+pS3 <- plot_grid(p0, p_bottom, ncol = 1, labels = c("A", ""), rel_heights = c(1.5, 1), scale = c(.9, 1)) + paint_white_background()
+ggsave(here::here("plots/Fig2S3-lasso_regression.png"), pS3, width = 10, height = 14)
+
+
+
+# Figure 2S4. Ranked r vs. ranked
+isolate_ranked <- isolates %>%
+    filter(Assembly == "self_assembly") %>%
+    select(Community, Fermenter, r_glucose_midhr, Rank) %>%
+    group_by(Community) %>%
+    mutate(r_ranked = rank(-r_glucose_midhr)) %>% # Put a negative sign such that the highest abs value is rank 1
+    mutate(Fermenter = ifelse(Fermenter, "fermenter", ifelse(!Fermenter, "respirator", NA)))
+
+isolate_ranked %>%
+    ggplot() +
+    geom_smooth(aes(x = r_ranked, y = Rank), formula = y ~ x, method = "lm", color = 1) +
+    geom_point(aes(x = r_ranked, y = Rank, color = Fermenter), shape = 21, size = 2, stroke = 2, position = position_jitter(width = .1, height = .1)) +
+    scale_x_continuous(breaks = 1:12) +
+    scale_y_continuous(breaks = 1:12) +
+    scale_color_manual(values = fermenter_color) +
+    theme_classic() +
+    theme(legend.position = "top", legend.title = element_blank()) +
+    labs(x = "r_mid rank", y = "Isolate rank")
+
+
+isolate_ranked %>%
+    lm(Rank ~ r_ranked, data = .) %>%
+    tidy()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 # Figure 2S3: r_glu_midhr per isolate
@@ -539,19 +820,19 @@ pairs_meta %>%
 
 p_upper <- plot_grid(p1, p2, nrow = 1, labels = c(LETTERS[1:2], ""), rel_widths = c(1,1.5), axis = "tb", align = "h", scale = .9)
 pS6 <- plot_grid(p_upper, p3, p4, ncol = 1, labels = c("", LETTERS[3:4]),
-                  rel_heights = c(1,1,1)) + theme(plot.background = element_rect(fill = "white", color = NA))
+                 rel_heights = c(1,1,1)) + theme(plot.background = element_rect(fill = "white", color = NA))
 ggsave(here::here("plots/Fig2S6-r_glu.png"), pS6, width = 6, height = 8)
 
 
 ## Stats: does difference in r_glu explain pairwise coexistence?
 if (FALSE) {
-pairs_meta %>%
-    mutate_if(is.character, as.factor) %>%
-    filter(!is.na(InteractionType)) %>%
-    mutate(InteractionType = ifelse(InteractionType == "coexistence", 1, 0)) %>%
-    glm(formula = InteractionType ~  r_glucose_midhr_d * PairFermenter, data = ., family = "binomial") %>%
-    broom::tidy() %>%
-    {.}
+    pairs_meta %>%
+        mutate_if(is.character, as.factor) %>%
+        filter(!is.na(InteractionType)) %>%
+        mutate(InteractionType = ifelse(InteractionType == "coexistence", 1, 0)) %>%
+        glm(formula = InteractionType ~  r_glucose_midhr_d * PairFermenter, data = ., family = "binomial") %>%
+        broom::tidy() %>%
+        {.}
 
 }
 temp <- pairs_meta %>%

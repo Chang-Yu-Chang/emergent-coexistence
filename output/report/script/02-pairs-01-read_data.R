@@ -150,10 +150,12 @@ pairs_meta <- pairs_meta %>%
         MatchedCS = PreferredCS1 == PreferredCS2,
         # Difference in pH
         pH_0hr_d = pH_0hr1 - pH_0hr2, pH_16hr_d = pH_16hr1 - pH_16hr2,
-        pH_28hr_d = pH_28hr1 - pH_28hr2, pH48hr_d = pH_48hr1 - pH_48hr2,
+        pH_28hr_d = pH_28hr1 - pH_28hr2, pH_48hr_d = pH_48hr1 - pH_48hr2,
         # Difference total acid production
-        X_sum_0hr_d = X_sum_0hr1 - X_sum_0hr2, X_sum_16hr_d = X_sum_16hr1 - X_sum_16hr2,
-        X_sum_28hr_d = X_sum_28hr1 - X_sum_28hr2, X_sum_48hr_d = X_sum_48hr1 - X_sum_48hr2
+        X_sum_16hr_d = X_sum_16hr1 - X_sum_16hr2, X_sum_28hr_d = X_sum_28hr1 - X_sum_28hr2, X_sum_48hr_d = X_sum_48hr1 - X_sum_48hr2,
+        X_acetate_16hr_d = X_acetate_16hr1 - X_acetate_16hr2, X_acetate_28hr_d = X_acetate_28hr1 - X_acetate_28hr2, X_acetate_48hr_d = X_acetate_48hr1 - X_acetate_48hr2,
+        X_succinate_16hr_d = X_succinate_16hr1 - X_succinate_16hr2, X_succinate_28hr_d = X_succinate_28hr1 - X_succinate_28hr2, X_succinate_48hr_d = X_succinate_48hr1 - X_succinate_48hr2,
+        X_lactate_16hr_d = X_lactate_16hr1 - X_lactate_16hr2, X_lactate_28hr_d = X_lactate_28hr1 - X_lactate_28hr2, X_lactate_48hr_d = X_lactate_48hr1 - X_lactate_48hr2,
     )
 
 #

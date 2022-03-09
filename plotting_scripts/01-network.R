@@ -1389,9 +1389,9 @@ ft1 <- read_csv(here::here("data/output/pairs_interaction_table.csv")) %>%
     flextable() %>%
     width(j = 1:3, width = 1) %>%
     width(j = 5, width = 2.5)
-save_as_image(ft1, here::here("plots/TableS1.png"))
+save_as_image(ft1, here::here("plots/TableS1.png"), )
 ## Count the totoal number
-read_csv(here::here("data/output/pairs_interaction_table.csv")) %>% pull(Count) %>% sum
+#read_csv(here::here("data/output/pairs_interaction_table.csv")) %>% pull(Count) %>% sum
 
 
 
