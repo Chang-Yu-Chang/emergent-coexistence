@@ -116,7 +116,7 @@ for (i in 1:nrow(pairs_meta)) {
 
 # Isolates data from 01-isolates ----
 isolates_to_be_joint <- read_csv(here::here("data/output/isolates.csv")) %>%
-    select(Community, Isolate, Score, Rank, PlotRank, starts_with("X_"), starts_with("pH_"), ends_with("dCS"), ends_with("hr"))
+    select(Community, Isolate, Score, Rank, PlotRank, starts_with("X_"), starts_with("pH_"), ends_with("dCS"), ends_with("hr"), ends_with("curver"))
 
 pairs_meta <- pairs_meta %>%
     left_join(rename_with(isolates_to_be_joint, ~ paste0(., "1"), !contains("Community"))) %>%
@@ -126,10 +126,10 @@ pairs_meta <- pairs_meta %>%
            ends_with("1"), ends_with("2")) %>%
     mutate(
         # Difference in glucose, acetate, lactate, succinate growth rate
-        # rmid_glu_d = rmid_glucose1 - rmid_glucose2, rmid_ace_d = rmid_acetate1 - rmid_acetate2,
-        # rmid_lac_d = rmid_lactate1 - rmid_lactate2, rmid_suc_d = rmid_succinate1 - rmid_succinate2,
-        # rmax_glu_d = rmax_glucose1 - rmax_glucose2, rmax_ace_d = rmax_acetate1 - rmax_acetate2,
-        # rmax_lac_d = rmax_lactate1 - rmax_lactate2, rmax_suc_d = rmax_succinate1 - rmax_succinate2,
+        r_acetate_curver_d = r_acetate_curver1 - r_acetate_curver2,
+        r_glucose_curver_d = r_glucose_curver1 - r_glucose_curver2,
+        r_lactate_curver_d = r_lactate_curver1 - r_lactate_curver2,
+        r_succinate_curver_d = r_succinate_curver1 - r_succinate_curver2,
         r_acetate_midhr_d = r_acetate_midhr1 - r_acetate_midhr2, r_acetate_maxhr_d = r_acetate_maxhr1 - r_acetate_maxhr2,
         r_glucose_midhr_d = r_glucose_midhr1 - r_glucose_midhr2, r_glucose_maxhr_d = r_glucose_maxhr1 - r_glucose_maxhr2,
         r_lactate_midhr_d = r_lactate_midhr1 - r_lactate_midhr2, r_lactate_maxhr_d = r_lactate_maxhr1 - r_lactate_maxhr2,

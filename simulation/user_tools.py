@@ -401,8 +401,8 @@ def load_assumptions(input_row):
 
     
     ## Consumer metabolism
-    assumptions['fs'] = 0.1 # Fraction of secretion flux with same resource type
-    assumptions['fw'] = 0.1 # Fraction of secretion flux to 'waste' resource
+    assumptions['fs'] = 0.3 # Fraction of secretion flux with same resource type
+    assumptions['fw'] = 0.01 # Fraction of secretion flux to 'waste' resource
     assumptions['fss'] = 0.10 # sugar to sugar
     assumptions['fsa'] = 0.80 # sugar to acid
     assumptions['fsw'] = 0.10 # sugar to waste
@@ -412,7 +412,7 @@ def load_assumptions(input_row):
     assumptions['fws'] = 0.01 # waste to sugar
     assumptions['fwa'] = 0.01 # waste to acid
     assumptions['fww'] = 0.98 # waste to waste
-    assumptions['sparsity'] = 0.2 # Effective sparsity of metabolic matrix (between 0 and 1)
+    assumptions['sparsity'] = 0.1 # Effective sparsity of metabolic matrix (between 0 and 1)
     assumptions['metabolism'] = metabolism #{'common','specific'} determines whether to use a common metabolic matrix or each species having its own
     assumptions['rs'] = rs # control parameter (only used if 'metabolism' is 'specific'): if 1, each species secretes only resources that it can consume (or waste resources), preferentially those that it can consume more efficiently; if 0 secretions are randomized (default behavior of the original community-simulator package) 
     assumptions['l1'] = l1 # Mean leakage rate of specialist family 1

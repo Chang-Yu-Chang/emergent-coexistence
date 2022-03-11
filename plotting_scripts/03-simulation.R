@@ -7,88 +7,35 @@ library(ggpubr)
 library(ggraph)
 source(here::here("plotting_scripts/network_functions.R"))
 
-
-input_independent <- read_csv(("~/Dropbox/lab/invasion-network/simulation/data/raw8/input_independent.csv"), col_types = cols())
-input_pairs <- read_csv(("~/Dropbox/lab/invasion-network/simulation/data/raw8/input_pairs.csv"), col_types = cols())
-output_dir <- input_independent$output_dir[1]
-
+output_dir <- "~/Dropbox/lab/invasion-network/simulation/data/raw9/"
+input_independent <- read_csv(paste0(output_dir,"input_independent.csv"), col_types = cols())
+input_pairs <- read_csv(paste0(output_dir, "input_pairs.csv"), col_types = cols())
 input_row <- input_independent[1,]
+
 # Generate family-species and class-resource matching tibble
 sa <- input_independent$sa[1]
 ma <- input_independent$ma[1]
 sal <- tibble(Family = paste0("F", c(rep(0, sa), rep(1, sa))), Species = paste0("S", 0:(sa * 2 - 1)))
 mal <- tibble(Class = paste0("T", c(rep(0, ma), rep(1, ma), rep(2, ma))), Resource = paste0("R", 0:(ma * 3 - 1)))
-
-# Functions
-read_wide_file <- function(x) {
-    tt <- read_csv(x, col_types = cols()) %>%
-        # Remove abundance=0
-        mutate_all(~replace(., .==0, NA)) %>%
-        pivot_longer(cols = starts_with("W"), names_to = "Well", values_to = "Abundance", values_drop_na = T)
-    if ("...1" %in% colnames(tt)) tt <- tt %>% rename(Family = ...1, Species = ...2)
-    return(tt)
-}
 paint_white_background <- function(x) theme(plot.background = element_rect(color = NA, fill = "white"))
 
 #
-df_comm_init <- paste0(output_dir, "selfAssembly-1_init.csv") %>%
-    read_csv(col_types = cols()) %>%
-    mutate_all(~replace(., .==0, NA)) %>%
-    pivot_longer(cols = starts_with("W"), names_to = "Well", values_to = "Abundance", values_drop_na = T) %>%
-    mutate(Transfer = 0, Time = 0) %>%
-    mutate(Family = factor(Family, c("F0", "F1"))) %>%
-    mutate(Species = factor(Species, paste0("S", 0:999))) %>%
-    mutate(Community = factor(Well, paste0("W", 0:20)), .keep = "unused")
-df_comm_timepoint <- list.files(output_dir) %>%
-    str_subset("_T\\d+t\\d+") %>%
-    str_subset("selfAssembly") %>%
-    lapply(function(x) {
-        temp <- str_replace(x, "selfAssembly-1_", "") %>%
-            str_replace(".csv", "") %>%
-            str_split("t") %>%
-            unlist()
-        paste0(output_dir, x) %>%
-            read_csv(col_types = cols()) %>%
-            mutate_all(~replace(., .==0, NA)) %>%
-            pivot_longer(cols = starts_with("W"), names_to = "Well", values_to = "Abundance", values_drop_na = T) %>%
-            rename(Family = ...1, Species = ...2) %>%
-            mutate(Transfer = str_replace(temp[1], "T", ""), Time = temp[2]) %>%
-            mutate(across(c("Transfer", "Time"), as.numeric))
-    }) %>%
-    bind_rows() %>%
-    mutate(Family = factor(Family, c("F0", "F1"))) %>%
-    mutate(Species = factor(Species, paste0("S", 0:999))) %>%
-    mutate(Community = factor(Well, paste0("W", 0:20)), .keep = "unused")
-if (FALSE) {
-
-df_comm_end <- paste0(output_dir, "selfAssembly-1_end.csv") %>%
-    read_csv(col_types = cols()) %>%
-    mutate_all(~replace(., .==0, NA)) %>%
-    pivot_longer(cols = starts_with("W"), names_to = "Well", values_to = "Abundance", values_drop_na = T) %>%
-    rename(Family = ...1, Species = ...2) %>%
-    mutate(Transfer = 1, Time = 1) %>%
-    mutate(Family = factor(Family, c("F0", "F1"))) %>%
-    mutate(Species = factor(Species, paste0("S", 0:999))) %>%
-    mutate(Community = factor(Well, paste0("W", 0:20)), .keep = "unused")
-}
-df_comm <- bind_rows(df_comm_init, df_comm_timepoint) %>%
-    group_by(Community, Transfer, Time) %>%
-    filter(Abundance > sum(Abundance)*0.001) %>%
-    ungroup()
-#df_comm <- bind_rows(df_comm_init, df_comm_end)
+df_communities <- read_csv(here::here("data/output/df_communities.csv"), col_types = cols())
+df_communities_abundance <- read_csv(here::here("data/output/df_communities_abundance.csv"), col_types = cols()) %>% mutate(Community = factor(Community, df_communities$Community))
+df_pairs <- read_csv(here::here("data/output/df_pairs.csv"), col_types = cols())
 
 # Figure 3A. Dynamics of one example community
-df_comm_example <- df_comm %>%
+df_comm_example <- df_communities_abundance %>%
     filter(Community == "W1") %>%
     mutate(Time = ifelse(Time != 0 , (Transfer-1)*10+Time, Time)) # Note that this line changes when the growth cycle time changes
 df_comm_example_end <- df_comm_example %>% filter(Time == max(Time)) %>%
     mutate(PlotColor = Family, PlotAlpha = factor(1:n())) %>%
-    select(Species, PlotColor, PlotAlpha)
+    select(ID, PlotColor, PlotAlpha)
 
 p1 <- df_comm_example %>%
-    left_join(df_comm_example_end, by = "Species") %>%
+    left_join(df_comm_example_end, by = "ID") %>%
     ggplot() +
-    geom_line(aes(x = Time, y = Abundance, color = PlotColor, alpha = PlotAlpha, group = Species), size = 1) +
+    geom_line(aes(x = Time, y = Abundance, color = PlotColor, alpha = PlotAlpha, group = ID), size = 1) +
     scale_x_continuous(breaks = scales::pretty_breaks(n=2), expand = c(0,0)) +
     scale_y_continuous(breaks = scales::pretty_breaks(n=2), expand = c(.1,0)) +
     scale_color_manual(values = category_color, breaks = c("F0", "F1")) +
@@ -99,11 +46,11 @@ p1 <- df_comm_example %>%
     labs()
 
 # Figure 3B. End point composition
-p2 <- df_comm %>%
+p2 <- df_communities_abundance %>%
     filter(Transfer == max(Transfer), Time == max(Time)) %>%
     mutate(Community = factor(Community, c("W1", "W0", paste0("W", 2:20)))) %>%
     ggplot() +
-    geom_col(aes(x = Community, y = Abundance, fill = Family, group = Species), color = 1, position = "fill") +
+    geom_col(aes(x = Community, y = Abundance, fill = Family, group = ID), color = 1, position = "fill") +
     scale_fill_manual(values = category_color, breaks = c("F0", "F1")) +
     scale_x_discrete(expand = c(0,0), label = 1:20) +
     scale_y_continuous(breaks = c(0, .5, 1), expand = c(0,0)) +
@@ -119,128 +66,8 @@ ggsave(here::here("plots/Fig3AB-community_composition.png"), p, width = 8, heigh
 
 
 # Figure 3C: pairwise outcome of community pairs
-df_cp_init <- input_pairs %>%
-    filter(str_detect(init_N0, "communityPairs")) %>%
-    pull(init_N0) %>%
-    paste0(output_dir, .) %>%
-    lapply(function(x) {
-        read_wide_file(x) %>%
-            #full_join(sal, by = c("Family", "Species")) %>%
-            #replace_na(list(Abundance = 0)) %>%
-            mutate(Well = factor(Well, paste0("W", 0:1000)), .keep = "unused") %>%
-            mutate(Species = factor(Species, sal$Species)) %>%
-            # Remove rare species (relative abundance <0.01)
-            group_by(Well) %>%
-            mutate(RelativeAbundance = Abundance/sum(Abundance)) %>%
-            #filter(RelativeAbundance > 0.01) %>%
-            arrange(Well, Species) %>%
-            # Community, or network
-            mutate(Community = str_replace(x, paste0(output_dir, "communityPairs_"), "")  %>% str_replace("-1_init.csv", ""))
-    }) %>%
-    bind_rows() %>%
-    mutate(Time = "Tinit")
-
-df_cp_end <- input_pairs %>%
-    filter(str_detect(init_N0, "communityPairs")) %>%
-    pull(init_N0) %>% str_replace("_init.csv", "_end.csv") %>%
-    str_subset("W[1-9]-") %>%
-    paste0(output_dir, .) %>%
-    lapply(function(x) {
-        read_wide_file(x) %>%
-            #full_join(sal, by = c("Family", "Species")) %>%
-            #replace_na(list(Abundance = 0)) %>%
-            mutate(Well = factor(Well, paste0("W", 0:1000)), .keep = "unused") %>%
-            mutate(Species = factor(Species, sal$Species)) %>%
-            # Remove rare species (relative abundance <0.01)
-            group_by(Well) %>%
-            mutate(RelativeAbundance = Abundance/sum(Abundance)) %>%
-            # filter(RelativeAbundance > 0.01) %>%
-            arrange(Well, Species) %>%
-            # Community, or network
-            mutate(Community = str_replace(x, paste0(output_dir, "communityPairs_"), "")  %>% str_replace("-1_end.csv", ""))
-    }) %>%
-    bind_rows() %>%
-    mutate(Time = "Tend")
-
-## Determine outcome
-# pairs_init <- df_cp_init %>% filter(Community == "W0")
-# pairs_end <- df_cp_end %>% filter(Community == "W0")
-determine_interaction <- function(pairs_init, pairs_end) {
-    temp <- bind_rows(pairs_init, pairs_end) %>%
-        select(-Family, -Abundance) %>%
-        pivot_wider(names_from = Time, values_from = RelativeAbundance, names_prefix = "RelativeAbundance_") %>%
-        # Fill abundance = NA with 0
-        replace_na(list(RelativeAbundance_Tend = 0)) %>%
-        # Frequency changes
-        mutate(FrequencyChange = ifelse(RelativeAbundance_Tend - RelativeAbundance_Tinit > 0, "increase", "decrease")) %>%
-        select(-RelativeAbundance_Tinit) %>%
-        group_by(Community, Well) %>%
-        mutate(Isolate = c(1,2)) %>%
-        pivot_wider(names_from = Isolate, values_from = c(Species, FrequencyChange, RelativeAbundance_Tend), names_sep = "") %>%
-        ungroup() %>%
-        select(-FrequencyChange2, -RelativeAbundance_Tend2, -Well) %>%
-        # Frequency changes in each pair
-        mutate(Pair = rep(paste0("P", 1:(n()/2)), each = 2), Replicate = rep(1:2, n()/2)) %>%
-        pivot_wider(names_from = Replicate, values_from = c(FrequencyChange1, RelativeAbundance_Tend1), names_prefix = "Replicate") %>%
-        # Interactions
-        mutate(Outcome = with(., case_when(
-            (FrequencyChange1_Replicate1 == "increase" & FrequencyChange1_Replicate2 == "increase") ~ "win",
-            (FrequencyChange1_Replicate1 == "decrease" & FrequencyChange1_Replicate2 == "decrease") ~ "lose",
-            (FrequencyChange1_Replicate1 == "increase" & FrequencyChange1_Replicate2 == "decrease" & RelativeAbundance_Tend1_Replicate1 > 0.5) ~ "draw and Species 1 dominant",
-            (FrequencyChange1_Replicate1 == "increase" & FrequencyChange1_Replicate2 == "decrease" & RelativeAbundance_Tend1_Replicate1 <= 0.5) ~ "draw and Species 2 dominant",
-            (FrequencyChange1_Replicate1 == "decrease" & FrequencyChange1_Replicate2 == "increase") ~ "mutual",
-            (is.na(FrequencyChange1_Replicate1) | is.na(FrequencyChange1_Replicate2)) ~ "no-growth",
-        )))
-
-    # Coexistence pairs
-    df_coexistence <- temp %>% filter(str_detect(Outcome, "draw")) %>%
-        mutate(InteractionType = "coexistence") %>%
-        mutate(across(starts_with("Species"), as.character)) %>%
-        mutate(temp = ifelse(Outcome == "draw and Species 2 dominant", Species2, NA),
-               Species2 = ifelse(Outcome == "draw and Species 2 dominant", Species1, Species2),
-               Species1 = ifelse(Outcome == "draw and Species 2 dominant", temp, Species1)) %>%
-        select(Community, Species1, Species2, Pair, InteractionType)
-
-    # Exclusion pairs
-    df_exclusion <- temp %>% filter(Outcome == "win" | Outcome == "lose") %>%
-        mutate(InteractionType = "exclusion") %>%
-        mutate(across(starts_with("Species"), as.character)) %>%
-        mutate(temp = ifelse(Outcome == "lose", Species2, NA),
-               Species2 = ifelse(Outcome == "lose", Species1, Species2),
-               Species1 = ifelse(Outcome == "lose", temp, Species1)) %>%
-        select(Community, Species1, Species2, Pair, InteractionType)
-
-    # No-growth pairs
-    df_nogrowth <- temp %>% filter(Outcome == "no-growth") %>%
-        mutate(InteractionType = "no-growth") %>%
-        select(Community, Species1, Species2, Pair, InteractionType)
-    # Mutual exclusion
-    df_mutual <- temp %>% filter(Outcome == "mutual") %>%
-        mutate(InteractionType = "mutual exclusion") %>%
-        select(Community, Species1, Species2, Pair, InteractionType)
-
-    bind_rows(df_coexistence, df_exclusion, df_nogrowth, df_mutual) %>%
-        return()
-}
-
-#
-pairs_comm <- determine_interaction(df_cp_init, df_cp_end) %>%
-    left_join(rename_with(sal, ~paste0(., 1))) %>%
-    left_join(rename_with(sal, ~paste0(., 2))) %>%
-    mutate(PairConspecific = with(., case_when(
-        (Family1 == Family2) ~ "conspecific",
-        (Family1 != Family2) ~ "heterospecific"
-    ))) %>%
-    mutate(Community = factor(Community, paste0("W", 0:1000))) %>%
-    arrange(Community)
-temp <- pairs_comm %>%
-    filter(InteractionType != "no-growth") %>%
-    mutate(InteractionType = factor(InteractionType, c("exclusion", "coexistence"))) %>%
-    group_by(Community, InteractionType, PairConspecific) %>%
-    summarize(Count = n())
-
 ## Overall
-p1 <- pairs_comm %>%
+p1 <- df_pairs %>%
     filter(InteractionType != "no-growth") %>%
     mutate(InteractionType = factor(InteractionType, c("exclusion", "coexistence"))) %>%
     group_by(InteractionType) %>%
@@ -258,7 +85,7 @@ p1 <- pairs_comm %>%
 
 
 ## Each community
-p2 <- pairs_comm %>%
+p2 <- df_pairs %>%
     filter(InteractionType != "no-growth") %>%
     mutate(InteractionType = factor(InteractionType, c("exclusion", "coexistence"))) %>%
     group_by(Community, InteractionType) %>%
@@ -279,51 +106,158 @@ p <- plot_grid(p1, p2, nrow = 1, axis = "tb", align = "h", labels = c("A", "B"),
 ggsave(here::here("plots/Fig3C-community_pairs.png"), p, width = 8, height = 3)
 
 
+# Figure 3D. Hierarchy
+df_communities_hierarchy <- read_csv(here::here("data/output/df_communities_hierarchy.csv"), col_types = cols()) %>% mutate(Community = factor(Community, df_communities$Community))
+df_communities_hierarchy_randomized <- read_csv(here::here("data/output/df_communities_hierarchy_randomized.csv"), col_types = cols()) %>% mutate(Community = factor(Community, df_communities$Community))
 
-'
-measure hiearachy metric
-'
+p1 <- df_communities_hierarchy %>%
+    drop_na() %>%
+    ggplot(aes(x = Metric, y = HierarchyScore)) +
+    #geom_hline(yintercept = c(0, 0.5, 1), color = "grey", linetype = 2) +
+    geom_boxplot(width = .5, lwd = .8) +
+    geom_jitter(shape = 1, size = 2, width = .2, stroke = .8) +
+    scale_y_continuous(limits = c(0,1.01), breaks = c(0, .25, .5, .75, 1)) +
+    theme_classic() +
+    theme(panel.grid.major.y = element_line(color = "grey", linetype = 2),
+          axis.text = element_text(size = 10, color = 1),
+          panel.border = element_rect(fill = NA, color = 1, size = 1.5)) +
+    labs(x = "", y = "Hierarchy Score")
 
-'
-Randomiz the simulated networks, 1) measure motif and 2) diagonal analysis
-'
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+p2 <- df_communities_hierarchy_randomized %>%
+    ggplot() +
+    geom_histogram(aes(y = HierarchyScore), color = 1, fill = "white") +
+    geom_hline(data = df_communities_hierarchy, aes(yintercept = HierarchyScore), color = "red") +
+    facet_wrap(Metric~Community) +
+    theme_classic()
+pD <- p1
+ggsave(here::here("plots/Fig3D-community_hierarhcy.png"), pD, width = 3, height = 3)
 
 
 
+# Figure 3E. Motif
+## Simulation result
+df_motif <- read_csv(here::here("data/output/df_motif.csv"))
+df_motif_randomized <- read_csv(here::here("data/output/df_motif_randomized.csv"))
+
+## Overall
+df_motif_aggregated <- df_motif %>%
+    group_by(Motif) %>%
+    summarize(Count = sum(Count))
+df_motif_randomized_aggregated <- df_motif_randomized %>%
+    group_by(Replicate, Motif) %>%
+    summarize(Count = sum(Count))
+
+df_motif_percentile_aggregated <- df_motif_randomized_aggregated %>%
+    group_by(Motif) %>%
+    arrange(desc(Count)) %>%
+    slice(b * 0.05, b * 0.95) %>%
+    mutate(Percentile = c("p5", "p95")) %>%
+    select(Motif, Percentile, Count) %>%
+    pivot_wider(names_from = Percentile, values_from = Count)
+
+df_motif_aggregated <- df_motif_aggregated %>%
+    left_join(df_motif_percentile_aggregated) %>%
+    mutate(Sign = case_when(Count > p95 ~ "top",
+                            Count < p5 ~ "bottom",
+                            Count < p95 & Count > p5 ~ "n.s."))
+
+
+## motif diagram
+load(here::here("data/output/motif_list.Rdata"))
+p_motif_list <- lapply(motif_list, function(x) plot_competitive_network(x, node_size = 3))
+p1 <- plot_grid(plotlist = p_motif_list, nrow = 1)
+
+## motif counts
+p2 <- df_motif_randomized_aggregated %>%
+    ggplot() +
+    geom_rect(data = df_motif_aggregated, aes(fill = Sign), xmin = -Inf, xmax = Inf, ymin = -Inf, ymax = Inf, alpha = .2) +
+    geom_vline(xintercept = 0, color = 1) +
+    geom_histogram(aes(y = Count), binwidth = 2, color = 1, fill = "white") +
+    geom_point(data = df_motif_aggregated, x = 0, aes(y = Count, color = "observed network"), pch = 1, size = 2, stroke = 2, inherit.aes = F) +
+    scale_color_manual(values = c("observed network" = "red")) +
+    facet_grid(.~Motif, scales = "free_x") +
+    scale_fill_manual(values = c("top" = "blue", "bottom" = "red", "n.s." = "grey")) +
+    scale_x_continuous(breaks = scales::pretty_breaks(n = 2)) +
+    theme_cowplot() +
+    theme(panel.background = element_rect(color = 1, size = 1), panel.spacing = unit(0, "mm"),
+          strip.background = element_rect(color = NA, fill = NA, size = 1)) +
+    guides(color = "none", fill = "none") +
+    labs(x = "Probability density", y = "Motif count")
+
+pE <- plot_grid(p1, p2, ncol = 1, rel_heights = c(1,3), axis = "lr", align = "v", labels = LETTERS[1:2]) + theme(plot.background = element_rect(fill = "white", color = NA))
+ggsave(here::here("plots/Fig3E-motif_counts.png"), pE, width = 10, height = 5)
+
+
+## title
+p0_1 <- ggdraw() + draw_label("Nontransitive", x = .5, hjust = 0.5) + theme(plot.margin = margin(0, 0, 5, 0))
+p0_2 <- ggdraw() + draw_label("Hierarchical", x = .5, hjust = 0.5) + theme(plot.margin = margin(0, 0, 5, 0))
+## motif diagram
+load(here::here("data/output/motif_list.Rdata"))
+p_motif_list <- lapply(motif_list, function(x) plot_competitive_network(x, node_size = 2, edge_width = 1))
+p1_1 <- plot_grid(plotlist = p_motif_list[c(1)], nrow = 1, greedy = T)
+p1_2 <- plot_grid(plotlist = p_motif_list[c(2,3,5)], nrow = 1, greedy = T)
+## Motif count
+comm <- "W0"
+df_motif_subset <- df_motif %>% filter(Community == comm)
+df_motif_randomized_subset <- df_motif_randomized %>% filter(Community == comm)
+plot_motif_count <- function(motif_randomized_subset, motif_community_subset,  motif_subset = c(1,2,3)) {
+    motif_randomized_subset %>%
+        filter(Motif %in% motif_subset) %>%
+        group_by(Motif, Replicate) %>%
+        mutate(p5 = quantile(Count, 0.05), p95 = quantile(Count, 0.95)) %>%
+        ggplot() +
+        geom_vline(xintercept = 0, color = 1) +
+        geom_hline(yintercept = 0, color = 1, linetype = 2) +
+        geom_histogram(aes(y = Fraction, x = after_stat(count / max(count))), alpha = .3, color = 1) +
+        geom_point(data = filter(motif_community_subset, Motif %in% motif_subset), aes(x = 0, y = Fraction, color = "observed network"), pch = 1, size = 2, stroke = 2, inherit.aes = F) +
+        scale_fill_manual(values = c("head" = "#FF0000A0", "body" = "#A0A0A0A0", "tail" = "#FF0000A0"),
+                          labels = c("head" = "top 5%", "body" = "middle", "tail" = "bottom 5%")) +
+        scale_color_manual(values = c("observed network" = "red")) +
+        facet_grid(.~Motif) +
+        scale_x_continuous(breaks = c(0,0.5), labels = c("0", "0.5")) +
+        theme_cowplot() +
+        theme(panel.background = element_rect(color = 1, size = 1.5, fill = NA),
+              panel.spacing = unit(0, "mm"), strip.text = element_blank(),
+              legend.position = "top",
+              axis.title = element_text(size = 10), axis.text = element_text(size = 8),
+              plot.background = element_rect(fill = "white", color = NA)) +
+        guides(fill = "none", color = "none") +
+        labs(x = "Probability density", y = "Fraction of motif")
+}
+p2_1 <- plot_motif_count(df_motif_randomized_subset, df_motif_subset, c(1)) + theme(axis.title.x = element_blank())
+p2_2 <- plot_motif_count(df_motif_randomized_subset, df_motif_subset, c(2,3,5)) + theme(axis.title = element_blank())
+p_left <- plot_grid(p0_1, p1_1, p2_1, ncol = 1, rel_heights = c(.4, 1,2.5), axis = "tblr", align = "v")
+p_right <- plot_grid(p0_2, p1_2, p2_2, ncol = 1, rel_heights = c(.4, 1,2.5), axis = "tblr", align = "v")
+p_upper <- plot_grid(p_left, p_right, nrow = 1, rel_widths = c(1.5,3), axis = "tblr", align = "h") + paint_white_background()
+pF_xlab <- ggdraw() + draw_label("Probability density", x = 0.5, hjust = .5) + theme(plot.margin = margin(0, 0, 0, 0))
+pF <- plot_grid(p_upper, pF_xlab, ncol = 1, rel_heights = c(1, .1)) + paint_white_background()
+ggsave(here::here("plots/Fig3F-motifs.png"), pF, width = 5, height = 4)
 
 
 
 
 
+# Figure 3G. Diagonal
+df_diag <- read_csv(here::here("data/output/df_diag.csv"))
+df_diag_randomized <- read_csv(here::here("data/output/df_diag_randomized.csv"))
 
-# =========================================================================================================
+df_diag_randomized %>%
+    group_by(DistanceToDiagonal, Replicate) %>%
+    summarize(Count = sum(CountCoexistence)) %>%
+    ggplot(aes(x = DistanceToDiagonal, y = Count, group = DistanceToDiagonal)) +
+    geom_boxplot() +
+    geom_jitter(height = 0, width = 0.1) +
+    geom_point(data = df_diag %>% group_by(DistanceToDiagonal) %>% summarize(Count = sum(CountCoexistence)),
+               aes(x = DistanceToDiagonal, y = Count, group = DistanceToDiagonal), color = "red") +
+    theme_classic()
 
-# Figure 3A: diagram cartoon
-#p_A <- ggdraw() + draw_image(here::here("plots/cartoons/Fig3A.png")) + theme(plot.background = element_rect(fill = "white", color = NA))
-p_A <-  ggplot(mtcars, aes(x = wt, y = mpg)) + annotate("text", x = 0 , y = 0, label = "Cartoon for\nmodel") + theme_void() + theme(plot.background = element_rect(fill = "white", color = NA))
-ggsave(here::here("plots/Fig3A-functional_groups.png"), p_A, width = 5, height = 5)
 
 
-# Figure 3B: u, l, and D matrices
+
+
+#=========================================================================================================
+
+# Figure 3S1: u, l, and D matrices
 Dm <- read_csv(paste0(output_dir, "D_seed1.csv"), skip = 1) # D matrix
 cm <- read_csv(paste0(output_dir, "c_seed1.csv"), skip = 1) # c matrix
 lm <- read_csv(paste0(output_dir, "l_seed1.csv"), skip = 1) # l matrix
@@ -428,8 +362,37 @@ lml %>%
     labs()
 
 p_lower <- plot_grid(p2, p3, labels = c("c matrix", "l matrix"), scale = .9)
-p_B <- plot_grid(p1, p_lower, ncol = 1, labels = c("D matrix", ""), align = "v", axis = "lr", scale = c(0.9, 1)) + paint_white_background()
-ggsave(here::here("plots/Fig3B-matrices.png"), p_B, width = 12, height = 12)
+pS1 <- plot_grid(p1, p_lower, ncol = 1, labels = c("D matrix", ""), align = "v", axis = "lr", scale = c(0.9, 1)) + paint_white_background()
+ggsave(here::here("plots/Fig3S1-matrices.png"), pS1, width = 12, height = 12)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# =========================================================================================================
+
+# Figure 3A: diagram cartoon
+#p_A <- ggdraw() + draw_image(here::here("plots/cartoons/Fig3A.png")) + theme(plot.background = element_rect(fill = "white", color = NA))
+p_A <-  ggplot(mtcars, aes(x = wt, y = mpg)) + annotate("text", x = 0 , y = 0, label = "Cartoon for\nmodel") + theme_void() + theme(plot.background = element_rect(fill = "white", color = NA))
+ggsave(here::here("plots/Fig3A-functional_groups.png"), p_A, width = 5, height = 5)
+
 
 
 # Figure 3C: community composition

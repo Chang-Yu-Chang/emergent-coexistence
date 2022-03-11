@@ -61,7 +61,7 @@ make_network <- function(isolates, pairs) {
     edges <- rbind(edges, edges_coext)
 
     # Network
-    graph <- tbl_graph(nodes = nodes , edges = edges, directed = T)
+    graph <- tbl_graph(nodes = nodes, edges = edges, directed = T)
 
     return(graph)
 }
@@ -328,7 +328,6 @@ plot_adjacent_matrix <- function(graph, show.legend = F, show.axis = F, show_lab
         NULL
 
 }
-
 
 
 # Compute the rank of an isolate based on its number of wins and lose in pairwise competition

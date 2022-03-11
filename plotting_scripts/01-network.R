@@ -438,7 +438,7 @@ pE <- networks_diag_sum %>%
     geom_boxplot(data = networks_diag_randomized_sum, aes(x = DistanceToDiagonal, y = FractionCoexistenceSum, group = DistanceToDiagonal, color = "permutation"),
                  outlier.size = 1) +
     geom_jitter(data = networks_diag_randomized_sum, aes(x = DistanceToDiagonal, y = FractionCoexistenceSum, group = DistanceToDiagonal, color = "permutation"),
-                size = .1, alpha = 0.5, width = .3) +
+                size = .2, alpha = 0.5, width = .3, shape = 21, height = .02) +
     # Observed networks
     geom_point(aes(x = DistanceToDiagonal, y = ObservedFractionCoexistenceSum, group = DistanceToDiagonal, color = "observation"), size = 2) +
     geom_line(aes(x = DistanceToDiagonal, y = ObservedFractionCoexistenceSum, color = "observation")) +
@@ -448,15 +448,15 @@ pE <- networks_diag_sum %>%
     scale_fill_manual(values = c("top" = "blue", "bottom" = "red", "n.s." = "grey")) +
     theme_classic() +
     theme(legend.position = "top", legend.title = element_blank(),
+          legend.text = element_text(size = 12),
           panel.border = element_rect(fill = NA, color = 1, size = 1.5)) +
-    guides(color = "none", fill = "none") +
+    guides(fill = "none") +
     labs(x = "|i-j|", y = "Fraction of pairwise coexitence")
 ggsave(here::here("plots/Fig2E-diagonal_analysis.png"), pE, width = 4, height = 4)
 
-
 #
 p_top <- plot_grid(pA, pB, nrow = 1, labels = LETTERS[1:2], rel_widths = c(1,2), scale = c(.7, .9))
-p_bottom <- plot_grid(pC, pD, pE, nrow = 1, labels = LETTERS[3:5], rel_widths = c(1,1.5,1.5), scale = c(.9, .9, .9))
+p_bottom <- plot_grid(pC, pD, pE, nrow = 1, labels = LETTERS[3:5], rel_widths = c(1,2,2), scale = c(.9, .9, .9))
 p <- plot_grid(p_top, p_bottom, nrow = 2) + paint_white_background()
 ggsave(here::here("plots/Fig2.png"), p, width = 12, height = 8)
 

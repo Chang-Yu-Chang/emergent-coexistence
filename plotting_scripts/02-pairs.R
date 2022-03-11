@@ -28,6 +28,7 @@ pairs_count <- pairs_coexistence %>%
     group_by(PairConspecific) %>%
     count()
 
+#===================================================================================================================================================
 
 # Figure 3A: one example community of crossfeeding networks
 ## Isolate growth rate and secretion
@@ -235,15 +236,13 @@ pairs_prep <- pairs_rec %>% prep(strings_as_factor = F)
 
 # Create workflow
 wf <- workflow() %>% add_recipe(pairs_rec)
-if (FALSE) {
-    ## Specify and fit the model for one penalty value
-    lasso_spec <- linear_reg(penalty = 0.1, mixture = 1) %>% set_engine("glmnet")
-    lasso_fit <- wf %>% add_model(lasso_spec) %>% fit(data = pairs_train)
-    lasso_fit %>%
-        extract_fit_parsnip() %>%
-        tidy() %>%
-        arrange(desc(abs(estimate)))
-}
+## Specify and fit the model for one penalty value
+lasso_spec <- linear_reg(penalty = 0.1, mixture = 1) %>% set_engine("glmnet")
+lasso_fit <- wf %>% add_model(lasso_spec) %>% fit(data = pairs_train)
+lasso_fit %>%
+    extract_fit_parsnip() %>%
+    tidy() %>%
+    arrange(desc(abs(estimate)))
 ## Specify and fit the model. Tune the lasso parameter: penalty
 set.seed(1)
 pairs_boot <- bootstraps(pairs_train) # Build a set of bootstrap resamples
@@ -253,105 +252,7 @@ lasso_grid <- tune_grid(wf %>% add_model(tune_spec), resamples = pairs_boot, gri
 ## Finalize the workflow. Pick the penalty value with lowest rmse (root mean square error)
 lowest_rmse <- lasso_grid %>% select_best("rmse")
 final_lasso <- finalize_workflow(wf %>% add_model(tune_spec), lowest_rmse)
-plot_lasso(final_lasso, pairs_train)
-
-
-if (FALSE) {
-    lasso_grid %>%
-        collect_metrics() %>%
-        ggplot(aes(penalty, mean, color = .metric)) +
-        geom_errorbar(aes(ymin = mean - std_err, ymax = mean + std_err), alpha = 0.5) +
-        geom_line(size = 1.5) +
-        facet_wrap(~.metric, scales = "free", nrow = 2) +
-        scale_x_log10() +
-        theme_classic() +
-        theme(legend.position = "none")
-
-}
-if (FALSE) {
-    ## Visualize the most important variables
-    final_lasso %>%
-        fit(pairs_train) %>%
-        extract_fit_parsnip() %>%
-        vi(lambda = lowest_rmse$penalty) %>%
-        mutate(Importance = abs(Importance), Variable = fct_reorder(Variable, Importance)) %>%
-        ggplot(aes(x = Importance, y = Variable, fill = Sign)) +
-        geom_col() +
-        labs(y = NULL)
-
-}
-if (FALSE) {
-
-    ## Full model
-    model_full <- glm(InteractionType ~., data = data_train, family = binomial)
-    ## Stepwise variable selection
-    model_step <- glm(InteractionType ~., data = data_train, family = binomial) %>%
-        MASS::stepAIC(trace = F)
-
-    broom::tidy(model_full) %>% filter(p.value < 0.05) %>%
-        arrange(desc(abs(estimate)))
-    broom::tidy(model_step) %>%
-        arrange(desc(abs(estimate)))
-}
-if (FALSE) {
-
-    ## Test multicollinearity
-    data_train_long <- data_train %>%
-        mutate(rowid = 1:n()) %>%
-        select(-c(InteractionType, PairFermenter, PairFamily)) %>%
-        pivot_longer(-rowid) %>%
-        full_join(., ., by = "rowid")
-
-    p1 <- data_train_long %>%
-        ggplot(aes(x = value.x, y = value.y)) +
-        geom_point() +
-        facet_wrap(name.x ~ name.y, scales = "free") +
-        theme_classic() +
-        labs()
-
-    ggsave(here::here("plots/Fig2S0-correlation.png"), p1, width = 20, height = 20)
-
-
-    ##
-    data_train %>%
-        select(-c(InteractionType, PairFermenter, PairFamily)) %>%
-        cor() %>%
-        as_tibble() %>%
-        mutate(Row = colnames(.)) %>%
-        pivot_longer(-Row, names_to = "Column") %>%
-        filter(Row != Column) %>%
-        filter(abs(value) > 0.95)
-    ggplot() +
-        geom_histogram(aes(x = value), color = 1, fill = "white") +
-        theme_classic()
-
-
-
-    # Make predictions
-    data_pred <- model_full %>% predict(select(data_train, -InteractionType), type = "response")
-    data_pred <- ifelse(data_pred > 0.5, 1, 0)
-    table(data_train$InteractionType == data_pred) # Accuracy
-
-    tibble(x = data_train$InteractionType, y = data_pred) %>%
-        ggplot() +
-        geom_point(aes(x = x, y = y)) +
-        theme_classic()
-
-
-
-
-    # Make predictions
-    probabilities <- model %>% predict(test.data, type = "response")
-    predicted.classes <- ifelse(probabilities > 0.5, "pos", "neg")
-    # Model accuracy
-    mean(predicted.classes==test.data$diabetes)
-
-    pairs_meta %>%
-        mutate(InteractionType = ifelse(InteractionType == "coexistence", 1, 0)) %>%
-        glm(formula = InteractionType ~ ends_with("d"), family = "binomial") %>%
-        broom::tidy()
-}
-
+#plot_lasso(final_lasso, pairs_train)
 
 
 
@@ -386,26 +287,76 @@ pS2 <- pairs_coexistence %>%
     draw_image(here::here("plots/cartoons/Fig2B_RR.png"), x = 1, y = 0, scale = .6, vjust = .25, hjust = .5)
 
 ggsave(here::here("plots/Fig2S2-pairs_alike.png"), pS2, width = 3, height = 3)
-if (FALSE) {
 
-    ## Stat: whether FF and RR pairs coexist more often than FR pairs
-    ### observation
-    observed_indep_statistic <- pairs_coexistence %>%
-        select(PairConspecific, InteractionType) %>%
-        specify(InteractionType ~ PairConspecific, success = "coexistence") %>%
-        calculate(stat = "Chisq", order = c("conspecific", "heterospecific"))
-    ### null
-    null_distribution_simulated <- pairs_coexistence %>%
-        select(PairConspecific, InteractionType) %>%
-        specify(InteractionType ~ PairConspecific, success = "coexistence") %>%
-        hypothesize(null = "independence") %>%
-        generate(reps = 1000, type = "permute") %>%
-        calculate(stat = "Chisq", order = c("conspecific", "heterospecific"))
-    ### p
-    null_distribution_simulated %>% get_p_value(obs_stat = observed_indep_statistic, direction = "greater")
+
+# Figure 2S3. Growth curve vs. pairwise outcomes
+## Sylvie's growth curve
+isolates_curves1 <- read_csv(here::here("data/output/isolates_curves1.csv")) %>%
+    filter(CS == "glucose") %>%
+    select(ID, Time, OD620) %>%
+    # Substract the blank
+    group_by(ID) %>%
+    mutate(OD620Blank = min(OD620)) %>%
+    mutate(OD620 = OD620 - OD620Blank, .keep = "unused")
+
+#$ Jean's growth curves
+isolates_curves2 <- read_csv(here::here("data/output/isolates_curves2.csv")) %>%
+    filter(CS == "glucose") %>%
+    select(ID, Time, OD620)
+
+plot_pairwise_curve <- function(pairs_simple_row) {
+    if (nrow(pairs_simple_row$GrowthCurve1[[1]]) != 0 & nrow(pairs_simple_row$GrowthCurve2[[1]]) != 0) {
+        temp1 <- pairs_simple_row$GrowthCurve1[[1]] %>%
+            mutate(Dominance = ifelse(pairs_simple_row$Dominant == "isolate1", T, F)) %>%
+            mutate(Fermenter = pairs_simple_row$Fermenter1)
+        temp2 <- pairs_simple_row$GrowthCurve2[[1]] %>%
+            mutate(Dominance = ifelse(pairs_simple_row$Dominant == "isolate2", T, F)) %>%
+            mutate(Fermenter = pairs_simple_row$Fermenter2)
+
+        bind_rows(temp1, temp2) %>%
+            ggplot() +
+            geom_line(aes(x = Time, y = OD620, linetype = Dominance, color = Fermenter), size = 1) +
+            #scale_y_log10() +
+            scale_linetype_manual(values = c("TRUE" = 1, "FALSE" = 2), labels = c("TRUE" = "winner", "FALSE" = "loser")) +
+            scale_color_manual(values = c("TRUE" = unname(category_color["fermenter"]), "FALSE" = unname(category_color["respirator"]))) +
+            theme_classic() +
+            theme(legend.position = c(.1, .5), legend.title = element_blank(),
+                  legend.background = element_blank(),
+                  axis.title = element_blank(),
+                  plot.background = element_rect(size = 2, color = interaction_color[pairs_simple_row$InteractionType])) +
+            guides(color = "none", linetype = "none") +
+            ggtitle(paste0(pairs_simple_row$Community, "-", pairs_simple_row$ID1, "-", pairs_simple_row$ID2))
+    } else {
+        return(NULL)
+    }
+}
+plot_pairwise_curve_group <- function(isolates_curves) {
+    isolates_curves_ID <- isolates_curves %>% distinct(ID)
+
+    pairs_simple <- pairs %>%
+        filter(Assembly == "self_assembly") %>%
+        mutate(Dominant = ifelse(From == Isolate1, "isolate1", "isolate2")) %>%
+        select(Community, InteractionType, PairFermenter, Isolate1, Isolate2, ID1, ID2, Fermenter1, Fermenter2, Dominant) %>%
+        rowwise() %>%
+        mutate(GrowthCurve1 = isolates_curves %>% filter(ID == ID1) %>% list()) %>%
+        mutate(GrowthCurve2 = isolates_curves %>% filter(ID == ID2) %>% list()) %>%
+        drop_na(ID1, ID2, Fermenter1, Fermenter2) %>%
+        filter(ID1 %in% isolates_curves_ID$ID, ID2 %in% isolates_curves_ID$ID) %>%
+        arrange(InteractionType, PairFermenter)
+    p_list <- rep(list(NA), nrow(pairs_simple))
+    for (i in 1:nrow(pairs_simple)) p_list[[i]] <- plot_pairwise_curve(pairs_simple[i,]); print(i)
+    p <- plot_grid(plotlist = p_list, nrow = 10, scale = .9) + paint_white_background()
+    return(p)
+
+
 }
 
-# Figure 2S3. lasso regression testing whether pairwise coexistence is predicted by metabolic dissimilarity
+p1 <- plot_pairwise_curve_group(isolates_curves1)
+p2 <- plot_pairwise_curve_group(isolates_curves2)
+ggsave(here::here("plots/Fig2S3A-pairwise_growthcurve_sylvie.png"), p1, width = 45, height = 25)
+ggsave(here::here("plots/Fig2S3B-pairwise_growthcurve_jean.png"), p2, width = 45, height = 25)
+
+# Figure 2S4. lasso regression testing whether pairwise coexistence is predicted by metabolic dissimilarity
 ## cor plot between all predictors
 factor_level <- c(str_subset(names(pairs_train), "X"),
                   str_subset(names(pairs_train), "r_glucose"),
@@ -413,7 +364,7 @@ factor_level <- c(str_subset(names(pairs_train), "X"),
                   str_subset(names(pairs_train), "r_lactate"),
                   str_subset(names(pairs_train), "r_succinate"),
                   str_subset(names(pairs_train), "pH"))
-p0 <- pairs_train %>%
+p0_0 <- pairs_train %>%
     select(-Pair, -InteractionType) %>%
     cor() %>%
     as_tibble() %>%
@@ -427,26 +378,63 @@ p0 <- pairs_train %>%
     scale_y_discrete(position = "right") +
     #scale_y_reverse() +
     theme_classic() +
-    theme(axis.text.x = element_text(angle = 90, vjust = 0), axis.title = element_blank()) +
-    guides(fill = guide_colorbar(title = "r")) +
+    theme(axis.text.x = element_text(angle = 90, vjust = 0), axis.title = element_blank(),
+          legend.position = "top") +
+    guides(fill = guide_colorbar(title = "Correlation coefficient")) +
     labs()
 
-if (FALSE) {
-## Find penalty parameter with lowest rmse
-p2 <- lasso_grid %>%
-    collect_metrics() %>%
-    drop_na() %>%
-    ggplot(aes(penalty, mean)) +
-    geom_vline(xintercept = lowest_rmse$penalty, color = "red") +
-    geom_errorbar(aes(ymin = mean - std_err, ymax = mean + std_err), alpha = 0.5) +
-    geom_line(size = 1.5) +
-    #geom_text(x = lowest_rmse$penalty, y = Inf, label = paste0("penalty=", round(lowest_rmse$penalty, 3)), vjust = 1) +
-    facet_wrap(~.metric, scales = "free_y", nrow = 2, labeller = labeller(.metric = toupper)) +
-    scale_x_log10() +
-    theme_classic() +
-    theme(legend.position = "none", strip.background = element_rect(color = NA),
-          panel.border = element_rect(fill = NA, color = 1)) +
+## Color legend
+temp <- tibble(Variable = factor_level) %>%
+    mutate(Type = case_when(str_detect(Variable, "^X_") ~ "secretion",
+                            str_detect(Variable, "^r_") ~ "growth rate",
+                            str_detect(Variable, "^pH") ~ "pH")) %>%
+    mutate(temp = n():1)
+temp2 <- temp %>%
+    group_by(Type) %>%
+    summarize(Variable = median(temp), Text = unique(Type))
+
+p0_1 <- temp %>%
+    ggplot() +
+    geom_tile(aes(x = .5, y = Variable, fill = Type), width = .1) +
+    geom_text(data = temp2, aes(x = .75, y = Variable, label = Text, color = Type), angle = 270) +
+    scale_x_continuous(limits = c(0,1)) +
+    theme_void() +
+    theme() +
+    guides(fill = "none", color = "none") +
     labs()
+
+p0_2 <- temp %>%
+    ggplot() +
+    geom_tile(aes(x = Variable, y = .75, fill = Type), height = .1) +
+    geom_text(data = temp2, aes(x = Variable, y = .5, label = Text, color = Type)) +
+    scale_y_continuous(limits = c(0,1)) +
+    theme_void() +
+    theme() +
+    guides(fill = "none", color = "none") +
+    labs()
+
+plot_grid(p0_0, p0_1, nrow = 1, rel_widths = c(1, 0.1), axis = "tb", align = "h")
+#plot_grid(p0_2, NULL, p0_0, p0_1, nrow = 2, rel_widths = c(1, .2), rel_heights = c(.2, 1), axis = "tblr", align = "hv")
+
+
+
+
+if (FALSE) {
+    ## Find penalty parameter with lowest rmse
+    p2 <- lasso_grid %>%
+        collect_metrics() %>%
+        drop_na() %>%
+        ggplot(aes(penalty, mean)) +
+        geom_vline(xintercept = lowest_rmse$penalty, color = "red") +
+        geom_errorbar(aes(ymin = mean - std_err, ymax = mean + std_err), alpha = 0.5) +
+        geom_line(size = 1.5) +
+        #geom_text(x = lowest_rmse$penalty, y = Inf, label = paste0("penalty=", round(lowest_rmse$penalty, 3)), vjust = 1) +
+        facet_wrap(~.metric, scales = "free_y", nrow = 2, labeller = labeller(.metric = toupper)) +
+        scale_x_log10() +
+        theme_classic() +
+        theme(legend.position = "none", strip.background = element_rect(color = NA),
+              panel.border = element_rect(fill = NA, color = 1)) +
+        labs()
 
 }
 
@@ -471,20 +459,40 @@ fit_lasso <- function (pairs_train) {
     ## Finalize the workflow. Pick the penalty value with lowest rmse (root mean square error)
     lowest_rmse <- lasso_grid %>% select_best("rmse")
     final_lasso <- finalize_workflow(wf %>% add_model(tune_spec), lowest_rmse)
-    return(final_lasso)
+    return(list(final_lasso=final_lasso, lowest_rmse=lowest_rmse))
 }
-plot_lasso <- function(lasso, pairs) {
-lasso %>%
-    fit(pairs) %>%
-    extract_fit_parsnip() %>%
-    #tidy() %>%
-    #arrange(desc(abs(estimate))) %>%
-    vi(lambda = lowest_rmse$penalty) %>%
-    mutate(Importance = abs(Importance), Variable = fct_reorder(Variable, Importance)) %>%
-    ggplot(aes(x = Importance, y = Variable, fill = Sign)) +
-    geom_col() +
-    theme_bw() +
-    labs(y = NULL)
+plot_lasso <- function(lasso, pairs, lowest_rmse) {
+    lasso %>%
+        fit(pairs) %>%
+        extract_fit_parsnip() %>%
+        #tidy() %>%
+        #arrange(desc(abs(estimate))) %>%
+        vi(lambda = lowest_rmse$penalty) %>%
+        mutate(Importance = abs(Importance), Variable = fct_reorder(Variable, Importance)) %>%
+        ggplot(aes(x = Importance, y = Variable, fill = Sign)) +
+        geom_col() +
+        theme_bw() +
+        labs(y = NULL)
+
+}
+
+
+if (FALSE) {
+    pairs_train2 <- pairs_meta %>%
+        filter(Assembly == "self_assembly") %>%
+        mutate(InteractionType = ifelse(InteractionType == "coexistence", 1, 0)) %>%
+        select(InteractionType, ends_with("d")) %>%
+        select(InteractionType, contains("X_") & !contains("_0hr"), contains("curver")) %>%
+        mutate(across(where(is.character), as_factor)) %>%
+        mutate(Pair = 1:n()) %>%
+        drop_na()
+    names(pairs_train2)
+    lasso2 <- fit_lasso(pairs_train2)
+    p2 <- plot_lasso(lasso2$final_lasso, pairs_train2, lasso2$lowest_rmse) +
+        theme(legend.position = "none") +
+        ggtitle("All pairs, all d")
+    p2
+
 
 }
 
@@ -497,10 +505,10 @@ pairs_train1 <- pairs_meta %>%
     mutate(Pair = 1:n()) %>%
     drop_na()
 lasso1 <- fit_lasso(pairs_train1)
-p1 <- plot_lasso(lasso1, pairs_train1) +
+p1 <-  plot_lasso(lasso1$final_lasso, pairs_train1, lasso1$lowest_rmse) +
     theme(legend.position = "none") +
     ggtitle("All pairs, all d")
-
+p1
 ## FF pairs
 pairs_train2 <- pairs_meta %>%
     filter(Assembly == "self_assembly") %>%
@@ -530,12 +538,12 @@ p3 <- plot_lasso(lasso3, pairs_train3) +
 
 
 p_bottom <- plot_grid(p1, p2, p3, nrow = 1, labels = LETTERS[2:4], scale = .9, axis = "tb", align = "h")
-pS3 <- plot_grid(p0, p_bottom, ncol = 1, labels = c("A", ""), rel_heights = c(1.5, 1), scale = c(.9, 1)) + paint_white_background()
-ggsave(here::here("plots/Fig2S3-lasso_regression.png"), pS3, width = 10, height = 14)
+pS4 <- plot_grid(p0, p_bottom, ncol = 1, labels = c("A", ""), rel_heights = c(1.5, 1), scale = c(.9, 1)) + paint_white_background()
+ggsave(here::here("plots/Fig2S4-lasso_regression.png"), pS3, width = 10, height = 14)
 
 
 
-# Figure 2S4. logistic regression on lasso-selected features
+# Figure 2S5. logistic regression on lasso-selected features
 ## All pairs
 feature1 <- lasso1 %>%
     fit(pairs_train1) %>%
@@ -591,11 +599,11 @@ p2 <- pairs_predicted %>%
     ggtitle("FF pairs")
 
 pS4 <- plot_grid(p1, p2, nrow = 1, axis = "tbrl", align = "h", labels = c("A", "B"), rel_widths = c(1,1.2))
-ggsave(here::here("plots/Fig2S4-regression.png"), pS4 , width = 8, height = 3)
+ggsave(here::here("plots/Fig2S5-regression.png"), pS4 , width = 8, height = 3)
 
 
 
-# Figure 2S5. Ranked r vs. ranked
+# Figure 2S6. Ranked r vs. ranked
 isolate_ranked <- isolates %>%
     filter(Assembly == "self_assembly") %>%
     select(Community, Fermenter, r_glucose_midhr, Rank) %>%
@@ -610,7 +618,7 @@ isolate_ranked %>%
 cor.test(isolate_ranked$Rank, isolate_ranked$r_ranked) %>%
     tidy()
 
-pS5 <- isolate_ranked %>%
+pS6 <- isolate_ranked %>%
     ggplot() +
     geom_smooth(aes(x = r_ranked, y = Rank), formula = y ~ x, method = "lm", color = 1) +
     geom_point(aes(x = r_ranked, y = Rank, color = Fermenter), shape = 21, size = 2, stroke = 1, position = position_jitter(width = .1, height = .1)) +
@@ -621,7 +629,19 @@ pS5 <- isolate_ranked %>%
     theme(legend.position = "top", legend.title = element_blank()) +
     labs(x = "r_mid rank", y = "Isolate rank")
 
-ggsave(here::here("plots/Fig2S5-r_rank.png"), pS5, width = 4, height = 4)
+ggsave(here::here("plots/Fig2S6-r_rank.png"), pS6, width = 4, height = 4)
+
+
+# Figure 2S7. r_glu_mid distribution
+isolates %>%
+    filter(Assembly == "self_assembly") %>%
+    drop_na(r_glucose_midhr) %>%
+    ggplot() +
+    geom_histogram(aes(x = r_glucose_midhr), binwidth = 0.01, color = 1, fill = "white") +
+    geom_vline(xintercept = 0.06, linetype = 2) +
+    scale_y_continuous(breaks = scales::pretty_breaks(n=3)) +
+    theme_classic()
+
 
 
 #======================================================================================================

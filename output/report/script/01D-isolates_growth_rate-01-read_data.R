@@ -1,5 +1,6 @@
 #' Read isolate monoculture growth rates in various carbon sources
 library(tidyverse)
+library(growthcurver)
 
 isolates_ID_match <- read_csv(here::here("data/temp/isolates_ID_match.csv"))
 # Byproduct measurement on glucose. Data from Sylvie
@@ -7,38 +8,58 @@ isolates_byproduct <- read_csv("~/Dropbox/lab/invasion-network/data/raw/growth_r
     select(OD620_16h = OD620, ID = SangerID, Glucose_perc, acetate_mM, succinate_mM, lactate_mM, gluconate_mM, ketogluconate_mM)
 isolates_byproduct_time <- read_csv("~/Dropbox/lab/invasion-network/data/raw/growth_rate/Estrela_2021_isolates_ph_OAs.csv") %>%
     select(ID = SangerID, Time = time_hours, OD620, pH, Glucose_perc, acetate_mM, succinate_mM, lactate_mM)
+
+
+
 # Growth curve data from Sylvie
-isolates_curves <- read_csv("~/Dropbox/lab/invasion-network/data/raw/growth_rate/raw_gcurves_all_sylvies.csv") %>%
+isolates_curves1 <- read_csv("~/Dropbox/lab/invasion-network/data/raw/growth_rate/raw_gcurves_all_sylvies.csv") %>%
     select(Date = date, ID = seq, Well = well, CS = csource, Time = t, OD620 = abs) %>%
     filter(ID %in% isolates_ID_match$ID) %>%
     mutate(CS = str_replace(CS, "Dlactate", "lactate")) %>%
-    # Use the latest measured replicates
+    # Use the latest date measured replicates and use one replicate
     group_by(ID, CS, Time) %>%
-    filter(Date == max(Date))
+    filter(Date == max(Date), Well == unique(Well)[1])
+isolates_curves_list1 <- isolates_curves1 %>%
+    nest(GrowthCurve = c(Time, OD620)) %>%
+    rowwise() %>%
+    # growthcurver fit
+    mutate(GrowthCurveOutcome = SummarizeGrowth(GrowthCurve$Time, GrowthCurve$OD620) %>% list())
+isolates_growthcurver1 <- isolates_curves_list1 %>%
+    rowwise() %>%
+    mutate(r = GrowthCurveOutcome$vals$r, sigma = GrowthCurveOutcome$vals$sigma) %>%
+    group_by(ID, CS) %>%
+    slice(1) %>%
+    select(ID, CS, r) %>%
+    pivot_wider(names_from = CS, values_from = r, names_glue = "r_{CS}_curver")
+
+# Growth curve from Jean
+isolates_curves2 <- read_csv("~/Dropbox/lab/invasion-network/data/raw/growth_rate/20GC_Data.csv") %>%
+    select(ID = SangerID, CS, Time, OD620) %>%
+    filter(ID %in% isolates_ID_match$ID) %>%
+    mutate(CS = tolower(CS)) %>%
+    mutate(CS = str_replace(CS, "d-", "") %>% str_replace("l-", "") %>% str_replace("2-", "")) %>%
+    filter(CS %in% c("glucose", "lactate", "acetate", "succinate"))
+isolates_curves_list2 <- isolates_curves2 %>%
+    nest(GrowthCurve = c(Time, OD620)) %>%
+    rowwise() %>%
+    # growthcurver fit
+    mutate(GrowthCurveOutcome = SummarizeGrowth(GrowthCurve$Time, GrowthCurve$OD620) %>% list())
+isolates_growthcurver2 <- isolates_curves_list2 %>%
+    rowwise() %>%
+    mutate(r = GrowthCurveOutcome$vals$r, sigma = GrowthCurveOutcome$vals$sigma) %>%
+    select(ID, CS, r) %>%
+    pivot_wider(names_from = CS, values_from = r, names_glue = "r_{CS}_curver")
 
 
-if (FALSE) {
-# OD data from Jean. Filter the 16hr data only
-isolates_OD_DW <- read_csv("~/Dropbox/lab/invasion-network/data/raw/growth_rate/OD_Data_MH2.csv") %>%
-    filter(Time == 16) %>% select(ID = Sequence, CS = Carbon_Source, OD) %>%
-    mutate(CS = sub("[LD]-", "", CS) %>% tolower() %>% paste0("OD620_16h_", .))
-    # Isolate's OD at 16 hr in DW96 plate. Jean's data
-isolates_OD_DW_w <- isolates_OD_DW %>%
-    filter(!is.na(ID), ID != "N/A") %>%
-    mutate(ID = as.numeric(ID)) %>%
-    pivot_wider(names_from = CS, values_from = OD)
-
-
-}
 
 # Growth curve and growth rates -----
 calculate_r <- function(N0, N1, T0, T1) (log10(N1) - log10(N0)) / (T1 - T0)
-isolates_curves_T0 <- isolates_curves %>%
+isolates_curves_T0 <- isolates_curves1 %>%
     group_by(ID, Well, CS) %>%
     filter(Time == min(Time)) %>%
     mutate(T0 = ifelse(Time == min(Time), 0, Time), N0 = OD620) %>%
     select(-Time, -OD620)
-isolates_growth <- isolates_curves %>%
+isolates_growth <- isolates_curves1 %>%
     filter(Time %in% c(12, 16, 28)) %>%
     group_by(ID, CS) %>%
     arrange(ID, CS) %>%
@@ -156,8 +177,6 @@ for (i in 1:nrow(isolates_byproduct_time_w)) {
 
     }
 }
-counter
-x
 
 isolates_preferred <- tibble(ID = isolates_byproduct_time_w$ID, PreferredCS = x)
 isolates_secreted <- isolates_byproduct_time_w %>%
@@ -170,32 +189,6 @@ isolates_secreted <- isolates_byproduct_time_w %>%
 isolates_preference <- isolates_preferred %>% left_join(isolates_secreted)
 
 
-if (FALSE) {
-## Acids concentration over time
-coeff <- 5
-p <- isolates_byproduct_time %>%
-    mutate(ID = factor(ID)) %>%
-    # Remove a CS if it is not produced in any of the time point sampled
-    filter(!all(acetate_mM == 0), !all(lactate_mM == 0), !all(succinate_mM == 0)) %>%
-    ggplot() +
-    geom_line(aes(x = Time, y = acetate_mM, color = "acetate")) +
-    geom_point(aes(x = Time, y = acetate_mM, color = "acetate")) +
-    geom_line(aes(x = Time, y = lactate_mM * coeff, color = "lactate")) +
-    geom_point(aes(x = Time, y = lactate_mM * coeff, color = "lactate")) +
-    geom_line(aes(x = Time, y = succinate_mM * coeff, color = "succinate")) +
-    geom_point(aes(x = Time, y = succinate_mM * coeff, color = "succinate")) +
-    geom_text(data = isolates_preference, aes(label = PreferredCS), x = 8, y = Inf, size = 2, vjust = 1) +
-    scale_y_continuous(name = "acetate (mM)", sec.axis = sec_axis(~./coeff, name = "lactate (mM) or succinate (mM)")) +
-    scale_color_manual(values = c("acetate" = "red", "lactate" = "green", "succinate" = "blue")) +
-    facet_wrap(.~ID, scales = "free_y") +
-    theme_bw() +
-    theme(legend.position = "top") +
-    labs(x = "Time", color = "")
-
-ggsave("../figure/01D-byproduct_conc.png", plot = p, width = 20 , height = 10)
-
-
-}
 
 ## Manual assignment for crappy isolates
 ### From succinate
@@ -275,6 +268,7 @@ isolates_leakiness <- isolates_byproduct_time %>%
 
 # Combine growth rate, OD, pH, preference, secretion data
 isolates_growth_traits <- isolates_ID_match %>%
+    left_join(isolates_growthcurver2) %>%
     left_join(isolates_growth_w_mid) %>%
     left_join(isolates_growth_w_max) %>%
     left_join(isolates_growth) %>%
@@ -289,5 +283,5 @@ isolates_growth_traits <- isolates_ID_match %>%
 
 
 write_csv(isolates_growth_traits, file = here::here("data/temp/isolates_growth_traits.csv"))
-write_csv(isolates_curves, file = here::here("data/output/isolates_curves.csv"))
-
+write_csv(isolates_curves1, file = here::here("data/output/isolates_curves1.csv"))
+write_csv(isolates_curves2, file = here::here("data/output/isolates_curves2.csv"))

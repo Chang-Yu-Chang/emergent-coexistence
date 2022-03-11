@@ -1,7 +1,7 @@
 library(tidyverse)
 
 # Generate the input_csv files ----
-output_dir = "~/Dropbox/lab/invasion-network/simulation/data/raw8/"
+output_dir = "~/Dropbox/lab/invasion-network/simulation/data/raw9/"
 
 # Example parameters
 input_parameters <- tibble(
@@ -26,7 +26,7 @@ input_parameters <- tibble(
     sigc = 5,
     n_communities = 20,
     n_wells = 100, # Note that the well number (column number) of init_N0 has to match n_wells
-    metabolism = "two-families", # "common", "two-families", "specific"
+    metabolism = "common", # "common", "two-families", "specific"
     rs = 0,
 )
 
@@ -162,7 +162,6 @@ draw_pairs_from_community <- function(N_community_long) {
 
 
 # Pool pairs. Use isolates that can grow in monoculture
-
 ## Use isolates that can grow in monoculture
 set.seed(1)
 sp_mono <- read_csv(paste0(output_dir, "monoculture-1_end.csv")) %>%
@@ -199,7 +198,7 @@ temp <- N_community_end %>%
     # Remove rare species (relative abundance <0.01)
     group_by(Community) %>%
     mutate(RelativeAbundance = Abundance/sum(Abundance)) %>%
-    filter(RelativeAbundance > 0.01) %>%
+    #filter(RelativeAbundance > 0.01) %>%
     # Order species and community
     mutate(Species = ordered(Species, sal$Species)) %>%
     mutate(Community = ordered(Community, colnames(N_community_end))) %>%
