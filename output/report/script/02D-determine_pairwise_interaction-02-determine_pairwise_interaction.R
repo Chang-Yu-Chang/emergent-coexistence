@@ -12,6 +12,18 @@ pairs_freq <- read_csv(here::here("data/output/pairs_freq.csv")) %>%
     #mutate(Community = ordered(Community, levels = communities$Community)) %>%
     arrange(Time, Community, Isolate1, Isolate2, Isolate1InitialODFreq, Isolate2InitialODFreq)
 
+if (FALSE) {
+temp <- tibble(comm = LETTERS[1:4], Community = c("AcrAss1", "AcrAss2", "RanAss1", "RanAss2"))
+pairs_freq %>%
+    filter(str_detect(Community, "Ass")) %>%
+    left_join(temp) %>%
+    group_by(comm, Time) %>%
+    summarize(n())
+    distinct(Community, Isolate1, Isolate2, Time, Isolate1InitialODFreq)
+
+}
+
+
 ## R Function for plotting frequencies changes
 plot_frequency_change <- function (pairs_freq_comm) {
     comm <- unique(pairs_freq$Community)

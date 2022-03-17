@@ -27,6 +27,34 @@ AcrAss1,5,8,1_NA_1,0.21_NA_0.88,NA,1,NA,1,exclusion,competitive exclusion,5,8
 AcrAss1,6,7,1_NA_-1,0.04_NA_0.04,NA,1,NA,-1,coexistence,stable coexistence,6,7
 AcrAss1,6,8,1_NA_-1,0.04_NA_0.05,NA,1,NA,-1,coexistence,stable coexistence,6,8
 AcrAss1,7,8,1_NA_-1,0.15_NA_0.89,NA,1,NA,-1,coexistence,stable coexistence,7,8
+AcrAss2,1,2,-1_NA_-1,0.05_NA_0.92,NA,-1,NA,-1,exclusion,competitive exclusion,2,1
+AcrAss2,1,3,1_NA_1,0.98_NA_0.96,NA,1,NA,1,exclusion,competitive exclusion,1,3
+AcrAss2,1,4,1_NA_1,0.96_NA_0.96,NA,1,NA,1,exclusion,competitive exclusion,1,4
+AcrAss2,1,5,1_NA_-1,0.92_NA_0.92,NA,1,NA,-1,coexistence,stable coexistence,1,5
+AcrAss2,1,6,1_NA_-1,0.87_NA_0.89,NA,1,NA,-1,coexistence,stable coexistence,1,6
+AcrAss2,1,7,-1_NA_-1,0.03_NA_0.08,NA,-1,NA,-1,exclusion,competitive exclusion,7,1
+AcrAss2,1,8,-1_NA_-1,0.03_NA_0.02,NA,-1,NA,-1,exclusion,competitive exclusion,8,1
+AcrAss2,2,3,1_NA_-1,0.88_NA_0.91,NA,1,NA,-1,coexistence,stable coexistence,2,3
+AcrAss2,2,4,1_NA_-1,0.9_NA_0.91,NA,1,NA,-1,coexistence,stable coexistence,2,4
+AcrAss2,2,5,1_NA_1,0.95_NA_0.97,NA,1,NA,1,exclusion,competitive exclusion,2,5
+AcrAss2,2,6,1_NA_1,0.76_NA_0.99,NA,1,NA,1,exclusion,competitive exclusion,2,6
+AcrAss2,2,7,-1_NA_-1,0.04_NA_0.31,NA,-1,NA,-1,exclusion,competitive exclusion,7,2
+AcrAss2,2,8,-1_NA_-1,0.04_NA_0.04,NA,-1,NA,-1,exclusion,competitive exclusion,8,2
+AcrAss2,3,4,1_NA_-1,0.21_NA_0.14,NA,1,NA,-1,coexistence,stable coexistence,3,4
+AcrAss2,3,5,1_NA_-1,0.91_NA_0.93,NA,1,NA,-1,coexistence,stable coexistence,3,5
+AcrAss2,3,6,1_NA_-1,0.07_NA_0.18,NA,1,NA,-1,coexistence,stable coexistence,3,6
+AcrAss2,3,7,-1_NA_-1,0.01_NA_0.05,NA,-1,NA,-1,exclusion,competitive exclusion,7,3
+AcrAss2,3,8,-1_NA_-1,0.03_NA_0.04,NA,-1,NA,-1,exclusion,competitive exclusion,8,3
+AcrAss2,4,5,1_NA_-1,0.9_NA_0.92,NA,1,NA,-1,coexistence,stable coexistence,4,5
+AcrAss2,4,6,1_NA_-1,0.1_NA_0.47,NA,1,NA,-1,coexistence,stable coexistence,4,6
+AcrAss2,4,7,-1_NA_-1,0.03_NA_0.03,NA,-1,NA,-1,exclusion,competitive exclusion,7,4
+AcrAss2,4,8,-1_NA_-1,0.02_NA_0.34,NA,-1,NA,-1,exclusion,competitive exclusion,8,4
+AcrAss2,5,6,1_NA_-1,0.07_NA_0.09,NA,1,NA,-1,coexistence,stable coexistence,5,6
+AcrAss2,5,7,-1_NA_-1,0.01_NA_0.01,NA,-1,NA,-1,exclusion,competitive exclusion,7,5
+AcrAss2,5,8,-1_NA_-1,0.01_NA_0.01,NA,-1,NA,-1,exclusion,competitive exclusion,8,5
+AcrAss2,6,7,1_NA_-1,0.05_NA_0.04,NA,1,NA,-1,coexistence,stable coexistence,6,7
+AcrAss2,6,8,-1_NA_-1,0.03_NA_0.03,NA,-1,NA,-1,exclusion,competitive exclusion,8,6
+AcrAss2,7,8,-1_NA_-1,0.02_NA_0.58,NA,-1,NA,-1,exclusion,competitive exclusion,8,7
 C10R2,1,2,-1_-1_-1,0_0_0,FALSE,-1,-1,-1,exclusion,competitive exclusion,2,1
 C10R2,1,3,1_1_1,1_1_1,TRUE,1,1,1,exclusion,competitive exclusion,1,3
 C10R2,2,3,1_1_0,1_0.99_0.97,NA,1,1,0,coexistence,stable coexistence,2,3
@@ -244,22 +272,28 @@ RanAss1,7,8,1_NA_1,0.59_NA_0.71,NA,1,NA,1,exclusion,competitive exclusion,7,8
 RanAss2,1,2,1_NA_1,0.37_NA_0.82,NA,1,NA,1,exclusion,competitive exclusion,1,2
 RanAss2,1,3,1_NA_-1,0.16_NA_0.76,NA,1,NA,-1,coexistence,stable coexistence,1,3
 RanAss2,1,4,1_NA_-1,0.93_NA_0.85,NA,1,NA,-1,coexistence,stable coexistence,1,4
-RanAss2,1,5,1_NA_NA,0.94_NA_NA,NA,NA,NA,NA,NA,NA,1,5
-RanAss2,1,6,1_NA_NA,0.07_NA_NA,NA,NA,NA,NA,NA,NA,1,6
-RanAss2,1,7,1_NA_NA,0.91_NA_NA,NA,NA,NA,NA,NA,NA,1,7
-RanAss2,1,8,1_NA_NA,0.1_NA_NA,NA,NA,NA,NA,NA,NA,1,8
+RanAss2,1,5,1_NA_1,0.94_NA_0.97,NA,1,NA,1,exclusion,competitive exclusion,1,5
+RanAss2,1,6,1_NA_-1,0.07_NA_0.71,NA,1,NA,-1,coexistence,stable coexistence,1,6
+RanAss2,1,7,1_NA_1,0.91_NA_0.96,NA,1,NA,1,exclusion,competitive exclusion,1,7
+RanAss2,1,8,1_NA_-1,0.1_NA_0.53,NA,1,NA,-1,coexistence,stable coexistence,1,8
 RanAss2,2,3,-1_NA_-1,0.09_NA_0.9,NA,-1,NA,-1,exclusion,competitive exclusion,3,2
 RanAss2,2,4,1_NA_-1,0.97_NA_0.88,NA,1,NA,-1,coexistence,stable coexistence,2,4
-RanAss2,2,5,1_NA_NA,0.96_NA_NA,NA,NA,NA,NA,NA,NA,2,5
-RanAss2,2,6,-1_NA_NA,0.06_NA_NA,NA,NA,NA,NA,NA,NA,2,6
-RanAss2,2,7,1_NA_NA,0.94_NA_NA,NA,NA,NA,NA,NA,NA,2,7
-RanAss2,2,8,-1_NA_NA,0.07_NA_NA,NA,NA,NA,NA,NA,NA,2,8
+RanAss2,2,5,1_NA_1,0.96_NA_0.96,NA,1,NA,1,exclusion,competitive exclusion,2,5
+RanAss2,2,6,-1_NA_-1,0.06_NA_0.07,NA,-1,NA,-1,exclusion,competitive exclusion,6,2
+RanAss2,2,7,1_NA_-1,0.94_NA_0.93,NA,1,NA,-1,coexistence,stable coexistence,2,7
+RanAss2,2,8,-1_NA_-1,0.07_NA_0.94,NA,-1,NA,-1,exclusion,competitive exclusion,8,2
 RanAss2,3,4,1_NA_-1,0.95_NA_0.8,NA,1,NA,-1,coexistence,stable coexistence,3,4
-RanAss2,3,5,1_NA_NA,0.96_NA_NA,NA,NA,NA,NA,NA,NA,3,5
-RanAss2,3,6,1_NA_NA,0.21_NA_NA,NA,NA,NA,NA,NA,NA,3,6
-RanAss2,3,7,1_NA_NA,0.96_NA_NA,NA,NA,NA,NA,NA,NA,3,7
-RanAss2,3,8,1_NA_NA,0.3_NA_NA,NA,NA,NA,NA,NA,NA,3,8
-RanAss2,4,5,1_NA_NA,0.22_NA_NA,NA,NA,NA,NA,NA,NA,4,5
-RanAss2,4,6,1_NA_NA,0.04_NA_NA,NA,NA,NA,NA,NA,NA,4,6
-RanAss2,4,7,1_NA_NA,0.1_NA_NA,NA,NA,NA,NA,NA,NA,4,7
-RanAss2,4,8,1_NA_NA,0.04_NA_NA,NA,NA,NA,NA,NA,NA,4,8
+RanAss2,3,5,1_NA_1,0.96_NA_0.95,NA,1,NA,1,exclusion,competitive exclusion,3,5
+RanAss2,3,6,1_NA_-1,0.21_NA_0.91,NA,1,NA,-1,coexistence,stable coexistence,3,6
+RanAss2,3,7,1_NA_1,0.96_NA_0.95,NA,1,NA,1,exclusion,competitive exclusion,3,7
+RanAss2,3,8,1_NA_-1,0.3_NA_0.94,NA,1,NA,-1,coexistence,stable coexistence,3,8
+RanAss2,4,5,1_NA_-1,0.22_NA_0.05,NA,1,NA,-1,coexistence,stable coexistence,4,5
+RanAss2,4,6,1_NA_-1,0.04_NA_0.03,NA,1,NA,-1,coexistence,stable coexistence,4,6
+RanAss2,4,7,1_NA_-1,0.1_NA_0.93,NA,1,NA,-1,coexistence,stable coexistence,4,7
+RanAss2,4,8,1_NA_-1,0.04_NA_0.06,NA,1,NA,-1,coexistence,stable coexistence,4,8
+RanAss2,5,6,-1_NA_-1,0.02_NA_0.02,NA,-1,NA,-1,exclusion,competitive exclusion,6,5
+RanAss2,5,7,1_NA_-1,0.09_NA_0.07,NA,1,NA,-1,coexistence,stable coexistence,5,7
+RanAss2,5,8,-1_NA_-1,0.04_NA_0.09,NA,-1,NA,-1,exclusion,competitive exclusion,8,5
+RanAss2,6,7,1_NA_1,0.98_NA_0.96,NA,1,NA,1,exclusion,competitive exclusion,6,7
+RanAss2,6,8,1_NA_-1,0.78_NA_0.03,NA,1,NA,-1,coexistence,stable coexistence,6,8
+RanAss2,7,8,1_NA_-1,0.07_NA_0.05,NA,1,NA,-1,coexistence,stable coexistence,7,8

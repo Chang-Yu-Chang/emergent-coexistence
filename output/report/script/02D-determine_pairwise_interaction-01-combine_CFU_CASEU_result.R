@@ -9,7 +9,6 @@
 #'  T0 OD-converted CFU frequencies and T8 CFU frequencies with uncertainties.
 
 library(tidyverse)
-
 switch_pairwise_column <- function (df, bypair = T) {
     if (any(is.factor(df$Isolate1))) df$Isolate1 <- as.numeric(df$Isolate1); df$Isolate2 <- as.numeric(df$Isolate2)
     if ("Isolate1FreqPredicted" %in% colnames(df)) {
@@ -174,8 +173,16 @@ CASEU_RN4 <- read_csv(here::here("data/temp/CASEU_RN4.csv")) %>%
     ) %>%
     select(Community, Isolate1, Isolate2, Isolate1InitialODFreq, Isolate2InitialODFreq, Time, Isolate1MeasuredFreq, ErrorIsolate1MeasuredFreq, RawDataType)
 
+## T0 BR P2
+CASEU_RN5 <- CASEU_RN4 %>%
+    mutate(
+        Time = "T0",
+        Isolate1MeasuredFreq = Isolate1InitialODFreq / 100,
+        ErrorIsolate1MeasuredFreq = NA,
+        RawDataType = "OD"
+    )
 
-pairs_freq_random <- bind_rows(CASEU_RN2, CASEU_RN3, CASEU_RN4) %>%
+pairs_freq_random <- bind_rows(CASEU_RN2, CASEU_RN3, CASEU_RN4, CASEU_RN5) %>%
     mutate(Isolate1 = as.character(Isolate1), Isolate2 = as.character(Isolate2)) %>%
     arrange(Community, Isolate1, Isolate2, Time, Isolate1InitialODFreq)
 

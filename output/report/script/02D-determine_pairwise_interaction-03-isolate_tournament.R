@@ -4,7 +4,7 @@ source(here::here("plotting_scripts/network_functions.R"))
 
 isolates <- read_csv(here::here("data/output/isolates.csv"))
 pairs <- read_csv(here::here("data/output/pairs.csv"))
-communities <- read_csv(here::here("data/output/communities.csv")) %>% filter(str_detect(Community, "C\\d"))
+communities <- read_csv(here::here("data/output/communities.csv"))
 
 isolates_tournament <- communities %>%
     select(comm = Community, everything()) %>%

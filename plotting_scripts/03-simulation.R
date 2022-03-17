@@ -7,6 +7,7 @@ library(ggpubr)
 library(ggraph)
 source(here::here("plotting_scripts/network_functions.R"))
 
+# Simulation input parameters
 output_dir <- "~/Dropbox/lab/invasion-network/simulation/data/raw9/"
 input_independent <- read_csv(paste0(output_dir,"input_independent.csv"), col_types = cols())
 input_pairs <- read_csv(paste0(output_dir, "input_pairs.csv"), col_types = cols())
@@ -17,12 +18,13 @@ sa <- input_independent$sa[1]
 ma <- input_independent$ma[1]
 sal <- tibble(Family = paste0("F", c(rep(0, sa), rep(1, sa))), Species = paste0("S", 0:(sa * 2 - 1)))
 mal <- tibble(Class = paste0("T", c(rep(0, ma), rep(1, ma), rep(2, ma))), Resource = paste0("R", 0:(ma * 3 - 1)))
-paint_white_background <- function(x) theme(plot.background = element_rect(color = NA, fill = "white"))
 
-#
+# Data
 df_communities <- read_csv(here::here("data/output/df_communities.csv"), col_types = cols())
 df_communities_abundance <- read_csv(here::here("data/output/df_communities_abundance.csv"), col_types = cols()) %>% mutate(Community = factor(Community, df_communities$Community))
 df_pairs <- read_csv(here::here("data/output/df_pairs.csv"), col_types = cols())
+df_isolates <- read_csv(here::here("data/output/df_isolates.csv"), col_types = cols())
+load("~/Dropbox/lab/invasion-network/data/output/network_simulated.Rdata")
 
 # Figure 3A. Dynamics of one example community
 df_comm_example <- df_communities_abundance %>%
@@ -32,42 +34,87 @@ df_comm_example_end <- df_comm_example %>% filter(Time == max(Time)) %>%
     mutate(PlotColor = Family, PlotAlpha = factor(1:n())) %>%
     select(ID, PlotColor, PlotAlpha)
 
-p1 <- df_comm_example %>%
+pA <- df_comm_example %>%
     left_join(df_comm_example_end, by = "ID") %>%
     ggplot() +
-    geom_line(aes(x = Time, y = Abundance, color = PlotColor, alpha = PlotAlpha, group = ID), size = 1) +
+    geom_line(aes(x = Time, y = Abundance, color = PlotColor, alpha = PlotAlpha, group = ID), size = .5) +
     scale_x_continuous(breaks = scales::pretty_breaks(n=2), expand = c(0,0)) +
     scale_y_continuous(breaks = scales::pretty_breaks(n=2), expand = c(.1,0)) +
     scale_color_manual(values = category_color, breaks = c("F0", "F1")) +
-    scale_alpha_manual(values = c("1" = 1, "2" = 1, "3" = .8)) +
+    scale_alpha_manual(values = set_names(c(1, .8, seq(1, .6, length.out = 5)), seq(1:7))) +
     theme_classic() +
-    theme(panel.border = element_rect(color = 1, fill = NA)) +
+    theme(panel.border = element_rect(color = 1, fill = NA, size = 1),
+          axis.title = element_text(size = 15, color = 1),
+          axis.text = element_text(size = 10, color = 1)) +
     guides(alpha = "none", color = "none") +
     labs()
+ggsave(here::here("plots/Fig3A-temporal_composition.png"), pA, width = 2, height = 3)
 
 # Figure 3B. End point composition
-p2 <- df_communities_abundance %>%
+pB <- df_communities_abundance %>%
+    filter(Community %in% paste0("W", 0:9)) %>%
     filter(Transfer == max(Transfer), Time == max(Time)) %>%
     mutate(Community = factor(Community, c("W1", "W0", paste0("W", 2:20)))) %>%
     ggplot() +
-    geom_col(aes(x = Community, y = Abundance, fill = Family, group = ID), color = 1, position = "fill") +
+    geom_col(aes(x = Community, y = Abundance, fill = Family, group = ID), width = .8,
+             color = 1, size = .5, position = "fill") +
     scale_fill_manual(values = category_color, breaks = c("F0", "F1")) +
     scale_x_discrete(expand = c(0,0), label = 1:20) +
     scale_y_continuous(breaks = c(0, .5, 1), expand = c(0,0)) +
     #facet_grid(Time~.) +
     theme_classic() +
-    theme(panel.border = element_rect(color = 1, fill = NA)) +
+    theme(panel.border = element_rect(color = 1, fill = NA),
+          axis.title = element_text(size = 15, color = 1),
+          axis.text = element_text(size = 10, color = 1),
+          legend.text = element_text(size = 15, color = 1),
+          legend.title = element_text(size = 15, color = 1)) +
+    guides(alpha = "none", color = "none") +
     labs()
 
-p <- plot_grid(p1, p2, nrow = 1, scale = .9, axis = "tb", align = "h", rel_widths = c(1, 1.5)) + paint_white_background()
-ggsave(here::here("plots/Fig3AB-community_composition.png"), p, width = 8, height = 3)
+ggsave(here::here("plots/Fig3B-community_composition.png"), pB, width = 4, height = 3)
 
+# Figure 3C. All pairwise networks
+p_net_simulated_list <- net_simulated_list[which(names(net_simulated_list) %in% paste0("W", 0:9))] %>%
+    lapply(function(x) plot_competitive_network(x, node_size = 0, edge_width = .5) + theme(panel.background = element_rect(color = NA, fill = "grey90")))
+pC <- plot_grid(plotlist = p_net_simulated_list, nrow = 1, labels = 1:10, scale = 1.1, label_x = 0.5, hjust = 0.5, vjust = 0)
+ggsave(here::here("plots/Fig3C-networks.png"), pC, width = 8, height = 1)
 
+# Figure 3D. All pairwise matrices
+p_matrix_simulated_list <- net_simulated_list[which(names(net_simulated_list) %in% paste0("W", 0:9))] %>%
+    lapply(function(x) plot_adjacent_matrix(x))
+pD <- plot_grid(plotlist = p_matrix_simulated_list, nrow = 1, scale = 1, label_x = 0.5, hjust = 0.5, vjust = 0) + paint_white_background()
+ggsave(here::here("plots/Fig3D-all_matrices.png"), pD, width = 8, height = 1)
 
+# Figure 3E. pairwise outcome for each community
+pE <- df_pairs %>%
+    filter(Community %in% paste0("W", 0:9)) %>%
+    filter(InteractionType != "no-growth") %>%
+    mutate(InteractionType = factor(InteractionType, c("exclusion", "coexistence"))) %>%
+    group_by(Community, InteractionType) %>%
+    summarize(Count = n()) %>%
+    group_by(Community) %>%
+    mutate(TotalCount = sum(Count)) %>%
+    ggplot() +
+    geom_col(aes(x = Community, y = Count, fill = InteractionType), position = "fill", color = 1) +
+    #geom_text(aes(x = Community, label = TotalCount), y = 1, vjust = 2) +
+    scale_fill_manual(values = assign_interaction_color()) +
+    scale_x_discrete(label = 1:20) +
+    scale_y_continuous(breaks = c(0, 0.5, 1), expand = c(0,0)) +
+    theme_classic() +
+    theme(legend.position = "top", legend.title = element_blank(),
+          axis.title = element_text(size = 15, color = 1),
+          axis.text = element_text(size = 10, color = 1),
+          legend.text = element_text(size = 15, color = 1),
+          panel.border = element_rect(size = 1, color = 1, fill = NA)) +
+    #guides(fill = "none") +
+    labs(y = "Fraction")
+ggsave(here::here("plots/Fig3E-community_pairs.png"), pE, width = 4, height = 3)
 
-# Figure 3C: pairwise outcome of community pairs
-## Overall
-p1 <- df_pairs %>%
+if (FALSE) {
+
+# Figure 3E. pairwise outcome for all community
+pE <- df_pairs %>%
+    filter(Community %in% paste0("W", 0:9)) %>%
     filter(InteractionType != "no-growth") %>%
     mutate(InteractionType = factor(InteractionType, c("exclusion", "coexistence"))) %>%
     group_by(InteractionType) %>%
@@ -79,38 +126,20 @@ p1 <- df_pairs %>%
     scale_fill_manual(values = assign_interaction_color()) +
     scale_y_continuous(limits = c(0, 1), breaks = scales::pretty_breaks(n=3)) +
     theme_classic() +
-    theme(legend.position = "top", axis.title.x = element_blank()) +
+    theme(legend.position = "right", axis.title.x = element_blank(),
+          axis.title = element_text(size = 15, color = 1),
+          axis.text.y = element_text(size = 10, color = 1),
+          legend.text = element_text(size = 15, color = 1),
+          legend.title = element_text(size = 15, color = 1)) +
     guides(fill = "none") +
     labs(y = "Count")
+ggsave(here::here("plots/Fig3E-all_community_pairs.png"), pE, width = 3, height = 3)
+}
 
-
-## Each community
-p2 <- df_pairs %>%
-    filter(InteractionType != "no-growth") %>%
-    mutate(InteractionType = factor(InteractionType, c("exclusion", "coexistence"))) %>%
-    group_by(Community, InteractionType) %>%
-    summarize(Count = n()) %>%
-    group_by(Community) %>%
-    mutate(TotalCount = sum(Count)) %>%
-    ggplot() +
-    geom_col(aes(x = Community, y = Count, fill = InteractionType), position = "fill", color = 1) +
-    geom_text(aes(x = Community, label = TotalCount), y = 1, vjust = 2) +
-    scale_fill_manual(values = assign_interaction_color()) +
-    scale_y_continuous(breaks = c(0, 0.5, 1)) +
-    scale_x_discrete(label = 1:20) +
-    theme_classic() +
-    theme(legend.position = "top") +
-    guides(fill = "none") +
-    labs(y = "Fraction")
-p <- plot_grid(p1, p2, nrow = 1, axis = "tb", align = "h", labels = c("A", "B"), scale = .9, rel_widths = c(1,1.5)) + paint_white_background()
-ggsave(here::here("plots/Fig3C-community_pairs.png"), p, width = 8, height = 3)
-
-
-# Figure 3D. Hierarchy
+# Figure 3F. Hierarchy
 df_communities_hierarchy <- read_csv(here::here("data/output/df_communities_hierarchy.csv"), col_types = cols()) %>% mutate(Community = factor(Community, df_communities$Community))
 df_communities_hierarchy_randomized <- read_csv(here::here("data/output/df_communities_hierarchy_randomized.csv"), col_types = cols()) %>% mutate(Community = factor(Community, df_communities$Community))
-
-p1 <- df_communities_hierarchy %>%
+pF <- df_communities_hierarchy %>%
     drop_na() %>%
     ggplot(aes(x = Metric, y = HierarchyScore)) +
     #geom_hline(yintercept = c(0, 0.5, 1), color = "grey", linetype = 2) +
@@ -119,74 +148,89 @@ p1 <- df_communities_hierarchy %>%
     scale_y_continuous(limits = c(0,1.01), breaks = c(0, .25, .5, .75, 1)) +
     theme_classic() +
     theme(panel.grid.major.y = element_line(color = "grey", linetype = 2),
+          axis.title = element_text(size = 15, color = 1),
           axis.text = element_text(size = 10, color = 1),
           panel.border = element_rect(fill = NA, color = 1, size = 1.5)) +
-    labs(x = "", y = "Hierarchy Score")
+    labs(x = "Hierarchy", y = "Score")
 
-p2 <- df_communities_hierarchy_randomized %>%
+ggsave(here::here("plots/Fig3F-community_hierarhcy.png"), pF, width = 2, height = 3)
+
+# Figure 3G. Diagonal
+df_diag <- read_csv(here::here("data/output/df_diag.csv"))
+df_diag_randomized <- read_csv(here::here("data/output/df_diag_randomized.csv"))
+
+df_diag_summary <- df_diag %>%
+    group_by(RankDifference) %>%
+    summarize(ObservedCount = sum(Count), ObservedTotalCount = sum(TotalCount)) %>%
+    mutate(ObservedFraction = ObservedCount/ObservedTotalCount)
+df_diag_randomized_summary <- df_diag_randomized %>%
+    group_by(RankDifference, Replicate) %>%
+    summarize(Count = sum(Count), TotalCount = sum(TotalCount)) %>%
+    mutate(Fraction = Count/TotalCount)
+
+## Statistics
+stat_diag <- df_diag_randomized_summary %>%
+    group_by(RankDifference) %>%
+    # find percentile
+    bind_rows(tibble(Replicate = 0, RankDifference = 1:11, Count = 0)) %>%
+    left_join(df_diag_summary) %>%
+    arrange(RankDifference, desc(Count)) %>%
+    mutate(Percentile = (1:n())/n()) %>%
+    filter(Count <= ObservedCount) %>%
+    group_by(RankDifference) %>%
+    slice(1) %>%
+    select(RankDifference, Percentile) %>%
+    # Asterisk
+    mutate(Significance = case_when(Percentile < 0.001 | Percentile > 0.999 ~ "***",
+                                    Percentile < 0.01 | Percentile > 0.99 ~ "**",
+                                    Percentile < 0.05 | Percentile > 0.95 ~ "*",
+                                    Percentile > 0.05 & Percentile < 0.95 ~ "n.s."),
+           Sign = case_when(Percentile < 0.05 ~ "top",
+                            Percentile > 0.95 ~ "bottom",
+                            Percentile > 0.05 & Percentile < 0.95 ~ "n.s."))
+
+pG <- df_diag_summary %>%
     ggplot() +
-    geom_histogram(aes(y = HierarchyScore), color = 1, fill = "white") +
-    geom_hline(data = df_communities_hierarchy, aes(yintercept = HierarchyScore), color = "red") +
-    facet_wrap(Metric~Community) +
-    theme_classic()
-pD <- p1
-ggsave(here::here("plots/Fig3D-community_hierarhcy.png"), pD, width = 3, height = 3)
+    # Asterisk
+    geom_text(data = stat_diag, aes(x = RankDifference, y = Inf, label = Significance), vjust = 2) +
+    geom_rect(data = stat_diag, aes(xmin = RankDifference-0.5, xmax = RankDifference+0.5, fill = Sign), ymin = -Inf, ymax = Inf, alpha = .2) +
+    # Random networks
+    geom_boxplot(data = df_diag_randomized_summary, aes(x = RankDifference, y = Fraction, group = RankDifference, color = "permutation"),
+                 outlier.size = 1) +
+    geom_jitter(data = df_diag_randomized_summary, aes(x = RankDifference, y = Fraction, group = RankDifference, color = "permutation"),
+                size = .2, alpha = 0.5, width = .3, shape = 21, height = .01) +
+    # Observed networks
+    geom_point(aes(x = RankDifference, y = ObservedFraction, group = RankDifference, color = "observation"), size = 2) +
+    geom_line(aes(x = RankDifference, y = ObservedFraction, color = "observation")) +
+    scale_x_continuous(breaks = 0:11, expand = c(0,0)) +
+    scale_y_continuous(limits = c(-0.02, 1.1), breaks = c(0, .5, 1)) +
+    scale_color_manual(values = c("observation" = "red", "permutation" = "black"))+
+    scale_fill_manual(values = c("top" = "blue", "bottom" = "red", "n.s." = "grey")) +
+    theme_classic() +
+    theme(legend.position = "top", legend.title = element_blank(),
+          legend.text = element_text(size = 15, color = 1),
+          axis.title = element_text(size = 15, color = 1),
+          axis.text = element_text(size = 10, color = 1),
+          panel.border = element_rect(fill = NA, color = 1, size = 1.5)) +
+    guides(fill = "none") +
+    labs(x = "|i-j|", y = "Fraction of pairwise coexitence")
+ggsave(here::here("plots/Fig3G-diagonal_analysis.png"), pG, width = 4, height = 4)
 
 
+p_top <- plot_grid(pA, NULL, pB, nrow = 1, scale = c(.8, 1, .8), rel_widths = c(1, .2, 2), labels = c("A", "", "B"), axis = "tb", align = "h")
+#p_middle <- plot_grid(pD, NULL, pE, nrow = 1, scale = c(.8, 1, .9), rel_widths = c(2, .1, 1), labels = c("D", "", "E"), axis = "tb", align = "h")
+p_bottom <- plot_grid(pE, pF, pG, nrow = 1, scale = .9, rel_widths = c(2, 1, 2), labels = LETTERS[5:7], axis = "tb", align = "h")
+p <- plot_grid(p_top, NULL, pC, pD, NULL, p_bottom, ncol = 1, labels = c("", "", "C", "D", "", ""),
+               scale = c(1, 1, .9, .9, 1, 1),
+               rel_heights = c(2, .15, 1, 1, .15, 3)) + paint_white_background()
+ggsave(here::here("plots/Fig3.png"), p, width = 12, height = 9)
 
-# Figure 3E. Motif
+if (FALSE) {
+
+# Figure 3H. Motif
 ## Simulation result
 df_motif <- read_csv(here::here("data/output/df_motif.csv"))
 df_motif_randomized <- read_csv(here::here("data/output/df_motif_randomized.csv"))
-
-## Overall
-df_motif_aggregated <- df_motif %>%
-    group_by(Motif) %>%
-    summarize(Count = sum(Count))
-df_motif_randomized_aggregated <- df_motif_randomized %>%
-    group_by(Replicate, Motif) %>%
-    summarize(Count = sum(Count))
-
-df_motif_percentile_aggregated <- df_motif_randomized_aggregated %>%
-    group_by(Motif) %>%
-    arrange(desc(Count)) %>%
-    slice(b * 0.05, b * 0.95) %>%
-    mutate(Percentile = c("p5", "p95")) %>%
-    select(Motif, Percentile, Count) %>%
-    pivot_wider(names_from = Percentile, values_from = Count)
-
-df_motif_aggregated <- df_motif_aggregated %>%
-    left_join(df_motif_percentile_aggregated) %>%
-    mutate(Sign = case_when(Count > p95 ~ "top",
-                            Count < p5 ~ "bottom",
-                            Count < p95 & Count > p5 ~ "n.s."))
-
-
-## motif diagram
-load(here::here("data/output/motif_list.Rdata"))
-p_motif_list <- lapply(motif_list, function(x) plot_competitive_network(x, node_size = 3))
-p1 <- plot_grid(plotlist = p_motif_list, nrow = 1)
-
-## motif counts
-p2 <- df_motif_randomized_aggregated %>%
-    ggplot() +
-    geom_rect(data = df_motif_aggregated, aes(fill = Sign), xmin = -Inf, xmax = Inf, ymin = -Inf, ymax = Inf, alpha = .2) +
-    geom_vline(xintercept = 0, color = 1) +
-    geom_histogram(aes(y = Count), binwidth = 2, color = 1, fill = "white") +
-    geom_point(data = df_motif_aggregated, x = 0, aes(y = Count, color = "observed network"), pch = 1, size = 2, stroke = 2, inherit.aes = F) +
-    scale_color_manual(values = c("observed network" = "red")) +
-    facet_grid(.~Motif, scales = "free_x") +
-    scale_fill_manual(values = c("top" = "blue", "bottom" = "red", "n.s." = "grey")) +
-    scale_x_continuous(breaks = scales::pretty_breaks(n = 2)) +
-    theme_cowplot() +
-    theme(panel.background = element_rect(color = 1, size = 1), panel.spacing = unit(0, "mm"),
-          strip.background = element_rect(color = NA, fill = NA, size = 1)) +
-    guides(color = "none", fill = "none") +
-    labs(x = "Probability density", y = "Motif count")
-
-pE <- plot_grid(p1, p2, ncol = 1, rel_heights = c(1,3), axis = "lr", align = "v", labels = LETTERS[1:2]) + theme(plot.background = element_rect(fill = "white", color = NA))
-ggsave(here::here("plots/Fig3E-motif_counts.png"), pE, width = 10, height = 5)
-
 
 ## title
 p0_1 <- ggdraw() + draw_label("Nontransitive", x = .5, hjust = 0.5) + theme(plot.margin = margin(0, 0, 5, 0))
@@ -215,11 +259,15 @@ plot_motif_count <- function(motif_randomized_subset, motif_community_subset,  m
         scale_color_manual(values = c("observed network" = "red")) +
         facet_grid(.~Motif) +
         scale_x_continuous(breaks = c(0,0.5), labels = c("0", "0.5")) +
+        scale_y_continuous(limits = c(0,0.5), breaks = scales::pretty_breaks(n = 3)) +
         theme_cowplot() +
         theme(panel.background = element_rect(color = 1, size = 1.5, fill = NA),
               panel.spacing = unit(0, "mm"), strip.text = element_blank(),
               legend.position = "top",
-              axis.title = element_text(size = 10), axis.text = element_text(size = 8),
+              axis.title = element_text(size = 15, color = 1),
+              axis.text = element_text(size = 10, color = 1),
+              legend.text = element_text(size = 15, color = 1),
+              legend.title = element_text(size = 15, color = 1),
               plot.background = element_rect(fill = "white", color = NA)) +
         guides(fill = "none", color = "none") +
         labs(x = "Probability density", y = "Fraction of motif")
@@ -229,29 +277,11 @@ p2_2 <- plot_motif_count(df_motif_randomized_subset, df_motif_subset, c(2,3,5)) 
 p_left <- plot_grid(p0_1, p1_1, p2_1, ncol = 1, rel_heights = c(.4, 1,2.5), axis = "tblr", align = "v")
 p_right <- plot_grid(p0_2, p1_2, p2_2, ncol = 1, rel_heights = c(.4, 1,2.5), axis = "tblr", align = "v")
 p_upper <- plot_grid(p_left, p_right, nrow = 1, rel_widths = c(1.5,3), axis = "tblr", align = "h") + paint_white_background()
-pF_xlab <- ggdraw() + draw_label("Probability density", x = 0.5, hjust = .5) + theme(plot.margin = margin(0, 0, 0, 0))
-pF <- plot_grid(p_upper, pF_xlab, ncol = 1, rel_heights = c(1, .1)) + paint_white_background()
-ggsave(here::here("plots/Fig3F-motifs.png"), pF, width = 5, height = 4)
+pH_xlab <- ggdraw() + draw_label("Probability density", x = 0.5, hjust = .5) + theme(plot.margin = margin(0, 0, 0, 0))
+pH <- plot_grid(p_upper, pH_xlab, ncol = 1, rel_heights = c(1, .1)) + paint_white_background()
+ggsave(here::here("plots/Fig3H-motifs.png"), pH, width = 5, height = 4)
 
-
-
-
-
-# Figure 3G. Diagonal
-df_diag <- read_csv(here::here("data/output/df_diag.csv"))
-df_diag_randomized <- read_csv(here::here("data/output/df_diag_randomized.csv"))
-
-df_diag_randomized %>%
-    group_by(DistanceToDiagonal, Replicate) %>%
-    summarize(Count = sum(CountCoexistence)) %>%
-    ggplot(aes(x = DistanceToDiagonal, y = Count, group = DistanceToDiagonal)) +
-    geom_boxplot() +
-    geom_jitter(height = 0, width = 0.1) +
-    geom_point(data = df_diag %>% group_by(DistanceToDiagonal) %>% summarize(Count = sum(CountCoexistence)),
-               aes(x = DistanceToDiagonal, y = Count, group = DistanceToDiagonal), color = "red") +
-    theme_classic()
-
-
+}
 
 
 

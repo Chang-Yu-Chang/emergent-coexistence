@@ -42,15 +42,9 @@ pairs <- left_join(pairs, pairs_coexist_dominant) %>%
     select(Assembly, everything())
 
 
-#
-"
-remove this line if the random network data is completed
-"
-pairs <- pairs %>% filter(!(is.na(InteractionType) & Assembly != "self_assembly"))
-
-#
+# Attach metabolic data
 pairs_meta <- pairs
-
+#%>% filter(!(is.na(InteractionType) & Assembly != "self_assembly"))
 
 # Swap so that fermenter is always isolate1
 for (i in 1:nrow(pairs_meta)) {

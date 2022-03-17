@@ -22,15 +22,8 @@ read_wide_file <- function(x) {
     if ("...1" %in% colnames(tt)) tt <- tt %>% rename(Family = ...1, Species = ...2)
     return(tt)
 }
-paint_white_background <- function(x) theme(plot.background = element_rect(color = NA, fill = "white"))
 
 b = 1000
-
-
-"
-ran 1000 permutations and leave lab. Check the result
-"
-
 
 # Community abundance ----
 df_comm_init <- paste0(output_dir, "selfAssembly-1_init.csv") %>%
@@ -235,7 +228,7 @@ df_isolates <- df_isolates_ID %>%
     ungroup()
 
 
-
+write_csv(df_isolates, here::here("data/output/df_isolates.csv"))
 
 # Hierarchy measures ----
 ## Hierarchy following pairs
@@ -394,7 +387,7 @@ temp <- df_communities %>%
     mutate(isolate_comm = filter(df_isolates, Community == comm) %>% list()) %>%
     mutate(pairs_comm = filter(df_pairs, Community == comm) %>% list()) %>%
     mutate(Network = make_network(isolate_comm, pairs_comm) %>% list())
-net_simulated_list <- temp$Network
+net_simulated_list <- temp$Network %>% set_names(temp$comm)
 
 ## permutation
 net_simulated_randomized_list <- rep(list(rep(list(NA), b)), length(net_simulated_list))
@@ -420,8 +413,8 @@ save(net_simulated_randomized_list, file = "~/Dropbox/lab/invasion-network/data/
 
 
 # Motif ----
-# load("~/Dropbox/lab/invasion-network/data/output/network_simulated.Rdata")
-# load("~/Dropbox/lab/invasion-network/data/output/network_simulated_randomized.Rdata")
+load("~/Dropbox/lab/invasion-network/data/output/network_simulated.Rdata")
+load("~/Dropbox/lab/invasion-network/data/output/network_simulated_randomized.Rdata")
 
 ## Obv
 df_motif <- df_communities %>%
@@ -463,113 +456,33 @@ write_csv(df_motif, here::here("data/output/df_motif.csv"))
 write_csv(df_motif_randomized, here::here("data/output/df_motif_randomized.csv"))
 
 
-
-
-
 # Diagonal analysis ----
-adj_from_net <- function(net) {
-  # Get adjacent matrix
-  net_m <- get.adjacency(net, attr = "InteractionType", sparse = F)
-
-  # Exclusion: win or lose
-  temp_index <- which(net_m=="exclusion", arr.ind = T) %>% as.data.frame()
-  for(i in 1:nrow(temp_index)) net_m[temp_index$col[i], temp_index$row[i]] <- "lose"
-  net_m[net_m=="exclusion"] <- "win"
-
-  # Bistability
-  temp_index2 <- which(net_m=="bistability", arr.ind = T) %>% as.data.frame()
-  for(i in 1:nrow(temp_index2)) net_m[temp_index2$col[i], temp_index2$row[i]] <- "bistability"
-  net_m[net_m=="bistability"] <- "bistability"
-
-  # Neutrality
-  temp_index2 <- which(net_m=="neutrality", arr.ind = T) %>% as.data.frame()
-  for(i in 1:nrow(temp_index2)) net_m[temp_index2$col[i], temp_index2$row[i]] <- "neutrality"
-  net_m[net_m=="neutrality"] <- "neutrality"
-
-  # Diagonal
-  diag(net_m) <- "self"
-
-  # Undefined
-  temp_index <- which(net_m=="undefined", arr.ind = T) %>% as.data.frame()
-  for(i in 1:nrow(temp_index)) net_m[temp_index$col[i], temp_index$row[i]] <- "undefined"
-
-  # NA
-  net_m[net_m == "" | is.na(net_m)] <- NA
-
-  return(net_m)
-}
-## Find the fraction of coexistence as a function of distance to diagonal
-diag_distance <- function (net, observation = F) {
-  # Convert network to matrix
-  temp_matrix <- adj_from_net(net)
-
-  # Re-order the matrix axis by the isolates' competitive rank
-  temp_rank <- tournament_rank(net)$Isolate
-  temp_matrix <- temp_matrix[temp_rank, temp_rank]
-
-  # Order the matrix axis by competitive score
-  t1 <- which(temp_matrix == "coexistence", arr.ind = T) %>%
-    as_tibble() %>%
-    filter(col > row) %>%
-    mutate(DistanceToDiagonal = abs(row - col)) %>%
-    group_by(DistanceToDiagonal) %>%
-    summarize(CountCoexistence = n())
-
-  # Total count for each distance
-  t2 <- which(temp_matrix == "win" | temp_matrix == "lose" | temp_matrix == "coexistence", arr.ind = T) %>%
-      as_tibble() %>%
-      filter(col > row) %>%
-      mutate(DistanceToDiagonal = abs(row - col)) %>%
-      group_by(DistanceToDiagonal) %>%
-      summarize(TotalCount = n())
-
-  #
-  if (observation) {
-      full_join(t1, t2, by = "DistanceToDiagonal") %>%
-          replace_na(list(CountCoexistence = 0)) %>%
-          return()
-  } else {
-      return(t1)
-  }
-}
-
 ## Observation
 df_diag <- df_communities %>%
     mutate(Network = net_simulated_list) %>%
     rowwise() %>%
-    mutate(temp = list(diag_distance(Network)), .keep = "unused") %>%
-    unnest(cols = c(temp))
+    mutate(Diagonal = count_diag_coexistence(Network) %>% mutate(Community) %>% list()) %>%
+    pull(Diagonal) %>%
+    bind_rows()
 
-## Permutation
-# Count the distance to diagonal in randomized networks
-net_simulated_diag_randomized_list <- rep(list(NA), length(net_simulated_list))
-names(net_simulated_diag_randomized_list) <- names(net_simulated_list)
+# Permutation
+df_diag_randomized_list <- rep(list(NA), length(net_simulated_list))
+names(df_diag_randomized_list) <- names(net_simulated_list)
+tt <- proc.time()
+for (i in 1:length(net_simulated_list)) {
+    temp_tt <- proc.time()
+    df_diag_randomized_list[[i]] <- lapply(net_simulated_randomized_list[[i]], count_diag_coexistence) %>%
+        bind_rows(.id = "Replicate")
+    # Print
+    cat("\n\n", df_communities$Community[i])
+    cat("\n", (proc.time() - temp_tt)[3], "seconds")
+    if (i == length(net_simulated_list)) cat("\n\n total time:", (proc.time() - tt)[3], "seconds")
+}
+df_diag_randomized <- bind_rows(df_diag_randomized_list, .id = "Community")
 
-df_diag_randomized <- df_communities %>%
-    mutate(NetworkList = net_simulated_randomized_list) %>%
-    rowwise() %>%
-    mutate(temp = list(lapply(NetworkList, diag_distance) %>% bind_rows(.id = "Replicate")), .keep = "unused") %>%
-    unnest(cols = c(temp))
-
-# Save the result
+#
 write_csv(df_diag, file = here::here("data/output/df_diag.csv"))
 write_csv(df_diag_randomized, file = here::here("data/output/df_diag_randomized.csv"))
-
-
-if (FALSE) {
-df_diag_randomized %>%
-    group_by(DistanceToDiagonal, Replicate) %>%
-    summarize(Count = sum(CountCoexistence)) %>%
-    ggplot(aes(x = DistanceToDiagonal, y = Count, group = DistanceToDiagonal)) +
-    geom_boxplot() +
-    geom_jitter(height = 0, width = 0.1) +
-    geom_point(data = df_diag %>% group_by(DistanceToDiagonal) %>% summarize(Count = sum(CountCoexistence)),
-               aes(x = DistanceToDiagonal, y = Count, group = DistanceToDiagonal), color = "red") +
-    theme_classic()
-
-}
-
-
 
 
 

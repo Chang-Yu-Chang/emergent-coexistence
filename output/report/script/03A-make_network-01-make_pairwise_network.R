@@ -22,7 +22,8 @@ for (i in 1:length(communities$Community)) {
 
 # Plot
 p_net_list <- rep(list(NA), length(net_list))
-for (i in 1:length(net_list)) p_net_list[[i]] <- plot_competitive_network(net_list[[i]])
+for (i in 1:length(net_list)) p_net_list[[i]] <- plot_competitive_network(net_list[[i]], node_size = 2, edge_width = 1)
+#plot_grid(plotlist = p_net_list, labels = names(net_list))
 
 save(net_list, p_net_list, file = here::here("data/output/network_community.Rdata"))
-#save(net_list, p_net_list, file = "~/Dropbox/lab/invasion-network/data/output/network_community.Rdata")
+save(net_list, p_net_list, file = "~/Dropbox/lab/invasion-network/data/output/network_community.Rdata")

@@ -283,6 +283,35 @@ count_component <- function(net) {
         return()
 }
 
+# Count the number of pairwise coexistence as a function of rank difference
+count_diag_coexistence <- function (net, isolates_comm = NULL, observation = T) {
+    # Extract link attributes from the network
+    pairs_comm <- as_edgelist(net) %>%
+        magrittr::set_colnames(c("Isolate1", "Isolate2")) %>%
+        as_tibble() %>%
+        mutate(InteractionType = edge.attributes(net)$InteractionType) %>%
+        filter(!(InteractionType == "coexistence" & Isolate1 > Isolate2))
+
+    # Isolate ranks. Kept the same as the observation
+    if (observation) isolates_comm <- vertex.attributes(net) %>% as_tibble()
+    if (observation == F) stopifnot(!is.null(isolates_comm))
+
+    #
+    pairs_comm %>%
+        # Join the isolate information
+        left_join(rename_with(isolates_comm, ~paste0(., "1"), everything()), by = "Isolate1") %>%
+        left_join(rename_with(isolates_comm, ~paste0(., "2"), everything()), by = "Isolate2") %>%
+        # Calculate rank difference
+        mutate(RankDifference = abs(Rank1 - Rank2)) %>%
+        # Calculate the fraction of coexistence at each distance
+        mutate(InteractionType = factor(InteractionType)) %>%
+        group_by(RankDifference, InteractionType, .drop = FALSE) %>%
+        summarize(Count = n(), .groups = "keep") %>%
+        group_by(RankDifference) %>%
+        mutate(TotalCount = sum(Count)) %>%
+        mutate(Fraction = Count/TotalCount) %>%
+        filter(InteractionType == "coexistence")
+}
 
 # Plot adjacent matrix
 plot_adjacent_matrix <- function(graph, show.legend = F, show.axis = F, show_label = "ID") {
