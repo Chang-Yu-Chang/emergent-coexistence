@@ -35,13 +35,17 @@ write_csv(input_parameters, file = here::here("simulation/input_parameters.csv")
 # Single species
 temp1 <- input_parameters %>%
     slice(rep(1, 1)) %>%
-    mutate(init_N0 = paste0("monoculture-1_init.csv"), exp_id = 1, n_wells = sa*2)
+    mutate(init_N0 = paste0("monoculture-1_init.csv"), exp_id = 1, n_wells = sa*2) %>%
+    mutate(save_timepoint = F)
 # Self-assembly
 temp2 <- input_parameters %>%
     slice(rep(1, 1)) %>%
     mutate(init_N0 = paste0("selfAssembly-1_init.csv"), exp_id = 1, n_wells = 20, S = 50) #S=30
-#bind_rows(temp1, temp2) %>% write_csv(here::here("simulation/input_independent.csv"))
-bind_rows(temp2) %>% write_csv(here::here("simulation/input_independent.csv"))
+
+input_independent <- bind_rows(temp1, temp2)
+#input_independent <- bind_rows(temp1)
+write_csv(input_independent, here::here("simulation/input_independent.csv"))
+
 
 # Pairs from the pool
 n_comm <- input_parameters$n_communities
@@ -53,8 +57,9 @@ temp4 <- input_parameters %>%
     slice(rep(1, n_comm)) %>%
     mutate(init_N0 = paste0("communityPairs_W", 0:(n_comm-1), "-1_init.csv"))
 
-#bind_rows(temp3, temp4) %>% write_csv(here::here("simulation/input_pairs.csv"))
-bind_rows(temp4) %>% write_csv(here::here("simulation/input_pairs.csv"))
+#input_pairs <- bind_rows(temp3, temp4)
+input_pairs <- bind_rows(temp3, temp4)
+write_csv(input_pairs, here::here("simulation/input_pairs.csv"))
 
 
 # Generate initial composition ----
@@ -132,6 +137,42 @@ write_csv(N_community, file = paste0(output_dir, "selfAssembly-1_init.csv"))
 
 
 # Execute this chunk when monoculture is done
+# Pool pairs. Use isolates that can grow in monoculture
+
+## Use isolates that can grow in monoculture
+set.seed(1)
+input_row <- input_pairs %>% filter(str_detect(init_N0, "poolPairs")) %>% slice(1)
+sp_mono <- read_csv(paste0(output_dir, "monoculture-1_end.csv")) %>%
+    rename(Family = ...1, Species = ...2) %>%
+    mutate_all(~replace(., .==0, NA)) %>%
+    pivot_longer(cols = starts_with("W"), names_to = "Well", values_to = "Abundance", values_drop_na = T) %>%
+    pull(Species) %>%
+    str_replace("S", "") %>% as.numeric()
+N_network <- draw_community(input_row, sp_mono)
+temp <- N_network %>%
+    mutate_all(~replace(., .==0, NA)) %>%
+    pivot_longer(cols = -c(Family, Species), names_to = "Community", values_to = "Abundance", values_drop_na = T) %>%
+    # Order species and community
+    mutate(Species = ordered(Species, sal$Species)) %>%
+    mutate(Community = ordered(Community, colnames(N_network))) %>%
+    arrange(Community, Species) %>%
+    group_by(Community) %>%
+    group_split()
+## Save the random network composition
+temp %>%
+    bind_rows() %>%
+    write_csv(paste0(output_dir, "poolNetwork-1_init.csv"))
+for (i in 1:length(temp)) {
+    print(paste0("Pool set W", i-1, " Richness=", nrow(temp[[i]])))
+    draw_pairs_from_community(temp[[i]]) %>%
+        write_csv(paste0(output_dir, "poolPairs_W", i-1, "-1_init.csv"))
+}
+
+
+
+
+
+# Execute this chunk when community assembly is done
 input_row <- input_pairs %>% filter(str_detect(init_N0, "poolPairs")) %>% slice(1)
 draw_pairs_from_community <- function(N_community_long) {
     # Communities with no or only one species
@@ -160,36 +201,6 @@ draw_pairs_from_community <- function(N_community_long) {
     return(N_pairs)
 }
 
-
-# Pool pairs. Use isolates that can grow in monoculture
-## Use isolates that can grow in monoculture
-set.seed(1)
-sp_mono <- read_csv(paste0(output_dir, "monoculture-1_end.csv")) %>%
-    rename(Family = ...1, Species = ...2) %>%
-    mutate_all(~replace(., .==0, NA)) %>%
-    pivot_longer(cols = starts_with("W"), names_to = "Well", values_to = "Abundance", values_drop_na = T) %>%
-    pull(Species) %>%
-    str_replace("S", "") %>% as.numeric()
-N_network <- draw_community(input_row, sp_mono)
-
-temp <- N_network %>%
-    mutate_all(~replace(., .==0, NA)) %>%
-    pivot_longer(cols = -c(Family, Species), names_to = "Community", values_to = "Abundance", values_drop_na = T) %>%
-    # Order species and community
-    mutate(Species = ordered(Species, sal$Species)) %>%
-    mutate(Community = ordered(Community, colnames(N_network))) %>%
-    arrange(Community, Species) %>%
-    group_by(Community) %>%
-    group_split()
-for (i in 1:length(temp)) {
-    print(paste0("Pool set W", i-1, " Richness=", nrow(temp[[i]])))
-    draw_pairs_from_community(temp[[i]]) %>%
-        write_csv(paste0(output_dir, "poolPairs_W", i-1, "-1_init.csv"))
-}
-
-
-
-# Execute this chunk when community assembly is done
 # Community pairs
 N_community_end <- read_csv(paste0(output_dir, "selfAssembly-1_end.csv"), col_types = cols()) %>% rename(Family = ...1, Species = ...2)
 temp <- N_community_end %>%

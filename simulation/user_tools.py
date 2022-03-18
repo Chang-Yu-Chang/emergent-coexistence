@@ -513,8 +513,8 @@ def run_simulations(input_row):
     # Make plate object
     Plate = Community(init_state, dynamics, params, parallel = False)
     if input_row['save_timepoint']:
-        for i in range(5):
-            for j in range(10):
+        for i in range(5): # number of passages
+            for j in range(10): # time of propagation 
                 Plate.Propagate(T = 1)
                 Plate.N.round(2).to_csv(input_row['output_dir'] + re.sub("init.csv", "T" + str(i+1) + "t" + str(j+1) + ".csv", input_row["init_N0"]))
                 Plate.Passage(f = np.eye(a['n_wells'])/10)
@@ -523,7 +523,7 @@ def run_simulations(input_row):
         Plate.N.round(2).to_csv(input_row['output_dir'] + re.sub("init.csv", "end.csv", input_row["init_N0"]))
     
     elif input_row['save_timepoint'] == False:
-        Plate.RunExperiment(np.eye(a['n_wells'])/100, T = 10, npass = 5, refresh_resource=True)
+        Plate.RunExperiment(np.eye(a['n_wells'])/10, T = 10, npass = 5, refresh_resource=True)
         Plate.N.round(2).to_csv(input_row['output_dir'] + re.sub("init.csv", "end.csv", input_row["init_N0"]))
 
 

@@ -278,9 +278,9 @@ count_component <- function(net) {
         filter(from < to) %>%
         igraph::components()
 
-    tibble(NumberCluster = component_result$no, # number of components
-           SizeCluster= component_result$csize) %>% # Size of components
-        return()
+    # tibble(NumberCluster = component_result$no, # number of components
+    #        SizeCluster= component_result$csize) %>% # Size of components
+        return(component_result$no)
 }
 
 # Count the number of pairwise coexistence as a function of rank difference
@@ -312,6 +312,83 @@ count_diag_coexistence <- function (net, isolates_comm = NULL, observation = T) 
         mutate(Fraction = Count/TotalCount) %>%
         filter(InteractionType == "coexistence")
 }
+
+# Hierarchy metric h1
+compute_hierarchy1 <- function(pairs_mock) {
+    pairs_temp <- pairs_mock %>%
+        select(Isolate1, Isolate2, InteractionType, From, To)
+    isolates_tournament <- tournament_rank(pairs_temp) %>% select(Isolate, Score)
+
+    pairs_temp %>%
+        left_join(rename_with(isolates_tournament, ~ paste0(., "1")), by = "Isolate1") %>%
+        left_join(rename_with(isolates_tournament, ~ paste0(., "2")), by = "Isolate2") %>%
+        filter(InteractionType == "exclusion") %>%
+        mutate(WinnerScore = ifelse(From == Isolate1, Score1, Score2),
+               LoserScore = ifelse(From == Isolate1, Score2, Score1)) %>%
+        mutate(FollowRank = (WinnerScore > LoserScore) %>% factor(c(T,F))) %>%
+        count(FollowRank, .drop = F, name = "Count") %>%
+        mutate(FractionFollowRank = Count / sum(Count)) %>%
+        filter(FollowRank == T) %>%
+        pull(FractionFollowRank) %>%
+        return()
+}
+randomize_pairs1 <- function(x) {
+    # Shuffle pairs
+    rng <- order(runif(nrow(x),0,1))
+    x$InteractionType <- x$InteractionType[rng]
+    # Shuffle dominance
+    rng <- sample(1:nrow(x), size = nrow(x)/2, replace = F)
+    temp <- x$From[rng]
+    x$From[rng] <- x$To[rng]
+    x$To[rng] <- temp
+
+    return(x)
+}
+
+
+
+# Hierarchy metric h2
+compute_comp_score2 <- function(pairs_comm, target_isolate) {
+    pairs_comm %>%
+        filter(Isolate1 == target_isolate | Isolate2 == target_isolate) %>%
+        mutate(Freq = ifelse(Isolate1 == target_isolate, Isolate1MeasuredFreq, 1-Isolate1MeasuredFreq)) %>%
+        pull(Freq) %>%
+        mean()
+}
+compute_hierarchy2 <- function(isolates_mock, pairs_mock) {
+    ranking <- isolates_mock %>%
+        rowwise() %>%
+        mutate(CompetitiveScore = compute_comp_score2(pairs_mock, Isolate)) %>%
+        arrange(desc(CompetitiveScore)) %>%
+        # Ranking by competitive score
+        pull(Isolate)
+
+    pairs_mock %>%
+        mutate(Freq1 = Isolate1MeasuredFreq, Freq2 = 1-Freq1) %>%
+        select(Isolate1, Isolate2, Freq1, Freq2) %>%
+        mutate(Pair = 1:n()) %>%
+        pivot_longer(cols = c(-Pair), names_to = ".value", names_pattern = "(.+)[12]") %>%
+        mutate(Isolate = ordered(Isolate, ranking)) %>%
+        group_by(Pair) %>%
+        arrange(Pair, Isolate) %>%
+        slice(1) %>%
+        pull(Freq) %>%
+        mean() %>%
+        return()
+
+}
+randomize_pairs2 <- function(x) {
+    # Shuffle pairs
+    rng <- order(runif(nrow(x),0,1))
+    x$Isolate1MeasuredFreq <- x$Isolate1MeasuredFreq[rng]
+    # Shuffle dominance
+    rng <- sample(1:nrow(x), size = nrow(x)/2, replace = F)
+    x$Isolate1MeasuredFreq[rng] <- 1 - x$Isolate1MeasuredFreq[rng]
+
+    return(x)
+}
+
+
 
 # Plot adjacent matrix
 plot_adjacent_matrix <- function(graph, show.legend = F, show.axis = F, show_label = "ID") {

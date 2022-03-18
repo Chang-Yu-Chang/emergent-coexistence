@@ -15,7 +15,7 @@ community_factor <- c(communities %>% filter(str_detect(Community, "C\\d")) %>% 
                       communities %>% filter(str_detect(Community, "Ass")) %>% pull(Community))
 communities_size <- communities %>% mutate(Community = factor(Community, community_factor)) %>% arrange(Community) %>% pull(CommunitySize)
 
-b = 10
+b = 1000
 
 # Hierarchy ----
 compute_hierarchy1 <- function(pairs_mock) {
@@ -269,10 +269,25 @@ write_csv(networks_diag_randomized, file = here::here("data/output/networks_diag
 
 
 
+# Number of cliques or components ----
+networks_component <- communities %>%
+    mutate(Network = net_list) %>%
+    rowwise() %>%
+    mutate(Component = count_component(Network)) %>%
+    select(Community, Component)
+
+networks_component_randomized <- communities %>%
+    mutate(NetworkList = net_randomized_list) %>%
+    #filter(Community == "C1R2") %>%
+    rowwise() %>%
+    mutate(temp = list(tibble(Replicate = 1:b, Component = sapply(NetworkList, count_component)))) %>%
+    unnest(cols = c(temp)) %>%
+    group_by(Replicate, Community) %>%
+    select(Community, Replicate, Component)
 
 
-
-
+write_csv(networks_component, file = here::here("data/output/networks_component.csv"))
+write_csv(networks_component_randomized, file = here::here("data/output/networks_component_randomized.csv"))
 
 
 

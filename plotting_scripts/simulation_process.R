@@ -25,7 +25,9 @@ read_wide_file <- function(x) {
 
 b = 1000
 
+
 # Community abundance ----
+## Self-assembled communities
 df_comm_init <- paste0(output_dir, "selfAssembly-1_init.csv") %>%
     read_csv(col_types = cols()) %>%
     mutate_all(~replace(., .==0, NA)) %>%
@@ -54,21 +56,25 @@ df_comm_timepoint <- list.files(output_dir) %>%
     mutate(Family = factor(Family, c("F0", "F1"))) %>%
     mutate(Species = factor(Species, paste0("S", 0:999))) %>%
     mutate(Community = factor(Well, paste0("W", 0:999)), .keep = "unused")
-
 df_communities_abundance <- bind_rows(df_comm_init, df_comm_timepoint) %>%
-    rename(ID = Species)
-df_communities <- df_communities_abundance %>%
-    filter(Transfer == max(Transfer), Time == max(Time)) %>%
-    arrange(Community) %>%
-    group_by(Community) %>%
-    summarize(Richness = n())
-
-write_csv(df_communities, here::here("data/output/df_communities.csv"))
+    mutate(Assembly = "self_assembly") %>%
+    rename(ID = Species) %>%
+    select(Assembly, everything())
 write_csv(df_communities_abundance, here::here("data/output/df_communities_abundance.csv"))
 
-# Pairwise outcome of community pairs ----
+## Pool networks
+df_pool_init <- paste0(output_dir, "poolNetwork-1_init.csv") %>%
+    read_csv(col_types = cols()) %>%
+    mutate(Transfer = 0, Time = 0) %>%
+    mutate(Family = factor(Family, c("F0", "F1"))) %>%
+    mutate(Species = factor(Species, paste0("S", 0:999))) %>%
+    mutate(Community = factor(Community, paste0("W", 0:999)), .keep = "unused")
+
+
+# Pairwise outcome ----
 determine_interaction <- function(pairs_init, pairs_end) {
     temp <- bind_rows(pairs_init, pairs_end) %>%
+        ungroup() %>%
         select(-Family, -Abundance) %>%
         pivot_wider(names_from = Time, values_from = RelativeAbundance, names_prefix = "RelativeAbundance_") %>%
         # Fill abundance = NA with 0
@@ -124,6 +130,8 @@ determine_interaction <- function(pairs_init, pairs_end) {
     bind_rows(df_coexistence, df_exclusion, df_nogrowth, df_mutual) %>%
         return()
 }
+
+## Community pairs
 df_cp_init <- input_pairs %>%
     filter(str_detect(init_N0, "communityPairs")) %>%
     pull(init_N0) %>%
@@ -141,8 +149,8 @@ df_cp_init <- input_pairs %>%
             mutate(Community = str_replace(x, paste0(output_dir, "communityPairs_"), "")  %>% str_replace("-1_init.csv", ""))
     }) %>%
     bind_rows() %>%
-    mutate(Time = "Tinit")
-
+    mutate(Time = "Tinit") %>%
+    ungroup()
 df_cp_end <- input_pairs %>%
     filter(str_detect(init_N0, "communityPairs")) %>%
     pull(init_N0) %>% str_replace("_init.csv", "_end.csv") %>%
@@ -161,9 +169,95 @@ df_cp_end <- input_pairs %>%
             mutate(Community = str_replace(x, paste0(output_dir, "communityPairs_"), "")  %>% str_replace("-1_end.csv", ""))
     }) %>%
     bind_rows() %>%
-    mutate(Time = "Tend")
+    mutate(Time = "Tend") %>%
+    ungroup()
 
-df_pairs <- determine_interaction(df_cp_init, df_cp_end) %>%
+## Pool pairs
+df_pp_init <- input_pairs %>%
+    filter(str_detect(init_N0, "poolPairs")) %>%
+    pull(init_N0) %>%
+    paste0(output_dir, .) %>%
+    lapply(function(x) {
+        read_wide_file(x) %>%
+            mutate(Well = factor(Well, paste0("W", 0:999)), .keep = "unused") %>%
+            mutate(Species = factor(Species, sal$Species)) %>%
+            # Remove rare species (relative abundance <0.01)
+            group_by(Well) %>%
+            mutate(RelativeAbundance = Abundance/sum(Abundance)) %>%
+            #filter(RelativeAbundance > 0.01) %>%
+            arrange(Well, Species) %>%
+            # Community, or network
+            mutate(Community = str_replace(x, paste0(output_dir, "poolPairs_"), "")  %>% str_replace("-1_init.csv", ""))
+    }) %>%
+    bind_rows() %>%
+    mutate(Time = "Tinit") %>%
+    ungroup()
+df_pp_end <- input_pairs %>%
+    filter(str_detect(init_N0, "poolPairs")) %>%
+    pull(init_N0) %>% str_replace("_init.csv", "_end.csv") %>%
+    paste0(output_dir, .) %>%
+    lapply(function(x) {
+        read_wide_file(x) %>%
+            mutate(Well = factor(Well, paste0("W", 0:1000)), .keep = "unused") %>%
+            mutate(Species = factor(Species, sal$Species)) %>%
+            # Remove rare species (relative abundance <0.01)
+            group_by(Well) %>%
+            mutate(RelativeAbundance = Abundance/sum(Abundance)) %>%
+            # filter(RelativeAbundance > 0.01) %>%
+            arrange(Well, Species) %>%
+            # Community, or network
+            mutate(Community = str_replace(x, paste0(output_dir, "poolPairs_"), "")  %>% str_replace("-1_end.csv", ""))
+    }) %>%
+    bind_rows() %>%
+    mutate(Time = "Tend") %>%
+    ungroup()
+
+## List of communities
+temp1 <- df_cp_init %>%
+    distinct(Community, Species) %>%
+    arrange(Community) %>%
+    group_by(Community) %>%
+    summarize(Richness = n()) %>%
+    mutate(Assembly = "self_assembly")
+temp2 <- df_pp_init %>%
+    distinct(Community, Species) %>%
+    group_by(Community) %>%
+    summarize(Richness = n()) %>%
+    mutate(Assembly = "random_assembly")
+df_communities <- bind_rows(temp1, temp2) %>% select(Assembly, Community, Richness) %>%
+    mutate(Assembly = factor(Assembly, c("self_assembly", "random_assembly"))) %>%
+    mutate(Community = factor(Community, paste0("W", 0:999))) %>%
+    arrange(Assembly, Community)
+write_csv(df_communities, here::here("data/output/df_communities.csv"))
+
+## Isolate ID
+temp1 <- df_cp_init %>%
+    distinct(Community, Species) %>%
+    left_join(sal) %>%
+    rename(ID = Species) %>%
+    mutate(Assembly = "self_assembly") %>%
+    select(Assembly, Community, Family, ID)
+temp2 <- df_pp_init %>%
+    distinct(Community, Species) %>%
+    left_join(sal) %>%
+    rename(ID = Species) %>%
+    mutate(Assembly = "random_assembly") %>%
+    select(Assembly, Community, Family, ID)
+df_isolates_ID <- bind_rows(temp1, temp2) %>%
+    mutate(Assembly = factor(Assembly, c("self_assembly", "random_assembly"))) %>%
+    filter(ID %in% unique(c(df_pp_init$Species, df_cp_init$Species))) %>%
+    group_by(Assembly, Community) %>%
+    arrange(Assembly, Community) %>%
+    mutate(Isolate = 1:n())
+
+
+
+
+## Determine pairwise result
+df_pairs <- bind_rows(
+    determine_interaction(df_cp_init, df_cp_end) %>% mutate(Assembly = "self_assembly"),
+    determine_interaction(df_pp_init, df_pp_end) %>% mutate(Assembly = "random_assembly")
+) %>%
     left_join(rename_with(sal, ~paste0(., 1))) %>%
     left_join(rename_with(sal, ~paste0(., 2))) %>%
     mutate(PairConspecific = with(., case_when(
@@ -171,27 +265,20 @@ df_pairs <- determine_interaction(df_cp_init, df_cp_end) %>%
         (Family1 != Family2) ~ "heterospecific"
     ))) %>%
     mutate(Community = factor(Community, paste0("W", 0:999))) %>%
-    arrange(Community) %>%
+    mutate(Assembly = factor(Assembly, c("self_assembly", "random_assembly"))) %>%
+    arrange(Assembly, Community) %>%
     # Change variable names so conforming to function requirement
-    rename(ID1 = Species1, ID2 = Species2)
-
-df_isolates_ID <- bind_rows(select(df_pairs, Community, ID = ID1), select(df_pairs, Community, ID = ID2)) %>%
-    distinct(Community, ID) %>%
-    arrange(Community, ID) %>%
-    group_by(Community) %>%
-    mutate(Isolate = 1:n()) %>%
-    ungroup()
-
-## Pairwise outcome
-df_pairs <- df_pairs %>%
-    group_by(Community) %>%
-    left_join(rename_with(df_isolates_ID, ~ paste0(., "1"), !contains("Community"))) %>%
-    left_join(rename_with(df_isolates_ID, ~ paste0(., "2"), !contains("Community"))) %>%
+    rename(ID1 = Species1, ID2 = Species2) %>%
+    filter(ID1 %in% df_isolates_ID$ID & ID2 %in% df_isolates_ID$ID) %>%
+    left_join(rename_with(df_isolates_ID, ~ paste0(., "1"), !contains("Community") & !contains("Assembly"))) %>%
+    left_join(rename_with(df_isolates_ID, ~ paste0(., "2"), !contains("Community") & !contains("Assembly"))) %>%
     mutate(From = Isolate1, To = Isolate2) %>%
-    ungroup()
+    ungroup() %>%
+    select(Assembly, everything())
+
 
 ## Pairwise frequency
-df_pairs_freq <- bind_rows(df_cp_init, df_cp_end) %>%
+df_cp_freq <- bind_rows(df_cp_init, df_cp_end) %>%
     rename(ID = Species) %>%
     select(-Family, -Abundance) %>%
     pivot_wider(names_from = Time, values_from = RelativeAbundance, names_prefix = "RelativeAbundance_") %>%
@@ -201,148 +288,105 @@ df_pairs_freq <- bind_rows(df_cp_init, df_cp_end) %>%
     group_by(Community, Well) %>%
     mutate(Isolate = c(1,2)) %>%
     pivot_wider(names_from = Isolate, values_from = c(ID, RelativeAbundance_Tend), names_sep = "") %>%
+    filter(ID1 %in% df_isolates_ID$ID, ID2 %in% df_isolates_ID$ID) %>%
     left_join(rename_with(df_isolates_ID, ~ paste0(., "1"), !contains("Community"))) %>%
     left_join(rename_with(df_isolates_ID, ~ paste0(., "2"), !contains("Community"))) %>%
     rename(Isolate1MeasuredFreq = RelativeAbundance_Tend1) %>%
     ungroup() %>%
-    select(-Well, -RelativeAbundance_Tend2)
+    select(-Well, -RelativeAbundance_Tend2) %>%
+    mutate(Assembly = "self_assembly")
+
+df_pp_freq <- bind_rows(df_pp_init, df_pp_end) %>%
+    rename(ID = Species) %>%
+    select(-Family, -Abundance) %>%
+    pivot_wider(names_from = Time, values_from = RelativeAbundance, names_prefix = "RelativeAbundance_") %>%
+    # Fill abundance = NA with 0
+    replace_na(list(RelativeAbundance_Tend = 0)) %>%
+    select(-RelativeAbundance_Tinit) %>%
+    group_by(Community, Well) %>%
+    mutate(Isolate = c(1,2)) %>%
+    pivot_wider(names_from = Isolate, values_from = c(ID, RelativeAbundance_Tend), names_sep = "") %>%
+    filter(ID1 %in% df_isolates_ID$ID, ID2 %in% df_isolates_ID$ID) %>%
+    left_join(rename_with(df_isolates_ID, ~ paste0(., "1"), !contains("Community"))) %>%
+    left_join(rename_with(df_isolates_ID, ~ paste0(., "2"), !contains("Community"))) %>%
+    rename(Isolate1MeasuredFreq = RelativeAbundance_Tend1) %>%
+    ungroup() %>%
+    select(-Well, -RelativeAbundance_Tend2) %>%
+    mutate(Assembly = "random_assembly")
+
+df_pairs_freq <- bind_rows(df_cp_freq, df_pp_freq) %>%
+    mutate(Assembly = factor(Assembly, c("self_assembly", "random_assembly"))) %>%
+    select(Assembly, everything())
+
 
 write_csv(df_pairs, here::here("data/output/df_pairs.csv"))
 write_csv(df_pairs_freq, here::here("data/output/df_pairs_freq.csv"))
 
 # Isolate ----
-df_isolates_tournament <- df_communities_abundance %>%
-    filter(Time == max(Time), Transfer == max(Transfer)) %>%
-    arrange(Community) %>%
-    group_by(Community) %>%
-    summarize(Richness = n()) %>%
-    select(comm = Community, everything()) %>%
+df_isolates_tournament <- df_communities %>%
+    select(assem = Assembly, comm = Community, everything()) %>%
     rowwise() %>%
-    mutate(pairs_comm = df_pairs %>% filter(Community == comm) %>% list()) %>%
+    mutate(pairs_comm = df_pairs %>% filter(Assembly == assem, Community == comm) %>% list()) %>%
     mutate(tournaments_comm = pairs_comm %>% tournament_rank() %>% list()) %>%
-    select(Community = comm, tournaments_comm) %>%
+    select(Assembly = assem, Community = comm, tournaments_comm) %>%
     unnest(cols = tournaments_comm)
 
 df_isolates <- df_isolates_ID %>%
-    left_join(df_isolates_tournament) %>%
+    left_join(df_isolates_tournament) %>% # some species in community are in the transitent to extinction but picked. They have low abundance
     ungroup()
 
 
 write_csv(df_isolates, here::here("data/output/df_isolates.csv"))
 
+
 # Hierarchy measures ----
 ## Hierarchy following pairs
-compute_hierarchy1 <- function(pairs_mock) {
-    pairs_temp <- pairs_mock %>%
-        select(Isolate1, Isolate2, InteractionType, From, To)
-    isolates_tournament <- tournament_rank(pairs_temp) %>% select(Isolate, Score)
-
-    pairs_temp %>%
-        left_join(rename_with(isolates_tournament, ~ paste0(., "1")), by = "Isolate1") %>%
-        left_join(rename_with(isolates_tournament, ~ paste0(., "2")), by = "Isolate2") %>%
-        filter(InteractionType == "exclusion") %>%
-        mutate(WinnerScore = ifelse(From == Isolate1, Score1, Score2),
-               LoserScore = ifelse(From == Isolate1, Score2, Score1)) %>%
-        mutate(FollowRank = (WinnerScore > LoserScore) %>% factor(c(T,F))) %>%
-        count(FollowRank, .drop = F, name = "Count") %>%
-        mutate(FractionFollowRank = Count / sum(Count)) %>%
-        filter(FollowRank == T) %>%
-        pull(FractionFollowRank) %>%
-        return()
-}
-randomize_pairs1 <- function(x) {
-    # Shuffle pairs
-    rng <- order(runif(nrow(x),0,1))
-    x$InteractionType <- x$InteractionType[rng]
-    # Shuffle dominance
-    rng <- sample(1:nrow(x), size = nrow(x)/2, replace = F)
-    temp <- x$From[rng]
-    x$From[rng] <- x$To[rng]
-    x$To[rng] <- temp
-
-    return(x)
-}
-
 ### Permutation
 communities_randomized_list1 <- rep(list(NA), nrow(df_communities))
 tt <- proc.time()
 for (i in 1:length(communities_randomized_list1)) {
     temp_tt <- proc.time()
-    pairs_temp <- df_pairs %>% filter(Community == df_communities$Community[i])
+    assem <- df_communities$Assembly[i]
+    comm <- df_communities$Community[i]
+
+    pairs_temp <- df_pairs %>% filter(Assembly == assem, Community == comm)
     isolates_temp <- tibble(Community = unique(pairs_temp$Community), Isolate = sort(unique(c(pairs_temp$Isolate1, pairs_temp$Isolate2))))
 
-    communities_randomized_list1[[i]] <- tibble(Community = df_communities$Community[i], Replicate = 1:b) %>%
+    communities_randomized_list1[[i]] <-
+        tibble(Assembly = assem, Community = comm, Replicate = 1:b) %>%
         mutate(pairs_comm = list(pairs_temp)) %>%
         mutate(pairs_randomized = map(pairs_comm, randomize_pairs1)) %>%
         rowwise() %>%
         mutate(h1 = compute_hierarchy1(pairs_randomized))
-    cat("\n", df_communities$Community[i] %>% as.character())
+    cat("\n", assem, comm %>% as.character())
     cat("\n", (proc.time() - temp_tt)[3], "seconds")
 }
-
 communities_hierarchy_randomized1 <- bind_rows(communities_randomized_list1) %>%
     select(Community, Replicate, h1) %>%
     mutate(Community = factor(Community))
 ### obv
 communities_hierarchy1 <- df_pairs %>%
-    nest(pairs_comm = -Community) %>%
+    nest(pairs_comm = -c(Assembly, Community)) %>%
     rowwise() %>%
     mutate(h1 = compute_hierarchy1(pairs_comm)) %>%
-    select(Community, h1)
+    select(Assembly, Community, h1)
 
 
 ## Higgins 2017
-compute_comp_score2 <- function(pairs_comm, target_isolate) {
-    pairs_comm %>%
-        filter(Isolate1 == target_isolate | Isolate2 == target_isolate) %>%
-        mutate(Freq = ifelse(Isolate1 == target_isolate, Isolate1MeasuredFreq, 1-Isolate1MeasuredFreq)) %>%
-        pull(Freq) %>%
-        mean()
-}
-compute_hierarchy2 <- function(isolates_mock, pairs_mock) {
-    ranking <- isolates_mock %>%
-        rowwise() %>%
-        mutate(CompetitiveScore = compute_comp_score2(pairs_mock, Isolate)) %>%
-        arrange(desc(CompetitiveScore)) %>%
-        # Ranking by competitive score
-        pull(Isolate)
-
-    pairs_mock %>%
-        mutate(Freq1 = Isolate1MeasuredFreq, Freq2 = 1-Freq1) %>%
-        select(Isolate1, Isolate2, Freq1, Freq2) %>%
-        mutate(Pair = 1:n()) %>%
-        pivot_longer(cols = c(-Pair), names_to = ".value", names_pattern = "(.+)[12]") %>%
-        mutate(Isolate = ordered(Isolate, ranking)) %>%
-        group_by(Pair) %>%
-        arrange(Pair, Isolate) %>%
-        slice(1) %>%
-        pull(Freq) %>%
-        mean() %>%
-        return()
-
-}
-randomize_pairs2 <- function(x) {
-    # Shuffle pairs
-    rng <- order(runif(nrow(x),0,1))
-    x$Isolate1MeasuredFreq <- x$Isolate1MeasuredFreq[rng]
-    # Shuffle dominance
-    rng <- sample(1:nrow(x), size = nrow(x)/2, replace = F)
-    x$Isolate1MeasuredFreq[rng] <- 1 - x$Isolate1MeasuredFreq[rng]
-
-    return(x)
-}
-
 ### Permutation
 communities_randomized_list2 <- rep(list(NA), nrow(df_communities))
 tt <- proc.time()
 for (i in 1:length(communities_randomized_list2)) {
     temp_tt <- proc.time()
+    assem <- df_communities$Assembly[i]
+    comm <- df_communities$Community[i]
     pairs_temp <- df_pairs_freq %>%
-        filter(Community == df_communities$Community[i]) %>%
+        filter(Assembly == assem, Community == comm) %>%
         select(Community, Isolate1, Isolate2, Isolate1MeasuredFreq)
     isolates_temp <- tibble(Community = unique(pairs_temp$Community), Isolate = sort(unique(c(pairs_temp$Isolate1, pairs_temp$Isolate2))))
 
-    communities_randomized_list2[[i]] <- tibble(Community = df_communities$Community[i], Replicate = 1:b) %>%
+    communities_randomized_list2[[i]] <-
+        tibble(Assembly == assem, Community = comm, Replicate = 1:b) %>%
         mutate(pairs_comm = list(pairs_temp), isolates_comm = list(isolates_temp)) %>%
         mutate(pairs_randomized = map(pairs_comm, randomize_pairs2)) %>%
         rowwise() %>%
@@ -357,37 +401,32 @@ communities_hierarchy_randomized2 <- bind_rows(communities_randomized_list2) %>%
 
 ### obv
 communities_hierarchy2 <- df_pairs_freq %>%
-    rename(comm = Community) %>%
-    nest(pairs_comm = -comm) %>%
+    rename(assem = Assembly, comm = Community) %>%
+    nest(pairs_comm = -c(assem, comm)) %>%
     rowwise() %>%
-    mutate(isolates_comm = list(filter(df_isolates, Community == comm))) %>%
+    mutate(isolates_comm = list(filter(df_isolates, Assembly == assem, Community == comm))) %>%
     mutate(h2 = compute_hierarchy2(isolates_comm, pairs_comm)) %>%
-    select(Community = comm, h2)
+    select(Assembly = assem, Community = comm, h2)
 
 
 # Join data
 df_communities_hierarchy <- left_join(communities_hierarchy1, communities_hierarchy2) %>%
-    pivot_longer(-Community, names_to = "Metric", values_to = "HierarchyScore")
-df_communities_hierarchy_randomized <- left_join(communities_hierarchy_randomized1, communities_hierarchy_randomized2) %>%
-    pivot_longer(-c(Community, Replicate), names_to = "Metric", values_to = "HierarchyScore")
+    pivot_longer(-c(Assembly, Community), names_to = "Metric", values_to = "HierarchyScore")
+#df_communities_hierarchy_randomized <- left_join(communities_hierarchy_randomized1, communities_hierarchy_randomized2) %>%
+#    pivot_longer(-c(Community, Replicate), names_to = "Metric", values_to = "HierarchyScore")
 write_csv(df_communities_hierarchy, here::here("data/output/df_communities_hierarchy.csv"))
-write_csv(df_communities_hierarchy_randomized, here::here("data/output/df_communities_hierarchy_randomized.csv"))
-
-
-
-
-
+#write_csv(df_communities_hierarchy_randomized, here::here("data/output/df_communities_hierarchy_randomized.csv"))
 
 
 # Make networks ----
 ## obv
 temp <- df_communities %>%
-    rename(comm = Community) %>%
+    rename(assem = Assembly, comm = Community) %>%
     rowwise() %>%
-    mutate(isolate_comm = filter(df_isolates, Community == comm) %>% list()) %>%
-    mutate(pairs_comm = filter(df_pairs, Community == comm) %>% list()) %>%
+    mutate(isolate_comm = filter(df_isolates, Assembly == assem, Community == comm) %>% list()) %>%
+    mutate(pairs_comm = filter(df_pairs, Assembly == assem, Community == comm) %>% list()) %>%
     mutate(Network = make_network(isolate_comm, pairs_comm) %>% list())
-net_simulated_list <- temp$Network %>% set_names(temp$comm)
+net_simulated_list <- temp$Network %>% set_names(paste0(temp$assem, "_", temp$comm))
 
 ## permutation
 net_simulated_randomized_list <- rep(list(rep(list(NA), b)), length(net_simulated_list))
@@ -462,8 +501,10 @@ df_diag <- df_communities %>%
     mutate(Network = net_simulated_list) %>%
     rowwise() %>%
     mutate(Diagonal = count_diag_coexistence(Network) %>% mutate(Community) %>% list()) %>%
-    pull(Diagonal) %>%
-    bind_rows()
+    select(-Richness, -Network, -Community) %>%
+    unnest(Diagonal) %>%
+    bind_rows() %>%
+    select(Assembly, Community, everything())
 
 # Permutation
 df_diag_randomized_list <- rep(list(NA), length(net_simulated_list))
@@ -478,12 +519,34 @@ for (i in 1:length(net_simulated_list)) {
     cat("\n", (proc.time() - temp_tt)[3], "seconds")
     if (i == length(net_simulated_list)) cat("\n\n total time:", (proc.time() - tt)[3], "seconds")
 }
-df_diag_randomized <- bind_rows(df_diag_randomized_list, .id = "Community")
-
+df_diag_randomized <- bind_rows(df_diag_randomized_list, .id = "Community") %>%
+    separate(Community, into = c("Assembly", "Community"), sep = "_W") %>%
+    mutate(Community = paste0("W", Community))
 #
 write_csv(df_diag, file = here::here("data/output/df_diag.csv"))
 write_csv(df_diag_randomized, file = here::here("data/output/df_diag_randomized.csv"))
 
+
+
+
+# Number of cliques or components ----
+df_component <- df_communities %>%
+    mutate(Network = net_simulated_list) %>%
+    rowwise() %>%
+    mutate(Component = count_component(Network)) %>%
+    select(Assembly, Community, Component)
+
+df_component_randomized <- df_communities %>%
+    mutate(NetworkList = net_simulated_randomized_list) %>%
+    rowwise() %>%
+    mutate(temp = list(tibble(Replicate = 1:b, Component = sapply(NetworkList, count_component)))) %>%
+    unnest(cols = c(temp)) %>%
+    group_by(Replicate, Community) %>%
+    select(Community, Replicate, Component)
+
+
+write_csv(df_component, file = here::here("data/output/df_component.csv"))
+write_csv(df_component_randomized, file = here::here("data/output/df_component_randomized.csv"))
 
 
 
