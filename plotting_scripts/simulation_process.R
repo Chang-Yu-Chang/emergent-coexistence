@@ -542,7 +542,7 @@ df_component_randomized <- df_communities %>%
     mutate(temp = list(tibble(Replicate = 1:b, Component = sapply(NetworkList, count_component)))) %>%
     unnest(cols = c(temp)) %>%
     group_by(Replicate, Community) %>%
-    select(Community, Replicate, Component)
+    select(Assembly, Community, Replicate, Component)
 
 
 write_csv(df_component, file = here::here("data/output/df_component.csv"))
