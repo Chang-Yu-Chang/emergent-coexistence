@@ -939,13 +939,14 @@ p2 <- pairs %>%
 pairs <- read_csv(here::here("data/output/pairs.csv"), col_types = cols()) %>% mutate(InteractionType = ifelse(InteractionType == "neutrality", "coexistence", InteractionType))
 df_pairs <- read_csv(here::here("data/output/df_pairs.csv"))
 
-p3 <- pairs %>%
+pairs_merged <- pairs %>%
     select(Assembly, InteractionType) %>%
     mutate(Assembly = ifelse(Assembly == "across_community", "random_assembly", Assembly)) %>%
     mutate(Assembly = factor(Assembly, c("self_assembly", "random_assembly"))) %>%
     mutate(Treatment = "experiment") %>%
     bind_rows(df_pairs %>% select(Assembly, InteractionType) %>% mutate(Treatment = "simulation")) %>%
-    mutate(Assembly = factor(Assembly, c("self_assembly", "random_assembly"))) %>%
+    mutate(Assembly = factor(Assembly, c("self_assembly", "random_assembly")))
+p3 <- pairs_merged %>%
     group_by(Treatment, Assembly, InteractionType) %>%
     summarize(Count = n()) %>%
     mutate(Fraction = Count / sum(Count), TotalCount = sum(Count)) %>%
@@ -962,12 +963,22 @@ p3 <- pairs %>%
           panel.border = element_rect(color = 1, fill = NA, size = 1)) +
     labs(x = "", y  = "Fraction", fill = "")
 
-
-p_top <- plot_grid(p1, p2, nrow = 1, axis = "tb", align = "h", scale = .9, rel_widths = c(1, 1.5))
+#p_top <- plot_grid(p1, p2, nrow = 1, axis = "tb", align = "h", scale = .9, rel_widths = c(1, 1.5))
 #p <- plot_grid(p_top, p3, ncol = 1, scale = c(1, .9), labels = c("A", "B")) + paint_white_background()
 p <- p3
 ggsave(here::here("plots/01S0-pairwsie_competition_assembly.png"), p, width = 6, height = 3)
 
+## Stat
+### Experiment
+pairs_merged %>%
+    mutate(InteractionType = factor(InteractionType, c("exclusion", "coexistence"))) %>%
+    filter(Treatment == "experiment") %>%
+    chisq_test(InteractionType ~ Assembly)
+### Simulation
+pairs_merged %>%
+    mutate(InteractionType = factor(InteractionType, c("exclusion", "coexistence"))) %>%
+    filter(Treatment == "simulation") %>%
+    chisq_test(InteractionType ~ Assembly)
 
 
 # Figure 01S1. Analysis of self-assembly ----------------------------------------------------------------------------------------------------
