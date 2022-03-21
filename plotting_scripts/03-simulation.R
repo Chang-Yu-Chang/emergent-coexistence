@@ -8,7 +8,7 @@ library(ggraph)
 source(here::here("plotting_scripts/network_functions.R"))
 
 # Simulation input parameters
-output_dir <- "~/Dropbox/lab/invasion-network/simulation/data/raw9/"
+output_dir <- "~/Dropbox/lab/invasion-network/simulation/data/raw10/"
 input_independent <- read_csv(paste0(output_dir,"input_independent.csv"), col_types = cols())
 input_pairs <- read_csv(paste0(output_dir, "input_pairs.csv"), col_types = cols())
 input_row <- input_independent[1,]
@@ -73,7 +73,7 @@ pB <- df_communities_abundance %>%
           legend.position = "top") +
     guides(alpha = "none", color = "none") +
     labs(fill = "")
-
+pB
 ggsave(here::here("plots/Fig4B-community_composition.png"), pB, width = 4, height = 3)
 
 # Figure 4C. All pairwise networks

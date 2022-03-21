@@ -6,7 +6,7 @@ library(ggraph)
 library(cowplot)
 source(here::here("plotting_scripts/network_functions.R"))
 
-output_dir <- "~/Dropbox/lab/invasion-network/simulation/data/raw9/"
+output_dir <- "~/Dropbox/lab/invasion-network/simulation/data/raw10/"
 input_independent <- read_csv(paste0(output_dir,"input_independent.csv"), col_types = cols())
 input_pairs <- read_csv(paste0(output_dir, "input_pairs.csv"), col_types = cols())
 input_row <- input_independent[1,]
@@ -60,7 +60,35 @@ df_communities_abundance <- bind_rows(df_comm_init, df_comm_timepoint) %>%
     mutate(Assembly = "self_assembly") %>%
     rename(ID = Species) %>%
     select(Assembly, everything())
+
+
+df_communities_abundance %>%
+    filter(Community %in% paste0("W", 0:9)) %>%
+    filter(Transfer == max(Transfer), Time == max(Time)) %>%
+    mutate(Community = factor(Community, c("W1", "W0", paste0("W", 2:20)))) %>%
+    mutate(Family = ifelse(Family == "F0", "fermenter", ifelse(Family == "F1", "respirator", Family))) %>%
+    ggplot() +
+    geom_col(aes(x = Community, y = Abundance, fill = Family, group = ID),
+             color = 1, size = .5, position = "fill") +
+    scale_fill_manual(values = fermenter_color) +
+    scale_x_discrete(label = 1:20) +
+    scale_y_continuous(breaks = c(0, .5, 1), expand = c(0,0)) +
+    #facet_grid(Time~.) +
+    theme_classic() +
+    theme(panel.border = element_rect(color = 1, fill = NA),
+          axis.title = element_text(size = 15, color = 1),
+          axis.text = element_text(size = 10, color = 1),
+          legend.text = element_text(size = 15, color = 1),
+          legend.title = element_text(size = 15, color = 1),
+          legend.position = "top") +
+    guides(alpha = "none", color = "none") +
+    labs(fill = "")
+
 write_csv(df_communities_abundance, here::here("data/output/df_communities_abundance.csv"))
+
+
+
+
 
 ## Pool networks
 df_pool_init <- paste0(output_dir, "poolNetwork-1_init.csv") %>%
@@ -256,7 +284,7 @@ df_isolates_ID <- bind_rows(temp1, temp2) %>%
 ## Determine pairwise result
 df_pairs <- bind_rows(
     determine_interaction(df_cp_init, df_cp_end) %>% mutate(Assembly = "self_assembly"),
-    determine_interaction(df_pp_init, df_pp_end) %>% mutate(Assembly = "random_assembly")
+    #determine_interaction(df_pp_init, df_pp_end) %>% mutate(Assembly = "random_assembly")
 ) %>%
     left_join(rename_with(sal, ~paste0(., 1))) %>%
     left_join(rename_with(sal, ~paste0(., 2))) %>%
@@ -296,25 +324,27 @@ df_cp_freq <- bind_rows(df_cp_init, df_cp_end) %>%
     select(-Well, -RelativeAbundance_Tend2) %>%
     mutate(Assembly = "self_assembly")
 
-df_pp_freq <- bind_rows(df_pp_init, df_pp_end) %>%
-    rename(ID = Species) %>%
-    select(-Family, -Abundance) %>%
-    pivot_wider(names_from = Time, values_from = RelativeAbundance, names_prefix = "RelativeAbundance_") %>%
-    # Fill abundance = NA with 0
-    replace_na(list(RelativeAbundance_Tend = 0)) %>%
-    select(-RelativeAbundance_Tinit) %>%
-    group_by(Community, Well) %>%
-    mutate(Isolate = c(1,2)) %>%
-    pivot_wider(names_from = Isolate, values_from = c(ID, RelativeAbundance_Tend), names_sep = "") %>%
-    filter(ID1 %in% df_isolates_ID$ID, ID2 %in% df_isolates_ID$ID) %>%
-    left_join(rename_with(df_isolates_ID, ~ paste0(., "1"), !contains("Community"))) %>%
-    left_join(rename_with(df_isolates_ID, ~ paste0(., "2"), !contains("Community"))) %>%
-    rename(Isolate1MeasuredFreq = RelativeAbundance_Tend1) %>%
-    ungroup() %>%
-    select(-Well, -RelativeAbundance_Tend2) %>%
-    mutate(Assembly = "random_assembly")
+# df_pp_freq <- bind_rows(df_pp_init, df_pp_end) %>%
+#     rename(ID = Species) %>%
+#     select(-Family, -Abundance) %>%
+#     pivot_wider(names_from = Time, values_from = RelativeAbundance, names_prefix = "RelativeAbundance_") %>%
+#     # Fill abundance = NA with 0
+#     replace_na(list(RelativeAbundance_Tend = 0)) %>%
+#     select(-RelativeAbundance_Tinit) %>%
+#     group_by(Community, Well) %>%
+#     mutate(Isolate = c(1,2)) %>%
+#     pivot_wider(names_from = Isolate, values_from = c(ID, RelativeAbundance_Tend), names_sep = "") %>%
+#     filter(ID1 %in% df_isolates_ID$ID, ID2 %in% df_isolates_ID$ID) %>%
+#     left_join(rename_with(df_isolates_ID, ~ paste0(., "1"), !contains("Community"))) %>%
+#     left_join(rename_with(df_isolates_ID, ~ paste0(., "2"), !contains("Community"))) %>%
+#     rename(Isolate1MeasuredFreq = RelativeAbundance_Tend1) %>%
+#     ungroup() %>%
+#     select(-Well, -RelativeAbundance_Tend2) %>%
+#     mutate(Assembly = "random_assembly")
 
-df_pairs_freq <- bind_rows(df_cp_freq, df_pp_freq) %>%
+df_pairs_freq <-
+    bind_rows(df_cp_freq) %>%
+    #bind_rows(df_cp_freq, df_pp_freq) %>%
     mutate(Assembly = factor(Assembly, c("self_assembly", "random_assembly"))) %>%
     select(Assembly, everything())
 
@@ -324,6 +354,7 @@ write_csv(df_pairs_freq, here::here("data/output/df_pairs_freq.csv"))
 
 # Isolate ----
 df_isolates_tournament <- df_communities %>%
+    filter(Assembly == "self_assembly") %>%
     select(assem = Assembly, comm = Community, everything()) %>%
     rowwise() %>%
     mutate(pairs_comm = df_pairs %>% filter(Assembly == assem, Community == comm) %>% list()) %>%
@@ -332,7 +363,7 @@ df_isolates_tournament <- df_communities %>%
     unnest(cols = tournaments_comm)
 
 df_isolates <- df_isolates_ID %>%
-    left_join(df_isolates_tournament) %>% # some species in community are in the transitent to extinction but picked. They have low abundance
+    left_join(df_isolates_tournament) %>% # some species in community are in the transient to extinction but picked. They have low abundance
     ungroup()
 
 
@@ -341,6 +372,7 @@ write_csv(df_isolates, here::here("data/output/df_isolates.csv"))
 
 # Hierarchy measures ----
 ## Hierarchy following pairs
+if (FALSE) {
 ### Permutation
 communities_randomized_list1 <- rep(list(NA), nrow(df_communities))
 tt <- proc.time()
@@ -364,6 +396,8 @@ for (i in 1:length(communities_randomized_list1)) {
 communities_hierarchy_randomized1 <- bind_rows(communities_randomized_list1) %>%
     select(Community, Replicate, h1) %>%
     mutate(Community = factor(Community))
+
+}
 ### obv
 communities_hierarchy1 <- df_pairs %>%
     nest(pairs_comm = -c(Assembly, Community)) %>%
@@ -373,6 +407,8 @@ communities_hierarchy1 <- df_pairs %>%
 
 
 ## Higgins 2017
+if (FALSE) {
+
 ### Permutation
 communities_randomized_list2 <- rep(list(NA), nrow(df_communities))
 tt <- proc.time()
@@ -398,6 +434,7 @@ for (i in 1:length(communities_randomized_list2)) {
 communities_hierarchy_randomized2 <- bind_rows(communities_randomized_list2) %>%
     select(Community, Replicate, h2) %>%
     mutate(Community = factor(Community))
+}
 
 ### obv
 communities_hierarchy2 <- df_pairs_freq %>%
@@ -421,6 +458,7 @@ write_csv(df_communities_hierarchy, here::here("data/output/df_communities_hiera
 # Make networks ----
 ## obv
 temp <- df_communities %>%
+    filter(Assembly == "self_assembly") %>%
     rename(assem = Assembly, comm = Community) %>%
     rowwise() %>%
     mutate(isolate_comm = filter(df_isolates, Assembly == assem, Community == comm) %>% list()) %>%
@@ -430,7 +468,7 @@ net_simulated_list <- temp$Network %>% set_names(paste0(temp$assem, "_", temp$co
 
 ## permutation
 net_simulated_randomized_list <- rep(list(rep(list(NA), b)), length(net_simulated_list))
-names(net_simulated_randomized_list) <- df_communities$Community
+names(net_simulated_randomized_list) <- df_communities$Community[1:20]
 
 tt <- proc.time()
 for (i in 1:length(net_simulated_list)) {

@@ -406,12 +406,12 @@ def load_assumptions(input_row):
     assumptions['fss'] = 0.10 # sugar to sugar
     assumptions['fsa'] = 0.80 # sugar to acid
     assumptions['fsw'] = 0.10 # sugar to waste
-    assumptions['fas'] = 0.01 # acid to sugar
+    assumptions['fas'] = 0.001 # acid to sugar
     assumptions['faa'] = 0.10 # acid to acid
-    assumptions['faw'] = 0.79 # acid to waste
-    assumptions['fws'] = 0.01 # waste to sugar
-    assumptions['fwa'] = 0.01 # waste to acid
-    assumptions['fww'] = 0.98 # waste to waste
+    assumptions['faw'] = 0.899 # acid to waste
+    assumptions['fws'] = 0.001 # waste to sugar
+    assumptions['fwa'] = 0.001 # waste to acid
+    assumptions['fww'] = 0.998 # waste to waste
     assumptions['sparsity'] = 0.1 # Effective sparsity of metabolic matrix (between 0 and 1)
     assumptions['metabolism'] = metabolism #{'common','specific'} determines whether to use a common metabolic matrix or each species having its own
     assumptions['rs'] = rs # control parameter (only used if 'metabolism' is 'specific'): if 1, each species secretes only resources that it can consume (or waste resources), preferentially those that it can consume more efficiently; if 0 secretions are randomized (default behavior of the original community-simulator package) 
@@ -527,6 +527,8 @@ def run_simulations(input_row):
         Plate.N.round(2).to_csv(input_row['output_dir'] + re.sub("init.csv", "end.csv", input_row["init_N0"]))
 
 
+# For common metabolism, use T = 10, npass=5, muc1 = 10, muc2 = 20
+# For two-families metabolism, use T = 10, npass=5, muc1 = 10, muc2 = 10
 
 
 

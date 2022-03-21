@@ -1,7 +1,7 @@
 library(tidyverse)
 
 # Generate the input_csv files ----
-output_dir = "~/Dropbox/lab/invasion-network/simulation/data/raw9/"
+output_dir = "~/Dropbox/lab/invasion-network/simulation/data/raw10/"
 
 # Example parameters
 input_parameters <- tibble(
@@ -22,11 +22,11 @@ input_parameters <- tibble(
     l2_var = 0.001,
     c_symmetry = "asymmetry",
     muc1 = 10,
-    muc2 = 20,
+    muc2 = 10,
     sigc = 5,
     n_communities = 20,
     n_wells = 100, # Note that the well number (column number) of init_N0 has to match n_wells
-    metabolism = "common", # "common", "two-families", "specific"
+    metabolism = "two-families", # "common", "two-families", "specific"
     rs = 0,
 )
 
@@ -42,8 +42,8 @@ temp2 <- input_parameters %>%
     slice(rep(1, 1)) %>%
     mutate(init_N0 = paste0("selfAssembly-1_init.csv"), exp_id = 1, n_wells = 20, S = 50) #S=30
 
-input_independent <- bind_rows(temp1, temp2)
-#input_independent <- bind_rows(temp1)
+#input_independent <- bind_rows(temp1, temp2)
+input_independent <- bind_rows(temp1)
 write_csv(input_independent, here::here("simulation/input_independent.csv"))
 
 
@@ -58,7 +58,7 @@ temp4 <- input_parameters %>%
     mutate(init_N0 = paste0("communityPairs_W", 0:(n_comm-1), "-1_init.csv"))
 
 #input_pairs <- bind_rows(temp3, temp4)
-input_pairs <- bind_rows(temp3, temp4)
+input_pairs <- bind_rows(temp3)
 write_csv(input_pairs, here::here("simulation/input_pairs.csv"))
 
 
@@ -137,8 +137,33 @@ write_csv(N_community, file = paste0(output_dir, "selfAssembly-1_init.csv"))
 
 
 # Execute this chunk when monoculture is done
-# Pool pairs. Use isolates that can grow in monoculture
+draw_pairs_from_community <- function(N_community_long) {
+    # Communities with no or only one species
+    if (nrow(N_community_long) <= 1) N_pairs <- sal %>% mutate(W0 = 0)
 
+    # Other communities with more one species
+    if (nrow(N_community_long) > 1) {
+        N_pairs <- expand_grid(sp1 = N_community_long$Species, sp2 = N_community_long$Species) %>%
+            mutate(across(everything(), ~ ordered(.x, sal$Species))) %>%
+            filter(sp1 < sp2) %>%
+            mutate(Pair = paste0("P", 0:(n()-1))) %>%
+            # Make duplicate for two freq
+            slice(rep(1:n(), each = 2)) %>%
+            mutate(Well = paste0("W", 0:(n()-1))) %>%
+            group_by(Well) %>%
+            pivot_longer(cols = starts_with("sp"), names_to = "temp", values_to = "Species") %>%
+            ungroup() %>%
+            mutate(Abundance = rep(c(0.05, 0.95, 0.95, 0.05), n()/4)) %>%
+            full_join(sal, by = "Species") %>%
+            replace_na(list(Well = "W0", Abundance = 0)) %>%
+            select(Pair, Well, Family, Species, Abundance) %>%
+            pivot_wider(id_cols = c(Family, Species), names_from = Well, values_from = Abundance, values_fill = 0) %>%
+            mutate(Species = factor(Species, sal$Species)) %>%
+            arrange(Species)
+    }
+    return(N_pairs)
+}
+# Pool pairs. Use isolates that can grow in monoculture
 ## Use isolates that can grow in monoculture
 set.seed(1)
 input_row <- input_pairs %>% filter(str_detect(init_N0, "poolPairs")) %>% slice(1)
@@ -174,32 +199,6 @@ for (i in 1:length(temp)) {
 
 # Execute this chunk when community assembly is done
 input_row <- input_pairs %>% filter(str_detect(init_N0, "poolPairs")) %>% slice(1)
-draw_pairs_from_community <- function(N_community_long) {
-    # Communities with no or only one species
-    if (nrow(N_community_long) <= 1) N_pairs <- sal %>% mutate(W0 = 0)
-
-    # Other communities with more one species
-    if (nrow(N_community_long) > 1) {
-        N_pairs <- expand_grid(sp1 = N_community_long$Species, sp2 = N_community_long$Species) %>%
-            mutate(across(everything(), ~ ordered(.x, sal$Species))) %>%
-            filter(sp1 < sp2) %>%
-            mutate(Pair = paste0("P", 0:(n()-1))) %>%
-            # Make duplicate for two freq
-            slice(rep(1:n(), each = 2)) %>%
-            mutate(Well = paste0("W", 0:(n()-1))) %>%
-            group_by(Well) %>%
-            pivot_longer(cols = starts_with("sp"), names_to = "temp", values_to = "Species") %>%
-            ungroup() %>%
-            mutate(Abundance = rep(c(0.05, 0.95, 0.95, 0.05), n()/4)) %>%
-            full_join(sal, by = "Species") %>%
-            replace_na(list(Well = "W0", Abundance = 0)) %>%
-            select(Pair, Well, Family, Species, Abundance) %>%
-            pivot_wider(id_cols = c(Family, Species), names_from = Well, values_from = Abundance, values_fill = 0) %>%
-            mutate(Species = factor(Species, sal$Species)) %>%
-            arrange(Species)
-    }
-    return(N_pairs)
-}
 
 # Community pairs
 N_community_end <- read_csv(paste0(output_dir, "selfAssembly-1_end.csv"), col_types = cols()) %>% rename(Family = ...1, Species = ...2)
