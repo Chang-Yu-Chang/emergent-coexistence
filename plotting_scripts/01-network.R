@@ -897,7 +897,8 @@ ggsave(here::here("plots/FigS9-components.png"), p, width = 6, height = 4)
 
 
 # Figures not used yet. ----
-# Figure 01S0. Coexistence pair count for both random assembly and self-assembly ----------------------------------------------------------------------------------------------------
+# Figure 01S0. Summary stat for random assembly and self-assembly in exp and sim ----------------------------------------------------------------------------------------------------
+if (FALSE) {
 ## Treat across-community as random assembly
 p1 <- pairs %>%
     mutate(InteractionType = factor(InteractionType, c("exclusion", "coexistence"))) %>%
@@ -934,8 +935,8 @@ p2 <- pairs %>%
     guides(fill = "none") +
     labs(x = "", y  = "Fraction", fill = "")
 
-
-## Merge experiment and simulation data
+}
+# Pairwise coexistence
 pairs <- read_csv(here::here("data/output/pairs.csv"), col_types = cols()) %>% mutate(InteractionType = ifelse(InteractionType == "neutrality", "coexistence", InteractionType))
 df_pairs <- read_csv(here::here("data/output/df_pairs.csv"))
 
@@ -946,7 +947,7 @@ pairs_merged <- pairs %>%
     mutate(Treatment = "experiment") %>%
     bind_rows(df_pairs %>% select(Assembly, InteractionType) %>% mutate(Treatment = "simulation")) %>%
     mutate(Assembly = factor(Assembly, c("self_assembly", "random_assembly")))
-p3 <- pairs_merged %>%
+p1 <- pairs_merged %>%
     group_by(Treatment, Assembly, InteractionType) %>%
     summarize(Count = n()) %>%
     mutate(Fraction = Count / sum(Count), TotalCount = sum(Count)) %>%
@@ -955,18 +956,15 @@ p3 <- pairs_merged %>%
     geom_text(aes(label = paste0("n=", TotalCount), x = Assembly), y = Inf, vjust = 2) +
     scale_fill_manual(values = assign_interaction_color(level = "simple")) +
     scale_y_continuous(expand = c(0,0), breaks = c(0, .5, 1)) +
-    facet_grid(.~Treatment) +
+    facet_wrap(Treatment~Assembly, nrow = 1, scales = "free_x") +
+    #facet_grid(.~Treatment) +
     theme_classic() +
     theme(axis.title.x = element_blank(), legend.position = "right",
-          axis.text.x = element_text(size = 10, color = "black", angle = 15, vjust = 1, hjust = 1),
-          strip.background = element_rect(color = NA, fill = NA),
+          axis.text.x = element_blank(),
+          #axis.text.x = element_text(size = 10, color = "black", angle = 15, vjust = 1, hjust = 1),
           panel.border = element_rect(color = 1, fill = NA, size = 1)) +
-    labs(x = "", y  = "Fraction", fill = "")
-
-#p_top <- plot_grid(p1, p2, nrow = 1, axis = "tb", align = "h", scale = .9, rel_widths = c(1, 1.5))
-#p <- plot_grid(p_top, p3, ncol = 1, scale = c(1, .9), labels = c("A", "B")) + paint_white_background()
-p <- p3
-ggsave(here::here("plots/01S0-pairwsie_competition_assembly.png"), p, width = 6, height = 3)
+    labs(x = "", y  = "Fraction", fill = "") +
+    ggtitle("Pairwise outcomes")
 
 ## Stat
 ### Experiment
@@ -979,6 +977,94 @@ pairs_merged %>%
     mutate(InteractionType = factor(InteractionType, c("exclusion", "coexistence"))) %>%
     filter(Treatment == "simulation") %>%
     chisq_test(InteractionType ~ Assembly)
+
+# Panel B. Hierarchy
+# Data
+## Experiments
+communities_hierarchy <- read_csv(here::here("data/output/communities_hierarchy.csv")) %>% left_join(select(communities, Assembly, Community))
+communities_hierarchy_randomized <- read_csv(here::here("data/output/communities_hierarchy_randomized.csv")) %>% left_join(select(communities, Assembly, Community))
+## Simulation
+df_communities_hierarchy <- read_csv(here::here("data/output/df_communities_hierarchy.csv"))
+df_communities_hierarchy_randomized <- read_csv(here::here("data/output/df_communities_hierarchy_randomized.csv"))
+
+# Binding the data
+## Observation
+communities_hierarchy_obv <- bind_rows(
+    mutate(communities_hierarchy, Treatment = "experiment"),
+    mutate(df_communities_hierarchy, Treatment = "simulation")
+) %>%
+    mutate(Assembly = factor(Assembly, c("self_assembly", "random_assembly")))
+## Permutation
+communities_hierarchy_pmt <- bind_rows(
+    mutate(communities_hierarchy_randomized, Treatment = "experiment"),
+    mutate(df_communities_hierarchy_randomized, Treatment = "simulation")
+) %>%
+    mutate(Assembly = factor(Assembly, c("self_assembly", "random_assembly")))
+
+# Plot
+p2 <- communities_hierarchy_obv %>%
+    ggplot(aes(x = Metric, y = HierarchyScore)) +
+    geom_boxplot(width = .5, lwd = .8) +
+    geom_jitter(shape = 1, size = 2, width = .2, stroke = .8) +
+    scale_y_continuous(limits = c(0,1.01), breaks = c(0, .25, .5, .75, 1)) +
+    facet_wrap(Treatment~Assembly, scales = "free_x", nrow = 1) +
+    theme_classic() +
+    theme(panel.grid.major.y = element_line(color = "grey", linetype = 2),
+          axis.text = element_text(size = 10, color = 1),
+          axis.title = element_text(size = 15, color = 1),
+          panel.border = element_rect(fill = NA, color = 1, size = 1.5)) +
+    labs(x = "Hierarchy", y = "Score") +
+    ggtitle("Hierarchy")
+
+
+# Panel C. Clique
+# Data
+## Experiments
+networks_component <- read_csv(here::here("data/output/networks_component.csv")) %>% left_join(select(communities, Assembly, Community))
+networks_component_randomized <- read_csv(here::here("data/output/networks_component_randomized.csv")) %>% left_join(select(communities, Assembly, Community))
+## Simulation
+df_component <- read_csv(here::here("data/output/df_component.csv"))
+df_component_randomized <- read_csv(here::here("data/output/df_component_randomized.csv"))
+
+# Binding the data
+## Observation
+networks_component_obv <- bind_rows(
+    mutate(networks_component, Treatment = "experiment"),
+    mutate(df_component, Treatment = "simulation")
+) %>%
+    mutate(Assembly = factor(Assembly, c("self_assembly", "random_assembly"))) %>%
+    group_by(Treatment, Assembly) %>%
+    summarize(Component = sum(Component))
+## Permutation
+networks_component_pmt <- bind_rows(
+    mutate(networks_component_randomized, Treatment = "experiment"),
+    mutate(df_component_randomized, Treatment = "simulation")
+) %>%
+    mutate(Assembly = factor(Assembly, c("self_assembly", "random_assembly"))) %>%
+    group_by(Treatment, Assembly, Replicate) %>%
+    summarize(Component = sum(Component))
+
+# Plot
+p3 <- networks_component_pmt %>%
+    ggplot() +
+    geom_histogram(aes(x = Component, color = "permutation"), binwidth = 1, color = 1, fill = NA) +
+    geom_vline(data = networks_component_obv, aes(color = "observation", xintercept = Component)) +
+    scale_color_manual(values = c("observation" = "red", "permutation" = "black")) +
+    facet_wrap(Treatment~Assembly, nrow = 1, scales = "free_x") +
+    theme_classic() +
+    theme(panel.border = element_rect(color = 1, fill = NA),
+          legend.position = "right", legend.title = element_blank()) +
+    labs(x = "Number of cliques", y = "Permutation") +
+    ggtitle("Clique")
+
+p <- plot_grid(p1, p2, p3, ncol = 1, labels = c("A", "B", "C"), axis = "lr", align = "v") + paint_white_background()
+ggsave(here::here("plots/01S0-pairwsie_competition_assembly.png"), p, width = 10, height = 10)
+
+
+
+
+
+
 
 
 # Figure 01S1. Analysis of self-assembly ----------------------------------------------------------------------------------------------------
