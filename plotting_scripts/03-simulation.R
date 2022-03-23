@@ -26,7 +26,163 @@ df_pairs <- read_csv(here::here("data/output/df_pairs.csv"), col_types = cols())
 df_isolates <- read_csv(here::here("data/output/df_isolates.csv"), col_types = cols())
 load("~/Dropbox/lab/invasion-network/data/output/network_simulated.Rdata")
 
-# Figure 4. Model result ------------------------------------------------------------
+# Figure 3. Model result ------------------------------------------------------------
+# Figure 3A. Dynamics of one example community
+df_comm_example <- df_communities_abundance %>%
+    filter(Community == "W1") %>%
+    mutate(Time = ifelse(Time != 0 , (Transfer-1)*10+Time, Time)) # Note that this line changes when the growth cycle time changes
+df_comm_example_end <- df_comm_example %>% filter(Time == max(Time)) %>%
+    mutate(PlotColor = Family, PlotAlpha = factor(1:n())) %>%
+    select(ID, PlotColor, PlotAlpha)
+
+pA <- df_comm_example %>%
+    left_join(df_comm_example_end, by = "ID") %>%
+    ggplot() +
+    geom_line(aes(x = Time, y = Abundance, color = PlotColor, alpha = PlotAlpha, group = ID), size = 1) +
+    scale_x_continuous(breaks = scales::pretty_breaks(n=2), expand = c(0,0)) +
+    scale_y_continuous(breaks = scales::pretty_breaks(n=2), expand = c(.1,0)) +
+    scale_color_manual(values = category_color, breaks = c("F0", "F1")) +
+    scale_alpha_manual(values = set_names(c(1, .8, seq(1, .6, length.out = 5)), seq(1:7))) +
+    theme_classic() +
+    theme(panel.border = element_rect(color = 1, fill = NA, size = 1),
+          axis.title = element_text(size = 15, color = 1),
+          axis.text = element_text(size = 10, color = 1)) +
+    guides(alpha = "none", color = "none") +
+    labs()
+ggsave(here::here("plots/Fig3A-temporal_composition.png"), pA, width = 3, height = 3)
+
+
+# Figure 3B. End point composition
+df_communities_ID <- df_communities_abundance %>%
+    filter(Assembly == "self_assembly") %>%
+    filter(Transfer == max(Transfer), Time == max(Time)) %>%
+    group_by(Community) %>%
+    mutate(RelativeAbundance = Abundance / sum(Abundance)) %>%
+    filter(RelativeAbundance > 0.01) %>%
+    count() %>%
+    filter(n > 3) %>% ungroup() %>%
+    slice(1:10) %>%
+    arrange(n) %>%
+    mutate(CommunityLabel = factor(1:10))
+pB <- df_communities_abundance %>%
+    filter(Assembly == "self_assembly") %>%
+    right_join(select(df_communities_ID, Community, CommunityLabel)) %>%
+    #filter(Community %in% paste0("W", 3:12)) %>%
+    filter(Transfer == max(Transfer), Time == max(Time)) %>%
+    left_join(select(temp, Community, CommunityLabel)) %>%
+    #mutate(Community = factor(Community, c("W1", "W0", paste0("W", 2:20)))) %>%
+    mutate(Family = ifelse(Family == "F0", "fermenter", ifelse(Family == "F1", "respirator", Family))) %>%
+    mutate(ID = factor(ID, paste0("S", 0:999))) %>%
+    ggplot() +
+    geom_col(aes(x = CommunityLabel, y = Abundance, fill = Family, group = ID),
+             color = 1, size = .5, position = "fill") +
+    scale_fill_manual(values = fermenter_color) +
+    scale_x_discrete(label = 1:20) +
+    scale_y_continuous(breaks = c(0, .5, 1), expand = c(0,0)) +
+    #facet_grid(Time~.) +
+    theme_classic() +
+    theme(panel.border = element_rect(color = 1, fill = NA),
+          axis.title = element_text(size = 15, color = 1),
+          axis.text = element_text(size = 10, color = 1),
+          legend.text = element_text(size = 15, color = 1),
+          legend.title = element_text(size = 15, color = 1),
+          legend.position = "top") +
+    guides(alpha = "none", color = "none") +
+    labs(x = "Community", y = "Abundance", fill = "")
+
+ggsave(here::here("plots/Fig3B-community_composition.png"), pB, width = 4, height = 3)
+
+# Figure 3C. All pairwise networks
+## subset the self-assembly networks
+plot_competitive_network_grey <- function(x, node_size, edge_width){
+    plot_competitive_network(x, node_size = node_size, edge_width = edge_width) +
+        theme(plot.background = element_rect(fill = "grey90", color = NA),
+              panel.background = element_rect(fill = "grey90", color = NA))
+
+}
+p_net_simulated_list <- df_communities %>%
+    filter(Assembly == "self_assembly") %>%
+    select(Community, Richness) %>%
+    mutate(Network = net_simulated_list[paste0("self_assembly_W", 0:19)]) %>%
+    right_join(select(df_communities_ID, Community, CommunityLabel)) %>%
+    arrange(Richness) %>%
+    mutate(Richness = max(Richness) / Richness / 3) %>%
+    rowwise() %>%
+    mutate(p_net = plot_competitive_network_grey(Network, 0, Richness) %>% list()) %>%
+    pull(p_net)
+
+p1 <- plot_grid(plotlist = p_net_simulated_list, nrow = 1, scale = 1.1) + paint_white_background()
+
+## pairwise outcomes per community
+df_pairs_count <- df_pairs %>%
+    filter(Assembly == "self_assembly") %>%
+    right_join(select(df_communities_ID, Community, CommunityLabel)) %>%
+    group_by(Community) %>%
+    summarize(Count = n()) %>%
+    arrange(Count) %>%
+    mutate(CommunityLabel = factor(1:10))
+p2 <- df_pairs %>%
+    filter(Assembly == "self_assembly") %>%
+    right_join(select(df_communities_ID, Community, CommunityLabel)) %>%
+    mutate(Community = factor(Community), InteractionType = factor(InteractionType)) %>%
+    group_by(Community, InteractionType, .drop = F) %>%
+    summarize(Count = n()) %>%
+    mutate(Fraction = Count / sum(Count), TotalCount = sum(Count)) %>%
+    left_join(select(df_pairs_count, Community, CommunityLabel)) %>%
+    ggplot() +
+    geom_col(aes(x = CommunityLabel, fill = InteractionType, y = Fraction), color = 1, width = .8, size = .5) +
+    geom_text(data = df_pairs_count, aes(x = CommunityLabel, y = .1, label = paste0("n=", Count)), vjust = -.5) +
+    #geom_rect(xmin = -Inf, xmax = Inf, ymin = 0, ymax = 1, color = grey(0.1), fill = NA, size = .5) +
+    scale_fill_manual(values = assign_interaction_color()) +
+    #scale_x_discrete(labels = 1:13) +
+    scale_y_continuous(breaks = c(0,.5,1), limit = c(0, 1), expand = c(0,0)) +
+    facet_grid(.~factor(CommunityLabel, 1:10), scales = "free_x") +
+    theme_classic() +
+    theme(strip.background = element_blank(),
+          strip.text = element_blank(),
+          panel.spacing = unit(0, "mm"),
+          axis.text = element_text(color = 1),
+          legend.title = element_blank(), legend.position = "none") +
+    labs(x = "Community", y = "Fraction")
+
+pC <- plot_grid(p1, p2, ncol = 1, scale = .9, rel_heights = c(1, 3), axis = "lr", align = "v") + paint_white_background()
+ggsave(here::here("plots/Fig3C-all_networks.png"), pC, width = 12, height = 4)
+
+
+# Figure 2D: pairwise competition
+temp <- df_pairs %>%
+    filter(Assembly == "self_assembly") %>%
+    right_join(select(df_communities_ID, Community, CommunityLabel)) %>%
+    mutate(InteractionType = ifelse(InteractionType == "neutrality", "coexistence", InteractionType)) %>%
+    mutate(InteractionType = factor(InteractionType, c("exclusion", "coexistence"))) %>%
+    group_by(InteractionType) %>% summarize(Count = n()) %>% ungroup() %>% mutate(Fraction = Count / sum(Count))
+pD <- temp %>%
+    ggplot() +
+    geom_col(aes(x = InteractionType, y = Count, fill = InteractionType), color = 1) +
+    geom_text(x = Inf, y = Inf, label = paste0("n = ", sum(temp$Count)), vjust = 1, hjust = 1.5, size = 5) +
+    geom_text(aes(x = InteractionType, y = Count, label = paste0(round(Fraction, 3) * 100,"%")), nudge_y = 10, size = 5
+    ) +
+    scale_fill_manual(values = assign_interaction_color(level = "simple")) +
+    scale_y_continuous(limits = c(0, 150), expand = c(0,0)) +
+    theme_classic() +
+    theme(axis.title.x = element_blank(), axis.title.y = element_text(size = 15),
+          axis.text.x = element_text(size = 15, color = "black", angle = 15, vjust = 1, hjust = 1),
+          axis.text.y = element_text(size = 15, color = "black"),
+          legend.position = "none") +
+    labs(x = "", y = "Number of pairs", fill = "")
+
+ggsave(here::here("plots/Fig3D-pairwise_competition.png"), pD, width = 3, height = 4)
+
+
+#
+p_top <- plot_grid(pA, pB, pD, nrow = 1, labels = c("A", "B", "D"), scale = c(.8, .8, .8), axis = "b", align = "h")
+p <- plot_grid(p_top, pC, ncol = 1, labels = c("", "C"), scale = c(1, 1), rel_heights = c(1,1), axis = "lr", align = "v") + paint_white_background()
+ggsave(here::here("plots/Fig3.png"), p, width = 10, height = 6)
+
+
+
+if (FALSE) {
+
 # Figure 4A. Dynamics of one example community
 df_comm_example <- df_communities_abundance %>%
     filter(Community == "W1") %>%
@@ -51,6 +207,7 @@ pA <- df_comm_example %>%
     labs()
 ggsave(here::here("plots/Fig4A-temporal_composition.png"), pA, width = 3, height = 3)
 
+
 # Figure 4B. End point composition
 pB <- df_communities_abundance %>%
     filter(Community %in% paste0("W", 0:9)) %>%
@@ -73,7 +230,7 @@ pB <- df_communities_abundance %>%
           legend.position = "top") +
     guides(alpha = "none", color = "none") +
     labs(fill = "")
-pB
+
 ggsave(here::here("plots/Fig4B-community_composition.png"), pB, width = 4, height = 3)
 
 # Figure 4C. All pairwise networks
@@ -231,6 +388,7 @@ p <- plot_grid(p_top, NULL, pC, pD, NULL, p_bottom, ncol = 1, labels = c("", "",
                scale = c(1, 1, .9, .9, 1, 1),
                rel_heights = c(3, .15, 1, 1, .15, 3)) + paint_white_background()
 ggsave(here::here("plots/Fig4.png"), p, width = 12, height = 9)
+}
 
 
 

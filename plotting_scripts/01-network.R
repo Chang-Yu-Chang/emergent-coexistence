@@ -121,22 +121,72 @@ ggsave(here::here("plots/Fig2A-example_network.png"), pA, width = 5, height = 5)
 # Figure 2B: All network graphs
 net_list <- net_list %>% `[`(as.character(community_factor))
 ## subset the self-assembly networks
-p_net_list <- lapply(net_list, function(x) {
-    plot_competitive_network(x, node_size = 0, edge_width = .8) +
+plot_competitive_network_grey <- function(x, node_size, edge_width){
+    plot_competitive_network(x, node_size = node_size, edge_width = edge_width) +
         theme(plot.background = element_rect(fill = "grey90", color = NA),
               panel.background = element_rect(fill = "grey90", color = NA))
-}) %>% setNames(community_factor) %>%
-    `[`(communities %>% arrange(CommunitySize) %>% filter(str_detect(Community, "C")) %>% pull(Community))
+
+}
+
+p_net_list <- communities %>%
+    filter(Assembly == "self_assembly") %>%
+    select(Community, CommunitySize) %>%
+    arrange(CommunitySize) %>%
+    mutate(Network = net_list[1:13]) %>%
+    mutate(CommunitySize = max(CommunitySize) / CommunitySize / 4) %>%
+    rowwise() %>%
+    mutate(p_net = plot_competitive_network_grey(Network, 0, CommunitySize) %>% list()) %>%
+    pull(p_net)
+
 pB_title <- ggdraw() +
     draw_label("Pairwise networks of 13 replicate communities",fontface = 'bold',x = 0,hjust = 0) +
     theme(plot.margin = margin(0, 0, 0, 7))
-pB <- plot_grid(pB_title,
+p1 <- plot_grid(plotlist = p_net_list, nrow = 1, scale = 1.3) + paint_white_background()
+if (FALSE) {
+p1 <- plot_grid(p1_title,
                 plot_grid(plotlist = p_net_list[1:5], nrow = 1, labels = 1:5),
                 plot_grid(plotlist = p_net_list[6:10], nrow = 1, labels = 6:10),
                 plot_grid(plotlist = p_net_list[11:13], nrow = 1, labels = 11:13),
                 ncol = 1, rel_heights = c(.2,1,1,2), scale = .9) +
     paint_white_background()
-ggsave(here::here("plots/Fig2B-all_networks.png"), pB, width = 6, height = 4)
+
+}
+
+## pairwise outcomes per community
+pairs_count <- pairs %>%
+    filter(Assembly == "self_assembly") %>%
+    group_by(Community) %>%
+    summarize(Count = n()) %>%
+    mutate(Community = factor(Community, community_factor)) %>%
+    arrange(Community) %>%
+    mutate(CommunityLabel = factor(1:13))
+p2 <- pairs %>%
+    filter(Assembly == "self_assembly") %>%
+    group_by(Community, InteractionType) %>%
+    summarize(Count = n()) %>%
+    mutate(Fraction = Count / sum(Count)) %>%
+    ungroup() %>%
+    mutate(Community = factor(Community, community_factor)) %>%
+    arrange(Community) %>%
+    mutate(CommunityLabel = rep(1:13, each = 2) %>% factor()) %>%
+    ggplot() +
+    geom_col(aes(x = CommunityLabel, fill = InteractionType, y = Fraction), color = 1, width = .8, size = .5) +
+    geom_text(data = pairs_count, aes(x = CommunityLabel, y = .1, label = paste0("n=", Count)), vjust = -.5) +
+    #geom_rect(xmin = -Inf, xmax = Inf, ymin = 0, ymax = 1, color = grey(0.1), fill = NA, size = .5) +
+    scale_fill_manual(values = assign_interaction_color()) +
+    #scale_x_discrete(labels = 1:13) +
+    scale_y_continuous(breaks = c(0,.5,1), limit = c(0, 1), expand = c(0,0)) +
+    facet_grid(.~factor(CommunityLabel, 1:13), scales = "free_x") +
+    theme_classic() +
+    theme(strip.background = element_blank(),
+          strip.text = element_blank(),
+          panel.spacing = unit(0, "mm"),
+          axis.text = element_text(color = 1),
+          legend.title = element_blank(), legend.position = "none") +
+    labs(x = "Community", y = "Fraction")
+
+pB <- plot_grid(p1, p2, ncol = 1, scale = .9, rel_heights = c(1, 3), axis = "lr", align = "v") + paint_white_background()
+ggsave(here::here("plots/Fig2B-all_networks.png"), pB, width = 12, height = 4)
 
 
 # Figure 2C: pairwise competition
@@ -162,13 +212,13 @@ p_pairs_interaction <- temp %>%
 pC <- p_pairs_interaction
 ggsave(here::here("plots/Fig2C-pairwise_competition.png"), pC, width = 3, height = 4)
 
-p <- plot_grid(pA, pB, pC, nrow = 1, labels = c("A", "B", "C"), scale = c(.9, .9, .9), rel_widths = c(1.5,2,1), axis = "tb", align = "h") + paint_white_background()
-ggsave(here::here("plots/Fig2.png"), p, width = 15, height = 6)
+
+p_top <- plot_grid(pA, pC, nrow = 1, labels = c("A", "C"), scale = c(.9, .7))
+p <- plot_grid(p_top, pB, ncol = 1, labels = c("", "B"), scale = c(1, 1), rel_heights = c(1.5,1), axis = "lr", align = "v") + paint_white_background()
+ggsave(here::here("plots/Fig2.png"), p, width = 10, height = 8)
 
 
-
-
-# Figure 3 ----------------------------------------------------------------------------------------
+if (FALSE) {
 # Figure 3A: one network in matrix form for example
 net <- net_list$C1R2
 n_nodes <- igraph::vcount(net)
@@ -368,6 +418,8 @@ p_top <- plot_grid(pA, pB, nrow = 1, labels = LETTERS[1:2], rel_widths = c(1,2),
 p_bottom <- plot_grid(pC, pD, pE, nrow = 1, labels = LETTERS[3:5], rel_widths = c(1,2,2), scale = c(.9, .9, .9))
 p <- plot_grid(p_top, p_bottom, nrow = 2) + paint_white_background()
 ggsave(here::here("plots/Fig3.png"), p, width = 12, height = 8)
+
+}
 
 
 # Figure S1. glucose isolate abundance  ----------------------------------------------------------------------------------------------------
