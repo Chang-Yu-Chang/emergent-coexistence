@@ -53,6 +53,8 @@ ggsave(here::here("plots/Fig3A-temporal_composition.png"), pA, width = 3, height
 
 
 # Figure 3B. End point composition
+if (FALSE) {
+
 df_communities_ID <- df_communities_abundance %>%
     filter(Assembly == "self_assembly") %>%
     filter(Transfer == max(Transfer), Time == max(Time)) %>%
@@ -64,12 +66,24 @@ df_communities_ID <- df_communities_abundance %>%
     slice(1:10) %>%
     arrange(n) %>%
     mutate(CommunityLabel = factor(1:10))
+}
+df_communities_ID <- df_communities %>%
+    filter(Assembly == "self_assembly") %>%
+    #filter(Transfer == max(Transfer), Time == max(Time)) %>%
+    group_by(Community) %>%
+    #mutate(RelativeAbundance = Abundance / sum(Abundance)) %>%
+    #filter(RelativeAbundance > 0.01) %>%
+    #summarize(Richness = n()) %>%
+    filter(Richness > 3) %>% ungroup() %>%
+    slice(1:10) %>%
+    arrange(Richness) %>%
+    mutate(CommunityLabel = factor(1:10))
 pB <- df_communities_abundance %>%
     filter(Assembly == "self_assembly") %>%
     right_join(select(df_communities_ID, Community, CommunityLabel)) %>%
     #filter(Community %in% paste0("W", 3:12)) %>%
     filter(Transfer == max(Transfer), Time == max(Time)) %>%
-    left_join(select(temp, Community, CommunityLabel)) %>%
+    #left_join(select(temp, Community, CommunityLabel)) %>%
     #mutate(Community = factor(Community, c("W1", "W0", paste0("W", 2:20)))) %>%
     mutate(Family = ifelse(Family == "F0", "fermenter", ifelse(Family == "F1", "respirator", Family))) %>%
     mutate(ID = factor(ID, paste0("S", 0:999))) %>%

@@ -255,7 +255,9 @@ temp2 <- df_pp_init %>%
 df_communities <- bind_rows(temp1, temp2) %>% select(Assembly, Community, Richness) %>%
     mutate(Assembly = factor(Assembly, c("self_assembly", "random_assembly"))) %>%
     mutate(Community = factor(Community, paste0("W", 0:999))) %>%
-    arrange(Assembly, Community)
+    arrange(Assembly, Community) %>%
+    filter(Assembly == "self_assembly")
+
 write_csv(df_communities, here::here("data/output/df_communities.csv"))
 
 ## Isolate ID
