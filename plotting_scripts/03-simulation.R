@@ -156,7 +156,8 @@ p2 <- df_pairs %>%
           strip.text = element_blank(),
           panel.spacing = unit(0, "mm"),
           axis.text = element_text(color = 1),
-          legend.title = element_blank(), legend.position = "none") +
+          legend.title = element_blank(), legend.position = "right") +
+    guides(fill = guide_legend(reverse = T)) +
     labs(x = "Community", y = "Fraction")
 
 pC <- plot_grid(p1, p2, ncol = 1, scale = .9, rel_heights = c(1, 3), axis = "lr", align = "v") + paint_white_background()
@@ -172,7 +173,7 @@ temp <- df_pairs %>%
     group_by(InteractionType) %>% summarize(Count = n()) %>% ungroup() %>% mutate(Fraction = Count / sum(Count))
 pD <- temp %>%
     ggplot() +
-    geom_col(aes(x = InteractionType, y = Count, fill = InteractionType), color = 1) +
+    geom_col(aes(x = InteractionType, y = Count, fill = InteractionType), color = 1, width = .8) +
     geom_text(x = Inf, y = Inf, label = paste0("n = ", sum(temp$Count)), vjust = 1, hjust = 1.5, size = 5) +
     geom_text(aes(x = InteractionType, y = Count, label = paste0(round(Fraction, 3) * 100,"%")), nudge_y = 10, size = 5
     ) +
@@ -184,7 +185,6 @@ pD <- temp %>%
           axis.text.y = element_text(size = 15, color = "black"),
           legend.position = "none") +
     labs(x = "", y = "Number of pairs", fill = "")
-
 ggsave(here::here("plots/Fig3D-pairwise_competition.png"), pD, width = 3, height = 4)
 
 

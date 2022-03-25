@@ -10,13 +10,13 @@ assign_interaction_color <- function (level = "simple") {
     }
     if (level == "matrix") {
         interaction_type <- c("exclusion", "coexistence", "exclusion violating rank", "bistability", "neutrality", "self", "undefined")
-        interaction_color <- c("#DB7469", "#557BAA", "#FFB7FF", "#EECF6D", "#8650C4", "black", "grey80")
+        interaction_color <- c("#DB7469", "#557BAA", "#8CB369", "#EECF6D", "#8650C4", "black", "grey80")
         names(interaction_color) <- interaction_type
         return(interaction_color)
     }
     if (level == "finer") {
-        interaction_type <- c("competitive exclusion", "stable coexistence", "neutrality", "mutual exclusion", "frequency-dependent coexistence")
-        interaction_color <- c("#DB7469", "#557BAA", "#8650C4", "#F7AEF8", "#72DDF7")
+        interaction_type <- c("competitive exclusion", "stable coexistence", "mutual exclusion", "frequency-dependent coexistence", "neutrality", "exclusion violating rank")
+        interaction_color <- c("#DB7469", "#557BAA", "#FFBC42", "#B9FAF8", "#8650C4", "#8CB369")
         names(interaction_color) <- interaction_type
         return(interaction_color)
     }
