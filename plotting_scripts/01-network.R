@@ -25,8 +25,8 @@ communities_size <- communities %>% mutate(Community = factor(Community, communi
 
 
 # Figure 1 ----------------------------------------------------------------------------------------
-p <- ggdraw() + draw_image(here::here("plots/cartoons/Fig1A.png")) + theme(plot.background = element_rect(fill = "white", color = NA))
-ggsave(here::here("plots/Fig1.png"), p, width = 9, height = 5)
+p <- ggdraw() + draw_image(here::here("plots/cartoons/Fig1.png")) + theme(plot.background = element_rect(fill = "white", color = NA))
+ggsave(here::here("plots/Fig1.png"), p, width = 27, height = 15)
 
 # Figure 2 ----------------------------------------------------------------------------------------
 # Figure 2A: networks of one community. C7R1
@@ -181,14 +181,16 @@ p2 <- pairs %>%
     theme_classic() +
     theme(strip.background = element_blank(),
           strip.text = element_blank(),
+          legend.text = element_text(size = 12),
+          axis.text = element_text(color = 1, size = 12),
+          axis.title = element_text(color = 1, size = 12),
           panel.spacing = unit(0, "mm"),
-          axis.text = element_text(color = 1),
           legend.title = element_blank(), legend.position = "right") +
     guides(fill = guide_legend(reverse = T)) +
     labs(x = "Community", y = "Fraction")
 
 pB <- plot_grid(p1, p2, ncol = 1, scale = .9, rel_heights = c(1, 3), axis = "lr", align = "v") + paint_white_background()
-ggsave(here::here("plots/Fig2B-all_networks.png"), pB, width = 12, height = 4)
+ggsave(here::here("plots/Fig2B-all_networks.png"), pB, width = 12, height = 3)
 
 
 # Figure 2C: pairwise competition
@@ -209,11 +211,11 @@ temp2 <- temp1 %>%
 p1 <- temp1 %>%
     ggplot() +
     geom_bar(aes(x = InteractionType, y = Fraction, fill = InteractionTypeFiner), stat="identity", color = 1, alpha = .8) +
-    geom_text(x = Inf, y = Inf, label = paste0("n = ", sum(temp$Count)), vjust = 1, hjust = 2) +
+    geom_text(x = Inf, y = Inf, label = paste0("n = ", sum(temp2$Count)), vjust = 1, hjust = 2) +
     geom_text(data = temp2, aes(x = InteractionType, y = Fraction, label = paste0(round(Fraction, 3) * 100,"%")), nudge_y = .05, size = 5) +
     scale_fill_manual(values = assign_interaction_color(level = "finer"),
                       breaks = c("competitive exclusion", "mutual exclusion", "stable coexistence", "frequency-dependent coexistence", "neutrality"),
-                      labels = paste0(temp1$InteractionTypeFiner, " (", round(temp$Fraction, 3) * 100,"%)")) +
+                      labels = paste0(temp1$InteractionTypeFiner, " (", round(temp1$Fraction, 3) * 100,"%)")) +
     scale_y_continuous(limits = c(0, 1), expand = c(0,0),
                        breaks = c(0, .5, 1), labels = paste0(c(0,50,100), "%")) +
     theme_classic() +
@@ -227,7 +229,32 @@ p1 <- temp1 %>%
     labs(x = "", y = "Fraction", fill = "")
 
 pC <- p1
-ggsave(here::here("plots/Fig2C-pairwise_competition.png"), pC, width = 5, height = 4)
+ggsave(here::here("plots/Fig2C-pairwise_competition.png"), pC, width = 6, height = 4)
+
+
+p_temp <- temp2 %>%
+    ggplot() +
+    geom_bar(aes(x = InteractionType, y = Fraction, fill = InteractionType), stat="identity", color = 1) +
+    geom_text(x = Inf, y = Inf, label = paste0("n = ", sum(temp2$Count)), vjust = 1, hjust = 2) +
+    geom_text(data = temp2, aes(x = InteractionType, y = Fraction, label = paste0(round(Fraction, 3) * 100,"%")), nudge_y = .05, size = 5) +
+    scale_fill_manual(values = assign_interaction_color(),
+                      breaks = c("competitive exclusion", "mutual exclusion", "stable coexistence", "frequency-dependent coexistence", "neutrality"),
+                      labels = paste0(temp1$InteractionTypeFiner, " (", round(temp1$Fraction, 3) * 100,"%)")) +
+    scale_y_continuous(limits = c(0, 1), expand = c(0,0),
+                       breaks = c(0, .5, 1), labels = paste0(c(0,50,100), "%")) +
+    theme_classic() +
+    theme(axis.title.x = element_blank(), axis.title.y = element_text(size = 12),
+          axis.text.y = element_text(size = 12, color = 1),
+          axis.text.x = element_text(size = 12, color = "black", angle = 15, vjust = 1, hjust = 1),
+          legend.text = element_text(size = 12),
+          legend.background = element_blank(),
+          legend.position = "right") +
+    guides() +
+    labs(x = "", y = "Fraction", fill = "")
+
+
+ggsave(here::here("plots/Fig2C-talk.png"), p_temp, width = 3, height = 4)
+
 
 if (FALSE) {
     temp <- pairs %>% filter(Assembly == "self_assembly") %>%
@@ -449,7 +476,7 @@ p_temp <- plot_grid(plotlist = p_net_simulated_hierarchy_list,
                 rel_widths = df_communities_net$Richness / max(df_communities_net$Richness),
                 labels = 1:10, label_x = 0.5, hjust = c(rep(.5, 9), 1),
                 nrow = 1, axis = "tb", align = "h") + paint_white_background()
-pC <- plot_grid(pB_title, pC_axistitle, p_temp, ncol = 1, rel_heights = c(.1, .1, 1)) + paint_white_background()
+pC <- plot_grid(pC_title, pC_axistitle, p_temp, ncol = 1, rel_heights = c(.1, .1, 1)) + paint_white_background()
 ggsave(here::here("plots/Fig4C-network_hierarchy_simulation.png"), pC, width = 10, height = 3)
 
 
@@ -495,7 +522,25 @@ ggsave(here::here("plots/Fig4.png"), p, width = 10, height = 6)
 
 
 
-# Compute the hierarchy
+# Test on computing the hierarchy ----
+compute_hierarchy1 <- function(pairs_mock) {
+    pairs_temp <- pairs_mock %>%
+        select(Isolate1, Isolate2, InteractionType, From, To)
+    isolates_tournament <- tournament_rank(pairs_temp) %>% select(Isolate, Score)
+
+    pairs_temp %>%
+        left_join(rename_with(isolates_tournament, ~ paste0(., "1")), by = "Isolate1") %>%
+        left_join(rename_with(isolates_tournament, ~ paste0(., "2")), by = "Isolate2") %>%
+        filter(InteractionType == "exclusion") %>%
+        mutate(WinnerScore = ifelse(From == Isolate1, Score1, Score2),
+               LoserScore = ifelse(From == Isolate1, Score2, Score1)) %>%
+        mutate(FollowRank = (WinnerScore > LoserScore) %>% factor(c(T,F))) %>%
+        count(FollowRank, .drop = F, name = "Count") %>%
+        mutate(FractionFollowRank = Count / sum(Count)) %>%
+        filter(FollowRank == T) %>%
+        pull(FractionFollowRank) %>%
+        return()
+}
 ## 2 species, one loop, h = 0
 pairs_mock <- tibble(Isolate1 = c(1),
        Isolate2 = c(2),
@@ -549,6 +594,7 @@ n_species = 100
 p_exclusion = 0.5
 p_flip = 0.5
 
+
 draw_h <- function(n_species, p_exclusion, p_flip = 0.5) {
     pairs_mock <- tibble(Isolate1 = 1:n_species, Isolate2 = 1:n_species) %>%
         expand(Isolate1, Isolate2) %>%
@@ -590,40 +636,6 @@ p <- df %>%
 ggsave(here::here("plots/Fig4S-simulated_h.png"), p, width = 10, height = 4)
 
 draw_h(n_species=100, p_exclusion=1, p_flip = 0.5)
-
-
-
-
-compute_hierarchy1 <- function(pairs_mock) {
-    pairs_temp <- pairs_mock %>%
-        select(Isolate1, Isolate2, InteractionType, From, To)
-    isolates_tournament <- tournament_rank(pairs_temp) %>% select(Isolate, Score)
-
-    pairs_temp %>%
-        left_join(rename_with(isolates_tournament, ~ paste0(., "1")), by = "Isolate1") %>%
-        left_join(rename_with(isolates_tournament, ~ paste0(., "2")), by = "Isolate2") %>%
-        filter(InteractionType == "exclusion") %>%
-        mutate(WinnerScore = ifelse(From == Isolate1, Score1, Score2),
-               LoserScore = ifelse(From == Isolate1, Score2, Score1)) %>%
-        mutate(FollowRank = (WinnerScore > LoserScore) %>% factor(c(T,F))) %>%
-        count(FollowRank, .drop = F, name = "Count") %>%
-        mutate(FractionFollowRank = Count / sum(Count)) %>%
-        filter(FollowRank == T) %>%
-        pull(FractionFollowRank) %>%
-        return()
-}
-randomize_pairs1 <- function(x) {
-    # Shuffle pairs
-    rng <- order(runif(nrow(x),0,1))
-    x$InteractionType <- x$InteractionType[rng]
-    # Shuffle dominance
-    rng <- sample(1:nrow(x), size = nrow(x)/2, replace = F)
-    temp <- x$From[rng]
-    x$From[rng] <- x$To[rng]
-    x$To[rng] <- temp
-
-    return(x)
-}
 
 
 
@@ -1071,16 +1083,18 @@ temp <- sequences_abundance %>%
 color_sets <- tibble(Color = c("yellow", "deepskyblue3", "blue", "darkorchid2", "firebrick", "orange2", "grey"),
                      Family = c("Aeromonadaceae", "Enterobacteriaceae", "Moraxellaceae", "Pseudomonadaceae","Comamonadaceae","Alcaligenaceae", "Sphingobacteriaceae"))
 p2 <- temp %>%
-    #mutate(Community = factor(Community, community_factor)) %>%
+    mutate(Community = factor(Community, community_factor)) %>%
+    arrange(Community) %>%
     ggplot() +
-    geom_bar(aes(x = Community, y = RelativeAbundance, fill = Family), size = .5, color = "grey30", position = "stack", stat = "identity") +
+    geom_bar(aes(x = Community, y = RelativeAbundance, fill = Family), size = .3, color = "grey30", position = "stack", stat = "identity") +
     theme_bw() +
     scale_fill_manual(values = setNames(color_sets$Color, color_sets$Family)) +
-    #scale_x_discrete(labels = 1:13) +
+    scale_x_discrete(labels = 1:13) +
     scale_y_continuous(breaks = c(0, .5, 1), expand = c(0,0), limits = c(0, 1)) +
-    theme(axis.text.x = element_text(angle = 90, vjust = 0.5),
-          panel.grid = element_blank(), axis.ticks.x = element_blank(),
-          axis.title.x = element_blank(), panel.border = element_rect(color = 1, size = 1)) +
+    theme(#axis.text.x = element_text(angle = 90, vjust = 0.5),
+          panel.grid = element_blank(),
+          axis.title = element_text(size = 12),
+          panel.border = element_rect(color = 1, size = 1)) +
     labs(y = "Relative abundance")
 ## Stats
 temp %>%
@@ -1088,8 +1102,13 @@ temp %>%
     summarize(Total = sum(RelativeAbundance)) %>%
     summarize(Mean = mean(Total))
 
-p <- plot_grid(p1, p2, nrow = 1, rel_widths = c(1,2), labels = LETTERS[1:2], scale = c(1, .8)) + theme(plot.background = element_rect(fill = "white", color = NA))
-ggsave(here::here("plots/FigS1-glucose_community_bar.png"), p, width = 8, height = 3)
+#p <- plot_grid(p1, p2, nrow = 1, rel_widths = c(1,2), labels = LETTERS[1:2], scale = c(1, .8)) + theme(plot.background = element_rect(fill = "white", color = NA))
+p <- p2
+ggsave(here::here("plots/FigS1-glucose_community_bar.png"), p, width = 5, height = 3)
+
+
+
+
 
 # Figure S2. Raw pairwise frequency plots  ----------------------------------------------------------------------------------------------------
 pairs_example_freq <- pairs %>%

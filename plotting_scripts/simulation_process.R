@@ -200,6 +200,23 @@ df_cp_end <- input_pairs %>%
     mutate(Time = "Tend") %>%
     ungroup()
 
+
+df_cp_freq <- bind_rows(df_cp_init, df_cp_end) %>%
+    group_by(Community, Well) %>%
+    select(Community, Well, Species, RelativeAbundance, Time) %>%
+    pivot_wider(names_from = Time, values_from = RelativeAbundance, names_prefix = "RelativeAbundance_") %>%
+    # Fill abundance = NA with 0
+    replace_na(list(RelativeAbundance_Tend = 0)) %>%
+    group_by(Community, Well) %>%
+    mutate(Isolate = c(1,2)) %>%
+    pivot_wider(names_from = Isolate, values_from = c(Species, RelativeAbundance_Tinit, RelativeAbundance_Tend), names_sep = "") %>%
+    ungroup() %>%
+    mutate(Assembly = "self_assembly") %>%
+    rename(ID1 = Species1, ID2 = Species2) %>%
+    select(Assembly, everything(), -Well)
+
+write_csv(df_cp_freq, here::here("data/output/df_cp_freq.csv"))
+
 ## Pool pairs
 df_pp_init <- input_pairs %>%
     filter(str_detect(init_N0, "poolPairs")) %>%
@@ -239,6 +256,7 @@ df_pp_end <- input_pairs %>%
     bind_rows() %>%
     mutate(Time = "Tend") %>%
     ungroup()
+
 
 ## List of communities
 temp1 <- df_cp_init %>%

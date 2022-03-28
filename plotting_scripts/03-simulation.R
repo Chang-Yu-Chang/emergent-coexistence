@@ -155,7 +155,9 @@ p2 <- df_pairs %>%
     theme(strip.background = element_blank(),
           strip.text = element_blank(),
           panel.spacing = unit(0, "mm"),
-          axis.text = element_text(color = 1),
+          legend.text = element_text(size = 12),
+          axis.text = element_text(color = 1, size = 12),
+          axis.title = element_text(color = 1, size = 12),
           legend.title = element_blank(), legend.position = "right") +
     guides(fill = guide_legend(reverse = T)) +
     labs(x = "Community", y = "Fraction")
@@ -406,7 +408,7 @@ ggsave(here::here("plots/Fig4.png"), p, width = 12, height = 9)
 
 
 
-# Figure S14. u, l, and D matrices ------
+# Figure S5. u, l, and D matrices ------
 Dm <- read_csv(paste0(output_dir, "D_seed1.csv"), skip = 1) # D matrix
 cm <- read_csv(paste0(output_dir, "c_seed1.csv"), skip = 1) # c matrix
 lm <- read_csv(paste0(output_dir, "l_seed1.csv"), skip = 1) # l matrix
@@ -519,6 +521,10 @@ if (FALSE) {
 p_lower <- plot_grid(p2, p3, labels = c("B", "C"), scale = .9)
 p <- plot_grid(p1, p_lower, ncol = 1, labels = c("A", ""), align = "v", axis = "lr", scale = c(0.9, 1)) + paint_white_background()
 ggsave(here::here("plots/FigS14-matrices.png"), p, width = 8, height = 8)
+
+
+
+
 
 
 # Figure 01S3 self-assembly networks ----------
