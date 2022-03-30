@@ -40,8 +40,8 @@ interaction_color <- assign_interaction_color()
 category_color <- assign_category_color()
 fermenter_color <- c("fermenter" = "#8A89C0", "respirator" = "#FFCB77")
 dominant_color <- c("dominant" = "grey20", "subdominant" = "grey90")
-frequency_color <- c( "95"="#1B1B3A", "50"="#693668", "5"="#D9DBF1")
-
+#frequency_color <- c( "95"="#1B1B3A", "50"="#693668", "5"="#D9DBF1")
+frequency_color <- c( "95"="#292F36", "50"="#9F87AF", "5"="#CCCCCC")
 
 # Paint white backgorund for plot_grid
 paint_white_background <- function(x) theme(plot.background = element_rect(color = NA, fill = "white"))
