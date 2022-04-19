@@ -1,16 +1,16 @@
 #' Read isolate monoculture growth rates in various carbon sources
 library(tidyverse)
 library(growthcurver)
-
+library(janitor)
 isolates_ID_match <- read_csv(here::here("data/temp/isolates_ID_match.csv"))
+
 # Byproduct measurement on glucose. Data from Sylvie
 isolates_byproduct <- read_csv("~/Dropbox/lab/invasion-network/data/raw/growth_rate/By_Products_Glucose.csv") %>%
     select(OD620_16h = OD620, ID = SangerID, Glucose_perc, acetate_mM, succinate_mM, lactate_mM, gluconate_mM, ketogluconate_mM)
 isolates_byproduct_time <- read_csv("~/Dropbox/lab/invasion-network/data/raw/growth_rate/Estrela_2021_isolates_ph_OAs.csv") %>%
     select(ID = SangerID, Time = time_hours, OD620, pH, Glucose_perc, acetate_mM, succinate_mM, lactate_mM)
 
-
-
+# Growth rate. Growthcurver----
 # Growth curve data from Sylvie
 isolates_curves1 <- read_csv("~/Dropbox/lab/invasion-network/data/raw/growth_rate/raw_gcurves_all_sylvies.csv") %>%
     select(Date = date, ID = seq, Well = well, CS = csource, Time = t, OD620 = abs) %>%
@@ -42,8 +42,7 @@ isolates_curves2 <- read_csv("~/Dropbox/lab/invasion-network/data/raw/growth_rat
 isolates_curves_list2 <- isolates_curves2 %>%
     nest(GrowthCurve = c(Time, OD620)) %>%
     rowwise() %>%
-    # growthcurver fit
-    mutate(GrowthCurveOutcome = SummarizeGrowth(GrowthCurve$Time, GrowthCurve$OD620) %>% list())
+    mutate(GrowthCurveOutcome = SummarizeGrowth(GrowthCurve$Time, GrowthCurve$OD620) %>% list()) # growthcurver fit
 isolates_growthcurver2 <- isolates_curves_list2 %>%
     rowwise() %>%
     mutate(r = GrowthCurveOutcome$vals$r, sigma = GrowthCurveOutcome$vals$sigma) %>%
@@ -52,7 +51,7 @@ isolates_growthcurver2 <- isolates_curves_list2 %>%
 
 
 
-# Growth curve and growth rates -----
+# Growth rates using the end time point 12, 16, 28 hr-----
 calculate_r <- function(N0, N1, T0, T1) (log10(N1) - log10(N0)) / (T1 - T0)
 isolates_curves_T0 <- isolates_curves1 %>%
     group_by(ID, Well, CS) %>%
@@ -76,7 +75,7 @@ isolates_growth <- isolates_curves1 %>%
     pivot_wider(names_from = c(Time, CS), values_from = r, names_glue = "r_{CS}_{Time}hr") %>%
     ungroup()
 
-# Jean's growth rate data. Use the fitted Rmid
+# Jean's growth rate data. Use the fitted Rmid ----
 # Growth rate data from Jean
 isolates_growth_mid <- read_csv("~/Dropbox/lab/invasion-network/data/raw/growth_rate/Growthcurver.csv")
 isolates_growth_w_mid <- isolates_growth_mid %>%
@@ -89,7 +88,7 @@ isolates_growth_w_mid <- isolates_growth_mid %>%
     pivot_wider(names_from = CS, values_from = RMid, names_glue = "r_{CS}_midhr")
 
 
-# Sylvie's growth rate. Use Rmax
+# Sylvie's growth rate. Use Rmax ----
 # Growth rate data from Sylvie
 isolates_growth_max <- read_csv("~/Dropbox/lab/invasion-network/data/raw/growth_rate/Estrela_2021_isolates_grmax.csv")
 isolates_growth_w_max <- isolates_growth_max %>%
@@ -250,8 +249,19 @@ isolates_byproduct_time_sum <- isolates_byproduct_time %>%
 # Acid secretion
 isolates_acids <- isolates_byproduct_time %>%
     select(ID, Time, ends_with("mM")) %>%
-    rename_with(~ paste0("X_", sub("_mM", "", .)),  ends_with("_mM")) %>%
+    rename_with(~ paste0("X_", sub("_mM", "", .)), ends_with("_mM")) %>%
     pivot_wider(names_from = Time, values_from = starts_with("X_"), names_glue = "{.value}_{Time}hr")
+# OD
+isolates_OD <- isolates_curves2 %>%
+    mutate(TimeHr = case_when(
+        abs((Time-12)) == min(abs((Time-12))) ~ 12,
+        abs((Time-16)) == min(abs((Time-16)))  ~ 16,
+        abs((Time-28)) == min(abs((Time-28)))  ~ 28,
+        abs((Time-48)) == min(abs((Time-48)))  ~ 48
+    )) %>%
+    filter(!is.na(TimeHr)) %>%
+    select(ID, CS, Time = TimeHr, OD = OD620) %>%
+    pivot_wider(names_from = c(CS, Time), values_from = OD, names_glue = "OD_{CS}_{Time}hr")
 # Leakiness
 isolates_leakiness <- isolates_byproduct_time %>%
     select(ID, Time, gluConc = Glucose_perc, X_acetate = acetate_mM, X_succinate = succinate_mM, X_lactate = lactate_mM) %>%
@@ -268,17 +278,16 @@ isolates_leakiness <- isolates_byproduct_time %>%
 
 # Combine growth rate, OD, pH, preference, secretion data
 isolates_growth_traits <- isolates_ID_match %>%
-    left_join(isolates_growthcurver2) %>%
-    left_join(isolates_growth_w_mid) %>%
-    left_join(isolates_growth_w_max) %>%
-    left_join(isolates_growth) %>%
-    left_join(isolates_acids) %>%
-    left_join(isolates_byproduct_time_sum) %>%
-    #left_join(isolates_OD_DW_w) %>%
-    left_join(isolates_pH) %>%
-    left_join(isolates_preference) %>%
-    left_join(isolates_leakiness)
-
+    left_join(isolates_growthcurver2) %>% # fitted growth curve r from Jean's 20GC_Data.csv
+    left_join(isolates_growth_w_mid) %>% # fitted r from Jean's Growthcurver.csv
+    left_join(isolates_growth_w_max) %>% # r from Sylvie's Estrela_2021_isolates_grmax
+    left_join(isolates_growth) %>%  # r from Sylvie's raw_gcurves_all_sylvies.csv
+    left_join(isolates_acids) %>% # from Sylvie's Estrela_2021_isolates_ph_OAs.csv
+    left_join(isolates_byproduct_time_sum) %>% # from Sylvie's Estrela_2021_isolates_ph_OAs.csv
+    left_join(isolates_OD) %>% # from Jean's 20GC_Data.csv
+    left_join(isolates_pH) %>% # from Sylvie's Estrela_2021_isolates_ph_OAs.csv
+    left_join(isolates_preference) %>% # from Sylvie's Estrela_2021_isolates_ph_OAs.csv
+    left_join(isolates_leakiness) # from Sylvie's Estrela_2021_isolates_ph_OAs.csv
 
 
 

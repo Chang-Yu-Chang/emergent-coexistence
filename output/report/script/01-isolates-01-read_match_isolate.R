@@ -22,7 +22,7 @@ isolates_growth_traits <- read_csv(here::here("data/temp/isolates_growth_traits.
 isolates_tournament <- read_csv(here::here("data/temp/isolates_tournament.csv"))
 
 # Match isolates' information ----
-## 68 isolates
+## 100 isolates: 68 for self assembly, 16 for across community assembly, and 16 for random assembly
 isolates <- isolates_ID_match %>%
     select(Assembly, ExpID, ID, Community, Isolate) %>%
     left_join(isolates_RDP, by = c("ID")) %>%
