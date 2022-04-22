@@ -6,7 +6,7 @@ library(ggraph)
 library(cowplot)
 source(here::here("plotting_scripts/network_functions.R"))
 
-output_dir <- "~/Dropbox/lab/invasion-network/simulation/data/raw10/"
+output_dir <- "~/Dropbox/lab/invasion-network/simulation/data/raw11/"
 input_independent <- read_csv(paste0(output_dir,"input_independent.csv"), col_types = cols())
 input_pairs <- read_csv(paste0(output_dir, "input_pairs.csv"), col_types = cols())
 input_row <- input_independent[1,]
@@ -88,15 +88,13 @@ write_csv(df_communities_abundance, here::here("data/output/df_communities_abund
 
 
 
-
-
-## Pool networks
-df_pool_init <- paste0(output_dir, "poolNetwork-1_init.csv") %>%
-    read_csv(col_types = cols()) %>%
-    mutate(Transfer = 0, Time = 0) %>%
-    mutate(Family = factor(Family, c("F0", "F1"))) %>%
-    mutate(Species = factor(Species, paste0("S", 0:999))) %>%
-    mutate(Community = factor(Community, paste0("W", 0:999)), .keep = "unused")
+# ## Pool networks
+# df_pool_init <- paste0(output_dir, "poolNetwork-1_init.csv") %>%
+#     read_csv(col_types = cols()) %>%
+#     mutate(Transfer = 0, Time = 0) %>%
+#     mutate(Family = factor(Family, c("F0", "F1"))) %>%
+#     mutate(Species = factor(Species, paste0("S", 0:999))) %>%
+#     mutate(Community = factor(Community, paste0("W", 0:999)), .keep = "unused")
 
 
 # Pairwise outcome ----
@@ -217,6 +215,7 @@ df_cp_freq <- bind_rows(df_cp_init, df_cp_end) %>%
 
 write_csv(df_cp_freq, here::here("data/output/df_cp_freq.csv"))
 
+if (FALSE) {
 ## Pool pairs
 df_pp_init <- input_pairs %>%
     filter(str_detect(init_N0, "poolPairs")) %>%
@@ -257,6 +256,8 @@ df_pp_end <- input_pairs %>%
     mutate(Time = "Tend") %>%
     ungroup()
 
+}
+
 
 ## List of communities
 temp1 <- df_cp_init %>%
@@ -265,12 +266,14 @@ temp1 <- df_cp_init %>%
     group_by(Community) %>%
     summarize(Richness = n()) %>%
     mutate(Assembly = "self_assembly")
-temp2 <- df_pp_init %>%
-    distinct(Community, Species) %>%
-    group_by(Community) %>%
-    summarize(Richness = n()) %>%
-    mutate(Assembly = "random_assembly")
-df_communities <- bind_rows(temp1, temp2) %>% select(Assembly, Community, Richness) %>%
+# temp2 <- df_pp_init %>%
+#     distinct(Community, Species) %>%
+#     group_by(Community) %>%
+#     summarize(Richness = n()) %>%
+#     mutate(Assembly = "random_assembly")
+df_communities <- #bind_rows(temp1, temp2) %>%
+    bind_rows(temp1) %>%
+    select(Assembly, Community, Richness) %>%
     mutate(Assembly = factor(Assembly, c("self_assembly", "random_assembly"))) %>%
     mutate(Community = factor(Community, paste0("W", 0:999))) %>%
     arrange(Assembly, Community) %>%
@@ -285,15 +288,17 @@ temp1 <- df_cp_init %>%
     rename(ID = Species) %>%
     mutate(Assembly = "self_assembly") %>%
     select(Assembly, Community, Family, ID)
-temp2 <- df_pp_init %>%
-    distinct(Community, Species) %>%
-    left_join(sal) %>%
-    rename(ID = Species) %>%
-    mutate(Assembly = "random_assembly") %>%
-    select(Assembly, Community, Family, ID)
-df_isolates_ID <- bind_rows(temp1, temp2) %>%
+# temp2 <- df_pp_init %>%
+#     distinct(Community, Species) %>%
+#     left_join(sal) %>%
+#     rename(ID = Species) %>%
+#     mutate(Assembly = "random_assembly") %>%
+#     select(Assembly, Community, Family, ID)
+df_isolates_ID <- #bind_rows(temp1, temp2) %>%
+    bind_rows(temp1) %>%
     mutate(Assembly = factor(Assembly, c("self_assembly", "random_assembly"))) %>%
-    filter(ID %in% unique(c(df_pp_init$Species, df_cp_init$Species))) %>%
+    #filter(ID %in% unique(c(df_pp_init$Species, df_cp_init$Species))) %>%
+    filter(ID %in% unique(c(df_cp_init$Species))) %>%
     group_by(Assembly, Community) %>%
     arrange(Assembly, Community) %>%
     mutate(Isolate = 1:n())

@@ -8,7 +8,7 @@ library(ggraph)
 source(here::here("plotting_scripts/network_functions.R"))
 
 # Simulation input parameters
-output_dir <- "~/Dropbox/lab/invasion-network/simulation/data/raw10/"
+output_dir <- "~/Dropbox/lab/invasion-network/simulation/data/raw11/"
 input_independent <- read_csv(paste0(output_dir,"input_independent.csv"), col_types = cols())
 input_pairs <- read_csv(paste0(output_dir, "input_pairs.csv"), col_types = cols())
 input_row <- input_independent[1,]
@@ -180,7 +180,7 @@ pD <- temp %>%
     geom_text(aes(x = InteractionType, y = Count, label = paste0(round(Fraction, 3) * 100,"%")), nudge_y = 10, size = 5
     ) +
     scale_fill_manual(values = assign_interaction_color(level = "simple")) +
-    scale_y_continuous(limits = c(0, 150), expand = c(0,0)) +
+    scale_y_continuous(expand = c(0,0)) +
     theme_classic() +
     theme(axis.title.x = element_blank(), axis.title.y = element_text(size = 15),
           axis.text.x = element_text(size = 15, color = "black", angle = 15, vjust = 1, hjust = 1),
@@ -452,6 +452,26 @@ cml <- cm %>% # c matrix longer
     left_join(mal) %>%
     mutate(Species = ordered(Species, sal$Species), Resource = ordered(Resource, mal$Resource)) %>%
     select(Family, Species, Class, Resource, ConsumptionRate)
+
+cml %>%
+    group_by(Family, Species, Class) %>%
+    summarize(uMean = sum(ConsumptionRate)) %>%
+    ggplot() +
+    geom_histogram(aes(x = uMean, fill = Family)) +
+    facet_grid(Class ~.) +
+    theme_classic()
+
+
+cml %>%
+    group_by(Family, Species, Class) %>%
+    #summarize(muc = sum(ConsumptionRate)) %>%
+    group_by(Family, Species) %>%
+    ggplot() +
+    geom_histogram(aes(x = muc, fill = Family)) +
+    scale_y_log10() +
+    #facet_grid(Class ~.) +
+    theme_classic()
+
 p2 <- cml %>%
     ggplot() +
     geom_tile(aes(x = Resource, y = Species, fill = ConsumptionRate)) +

@@ -1,7 +1,7 @@
 library(tidyverse)
 
 # Generate the input_csv files ----
-output_dir = "~/Dropbox/lab/invasion-network/simulation/data/raw11/"
+output_dir = "~/Dropbox/lab/invasion-network/simulation/data/raw10/"
 
 # Example parameters
 input_parameters <- tibble(
@@ -13,34 +13,21 @@ input_parameters <- tibble(
     seed = 1,
     sa = 500,
     ma = 20,
-    S = 50,
-    # c matrix
-    c_symmetry = "empirical", # "symmetry", "asymmetry", "empirical"
-    muc_fs = 0.0212,  # mean sum of uptake rates of fermenter on sugar
-    sigc_fs = 0.00581, # standard deviation of the mean sum of uptake rates of fermenter on sugar
-    muc_fa = 0.00282,  # mean sum of uptake rates of fermenter on acid
-    sigc_fa = 0.0027, # standard deviation of the mean sum of uptake rates of fermenter on acid
-    muc_rs = 0.00441,  # mean sum of uptake rates of respirator on sugar
-    sigc_rs = 0.00201, # standard deviation of the mean sum of uptake rates of respirator on sugar
-    muc_ra = 0.0146,  # mean sum of uptake rates of respirator on acid
-    sigc_ra = 0.00961, # standard deviation of the mean sum of uptake rates of respirator on acid
-    # D matrix
-    metabolism = "empirical", # "common", "two-families", "empirical", "specific"
-    ffss = 0, # fraction of flux from sugar to sugar in fermenter
-    ffsa = 1, # fraction of flux from sugar to acid in fermenter
-    ffas = 0, # fraction of flux from acid to sugar in fermenter
-    ffaa = 1, # fraction of flux from acid to acid in fermenter
-    frss = 0.49, # fraction of flux from sugar to sugar in respirator
-    frsa = 0.51, # fraction of flux from sugar to acid in respirator
-    fras = 0, # fraction of flux from acid to sugar in respirator
-    fraa = 1, # fraction of flux from acid to acid in respirator
-    # Leakiness
+    S = 10,
     l1 = 0.5,
     l2 = 0,
     l1_var = 0.1,
     l2_var = 0.001,
+    c_symmetry = "asymmetry",
+    q1 = 0.9,
+    q2 = 0.9,
+    muc1 = 10,
+    muc2 = 10,
+    muc = 10,
+    sigc = 3,
     n_communities = 20,
     n_wells = 100, # Note that the well number (column number) of init_N0 has to match n_wells
+    metabolism = "two-families", # "common", "two-families", "specific"
     rs = 0,
 )
 
@@ -54,11 +41,10 @@ temp1 <- input_parameters %>%
 # Self-assembly
 temp2 <- input_parameters %>%
     slice(rep(1, 1)) %>%
-    mutate(save_timepoint = T) %>%
-    mutate(init_N0 = paste0("selfAssembly-1_init.csv"), exp_id = 1, n_wells = 20, S = 50)
+    mutate(init_N0 = paste0("selfAssembly-1_init.csv"), exp_id = 1, n_wells = 20, S = 50) #S=30
 
 #input_independent <- bind_rows(temp1, temp2)
-input_independent <- bind_rows(temp2)
+input_independent <- bind_rows(temp1)
 write_csv(input_independent, here::here("simulation/input_independent.csv"))
 
 
@@ -66,16 +52,14 @@ write_csv(input_independent, here::here("simulation/input_independent.csv"))
 n_comm <- input_parameters$n_communities
 temp3 <- input_parameters %>%
     slice(rep(1, n_comm)) %>%
-    mutate(save_timepoint = F) %>%
     mutate(init_N0 = paste0("poolPairs_W", 0:(n_comm-1), "-1_init.csv"), exp_id = 1, S = 10)
 # Pairs from self-assembled communities
 temp4 <- input_parameters %>%
     slice(rep(1, n_comm)) %>%
-    mutate(save_timepoint = F) %>%
     mutate(init_N0 = paste0("communityPairs_W", 0:(n_comm-1), "-1_init.csv"))
 
 #input_pairs <- bind_rows(temp3, temp4)
-input_pairs <- bind_rows(temp4)
+input_pairs <- bind_rows(temp3)
 write_csv(input_pairs, here::here("simulation/input_pairs.csv"))
 
 
@@ -215,7 +199,7 @@ for (i in 1:length(temp)) {
 
 
 # Execute this chunk when community assembly is done
-input_row <- input_pairs %>% filter(str_detect(init_N0, "communityPairs")) %>% slice(1)
+input_row <- input_pairs %>% filter(str_detect(init_N0, "poolPairs")) %>% slice(1)
 
 # Community pairs
 N_community_end <- read_csv(paste0(output_dir, "selfAssembly-1_end.csv"), col_types = cols()) %>% rename(Family = ...1, Species = ...2)

@@ -29,66 +29,134 @@ def extract_shapes(assumptions):
     consumer_names = ['S'+str(k) for k in range(S)]
     resource_index = [[type_names[m] for m in range(T) for k in range(assumptions['MA'][m])], resource_names]
     consumer_index = [[family_names[m] for m in range(F) for k in range(assumptions['SA'][m])]+['GEN' for k in range(assumptions['Sgen'])],consumer_names]
-    return M, T, S, F, type_names, resource_index, family_names, consumer_index
+    return M, T, S, F, type_names, resource_index, consumer_index
 
 # Overwrite the community-simulator sampling matrices
 def sample_matrices(assumptions):
-    # Extract total numbers of resources, consumers, resource types, and consumer families
-    # Construct lists of names of resources, consumers, resource types, and consumer families
-    M, T, S, F, type_names, resource_index, family_names, consumer_index = extract_shapes(assumptions)
+    #PREPARE VARIABLES
+    #Extract total numbers of resources, consumers, resource types, and consumer families:
+    #Construct lists of names of resources, consumers, resource types, and consumer families:
+    M, T, S, F, type_names, resource_index, consumer_index = extract_shapes(assumptions)
+    M_waste = assumptions['MA'][assumptions['waste_type']]
+    waste_name = type_names[assumptions['waste_type']]
     
-    # Sample D matrix using empirical data, Specific to each functional group
-    if assumptions['metabolism'] == 'empirical':
+    # Sample D matrix
+    if assumptions['metabolism'] == 'common': # if the metabolic matrix is common for all species, continue normally as in the original community-simulator package
+        # SAMPLE METABOLIC MATRIX FROM DIRICHLET DISTRIBUTION
+        DT = pd.DataFrame(np.zeros((M,M)),index=resource_index,columns=resource_index)
+        for type_name in type_names:
+            MA = len(DT.loc[type_name])
+            if type_name is not waste_name:
+                #Set background secretion levels
+                p = pd.Series(np.ones(M)*(1-assumptions['fs']-assumptions['fw'])/(M-MA-M_waste),index = DT.keys())
+                #Set self-secretion level
+                p.loc[type_name] = assumptions['fs']/MA
+                #Set waste secretion level
+                p.loc[waste_name] = assumptions['fw']/M_waste
+                #Sample from dirichlet
+                DT.loc[type_name] = dirichlet(p/assumptions['sparsity'],size=MA)
+            else:
+                if M > MA:
+                    #Set background secretion levels
+                    p = pd.Series(np.ones(M)*(1-assumptions['fw']-assumptions['fs'])/(M-MA),index = DT.keys())
+                    #Set self-secretion level
+                    p.loc[type_name] = (assumptions['fw']+assumptions['fs'])/MA
+                else:
+                    p = pd.Series(np.ones(M)/M,index = DT.keys())
+                #Sample from dirichlet
+                DT.loc[type_name] = dirichlet(p/assumptions['sparsity'],size=MA)
+        D = DT.T
+    elif assumptions['metabolism'] == 'two-families':
+        DT = pd.DataFrame(np.zeros((M,M)),index=resource_index,columns=resource_index)
+        for type_name in type_names:
+            MA = len(DT.loc[type_name])
+            if type_name == 'T0': #sugar
+                p = pd.Series(np.ones(M)*assumptions['fsw']/assumptions['MA'][2], index = DT.keys())
+                p.loc['T0'] = assumptions['fss']/assumptions['MA'][0] # to sugar
+                p.loc['T1'] = assumptions['fsa']/assumptions['MA'][1] # to acid
+                p.loc['T2'] = assumptions['fsw']/assumptions['MA'][2] # to waste
+                DT.loc[type_name] = dirichlet(p/assumptions['sparsity'],size=assumptions['MA'][0])
+            elif type_name == 'T1': # acid
+                p = pd.Series(np.ones(M)*assumptions['fsw']/assumptions['MA'][2], index = DT.keys())
+                p.loc['T0'] = assumptions['fas']/assumptions['MA'][0] # to sugar
+                p.loc['T1'] = assumptions['faa']/assumptions['MA'][1] # to acid
+                p.loc['T2'] = assumptions['faw']/assumptions['MA'][2] # to waste
+                DT.loc[type_name] = dirichlet(p/assumptions['sparsity'],size=assumptions['MA'][1])
+            elif type_name == 'T2': # waste
+                p = pd.Series(np.ones(M)*assumptions['fsw']/assumptions['MA'][2], index = DT.keys())
+                p.loc['T0'] = assumptions['fws']/assumptions['MA'][0] # to sugar
+                p.loc['T1'] = assumptions['fwa']/assumptions['MA'][1] # to acid
+                p.loc['T2'] = assumptions['fww']/assumptions['MA'][2] # to waste
+                DT.loc[type_name] = dirichlet(p/assumptions['sparsity'],size=assumptions['MA'][2])
+            else:
+                print("D matrices are hard coded. The number of resource class must be exactly 3.")
+        D = DT.T
+    elif assumptions['metabolism'] == 'specific': # if we want a different metabolic matrix for each species, generate a list
+        
         def generalized_dirichlet(alpha,size=None): # custom Dirichlet sampling function that accepts alpha=0 (always samples 0 in those instances); use this function in case some uptake rate is 0 (e.g. in binary sampling of matrix c) because we are going to weigh secretions for each species using uptake rates
             alpha = np.asarray(alpha)
             if size == None:
                 size = 1
+                
             alpha_nonzero = np.where(alpha != 0)[0]
             out = np.zeros((size,len(alpha)))
             
             if len(alpha_nonzero)>0:
                 out[:,alpha_nonzero] = dirichlet(alpha[alpha_nonzero],size=size)
+            
             return out
-        
-        # Create empty list of matrices D
+    
+        # create empty list of matrices D
         D = ['NA' for i in range(S)]
         
+        # loop through species and generate matrices
         for s in range(S):
+            
+            # initialize matrix for species s
             DT = pd.DataFrame(np.zeros((M,M)),index=resource_index,columns=resource_index)
-            # Fermenter
-            if consumer_index[0][s] == 'F0':  
-                for type_name in type_names:
-                    MA = len(DT.loc[type_name])
-                    if type_name == 'T0': #sugar
-                        p = pd.Series(np.ones(M)*0/assumptions['MA'][0], index = DT.keys())
-                        p.loc['T0'] = assumptions['ffss']/assumptions['MA'][0] # to sugar
-                        p.loc['T1'] = assumptions['ffsa']/assumptions['MA'][1] # to acid
-                        DT.loc[type_name] = generalized_dirichlet(p/assumptions['sparsity'],size=assumptions['MA'][0])
-                    elif type_name == 'T1': # acid
-                        p = pd.Series(np.ones(M)*0/assumptions['MA'][1], index = DT.keys())
-                        p.loc['T0'] = assumptions['ffas']/assumptions['MA'][0] # to sugar
-                        p.loc['T1'] = assumptions['ffaa']/assumptions['MA'][1] # to acid
-                        DT.loc[type_name] = generalized_dirichlet(p/assumptions['sparsity'],size=assumptions['MA'][1])
+            
+            # weights
+            cs = c.iloc[s,:] # uptake rates of species s (will be used to weigh secretions based on assumptions['rs'])
+            weight = (cs - 1)*assumptions['rs'] + 1 # each species secretion levels will depend on the affinity (uptake rate) of that species for the secreted resource (controlled by parameter 'rs' in the assumptions)
+            weight.loc[waste_name] = 1 # weighing does not apply to waste resource (waste secretions remain random)
+            # normalize weights so that final fluxes (determined by fs and fw) are not altered
+            wsum = weight.copy()
+            for type_name in type_names:
+                MA = len(DT.loc[type_name])
+                if weight.loc[type_name].sum()>0:
+                    wsum.loc[type_name] = weight.loc[type_name].sum()/MA
+                else:
+                    wsum.loc[type_name] = 1 # if there is no flux to an entire resource type, this would give a 0 and then a NaN when dividing. Instead, we set it to 1 so it gives 0 when dividing (this will modify energy fluxes defined by fs and fw but there is no way around it)
+            weight = weight.div(wsum)
+            
+            # make matrix
+            for type_name in type_names:
+                MA = len(DT.loc[type_name])
+                if type_name is not waste_name:
+                    #Set background secretion levels
+                    p = pd.Series(np.ones(M)*(1-assumptions['fs']-assumptions['fw'])/(M-MA-M_waste),index = DT.keys())
+                    #Set self-secretion level
+                    p.loc[type_name] = assumptions['fs']/MA
+                    #Set waste secretion level
+                    p.loc[waste_name] = assumptions['fw']/M_waste
+                    # new: add weights
+                    p = p*weight
+                    #Sample from dirichlet
+                    DT.loc[type_name] = generalized_dirichlet(p/assumptions['sparsity'],size=MA) # use generalized Dirichlet in case some weighs are zero (in the limit case where an uptake rate is zero, e.g. if matrix c is binary)
+                else: # the waste resource is treated as before, i.e. there is no weighing: all species can produce arbitrary amounts of waste resources regardless of their ability to consume them
+                    if M > MA:
+                        #Set background secretion levels
+                        p = pd.Series(np.ones(M)*(1-assumptions['fw']-assumptions['fs'])/(M-MA),index = DT.keys())
+                        #Set self-secretion level
+                        p.loc[type_name] = (assumptions['fw']+assumptions['fs'])/MA
                     else:
-                        print("D matrices are hard coded. The number of resource class must be exactly 2.")
-            # Respirator
-            elif consumer_index[0][s] == 'F1':
-                for type_name in type_names:
-                    MA = len(DT.loc[type_name])
-                    if type_name == 'T0': #sugar
-                        p = pd.Series(np.ones(M)*0/assumptions['MA'][0], index = DT.keys())
-                        p.loc['T0'] = assumptions['frss']/assumptions['MA'][0] # to sugar
-                        p.loc['T1'] = assumptions['frsa']/assumptions['MA'][1] # to acid
-                        DT.loc[type_name] = generalized_dirichlet(p/assumptions['sparsity'],size=assumptions['MA'][0])
-                    elif type_name == 'T1': # acid
-                        p = pd.Series(np.ones(M)*0/assumptions['MA'][1], index = DT.keys())
-                        p.loc['T0'] = assumptions['fras']/assumptions['MA'][0] # to sugar
-                        p.loc['T1'] = assumptions['fraa']/assumptions['MA'][1] # to acid
-                        DT.loc[type_name] = generalized_dirichlet(p/assumptions['sparsity'],size=assumptions['MA'][1])
-                    else:
-                        print("D matrices are hard coded. The number of resource class must be exactly 2.")
+                        p = pd.Series(np.ones(M)/M,index = DT.keys())
+                    #Sample from dirichlet
+                    DT.loc[type_name] = dirichlet(p/assumptions['sparsity'],size=MA)
             D[s] = DT.T
 
+
+    
     # Sample c matrix; default by gamma
     assert assumptions['muc'] < M*assumptions['c1'], 'muc not attainable with given M and c1.'
     c = pd.DataFrame(np.zeros((S,M)),columns=resource_index,index=consumer_index)
@@ -120,36 +188,35 @@ def sample_matrices(assumptions):
                     thetac = c_var/c_mean
                     kc = c_mean**2/c_var
                     c.loc['F'+str(k)]['T'+str(j)] = np.random.gamma(kc,scale=thetac,size=(assumptions['SA'][k],assumptions['MA'][j]))
-    # Parameterize the c matrix using empirical data
-    elif assumptions['c_symmetry'] == 'empirical':
+    ## When fermenters have advantage on sugar, and so do respirators on acids
+    ## Now only coded so that respirator overall is a good user
+    elif assumptions['c_symmetry'] == 'asymmetry':
         for k in range(F):
             for j in range(T):
                 if k==0 and j==0: # fermenter on sugar
-                    c_mean = (assumptions['muc_fs']/M)
-                    c_var = (assumptions['sigc_fs']**2/M)
+                    c_mean = (assumptions['muc1']/M)*(1+assumptions['q1'])
+                    c_var = (assumptions['sigc']**2/M)*(1+assumptions['q1'])
                     thetac = c_var/c_mean
                     kc = c_mean**2/c_var
                     c.loc['F'+str(k)]['T'+str(j)] = np.random.gamma(kc,scale=thetac,size=(assumptions['SA'][k],assumptions['MA'][j]))
                 elif k==1 and j==1: # respirator on acid
-                    c_mean = (assumptions['muc_ra']/M)
-                    c_var = (assumptions['sigc_ra']**2/M)
+                    c_mean = (assumptions['muc2']/M)*(1+assumptions['q2'])
+                    c_var = (assumptions['sigc']**2/M)*(1+assumptions['q2'])
                     thetac = c_var/c_mean
                     kc = c_mean**2/c_var
                     c.loc['F'+str(k)]['T'+str(j)] = np.random.gamma(kc,scale=thetac,size=(assumptions['SA'][k],assumptions['MA'][j]))
                 elif k==1 and j==0: # respirator on sugar
-                    c_mean = (assumptions['muc_rs']/M)
-                    c_var = (assumptions['sigc_rs']**2/M)
+                    c_mean = (assumptions['muc2']/M)*(1-assumptions['q1'])
+                    c_var = (assumptions['sigc']**2/M)*(1-assumptions['q1'])
                     thetac = c_var/c_mean
                     kc = c_mean**2/c_var
                     c.loc['F'+str(k)]['T'+str(j)] = np.random.gamma(kc,scale=thetac,size=(assumptions['SA'][k],assumptions['MA'][j]))
                 elif k==0 and j==1: # fermenter on acid
-                    c_mean = (assumptions['muc_fa']/M)
-                    c_var = (assumptions['sigc_fa']**2/M)
+                    c_mean = (assumptions['muc1']/M)*(1-assumptions['q2'])
+                    c_var = (assumptions['sigc']**2/M)*(1-assumptions['q2'])
                     thetac = c_var/c_mean
                     kc = c_mean**2/c_var
                     c.loc['F'+str(k)]['T'+str(j)] = np.random.gamma(kc,scale=thetac,size=(assumptions['SA'][k],assumptions['MA'][j]))
-
-
 
     # Sample l matrix. Default by uniform
     l = pd.DataFrame(np.zeros((S,M)),columns=resource_index,index=consumer_index)
@@ -189,44 +256,6 @@ def sample_matrices(assumptions):
             l.loc['GEN'] = np.random.uniform(low = a_l, high = b_l, size = (assumptions['Sgen'], M))
     
     return D, c, l
-
-# Update the make params function to remove c, D, and l
-def make_params(assumptions):
-    N0,R0 = MakeInitialState(assumptions)
-    
-    if not isinstance(assumptions['food'],int) or not isinstance(assumptions['R0_food'],int):
-        params=[{'m':1,
-                'w':1,
-                'g':1,
-                'R0':R0.values[:,k],
-                'tau':1,
-                'r':1,
-                'sigma_max':1,
-                'nreg':10,
-                'n':2
-                } for k in range(assumptions['n_wells'])]
-        for item in ['m','w','g','tau','r','sigma_max','n','nreg']:
-            if item in assumptions.keys():
-                for k in range(assumptions['n_wells']):
-                    params[k][item] = assumptions[item]
-
-    else:
-        params={'m':1,
-                'w':1,
-                'g':1,
-                'R0':R0.values[:,0],
-                'tau':1,
-                'r':1,
-                'sigma_max':1,
-                'nreg':10,
-                'n':2
-                }
-            
-        for item in ['m','w','g','tau','r','sigma_max','n','nreg']:
-            if item in assumptions.keys():
-                params[item] = assumptions[item]
-
-    return params
 
 # Update resource equation to include species-specific D and resource specific l
 def make_resource_dynamics(assumptions):
@@ -284,7 +313,6 @@ def make_resource_dynamics(assumptions):
     ### new version incorporating both scenarios (D can be a matrix or a list, depending on the choice of 'metabolism')
     J_out = {'common': lambda R,params: (params['l']*J_in(R,params)).dot(params['D'].T),
              'specific': lambda R,params: params['l']*np.array([ J_in(R,params)[i,:].dot(params['D'][i].T) for i in range(len(params['D'])) ]),
-             'empirical': lambda R,params: params['l']*np.array([ J_in(R,params)[i,:].dot(params['D'][i].T) for i in range(len(params['D'])) ]),
              'two-families': lambda R,params: (params['l']*J_in(R,params)).dot(params['D'].T)
             }
     
@@ -327,50 +355,70 @@ def make_consumer_dynamics(assumptions):
     
     return lambda N,R,params: params['g']*N*(np.sum(J_growth(R,params),axis=1)-params['m'])
 
-# Load model parameters from the input csv
+# Load model parameters
 def load_assumptions(input_row):
+    # Load Parameters from the input csv
+    output_dir = input_row['output_dir']
+    save_timepoint = input_row['save_timepoint']
+    sa = int(input_row['sa'])
+    ma = int(input_row['ma'])
+    S = int(input_row['S'])
+    q1 = float(input_row['q1'])
+    q2 = float(input_row['q2'])
+    l1 = float(input_row['l1'])
+    l2 = float(input_row['l2'])
+    l1_var = float(input_row['l1_var'])
+    l2_var = float(input_row['l2_var'])
+    c_symmetry = str(input_row['c_symmetry'])
+    muc1 = int(input_row['muc1'])
+    muc2 = int(input_row['muc2'])
+    n_communities = int(input_row['n_communities'])
+    n_wells = int(input_row['n_wells'])
+    metabolism = str(input_row['metabolism'])
+    rs = float(input_row['rs'])
+
     # Set parameters in model
     assumptions = a_default.copy()
-    assumptions['SA'] = np.ones(2) * int(input_row['sa']) # Number of species per specialist family
-    assumptions['MA'] = np.ones(2) * int(input_row['ma']) # Number of resource per resource class
+    assumptions['SA'] = np.ones(2) * sa # Number of species per specialist family
+    assumptions['MA'] = np.ones(3) * ma # Number of resource per resource class
     assumptions['Sgen'] = 0 # No generalist
-    assumptions['n_wells'] = int(input_row['n_wells'])
-    assumptions['n_communities'] = int(input_row['n_communities'])
+    assumptions['n_wells'] = n_wells
+    assumptions['n_communities'] = n_communities
     assumptions['m'] = 0 # Turn off maintanence cost. i.e., no cell dies
-    assumptions['S'] = int(input_row['S']) # Number of initial per-well species sampled from the species pool
+    assumptions['S'] = S # Number of initial per-well species sampled from the species pool
     
     ## Consumer consumption rates
+    #assumptions['sampling'] = 'Gamma' # 'Binary', 'Gaussian', 'Uniform' or 'Gamma' (sampling of the matrix c)
     assumptions['muc'] = 10 # Mean sum of consumption rates (used in all models)
     assumptions['sigc'] = 3 # Standard deviation of sum of consumption rates for Gaussian and Gamma models
-    assumptions['c_symmetry'] = str(input_row['c_symmetry'])
-    assumptions['muc_fs'] = float(input_row['muc_fs'])
-    assumptions['sigc_fs'] = float(input_row['sigc_fs'])
-    assumptions['muc_fa'] = float(input_row['muc_fa'])
-    assumptions['sigc_fa'] = float(input_row['sigc_fa'])
-    assumptions['muc_rs'] = float(input_row['muc_rs'])
-    assumptions['sigc_rs'] = float(input_row['sigc_rs'])
-    assumptions['muc_ra'] = float(input_row['muc_ra'])
-    assumptions['sigc_ra'] = float(input_row['sigc_ra'])
+    #assumptions['c0'] = 0 # Sum of background consumption rates in binary model
+    #assumptions['c1'] = 1 # Specific consumption rate in binary model
+    assumptions['q1'] = q1 # Preference strengeth of specialist family 1 (set to 0 for generalist and 1 for specialist)
+    assumptions['q2'] = q2 # Preference strengeth of specialist family 2 
+    assumptions['c_symmetry'] = c_symmetry
+    assumptions['muc1'] = muc1
+    assumptions['muc2'] = muc2
 
     
     ## Consumer metabolism
     assumptions['fs'] = 0.3 # Fraction of secretion flux with same resource type
     assumptions['fw'] = 0.01 # Fraction of secretion flux to 'waste' resource
-    assumptions['ffss'] = float(input_row['ffss'])
-    assumptions['ffsa'] = float(input_row['ffsa'])
-    assumptions['ffas'] = float(input_row['ffas'])
-    assumptions['ffaa'] = float(input_row['ffaa'])
-    assumptions['frss'] = float(input_row['frss'])
-    assumptions['frsa'] = float(input_row['frsa'])
-    assumptions['fras'] = float(input_row['fras'])
-    assumptions['fraa'] = float(input_row['fraa'])
+    assumptions['fss'] = 0.10 # sugar to sugar
+    assumptions['fsa'] = 0.80 # sugar to acid
+    assumptions['fsw'] = 0.10 # sugar to waste
+    assumptions['fas'] = 0.001 # acid to sugar
+    assumptions['faa'] = 0.10 # acid to acid
+    assumptions['faw'] = 0.899 # acid to waste
+    assumptions['fws'] = 0.001 # waste to sugar
+    assumptions['fwa'] = 0.001 # waste to acid
+    assumptions['fww'] = 0.998 # waste to waste
     assumptions['sparsity'] = 0.1 # Effective sparsity of metabolic matrix (between 0 and 1)
-    assumptions['metabolism'] = str(input_row['metabolism']) #{'common','specific'} determines whether to use a common metabolic matrix or each species having its own
-    assumptions['rs'] = float(input_row['rs']) # control parameter (only used if 'metabolism' is 'specific'): if 1, each species secretes only resources that it can consume (or waste resources), preferentially those that it can consume more efficiently; if 0 secretions are randomized (default behavior of the original community-simulator package) 
-    assumptions['l1'] = float(input_row['l1']) # Mean leakage rate of specialist family 1
-    assumptions['l2'] = float(input_row['l2']) # Meab leakage rate of specialist family 2
-    assumptions['l1_var'] = float(input_row['l1_var']) # Variance of l1
-    assumptions['l2_var'] = float(input_row['l2_var']) # Variance of l2
+    assumptions['metabolism'] = metabolism #{'common','specific'} determines whether to use a common metabolic matrix or each species having its own
+    assumptions['rs'] = rs # control parameter (only used if 'metabolism' is 'specific'): if 1, each species secretes only resources that it can consume (or waste resources), preferentially those that it can consume more efficiently; if 0 secretions are randomized (default behavior of the original community-simulator package) 
+    assumptions['l1'] = l1 # Mean leakage rate of specialist family 1
+    assumptions['l2'] = l2 # Meab leakage rate of specialist family 2
+    assumptions['l1_var'] = l1_var # Variance of l1
+    assumptions['l2_var'] = l2_var # Variance of l2
     
     ## Resource
     assumptions['supply'] = 'off' # 'off' for batch culture. 'external' and 'self-renewing' for constant supply
@@ -384,7 +432,7 @@ def load_assumptions(input_row):
 
 # Make initial state N0 and R0 
 def make_initial_state(input_row, assumptions):
-    M, T, S, F, type_names, resource_index, family_names, consumer_index = extract_shapes(assumptions)
+    M, T, S, F, type_names, resource_index, consumer_index = extract_shapes(assumptions)
     # Default
     if not isinstance(input_row['init_N0'], str) and not isinstance(input_row['init_R0'], str):
         N0,R0 = MakeInitialState(assumptions)
@@ -427,14 +475,9 @@ def write_matrices(input_row, D, c, l):
         D.to_csv(input_row['output_dir'] + 'D_seed' + str(input_row['seed']) + '.csv')
     elif input_row['metabolism'] == "specific":
         D[0].to_csv(input_row['output_dir'] + 'D_seed' + str(input_row['seed']) + '.csv')
-    elif input_row['metabolism'] == "empirical":
-        S = np.sum(input_row['sa'] * 2)
-        for s in range(S):
-            D[s].to_csv(input_row['output_dir'] + 'D_S' + str(s) +  '_seed' + str(input_row['seed']) + '.csv')
     
     c.to_csv(input_row['output_dir'] + 'c_seed' + str(input_row['seed']) + '.csv')
     l.to_csv(input_row['output_dir'] + 'l_seed' + str(input_row['seed']) + '.csv')
-
 
 # Run the simulation using the customized parameter sets
 def run_simulations(input_row):
@@ -443,7 +486,6 @@ def run_simulations(input_row):
 
     # Update model parameters
     a = load_assumptions(input_row)
-    #assumptions = a
     
     # Sample matrices
     np.random.seed(seed)
@@ -452,7 +494,7 @@ def run_simulations(input_row):
     print("Matrices written")
 
     # Update params 
-    params = make_params(a)
+    params = MakeParams(a)
     params['c'] = c
     params['D'] = D
     params['l'] = l
@@ -475,15 +517,15 @@ def run_simulations(input_row):
             for j in range(10): # time of propagation 
                 Plate.Propagate(T = 1)
                 Plate.N.round(2).to_csv(input_row['output_dir'] + re.sub("init.csv", "T" + str(i+1) + "t" + str(j+1) + ".csv", input_row["init_N0"]))
+                Plate.Passage(f = np.eye(a['n_wells'])/10)
                 print("T" + str(i+1) + "t" + str(j+1))
-            Plate.Passage(f = np.eye(a['n_wells'])/10)
         
         Plate.N.round(2).to_csv(input_row['output_dir'] + re.sub("init.csv", "end.csv", input_row["init_N0"]))
     
     elif input_row['save_timepoint'] == False:
         Plate.RunExperiment(np.eye(a['n_wells'])/10, T = 10, npass = 5, refresh_resource=True)
         Plate.N.round(2).to_csv(input_row['output_dir'] + re.sub("init.csv", "end.csv", input_row["init_N0"]))
-        # Plate.R.round(2).to_csv(input_row['output_dir'] + re.sub("init.csv", "Rend.csv", input_row["init_N0"]))
+
 
 # For common metabolism, use T = 10, npass=5, muc1 = 10, muc2 = 20
 # For two-families metabolism, use T = 10, npass=5, muc1 = 10, muc2 = 10

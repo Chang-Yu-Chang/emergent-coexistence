@@ -1,9 +1,7 @@
 library(tidyverse)
 library(janitor)
 source(here::here("plotting_scripts/network_functions.R"))
-
 mb <- read_csv("~/Dropbox/lab/invasion-network/data/raw/metabolomics/TMIC_LCMS.csv")
-
 
 # Clean up names
 mb <- mb %>%
@@ -73,7 +71,11 @@ mb <- mb %>%
     select(Fermenter, Strain, SourceType, Source, SourceCarbon,
            MetaboliteType, Metabolite, MetaboliteCarbon, Replicate, MetaboliteConc)
 
+write_csv(mb, here::here("data/output/metabolomics.csv"))
 
+
+
+#
 p <- mb %>%
     #filter(Strain == "Ecoli") %>%
     mutate(Source = ordered(Source, csl$Source)) %>%
@@ -90,10 +92,6 @@ p <- mb %>%
     theme(axis.text.x = element_text(angle = 90, vjust = 0.5))
 
 ggsave(here::here("plots/FigS6-metabolomics.png"), p, width = 15, height = 5)
-
-
-
-
 
 
 ## Calculate the fraction of conversion
@@ -121,9 +119,6 @@ isolates <- read_csv(here::here("data/output/isolates.csv"))
 isolates_u <- isolates %>%
     drop_na() %>%
     mutate(Fermenter = ifelse(Fermenter, "fermenter", "respirator")) %>%
-    # select(Fermenter, ExpID,
-    #        starts_with("r") & ends_with("12hr"), starts_with("r") & ends_with("16hr"), starts_with("r") & ends_with("28hr") ,
-    #        starts_with("OD") & ends_with("12hr"), starts_with("OD") & ends_with("16hr"), starts_with("OD") & ends_with("28hr")) %>%
     distinct(ExpID, .keep_all = T) %>%
     select(Fermenter, ExpID, starts_with("r") & ends_with("16hr"), starts_with("OD") & ends_with("16hr")) %>%
     pivot_longer(cols = ends_with("16hr")) %>%
@@ -149,11 +144,15 @@ ggsave(here::here("plots/FigS7-uptake_rate.png"), p, width = 5, height = 10)
 ##
 isolates_u %>%
     left_join(select(csl, Source, SourceType = Type)) %>%
+    group_by(Fermenter, ExpID, SourceType) %>%
+    summarize(uSum = sum(u)) %>%
     group_by(Fermenter, SourceType) %>%
-    summarize(uMean = mean(u))
+    summarize(uSumMean = mean(uSum), SumSd = sd(uSum))
 
 
-
+tibble(u = rgamma(n = 100, shape = 0.134, scale = 2.5)) %>%
+    ggplot() +
+    geom_histogram(aes(x = u))
 
 
 

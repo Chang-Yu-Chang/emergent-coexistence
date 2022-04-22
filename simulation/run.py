@@ -1,7 +1,7 @@
 from user_tools import *
 
-# input_csv = 'simulation/input_parameters.csv' # Input file name
-# row_number = 3 # Which row of experiment to run
+# input_csv = 'simulation/input_independent.csv' # Input file name
+# row_number = 0 # Which row of experiment to run
 # input_row = pd.read_csv(input_csv).loc[row_number]
 # run_simulations(input_row)
 
