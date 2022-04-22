@@ -16,8 +16,12 @@ input_row <- input_independent[1,]
 # Generate family-species and class-resource matching tibble
 sa <- input_independent$sa[1]
 ma <- input_independent$ma[1]
+# sal <- tibble(Family = paste0("F", c(rep(0, sa), rep(1, sa))), Species = paste0("S", 0:(sa * 2 - 1)))
+# mal <- tibble(Class = paste0("T", c(rep(0, ma), rep(1, ma), rep(2, ma))), Resource = paste0("R", 0:(ma * 3 - 1)))
 sal <- tibble(Family = paste0("F", c(rep(0, sa), rep(1, sa))), Species = paste0("S", 0:(sa * 2 - 1)))
-mal <- tibble(Class = paste0("T", c(rep(0, ma), rep(1, ma), rep(2, ma))), Resource = paste0("R", 0:(ma * 3 - 1)))
+mal <- tibble(Class = paste0("T", c(rep(0, ma), rep(1, ma))), Resource = paste0("R", 0:(ma * 2 - 1)))
+
+
 
 # Data
 df_communities <- read_csv(here::here("data/output/df_communities.csv"), col_types = cols())
@@ -409,31 +413,36 @@ ggsave(here::here("plots/Fig4.png"), p, width = 12, height = 9)
 
 
 # Figure S5. u, l, and D matrices ------
-Dm <- read_csv(paste0(output_dir, "D_seed1.csv"), skip = 1) # D matrix
+Dm_f <- read_csv(paste0(output_dir, "D_S0_seed1.csv"), skip = 1) # D matrix
+Dm_r <- read_csv(paste0(output_dir, "D_S500_seed1.csv"), skip = 1) # D matrix
 cm <- read_csv(paste0(output_dir, "c_seed1.csv"), skip = 1) # c matrix
 lm <- read_csv(paste0(output_dir, "l_seed1.csv"), skip = 1) # l matrix
 
 ## D matrix
-Dml <- Dm %>% # D matrix longer
+Dml_f <- Dm_f %>% # D matrix longer
+    pivot_longer(cols = starts_with("R"), names_to = "Resource1", values_to = "SecretionFlux") %>%
+    rename(Class2 = ...1, Resource2 = ...2) %>%
+    left_join(rename_with(mal, ~ paste0(., "1"), everything())) %>%
+    mutate(Resource1 = ordered(Resource1, mal$Resource), Resource2 = ordered(Resource2, mal$Resource)) %>%
+    select(Class1, Resource1, Class2, Resource2, SecretionFlux)
+Dml_r <- Dm_r %>% # D matrix longer
     pivot_longer(cols = starts_with("R"), names_to = "Resource1", values_to = "SecretionFlux") %>%
     rename(Class2 = ...1, Resource2 = ...2) %>%
     left_join(rename_with(mal, ~ paste0(., "1"), everything())) %>%
     mutate(Resource1 = ordered(Resource1, mal$Resource), Resource2 = ordered(Resource2, mal$Resource)) %>%
     select(Class1, Resource1, Class2, Resource2, SecretionFlux)
 
-Dml %>%
-    group_by(Class1) %>%
-    summarize(TotalFlux = sum(SecretionFlux))
 
-p1 <- Dml %>%
+
+p1_f <- Dml_f %>%
     ggplot() +
     geom_tile(aes(x = Resource1, y = Resource2, fill = SecretionFlux)) +
     geom_segment(aes(color = "sugar"), x = "R0", xend = paste0("R", ma-1), y = "spacer", yend = "spacer", lwd = 2) +
     geom_segment(aes(color = "acid"), x = paste0("R", ma), xend = paste0("R", 2*ma-1), y = "spacer", yend = "spacer", lwd = 2) +
-    geom_segment(aes(color = "waste"), x = paste0("R", 2*ma), xend = paste0("R", 3*ma-1), y = "spacer", yend = "spacer", lwd = 2) +
+#    geom_segment(aes(color = "waste"), x = paste0("R", 2*ma), xend = paste0("R", 3*ma-1), y = "spacer", yend = "spacer", lwd = 2) +
     geom_segment(aes(color = "sugar"), x = "spacer", xend = "spacer", y = "R0", yend = paste0("R", ma-1), lwd = 2) +
     geom_segment(aes(color = "acid"), x = "spacer", xend = "spacer", y = paste0("R", ma), yend = paste0("R", 2*ma-1), lwd = 2) +
-    geom_segment(aes(color = "waste"), x = "spacer", xend = "spacer", y = paste0("R", 2*ma), yend = paste0("R", 3*ma-1), lwd = 2) +
+#    geom_segment(aes(color = "waste"), x = "spacer", xend = "spacer", y = paste0("R", 2*ma), yend = paste0("R", 3*ma-1), lwd = 2) +
     scale_fill_gradient(high = "black", low = "white") +
     scale_color_manual(values = category_color, breaks = c("sugar", "acid", "waste")) +
     scale_x_discrete(limits = c("spacer", mal$Resource)) +
@@ -443,7 +452,28 @@ p1 <- Dml %>%
     guides(fill = guide_colorbar(title = expression(D[alpha][beta])),
            color = "none") +
     labs(x = expression(R[alpha]), y = expression(R[beta])) +
-    ggtitle(expression("Stoichiometric matrix" ~ D[alpha][beta]))
+    ggtitle(expression("Stoichiometric matrix" ~ D[alpha][beta] ~ "fermenter"))
+
+p1_r <- Dml_r %>%
+    ggplot() +
+    geom_tile(aes(x = Resource1, y = Resource2, fill = SecretionFlux)) +
+    geom_segment(aes(color = "sugar"), x = "R0", xend = paste0("R", ma-1), y = "spacer", yend = "spacer", lwd = 2) +
+    geom_segment(aes(color = "acid"), x = paste0("R", ma), xend = paste0("R", 2*ma-1), y = "spacer", yend = "spacer", lwd = 2) +
+#    geom_segment(aes(color = "waste"), x = paste0("R", 2*ma), xend = paste0("R", 3*ma-1), y = "spacer", yend = "spacer", lwd = 2) +
+    geom_segment(aes(color = "sugar"), x = "spacer", xend = "spacer", y = "R0", yend = paste0("R", ma-1), lwd = 2) +
+    geom_segment(aes(color = "acid"), x = "spacer", xend = "spacer", y = paste0("R", ma), yend = paste0("R", 2*ma-1), lwd = 2) +
+#    geom_segment(aes(color = "waste"), x = "spacer", xend = "spacer", y = paste0("R", 2*ma), yend = paste0("R", 3*ma-1), lwd = 2) +
+    scale_fill_gradient(high = "black", low = "white") +
+    scale_color_manual(values = category_color, breaks = c("sugar", "acid", "waste")) +
+    scale_x_discrete(limits = c("spacer", mal$Resource)) +
+    scale_y_discrete(limits = c("spacer", mal$Resource)) +
+    theme_classic() +
+    theme(axis.line = element_blank(), axis.ticks = element_blank(), axis.text = element_blank()) +
+    guides(fill = guide_colorbar(title = expression(D[alpha][beta])),
+           color = "none") +
+    labs(x = expression(R[alpha]), y = expression(R[beta])) +
+    ggtitle(expression("Stoichiometric matrix" ~ D[alpha][beta] ~ "respirator"))
+
 
 ## c matrix
 cml <- cm %>% # c matrix longer
@@ -491,15 +521,6 @@ p2 <- cml %>%
     labs() +
     ggtitle(expression("Update rate" ~ c[i][alpha]))
 
-cml %>%
-    ggplot() +
-    geom_histogram(aes(x = ConsumptionRate, fill = Family)) +
-    scale_fill_manual(values = category_color) +
-    scale_y_log10() +
-    theme_classic() +
-    #guides(fill = "none") +
-    labs()
-
 ## l matrix
 lml <- lm %>% # l matrix longer
     pivot_longer(cols = starts_with("R"), names_to = "Resource", values_to = "Leakiness") %>%
@@ -538,9 +559,10 @@ if (FALSE) {
     labs()
 
 }
-p_lower <- plot_grid(p2, p3, labels = c("B", "C"), scale = .9)
-p <- plot_grid(p1, p_lower, ncol = 1, labels = c("A", ""), align = "v", axis = "lr", scale = c(0.9, 1)) + paint_white_background()
-ggsave(here::here("plots/FigS14-matrices.png"), p, width = 8, height = 8)
+p_top <- plot_grid(p1_f, p1_r, labels = c("A", ""), scale = .9)
+p_bottom <- plot_grid(p2, p3, labels = c("B", "C"), scale = .9)
+p <- plot_grid(p_top, p_bottom, ncol = 1, labels = c("A", ""), align = "v", axis = "lr") + paint_white_background()
+ggsave(here::here("plots/FigS5-matrices.png"), p, width = 8, height = 8)
 
 
 
