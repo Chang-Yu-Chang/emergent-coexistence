@@ -1,7 +1,7 @@
 library(tidyverse)
 
 # Generate the input_csv files ----
-output_dir = "~/Dropbox/lab/invasion-network/simulation/data/raw11/"
+output_dir = "~/Dropbox/lab/invasion-network/simulation/data/raw12/"
 
 # Example parameters
 input_parameters <- tibble(
@@ -16,14 +16,14 @@ input_parameters <- tibble(
     S = 50,
     # c matrix
     c_symmetry = "empirical", # "symmetry", "asymmetry", "empirical"
-    muc_fs = 0.0212,  # mean sum of uptake rates of fermenter on sugar
-    sigc_fs = 0.00581, # standard deviation of the mean sum of uptake rates of fermenter on sugar
-    muc_fa = 0.00282,  # mean sum of uptake rates of fermenter on acid
-    sigc_fa = 0.0027, # standard deviation of the mean sum of uptake rates of fermenter on acid
-    muc_rs = 0.00441,  # mean sum of uptake rates of respirator on sugar
-    sigc_rs = 0.00201, # standard deviation of the mean sum of uptake rates of respirator on sugar
-    muc_ra = 0.0146,  # mean sum of uptake rates of respirator on acid
-    sigc_ra = 0.00961, # standard deviation of the mean sum of uptake rates of respirator on acid
+    c_fs = 0.0415,  # mean uptake rates of fermenter on sugar
+    sigc_fs = 0.0162, # standard deviation of uptake rates of fermenter on sugar
+    c_fa = 0.0106,  # mean uptake rates of fermenter on acid
+    sigc_fa = 0.0146, # standard deviation of uptake rates of fermenter on acid
+    c_rs = 0.00911,  # mean uptake rates of respirator on sugar
+    sigc_rs = 0.0102, # standard deviation of uptake rates of respirator on sugar
+    c_ra = 0.0201,  # mean uptake rates of respirator on acid
+    sigc_ra = 0.0146, # standard deviation of uptake rates of respirator on acid
     # D matrix
     metabolism = "empirical", # "common", "two-families", "empirical", "specific"
     ffss = 0, # fraction of flux from sugar to sugar in fermenter
@@ -35,10 +35,10 @@ input_parameters <- tibble(
     fras = 0, # fraction of flux from acid to sugar in respirator
     fraa = 1, # fraction of flux from acid to acid in respirator
     # Leakiness
-    l1 = 0.5,
-    l2 = 0,
-    l1_var = 0.1,
-    l2_var = 0.001,
+    l1 = 0.432,
+    l2 = 0.00297,
+    l1_sd = 0.105,
+    l2_sd = 0.00252,
     n_communities = 20,
     n_wells = 100, # Note that the well number (column number) of init_N0 has to match n_wells
     rs = 0,
@@ -214,6 +214,9 @@ for (i in 1:length(temp)) {
 
 
 
+
+
+
 # Execute this chunk when community assembly is done
 input_row <- input_pairs %>% filter(str_detect(init_N0, "communityPairs")) %>% slice(1)
 
@@ -225,7 +228,7 @@ temp <- N_community_end %>%
     # Remove rare species (relative abundance <0.01)
     group_by(Community) %>%
     mutate(RelativeAbundance = Abundance/sum(Abundance)) %>%
-    #filter(RelativeAbundance > 0.01) %>%
+    filter(RelativeAbundance > 0.01) %>%
     # Order species and community
     mutate(Species = ordered(Species, sal$Species)) %>%
     mutate(Community = ordered(Community, colnames(N_community_end))) %>%
@@ -239,30 +242,6 @@ for (i in 1:length(temp)) {
 }
 
 
-
-
-if (FALSE) {
-    um = 0.5
-    uv = 0.1
-    a = um - sqrt(3*uv)
-    b = um + sqrt(3*uv)
-    tibble(x = runif(1000, a, b)) %>%
-        ggplot() +
-        geom_vline(xintercept = 0, color = 1, linetype = 2) +
-        geom_vline(xintercept = 1, color = 1, linetype = 2) +
-        geom_histogram(aes(x = x), color = 1, fill = NA, binwidth = 0.05) +
-        theme_classic()
-
-
-    lml %>%
-        ggplot() +
-        geom_vline(xintercept = 0, color = 1, linetype = 2) +
-        geom_vline(xintercept = 1, color = 1, linetype = 2) +
-        geom_histogram(aes(x = Leakiness), color = 1, fill = NA, binwidth = 0.05) +
-        theme_classic()
-
-
-}
 
 
 

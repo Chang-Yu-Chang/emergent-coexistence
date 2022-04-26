@@ -37,8 +37,8 @@ isolates_curves2 <- read_csv("~/Dropbox/lab/invasion-network/data/raw/growth_rat
     select(ID = SangerID, CS, Time, OD620) %>%
     filter(ID %in% isolates_ID_match$ID) %>%
     mutate(CS = tolower(CS)) %>%
-    mutate(CS = str_replace(CS, "d-", "") %>% str_replace("l-", "") %>% str_replace("2-", "")) %>%
-    filter(CS %in% c("glucose", "lactate", "acetate", "succinate"))
+    mutate(CS = str_replace(CS, "d-", "") %>% str_replace("l-", "") %>% str_replace("2-", ""))
+    #filter(CS %in% c("glucose", "lactate", "acetate", "succinate"))
 isolates_curves_list2 <- isolates_curves2 %>%
     nest(GrowthCurve = c(Time, OD620)) %>%
     rowwise() %>%
@@ -50,27 +50,38 @@ isolates_growthcurver2 <- isolates_curves_list2 %>%
     pivot_wider(names_from = CS, values_from = r, names_glue = "r_{CS}_curver")
 
 
-
-# Growth rates using the end time point 12, 16, 28 hr-----
-calculate_r <- function(N0, N1, T0, T1) (log10(N1) - log10(N0)) / (T1 - T0)
-isolates_curves_T0 <- isolates_curves1 %>%
-    group_by(ID, Well, CS) %>%
+# Growth rates using the end time point 12, 16, 28 hr, using Jean's data-----
+calculate_r <- function(N0, T0, N1, T1) (log10(N1)-log10(N0)) / (T1-T0)
+## Clean up the time
+temp <- isolates_curves2 %>%
+    group_by(ID, CS) %>%
+    filter(OD620>0) %>% # Find the earliest time point with non-zero OD
+    mutate(Time = case_when(
+        Time == min(Time) ~ Time,
+        abs(Time-12) == min(abs(Time-12)) ~ 12,
+        abs(Time-16) == min(abs(Time-16)) ~ 16,
+        abs(Time-28) == min(abs(Time-28)) ~ 28
+    )) %>%
+    filter(!is.na(Time))
+isolates_curves_T0 <- temp %>%
+    group_by(ID, CS) %>%
     filter(Time == min(Time)) %>%
-    mutate(T0 = ifelse(Time == min(Time), 0, Time), N0 = OD620) %>%
+    rename(T0 = Time, N0 = OD620)
     select(-Time, -OD620)
-isolates_growth <- isolates_curves1 %>%
+isolates_growth <- temp %>%
     filter(Time %in% c(12, 16, 28)) %>%
     group_by(ID, CS) %>%
     arrange(ID, CS) %>%
-    mutate(T1 = Time, N1 = OD620) %>%
+    rename(T1 = Time, N1 = OD620) %>%
     left_join(isolates_curves_T0) %>%
     # Calculate r
-    mutate(r = calculate_r(N0, N1, T0, T1)) %>%
-    select(Date, ID, Well, CS, Time = T1, r) %>%
+    mutate(r = calculate_r(N0, T0, N1, T1)) %>%
+    select(ID, CS, Time = T1, r) %>%
     # Remove contamination
-    filter(r>0) %>%
+    filter(r>=0) %>%
     # Average
     group_by(ID, CS, Time) %>%
+    arrange(ID, CS, Time) %>%
     summarize(r = mean(r)) %>%
     pivot_wider(names_from = c(Time, CS), values_from = r, names_glue = "r_{CS}_{Time}hr") %>%
     ungroup()

@@ -125,26 +125,26 @@ def sample_matrices(assumptions):
         for k in range(F):
             for j in range(T):
                 if k==0 and j==0: # fermenter on sugar
-                    c_mean = (assumptions['muc_fs']/M)
-                    c_var = (assumptions['sigc_fs']**2/M)
+                    c_mean = assumptions['c_fs']
+                    c_var = assumptions['sigc_fs']**2
                     thetac = c_var/c_mean
                     kc = c_mean**2/c_var
                     c.loc['F'+str(k)]['T'+str(j)] = np.random.gamma(kc,scale=thetac,size=(assumptions['SA'][k],assumptions['MA'][j]))
                 elif k==1 and j==1: # respirator on acid
-                    c_mean = (assumptions['muc_ra']/M)
-                    c_var = (assumptions['sigc_ra']**2/M)
+                    c_mean = assumptions['c_ra']
+                    c_var = assumptions['sigc_ra']**2
                     thetac = c_var/c_mean
                     kc = c_mean**2/c_var
                     c.loc['F'+str(k)]['T'+str(j)] = np.random.gamma(kc,scale=thetac,size=(assumptions['SA'][k],assumptions['MA'][j]))
                 elif k==1 and j==0: # respirator on sugar
-                    c_mean = (assumptions['muc_rs']/M)
-                    c_var = (assumptions['sigc_rs']**2/M)
+                    c_mean = assumptions['c_rs']
+                    c_var = assumptions['sigc_rs']**2
                     thetac = c_var/c_mean
                     kc = c_mean**2/c_var
                     c.loc['F'+str(k)]['T'+str(j)] = np.random.gamma(kc,scale=thetac,size=(assumptions['SA'][k],assumptions['MA'][j]))
                 elif k==0 and j==1: # fermenter on acid
-                    c_mean = (assumptions['muc_fa']/M)
-                    c_var = (assumptions['sigc_fa']**2/M)
+                    c_mean = assumptions['c_fa']
+                    c_var = assumptions['sigc_fa']**2
                     thetac = c_var/c_mean
                     kc = c_mean**2/c_var
                     c.loc['F'+str(k)]['T'+str(j)] = np.random.gamma(kc,scale=thetac,size=(assumptions['SA'][k],assumptions['MA'][j]))
@@ -157,25 +157,25 @@ def sample_matrices(assumptions):
         for j in range(T):
             if k==0 and j==0: # fermenter on sugar
                 l_mean = assumptions['l1']
-                l_var = assumptions['l1_var']
+                l_var = assumptions['l1_sd']**2
                 a_l = max(l_mean - np.sqrt(3*l_var), 0)
                 b_l = min(l_mean + np.sqrt(3*l_var), 1)
                 l.loc['F'+str(k)]['T'+str(j)] = np.random.uniform(low = a_l, high = b_l, size = (assumptions['SA'][k], assumptions['MA'][j]))
             elif k==1 and j==1: # respirator on acid
                 l_mean = assumptions['l2']
-                l_var = assumptions['l2_var']
+                l_var = assumptions['l2_sd']**2
                 a_l = max(l_mean - np.sqrt(3*l_var), 0)
                 b_l = min(l_mean + np.sqrt(3*l_var), 1)
                 l.loc['F'+str(k)]['T'+str(j)] = np.random.uniform(low = a_l, high = b_l, size = (assumptions['SA'][k], assumptions['MA'][j]))
             elif k==1 and j==0: # respirator on sugar
                 l_mean = assumptions['l2']
-                l_var = assumptions['l2_var']
+                l_var = assumptions['l2_sd']**2
                 a_l = max(l_mean - np.sqrt(3*l_var), 0)
                 b_l = min(l_mean + np.sqrt(3*l_var), 1)
                 l.loc['F'+str(k)]['T'+str(j)] = np.random.uniform(low = a_l, high = b_l, size = (assumptions['SA'][k], assumptions['MA'][j]))
             elif k==0 and j==1: # fermenter on acids
                 l_mean = assumptions['l1']
-                l_var = assumptions['l1_var']
+                l_var = assumptions['l1_sd']**2
                 a_l = max(l_mean - np.sqrt(3*l_var), 0)
                 b_l = min(l_mean + np.sqrt(3*l_var), 1)
                 l.loc['F'+str(k)]['T'+str(j)] = np.random.uniform(low = a_l, high = b_l, size = (assumptions['SA'][k], assumptions['MA'][j]))
@@ -183,7 +183,7 @@ def sample_matrices(assumptions):
                 l.loc['F'+str(k)]['T'+str(j)] = np.ones((assumptions['SA'][k], assumptions['MA'][j]))
     if 'GEN' in l.index:
             l_mean = assumptions['l1']
-            l_var = assumptions['l1_var']
+            l_var = assumptions['l1_sd']**2
             a_l = max(l_mean - np.sqrt(3*l_var), 0)
             b_l = min(l_mean + np.sqrt(3*l_var), 1)
             l.loc['GEN'] = np.random.uniform(low = a_l, high = b_l, size = (assumptions['Sgen'], M))
@@ -343,13 +343,13 @@ def load_assumptions(input_row):
     assumptions['muc'] = 10 # Mean sum of consumption rates (used in all models)
     assumptions['sigc'] = 3 # Standard deviation of sum of consumption rates for Gaussian and Gamma models
     assumptions['c_symmetry'] = str(input_row['c_symmetry'])
-    assumptions['muc_fs'] = float(input_row['muc_fs'])
+    assumptions['c_fs'] = float(input_row['c_fs'])
     assumptions['sigc_fs'] = float(input_row['sigc_fs'])
-    assumptions['muc_fa'] = float(input_row['muc_fa'])
+    assumptions['c_fa'] = float(input_row['c_fa'])
     assumptions['sigc_fa'] = float(input_row['sigc_fa'])
-    assumptions['muc_rs'] = float(input_row['muc_rs'])
+    assumptions['c_rs'] = float(input_row['c_rs'])
     assumptions['sigc_rs'] = float(input_row['sigc_rs'])
-    assumptions['muc_ra'] = float(input_row['muc_ra'])
+    assumptions['c_ra'] = float(input_row['c_ra'])
     assumptions['sigc_ra'] = float(input_row['sigc_ra'])
 
     
@@ -369,8 +369,8 @@ def load_assumptions(input_row):
     assumptions['rs'] = float(input_row['rs']) # control parameter (only used if 'metabolism' is 'specific'): if 1, each species secretes only resources that it can consume (or waste resources), preferentially those that it can consume more efficiently; if 0 secretions are randomized (default behavior of the original community-simulator package) 
     assumptions['l1'] = float(input_row['l1']) # Mean leakage rate of specialist family 1
     assumptions['l2'] = float(input_row['l2']) # Meab leakage rate of specialist family 2
-    assumptions['l1_var'] = float(input_row['l1_var']) # Variance of l1
-    assumptions['l2_var'] = float(input_row['l2_var']) # Variance of l2
+    assumptions['l1_sd'] = float(input_row['l1_sd']) # SD of l1
+    assumptions['l2_sd'] = float(input_row['l2_sd']) # SD of l2
     
     ## Resource
     assumptions['supply'] = 'off' # 'off' for batch culture. 'external' and 'self-renewing' for constant supply
@@ -448,8 +448,8 @@ def run_simulations(input_row):
     # Sample matrices
     np.random.seed(seed)
     D, c, l = sample_matrices(a)
-    write_matrices(input_row, D, c, l)
-    print("Matrices written")
+    # write_matrices(input_row, D, c, l)
+    # print("Matrices written")
 
     # Update params 
     params = make_params(a)
@@ -473,7 +473,7 @@ def run_simulations(input_row):
     if input_row['save_timepoint']:
         for i in range(5): # number of passages
             for j in range(10): # time of propagation 
-                Plate.Propagate(T = 1)
+                Plate.Propagate(T = 0.1)
                 Plate.N.round(2).to_csv(input_row['output_dir'] + re.sub("init.csv", "T" + str(i+1) + "t" + str(j+1) + ".csv", input_row["init_N0"]))
                 print("T" + str(i+1) + "t" + str(j+1))
             Plate.Passage(f = np.eye(a['n_wells'])/10)
@@ -481,7 +481,7 @@ def run_simulations(input_row):
         Plate.N.round(2).to_csv(input_row['output_dir'] + re.sub("init.csv", "end.csv", input_row["init_N0"]))
     
     elif input_row['save_timepoint'] == False:
-        Plate.RunExperiment(np.eye(a['n_wells'])/10, T = 10, npass = 5, refresh_resource=True)
+        Plate.RunExperiment(np.eye(a['n_wells'])/10, T = 1, npass = 5, refresh_resource=True)
         Plate.N.round(2).to_csv(input_row['output_dir'] + re.sub("init.csv", "end.csv", input_row["init_N0"]))
         # Plate.R.round(2).to_csv(input_row['output_dir'] + re.sub("init.csv", "Rend.csv", input_row["init_N0"]))
 

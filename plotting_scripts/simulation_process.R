@@ -6,7 +6,7 @@ library(ggraph)
 library(cowplot)
 source(here::here("plotting_scripts/network_functions.R"))
 
-output_dir <- "~/Dropbox/lab/invasion-network/simulation/data/raw11/"
+output_dir <- "~/Dropbox/lab/invasion-network/simulation/data/raw12/"
 input_independent <- read_csv(paste0(output_dir,"input_independent.csv"), col_types = cols())
 input_pairs <- read_csv(paste0(output_dir, "input_pairs.csv"), col_types = cols())
 input_row <- input_independent[1,]
@@ -59,7 +59,12 @@ df_comm_timepoint <- list.files(output_dir) %>%
 df_communities_abundance <- bind_rows(df_comm_init, df_comm_timepoint) %>%
     mutate(Assembly = "self_assembly") %>%
     rename(ID = Species) %>%
-    select(Assembly, everything())
+    select(Assembly, everything()) %>%
+    # Remove rare species (relative abundance <0.01)
+    group_by(Community, Transfer, Time) %>%
+    mutate(RelativeAbundance = Abundance/sum(Abundance)) %>%
+    filter(RelativeAbundance > 0.01) %>%
+    ungroup()
 
 
 df_communities_abundance %>%
@@ -177,10 +182,12 @@ df_cp_init <- input_pairs %>%
     bind_rows() %>%
     mutate(Time = "Tinit") %>%
     ungroup()
-df_cp_end <- input_pairs %>%
-    filter(str_detect(init_N0, "communityPairs")) %>%
-    pull(init_N0) %>% str_replace("_init.csv", "_end.csv") %>%
-    #str_subset("W[1-9]-") %>%  # Subset for part of result done
+df_cp_end <-
+    # input_pairs %>%
+    # filter(str_detect(init_N0, "communityPairs")) %>%
+    # pull(init_N0) %>% str_replace("_init.csv", "_end.csv") %>%
+    list.files(output_dir, pattern = "communityPairs") %>% str_subset("end.csv") %>%
+    #str_subset("W[1-9]") %>%  # Subset for part of result done
     paste0(output_dir, .) %>%
     lapply(function(x) {
         read_wide_file(x) %>%
@@ -478,6 +485,13 @@ df_communities_hierarchy <- left_join(communities_hierarchy1, communities_hierar
 #    pivot_longer(-c(Community, Replicate), names_to = "Metric", values_to = "HierarchyScore")
 write_csv(df_communities_hierarchy, here::here("data/output/df_communities_hierarchy.csv"))
 #write_csv(df_communities_hierarchy_randomized, here::here("data/output/df_communities_hierarchy_randomized.csv"))
+
+
+
+
+
+
+
 
 
 # Make networks ----
