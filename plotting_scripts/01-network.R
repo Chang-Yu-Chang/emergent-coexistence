@@ -161,6 +161,16 @@ pairs_count <- pairs %>%
     mutate(Community = factor(Community, community_factor)) %>%
     arrange(Community) %>%
     mutate(CommunityLabel = factor(1:13))
+
+pairs %>%
+    filter(Assembly == "self_assembly") %>%
+    group_by(Community, InteractionType) %>%
+    summarize(Count = n()) %>%
+    mutate(Fraction = Count / sum(Count)) %>%
+    filter(InteractionType == "exclusion") %>%
+    pull(Fraction) %>%
+    range()
+
 p2 <- pairs %>%
     filter(Assembly == "self_assembly") %>%
     group_by(Community, InteractionType) %>%
@@ -418,7 +428,7 @@ plot_network_hierarchy <- function(net, n_rank = 12, n_break = 12) {
 communities_net <- communities %>%
     mutate(Community = factor(Community, community_factor)) %>%
     arrange(Community) %>%
-    mutate(Network = net_list) %>%
+    left_join(as_tibble_col(net_list, column_name = "Network") %>% mutate(Community = names(net_list))) %>%
     filter(Assembly == "self_assembly") %>%
     select(Community, CommunitySize, Network) %>%
     rowwise() %>%
@@ -458,7 +468,7 @@ edge_width = .8
 df_communities_net <- df_communities %>%
     filter(Assembly == "self_assembly") %>%
     select(Community, Richness) %>%
-    mutate(Network = net_simulated_list[paste0("self_assembly_W", 0:19)]) %>%
+    left_join(as_tibble_col(net_simulated_list, column_name = "Network") %>% mutate(Community = str_replace(names(net_simulated_list), "self_assembly_", ""))) %>%
     right_join(select(df_communities_ID, Community, CommunityLabel)) %>%
     arrange(Richness) %>%
     rowwise() %>%
@@ -1026,48 +1036,6 @@ if (FALSE){
 
 
 
-
-
-
-temp <- net_list[[8]] %>%
-    # Node position
-    activate(nodes) %>%
-    mutate(y = -Rank) %>%
-    group_by(Rank) %>%
-    mutate(x = {seq(0, 1, length.out = n() + 2) %>% `[`(c(-1, -length(.)))}) %>% # + rnorm(n(), 0, .5)) %>%
-    ungroup() %>%
-    # Filter out edges
-    activate(edges) %>%
-    filter(InteractionType == "exclusion") %>%
-    mutate(Temp = sample(c(-1, 1), size = n(), replace = T))
-strength_angle <- as_tibble(temp)$Temp * 0.01
-
-temp %>%
-    ggraph(layout = "nicely") +
-    geom_segment(aes(x = 0.5, xend = 0.5, y = -Inf, yend = -1), color = "grey80") +
-    geom_node_point(size = node_size, shape = 21, fill = "grey", stroke = node_size/5, color = "black") +
-    geom_edge_arc(strength = strength_angle, force_flip = T, aes(color = InteractionType), width = edge_width,
-                  arrow = arrow(length = unit(edge_width, "mm"), type = "closed", angle = 30, ends = "last"),
-                  start_cap = circle(node_size/2, "mm"),
-                  end_cap = circle(node_size/2, "mm")) +
-    scale_edge_color_manual(values = interaction_color) +
-    scale_x_continuous(limits = c(-0.1, 1.1), expand = c(0,0)) +
-    scale_y_continuous(limits = c(-13, 0), breaks = -12:-1, labels = 12:1) +
-    theme_void() +
-    #theme_bw() +
-    theme(
-        panel.grid.major.y = element_line(color = "grey80"),
-        #panel.grid.minor.y = element_line(color = "grey80"),
-        #panel.grid.major.x = element_blank(),
-        #panel.grid.minor.x = element_blank(),
-        legend.position = "none",
-        #panel.border = element_rect(color = "grey80", fill = NA),
-        legend.title = element_blank(),
-        axis.title = element_blank(),
-        strip.text = element_blank(),
-        plot.margin=unit(c(0,0,0,0),"mm")
-    ) +
-    labs(y = "Rank")
 
 
 
