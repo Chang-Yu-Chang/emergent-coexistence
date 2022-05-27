@@ -721,7 +721,7 @@ genewiz_table <- tibble(Sample = 1:(96*6),
        `Length (bp)` = 1000, `Concentration (ng/uL)` = 0.83, Primer = "27F")
 
 write_csv(genewiz_table, file = here::here("output/protocol/tab_fig/20211202_Sanger_seq_prep-genewiz_table_CYC.csv"))
-    
+
 }
 ```
 
