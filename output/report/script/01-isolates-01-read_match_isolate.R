@@ -25,7 +25,7 @@ isolates_tournament <- read_csv(here::here("data/temp/isolates_tournament.csv"))
 ## 100 isolates: 68 for self assembly, 16 for across community assembly, and 16 for random assembly
 isolates <- isolates_ID_match %>%
     select(Assembly, ExpID, ID, Community, Isolate) %>%
-    left_join(isolates_RDP, by = c("ID")) %>%
+    left_join(isolates_RDP, by = c("ExpID")) %>%
     left_join(isolates_epsilon, by = c("Community", "Isolate")) %>%
     left_join(isolates_tournament, by = c("Community", "Isolate")) %>%
     select(-OD620) %>%

@@ -590,18 +590,73 @@ save_as_image(ft1, here::here("plots/TableS1.png"))
 
 
 # Table S2. Isolates ----
-ft2 <- isolates_abundance %>%
-    #filter(Assembly == "self_assembly") %>%
+t2 <- isolates_abundance %>%
     left_join(select(communities, Community, CommunityLabel)) %>%
-    select(CommunityLabel, Community, Isolate, Fermenter, Family, Genus, RelativeAbundance) %>%
-    mutate(Fermenter = ifelse(Fermenter, "fermenter", "respirator"))  %>%
-    mutate(RelativeAbundance = round(RelativeAbundance, 3)) %>%
+    select(CommunityLabel, Fermenter, Community, Isolate, Family, Genus, RelativeAbundance) %>%
+    select(-Community) %>%
+    mutate(Fermenter = ifelse(Fermenter, "fermenter", "respirator")) %>%
+    group_by(CommunityLabel) %>%
+    mutate(TotalAbundance = sum(RelativeAbundance, na.rm = T)) %>%
+    mutate(RelativeAbundance = ifelse(is.na(RelativeAbundance), RelativeAbundance, paste0(round(RelativeAbundance*100, 2), "%"))) %>%
+    mutate(TotalAbundance = paste0(round(TotalAbundance*100, 2), "%")) %>%
+    select(-Fermenter) %>%
     #mutate(Sequence = str_replace_all(Sequence, '(?=(?:.{50})+$)', "\n")) %>%
-    arrange(CommunityLabel, Isolate) %>%
+    arrange(CommunityLabel, Isolate)
+
+t2_1 <- t2 %>%
+    rename(Community = CommunityLabel, `Relative abundance` = RelativeAbundance, `Total abundance` = TotalAbundance) %>%
+    filter(Community %in% c(1:9))
+border_rows1 <- t2_1 %>%
+    group_by(Community) %>%
+    mutate(temp = Isolate == max(Isolate)) %>%
+    pull(temp) %>%
+    which()
+t2_2 <- t2 %>%
+    rename(Community = CommunityLabel, `Relative abundance` = RelativeAbundance, `Total abundance` = TotalAbundance) %>%
+    filter(Community %in% c(10:13))
+border_rows2 <- t2_2 %>%
+    group_by(Community) %>%
+    mutate(temp = Isolate == max(Isolate)) %>%
+    pull(temp) %>%
+    which()
+
+
+
+ft2_1 <- t2_1 %>%
     flextable() %>%
-    width(j = 1:6, width = 1)
-ft2
-save_as_image(ft2, here::here("plots/TableS2.png"))
+    width(j = 1:6, width = 1) %>%
+    merge_v(j = c("Community", "Total abundance")) %>%
+    border(i = border_rows1, border.bottom = fp_border()) %>%
+    border(j = 1:6, border = fp_border(width = 2), part = "header") %>%
+    border(j = 1:6, border = fp_border(), part = "body")
+ft2_2 <- t2_2 %>%
+    flextable() %>%
+    width(j = 1:6, width = 1) %>%
+    merge_v(j = c("Community", "Total abundance")) %>%
+    border(i = border_rows2, border.bottom = fp_border()) %>%
+    border(j = 1:6, border = fp_border(width = 2), part = "header") %>%
+    border(j = 1:6, border = fp_border(), part = "body")
+
+
+save_as_image(ft2_1, here::here("plots/TableS2_1.png"))
+save_as_image(ft2_2, here::here("plots/TableS2_2.png"))
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

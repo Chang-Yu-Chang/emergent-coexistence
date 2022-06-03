@@ -1,11 +1,12 @@
 # CASEU and colony counting
+
 library(tidyverse)
 library(data.table)
 library(cowplot)
 source(here::here("plotting_scripts/network_functions.R"))
 
 isolates <- read_csv(here::here("data/output/isolates.csv"), col_types = cols())
-#pairs <- read_csv(here::here("data/output/pairs.csv"), col_types = cols()) %>% mutate(InteractionType = ifelse(InteractionType == "neutrality", "coexistence", InteractionType))
+pairs <- read_csv(here::here("data/output/pairs.csv"), col_types = cols()) %>% mutate(InteractionType = ifelse(InteractionType == "neutrality", "coexistence", InteractionType))
 #pairs_freq <- read_csv(here::here("data/output/pairs_freq.csv"), col_types = cols())
 #pairs_example_outcomes_finer <- read_csv(here::here("data/output/pairs_example_outcomes_finer.csv"), col_types = cols())
 communities <- read_csv(here::here("data/output/communities.csv"), col_types = cols()) %>%
@@ -284,6 +285,9 @@ pairs %>%
 
 pairs_interaction_caseu %>% count(InteractionTypeCASEU)
 pairs %>% filter(Assembly == "self_assembly") %>% count(InteractionType)
+
+
+
 
 
 # Shit CASEU and CFU result does not correspond...
