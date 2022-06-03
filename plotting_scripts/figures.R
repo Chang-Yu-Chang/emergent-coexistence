@@ -524,6 +524,7 @@ ggsave(here::here("plots/FigS1.png"), p, width = 10, height = 3)
 # Rank versus ranked abundance
 p1 <- isolates_abundance %>%
     mutate(Fermenter = ifelse(Fermenter, "fermenter", "respirator")) %>%
+    geom_smooth(aes(x = Rank, y = RelativeAbundance), method = "lm") +
     ggplot() +
     geom_point(aes(x = Rank, y = RelativeAbundance, color = Fermenter, fill = Fermenter),
                shape = 21, size = 3, stroke = 0, alpha = 0.7) +
