@@ -9,20 +9,11 @@ output:
 ---
 
 ```{r setup, include = F}
-knitr::opts_chunk$set(cache = FALSE, echo = FALSE)
-
+knitr::opts_chunk$set(cache = FALSE, echo = TRUE)
 library(tidyverse)
-library(data.table)
-library(ggtree)
 run_scripts <- F
 ```
 
-
-# Introduction
-
-- The R scripts (sourced in this Rmd) can be run externally to Rstudio.
-- The R scripts are only for saving R functions, processing raw and temporary data.
-- All visualization codes are in this Rmd file.
 
 # 01A isolates experiments
 
@@ -33,7 +24,7 @@ if (run_scripts) source("script/01A-isolates_experiments-01-metadata.R")
 
 ## Isolate IDs
 
-100 isolates used in the pairwise competition assay, for within-community, across-community, and random assembly. The csv contains:
+68 isolates were used in the pairwise competition assay. The csv contains:
 
 - `ExpID`: isolation ID used by Djordje. The first and second numbers indicate inoculum and replicates in Goldford2018.
 - `ID`: Sanger sequencing ID. Unique ID for sequenced isolates from Sanchez lab.
@@ -42,7 +33,7 @@ if (run_scripts) source("script/01A-isolates_experiments-01-metadata.R")
 
 
 ```{r}
-isolates_ID_match <- read_csv(here::here("data/temp/isolates_ID_match.csv"))
+isolates_ID_match <- read_csv("~/Dropbox/lab/emergent-coexistence/data/temp/isolates_ID_match.csv", col_types = cols())
 isolates_ID_match
 ```
 
@@ -53,7 +44,7 @@ Community IDs and basic information
 13 self-assembled communities, two across-community assembly, two random assmebly
 
 ```{r}
-communities <- read_csv(here::here("data/output/communities.csv"))
+communities <- read_csv("~/Dropbox/lab/emergent-coexistence/data/output/communities.csv", col_types = cols())
 communities
 ```
 
@@ -63,34 +54,6 @@ communities
 -   Classify isolate taxonomy using RDP classifier. `rRDP`
 -   Align seqeunces using MUSCLE. `msa`
 -   Build phylogenetic tree by using FastTree or RAxML. `ggtree`
-
-## Install packages
-
-For `R >= 3.5.0`, use `BiocManager::install()` instead of `biocLite()` to install Bioconductor-maintained packages. This may take a few seconds.
-
-```{r echo = T, eval = F}
-install.packages("BiocManager") # Package for managing and installing Bioconductor packages 
-BiocManager::install("Biostrings") # DNA string format
-BiocManager::install("DECIPHER") # Dependent packages of sangeranalyseR
-BiocManager::install("sangeranalyseR")
-BiocManager::install("sangerseqR") # Align forward and forward Sanger sequences
-BiocManager::install("rRDP") # ribosomal database project
-BiocManager::install("rRDPData") # 16S Reference database for RDP
-BiocManager::install("msa") # Multiple sequence alignment
-BiocManager::install("ggtree") # Make figure of phylogenetic tree
-install.packages("ape") # Analyses of Phylogenetics and Evolution
-```
-
-Attach packages
-
-```{r message = F, echo = T}
-library(DECIPHER)
-library(sangeranalyseR)
-library(sangerseqR)
-library(rRDP)
-library(rRDPData)
-library(ggtree)
-```
 
 ## Read isolate 16S sequences
 
@@ -110,7 +73,7 @@ These isolates include Djordje's isolates from simplicity paper, and Jean's isol
 - `ConsensusLength`: 
 
 ```{r}
-isolates_16S <- read_csv(here::here("data/temp/isolates_16S.csv"))
+isolates_16S <- read_csv("~/Dropbox/lab/emergent-coexistence/data/temp/isolates_16S.csv", col_types = cols())
 isolates_16S
 ```
 
@@ -132,7 +95,7 @@ if (run_scripts) source("script/01B-isolate_sanger_seq-02-RDP.R")
 - `Sequence`
 
 ```{r}
-isolates_RDP <- read_csv(here::here("data/temp/isolates_RDP.csv"))
+isolates_RDP <- read_csv("~/Dropbox/lab/emergent-coexistence/data/temp/isolates_RDP.csv", col_types = cols())
 isolates_RDP
 ```
 
@@ -150,11 +113,9 @@ if (run_scripts) source("script/01B-isolate_sanger_seq-03-make_tree.R")
 ```
 
 ```{r}
-load(here::here("data/temp/isolates_sanger_seq.Rdata"))
+load("~/Dropbox/lab/emergent-coexistence/data/temp/isolates_sanger_seq.Rdata")
 isolates_seq
 ```
-
-67 isolates have Sanger sequences. C2R6 isolate 4 does not have sanger sequence. 68 isolates are used in pairwise competition assays.
 
 
 Plot basic tree
@@ -163,13 +124,6 @@ Plot basic tree
 ggtree(tree) + ggplot2::xlim(0, 0.5)
 ```
 
-
-## Pairwise Sanger sequences difference (THIS SECTION IS DEPRECATED)
-```{r}
-if (FALSE) source("script/01B-isolate_sanger_seq-04-pairwise_alignment.R")
-```
-
-Alignment all possible pairs in the two isolate sets. The alignment result is later used in `05A-random_network_experiment.Rmd` for assembling the community with unambiguous Sanger sequences
 
 
 # 01C isolates OD and CFU conversion
@@ -203,7 +157,7 @@ There are 68 isolates used in the pairwise competition experiments.
 Write all OD data in `data/temp/OD.csv` and isolate OD in `data/temp/isolates_OD.csv`
 
 ```{r}
-isolates_OD <- read_csv(here::here("data/temp/isolates_OD.csv"))
+isolates_OD <- read_csv("~/Dropbox/lab/emergent-coexistence/data/temp/isolates_OD.csv", col_types = cols())
 isolates_OD
 ```
 
@@ -216,10 +170,7 @@ if (run_scripts) source("script/01C-isolates_OD_CFU-02-read_CFU.R")
 Colony counts at the given dilution factors.
 
 ```{r}
-isolates_CFU_T8
-```
-
-```{r}
+isolates_OD_CFU <- read_csv("~/Dropbox/lab/emergent-coexistence/data/temp/isolates_OD_CFU.csv", col_type = cols())
 isolates_OD_CFU
 ```
 
@@ -248,6 +199,7 @@ $$CFU_A = \epsilon_A OD_A DF_A v_A$$
 where $OD$ is the measured OD at 620 nm, $DF$ is the dilution factor ($10^4$ or $10^5$), $v$ is the plating volume (20 uL for all experiment) $\epsilon$ is the conversion coefficient between OD and CFU.
 
 ```{r}
+isolates_epsilon <- read_csv("~/Dropbox/lab/emergent-coexistence/data/temp/isolates_epsilon.csv", col_types = cols())
 isolates_epsilon
 ```
 
@@ -260,7 +212,8 @@ if (run_scripts) source("script/01D-isolates_growth_rate-01-read_data.R")
 
 
 ```{r}
-isolates_growth_traits <- read_csv(here::here("data/temp/isolates_growth_traits.csv")) 
+isolates_growth_traits <- read_csv("~/Dropbox/lab/emergent-coexistence/data/temp/isolates_growth_traits.csv", col_type = cols())
+isolates_growth_traits
 ```
 
 `isolates_growth_traits` contains many columns. CS is a wildcard for any carbon source measured.
@@ -271,44 +224,19 @@ isolates_growth_traits <- read_csv(here::here("data/temp/isolates_growth_traits.
     - `ByproductSum_*hr`: sum of acids produced at 0, 16, 28, 48 hr. Data from Sylvie  `data/raw/growth_rate/raw_gcurves_all_sylvies`.
 
 
-## Acids production over time
-
-```{r}
-coeff <- 5
-p <- isolates_growth_traits %>%
-    mutate(ID = factor(ID)) %>%
-    filter(!all(acetate_mM == 0), !all(lactate_mM == 0), !all(succinate_mM == 0)) %>%
-    ggplot() +
-    geom_line(aes(x = Time, y = acetate_mM, color = "acetate")) +
-    geom_point(aes(x = Time, y = acetate_mM, color = "acetate")) +
-    geom_line(aes(x = Time, y = lactate_mM * coeff, color = "lactate")) +
-    geom_point(aes(x = Time, y = lactate_mM * coeff, color = "lactate")) +
-    geom_line(aes(x = Time, y = succinate_mM * coeff, color = "succinate")) +
-    geom_point(aes(x = Time, y = succinate_mM * coeff, color = "succinate")) +
-    geom_text(data = isolates_preference, aes(label = PreferredCS), x = 8, y = Inf, size = 2, vjust = 1) +
-    scale_y_continuous(name = "acetate (mM)", sec.axis = sec_axis(~./coeff, name = "lactate (mM) or succinate (mM)")) +
-    scale_color_manual(values = c("acetate" = "red", "lactate" = "green", "succinate" = "blue")) +
-    facet_wrap(.~ID, scales = "free_y") +
-    theme_bw() +
-    theme(legend.position = "top") +
-    labs(x = "Time", color = "")
-
-ggsave("figure/01D-byproduct_conc.png", plot = p, width = 20 , height = 10)
-```
 
 # 01E match isolates to ESV for community abundanuce
 
-[ ] check the ambiguous characters for matching ESV and Sangers
 
-Read community sequences
+Read community ESV sequences
 
 ```{r}
 if (run_scripts) source("script/01E-match_community_abundance-01-community_sequence.R")
 ```
 
-OTU table output `communities_abundance_syl` comes from the curated community ESV table from Sylvie.
+OTU table output `communities_abundance` comes from the curated community ESV table from Sylvie.
 
-I formatted the data.frame so that both of them have the following variables:
+I formatted the table so that it has the following variables:
 
 -   `SampleID`: experiment ID used by Nanxi or Sylvie.
 -   `Community`: community, for instance, C2R4 or C1Rpool.
@@ -317,16 +245,13 @@ I formatted the data.frame so that both of them have the following variables:
 -   `RelativeAbundance`
 -   `CommunityESVID`: the sequence identifier. This identifier is community-sequence specific.
 -   `ESV`: the DNA sequence in 16s V4 region.
-
-In `communities_abundance_syl`, there are other parameters
-
 -   `CarbonSource`: the carbon source used for assembly
 -   `Order`, `Family`, and `Genus`: SILVA assigned taxonomy
 
 
 ```{r echo = T}
-communities_abundance_syl <- read_csv(here::here("data/temp/communities_abundance_syl.csv"))
-communities_abundance_syl
+communities_abundance <- read_csv("~/Dropbox/lab/emergent-coexistence/data/temp/communities_abundance.csv", col_types = cols())
+communities_abundance
 ```
 
 
@@ -339,80 +264,15 @@ if (run_scripts) source("script/01E-match_community_abundance-02-match_isolate_1
 
 IUPAC notation for DNA base pairs
 
-W, S, M, K, R, Y represent two possiblities for one base pair B, D, H, V represent three possiblities N means any nucleotides (but not a gap)
+W, S, M, K, R, Y represent two possibilities for one base pair B, D, H, V represent three possiblities N means any nucleotides (but not a gap)
 
 I tested five alignment methods in `Biostrings::pairwiseAlignment()`
 
 ```{r echo = T}
-sequences_alignment_syl <- read_csv(here::here("data/temp/sequences_alignment_syl.csv"))
-sequences_alignment_syl
+sequences_alignment <- read_csv("~/Dropbox/lab/emergent-coexistence/data/temp/sequences_alignment.csv", col_type = cols())
+sequences_alignment
 ```
 
-```{r}
-# R function for computing distinct Sanger
-distinct_sanger <- function(x, allow_mismatch = 2) {
-  x %>%
-    # Filter for BasePairMatch
-    filter(BasePairMismatch <= allow_mismatch) %>%
-    # For each Sanger, find the Sanger-ESV match with highest alignment score
-    group_by(AlignmentType, ExpID) %>%
-    arrange(desc(AlignmentScore)) %>%
-    dplyr::slice(1) %>%
-    ungroup() %>%
-    # Remove duplicates that matches two Sangers to one ESV
-    group_by(AlignmentType, Community, CommunityESVID) %>%
-    distinct(RelativeAbundance, .keep_all = T) %>%
-    arrange(Community) %>%
-    # Specify mismatch allowed
-    mutate(AllowMismatch = allow_mismatch) %>%
-    group_by(AlignmentType) %>%
-    summarize(Count = n())
-}
-
-x <- sequences_alignment_syl
-# R function for matched isolate Sanger
-"
-finish this function
-"
-
-matched_sanger <- function (x, allow_mismatch = 2) {
-  x %>%
-     # Filter for BasePairMatch
-    filter(BasePairMismatch <= allow_mismatch) %>%
-    # For each Sanger, find the Sanger-ESV match with highest alignment score
-    group_by(AlignmentType, ExpID) %>%
-    arrange(desc(AlignmentScore)) %>%
-    dplyr::slice(1) %>%
-    ungroup() %>%
-    # Remove duplicates that matches two Sangers to one ESV
-    group_by(AlignmentType, Community, CommunityESVID) %>%
-    distinct(RelativeAbundance, .keep_all = T) %>%
-    arrange(Community) %>%
-    # Specify mismatch allowed
-    mutate(AllowMismatch = allow_mismatch) %>%
-    group_by(AlignmentType) %>%
-    summarize(Count = n())
-}
-
-```
-
-Number of isolates being matched to the community ESV if we allow for up to two mismatches.
-
-```{r}
-distinct_sanger(sequences_alignment_syl, allow_mismatch = 2)
-```
-
-Up to one mismatch
-
-```{r}
-distinct_sanger(sequences_alignment_syl, allow_mismatch = 1)
-```
-
-No mismatch
-
-```{r}
-distinct_sanger(sequences_alignment_syl, allow_mismatch = 0)
-```
 
 ## Relative abundance explained by the sequences
 
@@ -420,65 +280,41 @@ distinct_sanger(sequences_alignment_syl, allow_mismatch = 0)
 if (run_scripts) source("script/01E-match_community_abundance-03-matched_abundance.R")
 ```
 
-ESV abundances for all 96 communities
+ESV abundances of 13 communities used in the competition assay
 
 ```{r fig.width = 5, fig.height = 3}
 plot_abundance <- function(df, label_x = "Community", label_y = "RelativeAbundance", fill = "CommunityESVID") {
-  ggplot(df) +
-    geom_bar(aes_string(x = label_x, y = label_y, fill = fill),
-      position = "stack", stat = "identity", col = 1) +
-    theme_bw() +
-    theme(axis.text.x = element_text(angle = 90)) +
-    scale_y_continuous(expand = c(0, 0))
+    ggplot(df) +
+        geom_bar(aes_string(x = label_x, y = label_y, fill = fill),
+                 position = "stack", stat = "identity", col = 1) +
+        theme_bw() +
+        theme(axis.text.x = element_text(angle = 90)) +
+        scale_y_continuous(expand = c(0, 0))
 }
-
-communities_abundance_syl <- read_csv(here::here("data/temp/communities_abundance_syl.csv"))
-communities_abundance_syl %>%
-  filter(CarbonSource == "Glucose") %>%
-  plot_abundance(label_x = "Community", label_y = "RelativeAbundance", fill = "Family")
+communities_abundance <- read_csv("~/Dropbox/lab/emergent-coexistence/data/temp/communities_abundance.csv", col_types = cols())
+communities_abundance %>% plot_abundance(label_x = "Community", label_y = "RelativeAbundance", fill = "ESVFamily")
 ```
 
-ESV abundances of 13 communities used in the competition assay
+Abundances of ESVs matched to Sangers
 
 ```{r}
-communities <- read_csv(here::here("data/output/communities.csv"))
-communities_abundance_syl %>% 
-  filter(CarbonSource == "Glucose") %>% 
-  filter(Community %in% communities$Community) %>%
-  plot_abundance(label_x = "Community", label_y = "RelativeAbundance", fill = "Family")
-```
-Abundances of ESVs matched to Sangers.
-
-```{r}
-sequences_abundance <- read_csv(here::here("data/temp/sequences_abundance.csv"))
+isolates_abundance <- read_csv("~/Dropbox/lab/emergent-coexistence/data/temp/isolates_abundance.csv", col_types = cols())
+isolates_RDP <- read_csv("~/Dropbox/lab/emergent-coexistence/data/temp/isolates_RDP.csv", col_types = cols())
 # Color sets from Sylvie
 color_sets <- tibble(Color = c("yellow", "deepskyblue3", "blue", "darkorchid2", "firebrick", "orange2", "grey"),
   Family = c("Aeromonadaceae", "Enterobacteriaceae", "Moraxellaceae", "Pseudomonadaceae","Comamonadaceae","Alcaligenaceae", "Sphingobacteriaceae"))
 
-p <- sequences_abundance %>%
-  filter(AlignmentType == "local") %>%
-  filter(AllowMismatch == Inf) %>%
-  filter(BasePairMismatch <= 4) %>%
-  mutate(Community = ordered(Community,  communities$Community)) %>%
-  plot_abundance(label_x = "Community", label_y = " RelativeAbundance", fill = "Family") +
-  labs(x = "", y = "Relative abundance") +
-  scale_fill_manual(values = setNames(color_sets$Color, color_sets$Family)) +
-  scale_x_discrete(expand=c(0,0)) +
-  scale_y_continuous(expand=c(0,0), limits = c(0,1), breaks = seq(0,1, .25)) + 
-  NULL
-p
-ggsave("figure/01E-isolate_abundance.png", p, width = 6, height = 4)
+isolates_abundance %>%
+    left_join(isolates_RDP) %>%
+    mutate(Community = ordered(Community,  communities$Community)) %>%
+    plot_abundance(label_x = "Community", label_y = " RelativeAbundance", fill = "Family") +
+    labs(x = "", y = "Relative abundance") +
+    scale_fill_manual(values = setNames(color_sets$Color, color_sets$Family)) +
+    scale_x_discrete(expand=c(0,0)) +
+    scale_y_continuous(expand=c(0,0), limits = c(0,1), breaks = seq(0,1, .25)) 
+
 ```
 
-Abundance explained by isolate sequences. Rows are different alignment algorithms used by `Biostring::pairwiseAlignment()`, whereas columns are how many bp mismatches are allowed in ESV-Sanger matches.
-
-```{r fig.width=2, fig.height=4}
-sequences_abundance %>%
-  mutate(AllowMismatch = paste0("AllowMismatch: ", AllowMismatch)) %>%
-  plot_abundance(label_x = "Community", label_y = "RelativeAbundance", fill = "Family") +
-  facet_grid(AllowMismatch~AlignmentType) +
-  theme(legend.position = "top")
-```
 
 # Summary
 
@@ -491,14 +327,15 @@ if (run_scripts) source("script/01-isolates-01-read_match_isolate.R")
 Isolates information in one data.frame `isolates`. 68 isolates
 
 ```{r}
-isolates <- read_csv(here::here("data/output/isolates.csv"))
+isolates <- read_csv("~/Dropbox/lab/emergent-coexistence/data/output/isolates.csv", col_types = cols())
 isolates
-str(isolates)
 ```
 
 
 
-## Plot isolates' functions
+
+
+## Plot isolates' functions (Thies section is deprecated)
 
 ### Growth rates on varied CSs
 
@@ -543,30 +380,7 @@ isolates %>%
     theme_classic()
 ```
 
-### Total acid production
 
-```{r}
-isolates %>%
-    select(ID, Fermenter, starts_with("Byproduct")) %>%
-    pivot_longer(cols = c(-Fermenter, -ID), names_prefix = "ByproductSum_", names_to = "Time", values_to = "Amount") %>%
-    mutate(Time = sub("hr", "", Time)) %>%
-    filter(!is.na(Fermenter)) %>%
-    ggplot() +
-    geom_line(aes(x = Time, y = Amount, group = ID, color = Fermenter)) +
-    #facet_wrap(.~CS, nrow = 2, scales = "free_y") +
-    theme_classic()
-```
-
-
-## Plot isolates' tree 
-
-```{r}
-if (run_scripts) source("script/01-isolates-03-tree.R")
-```
-
-```{r}
-
-```
 
 
 

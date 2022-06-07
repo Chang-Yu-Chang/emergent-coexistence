@@ -2,17 +2,17 @@
 library(tidyverse)
 library(growthcurver)
 library(janitor)
-isolates_ID_match <- read_csv(here::here("data/temp/isolates_ID_match.csv"))
+isolates_ID_match <- read_csv("~/Dropbox/lab/emergent-coexistence/data/temp/isolates_ID_match.csv", col_types = cols())
 
 # Byproduct measurement on glucose. Data from Sylvie
-isolates_byproduct <- read_csv("~/Dropbox/lab/invasion-network/data/raw/growth_rate/By_Products_Glucose.csv") %>%
+isolates_byproduct <- read_csv("~/Dropbox/lab/emergent-coexistence/data/raw/growth_rate/By_Products_Glucose.csv", col_types = cols()) %>%
     select(OD620_16h = OD620, ID = SangerID, Glucose_perc, acetate_mM, succinate_mM, lactate_mM, gluconate_mM, ketogluconate_mM)
-isolates_byproduct_time <- read_csv("~/Dropbox/lab/invasion-network/data/raw/growth_rate/Estrela_2021_isolates_ph_OAs.csv") %>%
+isolates_byproduct_time <- read_csv("~/Dropbox/lab/emergent-coexistence//data/raw/growth_rate/Estrela_2021_isolates_ph_OAs.csv", col_types = cols()) %>%
     select(ID = SangerID, Time = time_hours, OD620, pH, Glucose_perc, acetate_mM, succinate_mM, lactate_mM)
 
 # Growth rate. Growthcurver----
 # Growth curve data from Sylvie
-isolates_curves1 <- read_csv("~/Dropbox/lab/invasion-network/data/raw/growth_rate/raw_gcurves_all_sylvies.csv") %>%
+isolates_curves1 <- read_csv("~/Dropbox/lab/emergent-coexistence/data/raw/growth_rate/raw_gcurves_all_sylvies.csv", col_types = cols()) %>%
     select(Date = date, ID = seq, Well = well, CS = csource, Time = t, OD620 = abs) %>%
     filter(ID %in% isolates_ID_match$ID) %>%
     mutate(CS = str_replace(CS, "Dlactate", "lactate")) %>%
@@ -33,7 +33,7 @@ isolates_growthcurver1 <- isolates_curves_list1 %>%
     pivot_wider(names_from = CS, values_from = r, names_glue = "r_{CS}_curver")
 
 # Growth curve from Jean
-isolates_curves2 <- read_csv("~/Dropbox/lab/invasion-network/data/raw/growth_rate/20GC_Data.csv") %>%
+isolates_curves2 <- read_csv("~/Dropbox/lab/emergent-coexistence/data/raw/growth_rate/20GC_Data.csv", col_types = cols()) %>%
     select(ID = SangerID, CS, Time, OD620) %>%
     filter(ID %in% isolates_ID_match$ID) %>%
     mutate(CS = tolower(CS)) %>%
@@ -67,7 +67,6 @@ isolates_curves_T0 <- temp %>%
     group_by(ID, CS) %>%
     filter(Time == min(Time)) %>%
     rename(T0 = Time, N0 = OD620)
-    select(-Time, -OD620)
 isolates_growth <- temp %>%
     filter(Time %in% c(12, 16, 28)) %>%
     group_by(ID, CS) %>%
@@ -88,7 +87,7 @@ isolates_growth <- temp %>%
 
 # Jean's growth rate data. Use the fitted Rmid ----
 # Growth rate data from Jean
-isolates_growth_mid <- read_csv("~/Dropbox/lab/invasion-network/data/raw/growth_rate/Growthcurver.csv")
+isolates_growth_mid <- read_csv("~/Dropbox/lab/emergent-coexistence/data/raw/growth_rate/Growthcurver.csv", col_types = cols())
 isolates_growth_w_mid <- isolates_growth_mid %>%
     separate(col = SID, sep = "_", into  = c("ID", "CS"), convert = T) %>%
     select(-SangerID, -Family) %>%
@@ -101,7 +100,7 @@ isolates_growth_w_mid <- isolates_growth_mid %>%
 
 # Sylvie's growth rate. Use Rmax ----
 # Growth rate data from Sylvie
-isolates_growth_max <- read_csv("~/Dropbox/lab/invasion-network/data/raw/growth_rate/Estrela_2021_isolates_grmax.csv")
+isolates_growth_max <- read_csv("~/Dropbox/lab/emergent-coexistence/data/raw/growth_rate/Estrela_2021_isolates_grmax.csv", col_types = cols())
 isolates_growth_w_max <- isolates_growth_max %>%
     select(ID = SangerID, CS = cs, gr_max) %>%
     pivot_wider(names_from = CS, values_from = gr_max, names_glue = "r_{CS}_maxhr")
@@ -302,6 +301,6 @@ isolates_growth_traits <- isolates_ID_match %>%
 
 
 
-write_csv(isolates_growth_traits, file = here::here("data/temp/isolates_growth_traits.csv"))
-write_csv(isolates_curves1, file = here::here("data/output/isolates_curves1.csv"))
-write_csv(isolates_curves2, file = here::here("data/output/isolates_curves2.csv"))
+write_csv(isolates_growth_traits, "~/Dropbox/lab/emergent-coexistence/data/temp/isolates_growth_traits.csv")
+write_csv(isolates_curves1, "~/Dropbox/lab/emergent-coexistence/data/temp/isolates_curves1.csv")
+write_csv(isolates_curves2, "~/Dropbox/lab/emergent-coexistence/data/temp/isolates_curves2.csv")

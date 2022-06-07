@@ -9,7 +9,7 @@ output:
 ---
 
 ```{r setup, include = F}
-knitr::opts_chunk$set(cache = FALSE, echo = FALSE)
+knitr::opts_chunk$set(cache = FALSE, echo = TRUE)
 library(tidyverse)
 library(cowplot)
 run_scripts <- F
@@ -36,7 +36,7 @@ names(interaction_color) <- interaction_type
 
 # 02A pairs experiments
 
-- Experiment related scripts
+- Experiment-related scripts
 
 - Read pairwise competition outcomes that are determined by colony counts on plates. 
 
@@ -47,13 +47,13 @@ names(interaction_color) <- interaction_type
 
 ## Read the pairwise competitive outcomes determined by colony counting on TSA
 
-Generate table for manual key-in
+The script below generates the table for manual key-in
 
 ```{r eval = F}
 if (FALSE) source("script/02A-pairs_experiment-01-pairwise_manual_key_in.R")
 ```
 
-Then I manually checked the scanned plate images of competitive pairs. The plate images are saved in folder `plate_scan/high_order_plate_scan/` and divided according the experimental batches.
+Then I manually checked the scanned plate images of competitive pairs. The plate images are saved in folder `data/raw/plate_scan/emergent_coexistence_plate_scan/` divided according to the experimental batches.
 
 Batch | Community
 ------|-----------

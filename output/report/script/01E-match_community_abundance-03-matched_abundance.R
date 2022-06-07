@@ -1,69 +1,48 @@
-#' Filter for matched ESV-isolate and plot the relative abundances
+#' Pick the best-matched ESV-isolate pairs and plot the relative abundances
 library(tidyverse)
-library(data.table)
 
-isolates_ID_match <- fread(here::here("data/temp/isolates_ID_match.csv"))
-communities <- fread(here::here("data/output/communities.csv"))
-communities_name <- communities$Community
-communities_size <- communities$CommunitySize
-communities_name_pool <- c(paste0("C", 1:12, "Rpool"), paste0("C", rep(1:12, each = 8), "R", rep(1:8, 12)))
-families_name <- c("Aeromonadaceae", "Alcaligenaceae", "Bradyrhizobiaceae", "Brucellaceae", "Burkholderiaceae", "Caulobacteraceae", "Cellulomonadaceae", "Chitinophagaceae", "Chthoniobacteraceae", "Comamonadaceae", "Cryomorphaceae", "Enterobacteriaceae", "Enterococcaceae", "Flavobacteriaceae", "Hyphomicrobiaceae", "Listeriaceae", "Microbacteriaceae", "Moraxellaceae", "Nocardiaceae", "Obscuribacterales.17", "Oxalobacteraceae", "Paenibacillaceae", "Phyllobacteriaceae", "Porphyromonadaceae", "Pseudomonadaceae", "Rhizobiaceae", "Sanguibacteraceae", "Sphingobacteriaceae", "Sphingomonadaceae", "Xanthomonadaceae")
+isolates_ID_match <- read_csv("~/Dropbox/lab/emergent-coexistence/data/temp/isolates_ID_match.csv", col_types = cols())
+communities <- read_csv("~/Dropbox/lab/emergent-coexistence/data/output/communities.csv", col_types = cols())
 
-# Read data
-## Sanger to ESV alignment
-sequences_alignment_syl <- fread(here::here("data/temp/sequences_alignment_syl.csv")) %>%
-  mutate(Community = ordered(Community, levels = communities_name_pool))
-  #mutate(Family = factor(Family, families_name)) %>% as_tibble()
-
-# ESV abundance in community
-communities_abundance_syl <- fread(here::here("data/temp/communities_abundance_syl.csv")) %>%
-  mutate(Community = ordered(Community, levels = communities_name_pool)) %>%
-  mutate(Family = factor(Family, families_name)) %>% as_tibble()
+# Sanger to ESV alignment
+sequences_alignment <- read_csv("~/Dropbox/lab/emergent-coexistence/data/temp/sequences_alignment.csv", col_types = cols()) %>%
+    mutate(Community = factor(Community, levels = communities$Community))
 
 # Find the match with highest alignment score; 68 rows
 sequences_abundance_list <- rep(list(NA), 3)
 allow_mismatch <- c(0:2, Inf)
 
 for (i in 1:4) {
-  sequences_abundance_list[[i]] <-
-    sequences_alignment_syl %>%
-    filter(AlignmentType == "local") %>%
-    # Filter for BasePairMatch
-    filter(BasePairMismatch <= allow_mismatch[i]) %>%
-    # For each Sanger, find the Sanger-ESV match with highest alignment score
-    group_by(AlignmentType, ExpID) %>%
-    arrange(desc(AlignmentScore)) %>%
-    dplyr::slice(1) %>%
-    ungroup() %>%
-    # Remove duplicates that matches two Sangers to one ESV
-    group_by(AlignmentType, Community, CommunityESVID) %>%
-    distinct(RelativeAbundance, .keep_all = T) %>%
-    arrange(Community) %>%
-    # Specify mismatch allowed
-    mutate(AllowMismatch = allow_mismatch[i])
+    sequences_abundance_list[[i]] <- sequences_alignment %>%
+        filter(AlignmentType == "local") %>%
+        # Filter for BasePairMatch
+        filter(BasePairMismatch <= allow_mismatch[i]) %>%
+        # For each Sanger, find the Sanger-ESV match with highest alignment score
+        group_by(AlignmentType, ExpID) %>%
+        arrange(desc(AlignmentScore)) %>%
+        slice(1) %>%
+        ungroup() %>%
+        # For the scenario that two (or more) Sangers match to the same ESV, choose the match with the higher alignment score
+        group_by(AlignmentType, Community, CommunityESVID) %>%
+        arrange(desc(AlignmentScore)) %>%
+        slice(1) %>%
+        ungroup() %>%
+        arrange(Community) %>%
+        # Specify mismatch allowed
+        mutate(AllowMismatch = allow_mismatch[i])
 }
 
-sequences_abundance <- rbindlist(sequences_abundance_list) %>% as_tibble
+isolates_abundance <- bind_rows(sequences_abundance_list) %>%
+    mutate(AlignmentType = factor(AlignmentType, levels = c("global", "local", "overlap", "global-local", "local-global"))) %>%
+    arrange(AlignmentType, AllowMismatch, Community) %>%
+    filter(AlignmentType == "local", AllowMismatch == "Inf") %>%
+    # Select only necessary variables
+    select(Community, ExpID, RelativeAbundance, CommunityESVID) %>%
+    # Match it to isolate
+    right_join(isolates_ID_match, by = c("Community", "ExpID")) %>%
+    select(Assembly, Community, Isolate, ExpID, RelativeAbundance)
 
-
-# Remove unessential variables
-sequences_abundance <- sequences_abundance %>%
-  mutate(AlignmentType = ordered(AlignmentType, levels = c("global", "local", "overlap", "global-local", "local-global"))) %>%
-  select(AlignmentType, AllowMismatch, SampleID, Community, ExpID, IsolateGenus,
-    RelativeAbundance, CommunityESVID, Family, ConsensusLength, BasePairGap, BasePairMismatch, AlignmentScore) %>%
-  arrange(AlignmentType, AllowMismatch, Community)
-
-
-# Isolate abundances
-isolates_abundance <-
-  sequences_abundance %>%
-  #filter(AlignmentType == "local", AllowMismatch == 2) %>%
-  filter(AlignmentType == "local", AllowMismatch == "Inf") %>%
-  select(Community, IsolateGenus, RelativeAbundance) %>%
-  right_join(isolates_ID_match)
-
-fwrite(sequences_abundance, file = here::here("data/temp/sequences_abundance.csv"))
-fwrite(isolates_abundance, file = here::here("data/temp/isolates_abundance.csv"))
+write_csv(isolates_abundance, "~/Dropbox/lab/emergent-coexistence/data/temp/isolates_abundance.csv")
 
 
 
