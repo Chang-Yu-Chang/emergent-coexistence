@@ -533,7 +533,8 @@ p1 <- isolates_abundance %>%
     scale_x_continuous(breaks = 1:12) +
     scale_y_continuous(limits = c(0,1)) +
     theme_classic() +
-    theme(legend.position = "top", legend.title = element_blank())
+    theme(legend.position = "top", legend.title = element_blank()) +
+    labs(x = "Rank", y = "Relative abundance")
 
 # Rank versus ranked abundance
 p2 <- isolates_abundance %>%
@@ -550,7 +551,8 @@ p2 <- isolates_abundance %>%
     scale_x_continuous(breaks = 1:12) +
     scale_y_continuous(breaks = 1:12) +
     theme_classic() +
-        theme(legend.position = "top", legend.title = element_blank())
+        theme(legend.position = "top", legend.title = element_blank()) +
+    labs(x = "Rank", y = "Ranked relative abundance")
 
 #
 isolates_abundance %>%
@@ -565,7 +567,7 @@ isolates_abundance %>%
 
 #
 p <- plot_grid(p1, p2, nrow = 1, labels = c("A", "B"))
-ggsave(here::here("plots/FigS2.png"), p, width = 6, height = 3)
+#ggsave(here::here("plots/FigS2.png"), p, width = 6, height = 3)
 
 #
 
