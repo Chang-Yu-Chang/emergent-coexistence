@@ -1,27 +1,26 @@
 #' Subset the ambiguous pairs that are hard to distinguish on TSA agar plates
 #' and subset the isolates that are in these pairs.
 library(tidyverse)
-library(data.table)
 
-isolates_ID_match <- read_csv(here::here("data/temp/isolates_ID_match.csv"))
+isolates_ID_match <- read_csv("~/Dropbox/lab/emergent-coexistence/data/temp/isolates_ID_match.csv", col_types = cols())
 
 # Ambiguous pairs
-pairs_ambiguous <- read_csv(here::here("data/temp/pairs_competition.csv")) %>%
-  filter(is.na(ColonyCount1)) %>%
-  select(-starts_with("ColonyCount"), -DilutionFactor)
+pairs_ambiguous <- read_csv("~/Dropbox/lab/emergent-coexistence/data/temp/pairs_competition.csv", col_types = cols()) %>%
+    filter(is.na(ColonyCount1)) %>%
+    select(-starts_with("ColonyCount"), -DilutionFactor)
 
 # Ambiguous isolates
-isolates_ambiguous <-
-  pairs_ambiguous %>%
-  select(Community, Isolate1, Isolate2) %>% # Select columns
-  gather(key = "XX", value = "Isolate", -Community) %>% dplyr::select(-XX) %>% # Melt the df
-  distinct() %>% arrange(Community, Isolate)  %>% # Remove duplicate
-  left_join(isolates_ID_match,  by = c("Community", "Isolate")) %>% # Match isolate ID
-#  select(ExpID, ID, Community, Isolate, Experiment) %>% # Rearrange column order
-  arrange(Community, Isolate) %>%
-#  filter(!(Community == "C11R2" & Isolate == 13) & !(Experiment == "Transitivity_B2" & Community == "C11R1" & Isolate == 1)) %>% # Remove contamination
-  distinct(ExpID, .keep_all = T) # Remove duplicate across batch
+isolates_ambiguous <- pairs_ambiguous %>%
+    select(Community, Isolate1, Isolate2) %>%
+    pivot_longer(-Community, names_to = "temp", values_to = "Isolate") %>%
+    select(-temp) %>%
+    distinct(Community, Isolate) %>%
+    arrange(Community, Isolate) %>%
+    left_join(isolates_ID_match,  by = c("Community", "Isolate")) %>%
+    # Remove duplicate across batch
+    distinct(ExpID, .keep_all = T) %>%
+    select(Assembly, Community, Isolate, ExpID, ID)
 
 
-fwrite(pairs_ambiguous, file = here::here("data/temp/pairs_ambiguous.csv"))
-fwrite(isolates_ambiguous, file = here::here("data/temp/isolates_ambiguous.csv"))
+write_csv(pairs_ambiguous, "~/Dropbox/lab/emergent-coexistence/data/temp/pairs_ambiguous.csv")
+write_csv(isolates_ambiguous, "~/Dropbox/lab/emergent-coexistence/data/temp/isolates_ambiguous.csv")

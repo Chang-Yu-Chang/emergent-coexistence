@@ -12,27 +12,14 @@ output:
 knitr::opts_chunk$set(cache = FALSE, echo = TRUE)
 library(tidyverse)
 library(cowplot)
+source(here::here("plotting_scripts/misc.R"))
 run_scripts <- F
-communities <- read_csv(here::here("data/output/communities.csv"))
-interaction_type <- c("exclusion", "coexistence", "neutrality")
-interaction_color = c("#DB7469", "#557BAA", "#8650C4")
-names(interaction_color) <- interaction_type
+# communities <- read_csv(here::here("data/output/communities.csv"))
+# interaction_type <- c("exclusion", "coexistence", "neutrality")
+# interaction_color = c("#DB7469", "#557BAA", "#8650C4")
+# names(interaction_color) <- interaction_type
 ```
 
-
-# Goal
-
-- Combine and read data csv from 02A to 02D
-
-- Match and compare isolates' information to outcome of pairwise competition
-    - RDP taxonomy (e.g., family and genus)
-    - 16S differences
-    - Distance on phylogenetic tree
-    - Monoculture growth rate 
-
-- The R scripts (sourced in this Rmd) can be run externally to Rstudio.
-- The R scripts are only for saving R functions, processing raw and temporary data.
-- All visualization codes are in this Rmd file.
 
 # 02A pairs experiments
 
@@ -40,7 +27,7 @@ names(interaction_color) <- interaction_type
 
 - Read pairwise competition outcomes that are determined by colony counts on plates. 
 
-- Filter out ambiguous pairs and later fill in the data hole by CASEU results. 
+- Read CASEU results
 
 - Map pairs and isolates to the 96-well plate layout
 
@@ -63,7 +50,7 @@ C2    | 11.2
 D     | 1.2, 1.4, 1.6, 1.7, 4.1, 11.5
 
 
-```{r warning = F}
+```{r}
 # Read result colony counts and dilution factor
 if (run_scripts) source("script/02A-pairs_experiment-02-colony_count.R")
 ```
@@ -71,21 +58,20 @@ if (run_scripts) source("script/02A-pairs_experiment-02-colony_count.R")
 There are 186x3=558 outcomes of pairwise competitions.
 
 ```{r}
-pairs_competition <- read_csv(here::here("data/temp/pairs_competition.csv"))
+pairs_competition <- read_csv("~/Dropbox/lab/emergent-coexistence/data/temp/pairs_competition.csv", col_types = cols())
 pairs_competition
 ```
 
-67 pairs without determined outcomes of pairwise competitions will be determined by using CASEU method
+67 of of 558 pair-frequency without determined outcomes of pairwise competitions will be determined by using CASEU method
 
 ```{r}
-pairs_competition %>%
-  filter(is.na(ColonyCount))
+pairs_competition %>% filter(is.na(ColonyCount))
 ```
 
-186 pair IDs saved in `pairs_ID`
+186 pair IDs saved in `data/temp/pairs_ID.csv`
 
 ```{r}
-pairs_ID <- read_csv(here::here("data/temp/pairs_ID.csv"))
+pairs_ID <- read_csv("~/Dropbox/lab/emergent-coexistence/data/temp/pairs_ID.csv", col_types = cols())
 pairs_ID
 ```
 
@@ -97,25 +83,25 @@ pairs_ID
 if (run_scripts) source("script/02A-pairs_experiment-03-pairwise_ambiguous.R")
 ```
 
-There are 67 pair-freqs that I don't know the competitive outcomes by TSA plate counting. The ambiguous pairs will be later examined by using selective media or Sanger sequencing. 
+There are 67 pair-freqs that the competition outcome cannot be determined by TSA plate counting because of ambiguous morphology. The ambiguous pairs will be later examined by using selective media or Sanger sequencing. 
 
 ```{r}
-pairs_ambiguous <- read_csv(here::here("data/temp/pairs_ambiguous.csv"))
+pairs_ambiguous <- read_csv("~/Dropbox/lab/emergent-coexistence/data/temp/pairs_ambiguous.csv", col_types = cols())
 pairs_ambiguous
 ```
 
-28 pairs
+In total, 28 pairs
 
 ```{r}
 pairs_ambiguous %>% 
   group_by(Community, Isolate1, Isolate2) %>%
-  summarize(Count = n())
+  summarize(Count = n(), .groups = "keep")
 ```
 
 36 isolates involved in the ambiguous pairs. 
 
 ```{r}
-isolates_ambiguous <- read_csv(here::here("data/temp/isolates_ambiguous.csv"))
+isolates_ambiguous <- read_csv("~/Dropbox/lab/emergent-coexistence/data/temp/isolates_ambiguous.csv", col_types = cols())
 isolates_ambiguous
 ```
 
@@ -123,131 +109,40 @@ isolates_ambiguous
 
 ## Map pairs and isolates to the DW96 plate layout
 
-```{r warning = F}
-plates_name <- c("plate_B2_933", "plate_B2_444", "plate_C_C11R1", "plate_C2_13A", "plate_C2_13B", "plate_D_75", "plate_D_5543")
+```{r}
 source("script/02A-pairs_experiment-04-pairwise_plate_layout.R")
 ```
 
 Each plate has 96 rows and has the following variables
 
 ```{r}
-plates <- read_csv(here::here("data/output/plates.csv"))
+plates <- read_csv("~/Dropbox/lab/emergent-coexistence/data/output/plates.csv", col_types = cols())
 plates
 ```
-
-```{r}
-plates %>% 
-    
-```
-
-
 
 
 Plates for across-community and random assembly
 
 ```{r}
-plates_random <- read_csv(here::here("data/output/plates_random.csv"))
+plates_random <- read_csv("~/Dropbox/lab/emergent-coexistence/data/output/plates_random.csv", col_types = cols())
 plates_random
 ```
 
 
-Read plate layout by batch
 
-```{r}
-draw_plate_from_df <- function(
-  df,
-  well_size = 5,
-  text_size = 3,
-  annotation = TRUE,
-  annotate_each_well = TRUE,
-  fill_legend = F,
-  vjust = 0,
-  ...
-) {
-  # Check
-  stopifnot(
-    is.data.frame(df),
-    "Well" %in% names(df),
-    "TextLabel" %in% names(df) | "FillLabel" %in% names(df)
-  )
+```{r fig.height = 4, fig.width = 3}
+plates_list <- plates %>%
+    filter(Plate == "P1") %>%
+    distinct(Batch, PlateLayout) %>%
+    rename(batch = Batch, platelayout = PlateLayout) %>%
+    rowwise() %>%
+    mutate(plate = filter(plates, Batch == batch, PlateLayout == platelayout, Plate == "P1") %>% list) %>%
+    mutate(plate = prepare_plate_draw(plate) %>% list) %>%
+    mutate(p_plate = draw_plate_from_df(plate) %>% list) 
 
-  # Make plate
-  plate <- df %>%
-    mutate(
-      Row = match(substr(Well, 1, 1), LETTERS[1:8]),
-      Col = substr(Well, 2, 3) %>% as.numeric(),
-    ) %>%
-    filter(!grepl("blank", .$FillLabel)) %>%
-    mutate(FillLabel = as.character(FillLabel))
+plot_grid(plotlist = plates_list$p_plate, labels = paste0(plates_list$batch, " ", plates_list$platelayout),
+          ncol = 2)
 
-  # Empty well
-  empty_well <- data.frame(
-    Row = rep(1:8, each = 12),
-    Col = rep(1:12, 8)
-  )
-
-  # Plot blank plate
-  if (all(is.na(plate$FillLabel))) {
-    return(
-      ggplot() +
-        geom_point(data = empty_well, aes(x = Col, y = Row), shape = 1, size = well_size, color = "black", fill = NA) +
-        scale_x_continuous(name = "", breaks = 1:12, labels = 1:12, limits = c(1, 12), position = "top") +
-        scale_y_reverse(name = "", lim = c(8, 1), breaks = 1:8, labels = LETTERS[1:8]) +
-        theme_bw() +
-        NULL
-    )
-  }
-
-  # Plot segments
-  g_empty_well <- geom_point(data = empty_well, aes(x = Col, y = Row),
-    shape = 1, size = well_size, color = "black", fill = NA)
-
-  g_plate <- geom_point(data = plate, aes(x = Col, y = Row, fill = FillLabel),
-    pch = 21, size = well_size)
-
-
-  # Annotate text for fill
-  plate_fill_text <- plate %>%
-    group_by(FillLabel) %>%
-    summarize(Col = mean(Col), Row = mean(Row)) %>%
-    mutate(Row = ifelse((Row %% 1) == 0, Row - vjust, Row))
-
-  if ("TextLabel" %in% names(df)) {
-    g_text_label <- geom_text(data = plate, aes(x = Col, y = Row, label = TextLabel), size = text_size)
-  } else g_text_label <- NULL
-
-  if (annotation == T) {
-    g_text_fill <- geom_text(data = plate_fill_text, aes(x = Col, y = Row, label = FillLabel))
-  } else g_text_fill <- NULL
-
-
-  # Plot plate
-  pp <-
-    ggplot() + g_plate + g_empty_well + g_text_label + g_text_fill +
-    scale_x_continuous(name = "", breaks = 1:12, labels = 1:12, limits = c(1, 12), position = "top") +
-    scale_y_reverse(name = "", lim = c(8, 1), breaks = 1:8, labels = LETTERS[1:8]) +
-    theme_bw() +
-    NULL
-
-  if (fill_legend == T) {
-    return(pp+theme(legend.position = "top"))
-  } else return(pp + guides(fill=F))
-
-}
-
-easy_plot_plate <- function(plate) {
-  mutate(plate,
-    TextLabel = ifelse(MixIsolate, paste(Isolate1, Isolate2, sep = "_"), Isolate1),
-    FillLabel = paste0(Community, ifelse(MixIsolate, "", "_single"))) %>%
-    draw_plate_from_df()
-}
-
-```
-
-```{r}
-for (i in 1:7) assign(paste0("p", i), easy_plot_plate(eval(parse(text = plates_name[i]))))
-p <- plot_grid(p1, p2, p3, NULL, p4, p5, p6, p7, labels = c("B2_933", "B2_444", "C_C11R1", "", "C2_13A", "C2_13B", "D_75", "D_5543"), ncol = 2, nrow = 4)
-ggsave("figure/02A-plate_layout.pdf", p, width = 12, height = 16)
 ```
 
 Plate layout that takes different initial frequencies:
@@ -258,16 +153,15 @@ Plate layout that takes different initial frequencies:
 
 The only exception is plate C11R1 in batch C, which only has one plate.
 
-
 ```{r}
-OD <- read_csv(here::here("data/temp/OD.csv"))
+OD <- read_csv("~/Dropbox/lab/emergent-coexistence/data/temp/OD.csv", col_types = cols())
 
 OD %>%
     filter(Community == "C1R2", Wavelength == 620) %>%
     ggplot(aes(x = Transfer, y = Abs, color = Isolate1Freq)) +
     geom_line() + geom_point() +
     facet_grid(Isolate1 ~ Isolate2) +
-    theme_bw()
+    theme_classic()
     
 ```
 
@@ -297,34 +191,9 @@ library(CASEU)
 
 ## Test on example data
 
-Test the example code and data.
-
-Fit Sanger sequences of a mixed culture of four strains. This step may take a few seconds.
-
-```{r echo = T, eval = F}
-library(CASEU)
-data('fourStrainExpt') # load an example dataset
-results <-
-  fitSangerMixture(mixture=fourStrainExpt$mixture, # mixture
-  components = fourStrainExpt$components, # Four individual 16S sequences
-  verbose=TRUE)
-
-save(results, file = here::here("data/temp/CASEU_test_results1.Rdata"))
+```{r}
+if (run_scripts) source("script/02B-CASEU_sanger_seq-00-test.R")
 ```
-
-```{r eval = F}
-load(file = here::here("data/temp/CASEU_test_results1.Rdata"))
-print(results)                      # view the results
-plot(results)                       # plot the fit
-sangerFitDiagnosticPlot(results)    # plot a bunch more diagnostics
-```
-
-Fitted mixture sanger electropherogram output
-
-```{r eval = F}
-names(results)
-```
-
 
 
 ## CASEU pilot1
@@ -332,7 +201,7 @@ names(results)
 The plate layout of PCR plate and list of samples are specified in `output/protocol/protocol_20190813_Sanger_seq_prep.pdf`. 
 
 ```{r}
-fread(here::here("output/protocol/tab_fig/protocol_20190813_Sanger_seq_prep-genewiz_table.csv"))
+read_csv("~/Dropbox/lab/emergent-coexistence/data/raw/Sanger/CASEU_pilot1/protocol_20190813_Sanger_seq_prep-genewiz_table.csv", col_types = cols())
 ```
 
 The isolates used in this round is from the list below.
@@ -353,43 +222,17 @@ if(run_scripts) source("script/02B-CASEU_sanger_seq-01-pilot1.R")
 
 
 ```{r}
-CASEU_pilot1 <- read_csv(here::here("data/temp/CASEU_pilot1.csv"))
+CASEU_pilot1 <- read_csv("~/Dropbox/lab/emergent-coexistence/data/temp/CASEU_pilot1.csv", col_types = cols())
 CASEU_pilot1
 ```
-
-
-Plot the expected isolate frequency vs. CASEU predicted frequency
-
-```{r fig.height = 3, fig.width=3}
-CASEU_pilot1 <- read_csv(here::here("data/temp/CASEU_pilot1.csv"))
-CASEU_pilot1_p1 <- 
-  CASEU_pilot1 %>%
-  filter(Isolate1 != "B", Isolate2 != "B") %>% # Without B and 
-  mutate(Treatment = ifelse(Treatment == "AM", "amplicon mixture", "OD mixture")) %>%
-  ggplot(aes(x = Isolate1Freq, y = Isolate1FreqPredicted, color = Treatment)) +
-  geom_jitter(size = 2) +
-  geom_abline(slope = 1, intercept = 0, color = "black") +
-  scale_x_continuous(limits = c(-.01, .6)) +
-  scale_y_continuous(limits = c(-.01, .6)) +
-  facet_grid(Isolate1 ~ Isolate2) +
-  theme_bw() +
-  theme(legend.position = "top") +
-  labs(x = "Expected isolate frequency", y = "CASEU predicted isolate frequency")
-
-CASEU_pilot1_p1
-ggsave("figure/02B-CASEU_pilot1_expected_vs_predicted.png", CASEU_pilot1_p1)
-```
-
-
 
 
 ## CASEU pilot2
 
 The plate layout of PCR plate and list of samples are specified in `output/protocol/protocol_20190813_Sanger_seq_prep.pdf`. There are 32 samples from pairwise competition and 16 samples from control. Also read Sylvie's data. 
 
-```{r include = F}
-genewiz_pilot2 <- fread(here::here("output/protocol/tab_fig/protocol_20190910_Sanger_seq_prep-genewiz_table_CYC.csv")) 
-genewiz_pilot2
+```{r}
+read_csv("~/Dropbox/lab/emergent-coexistence/data/raw/Sanger/CASEU_pilot2/protocol_20190910_Sanger_seq_prep-genewiz_table_CYC.csv", col_types = cols())
 ```
 
 Isolates A B C D in control are the isolates below. 
@@ -402,94 +245,22 @@ C1R7 isolate 1  | C         | Enterobacter
 C1R7 isolate 7  | D         | Raoultella
 
 ```{r eval = F}
-# Each script takes ~10 mins to run
 source("script/02B-CASEU_sanger_seq-02-pilot2.R")
-#source("script/02B-CASEU_sanger_seq-03-pilot2_Sylvie.R") # Run Sylvie's sequence
+#source("script/02B-CASEU_sanger_seq-02a-pilot2_Sylvie.R") # Run Sylvie's sequence
 ```
 
-
-### Control pairs
 
 In the 12 control synthetic pairs that were made of 4 isolates, compare these pairs' OD frequencies, colony counts, and CASEU predictions.
 
 Read CASEU predicted frequencies and colony count frequencies in the 12 control pairs.
 
 ```{r}
-# Read data
-CASEU_pilot2 <- read_csv(here::here("data/temp/CASEU_pilot2.csv"))
-CASEU_pilot2_plating <- read_csv(here::here("data/raw/Sanger/CASEU_pilot2/CASEU_pilot2_plating.csv")) %>%
+CASEU_pilot2 <- read_csv("~/Dropbox/lab/emergent-coexistence/data/temp/CASEU_pilot2.csv", col_types = cols())
+CASEU_pilot2_plating <- read_csv("~/Dropbox/lab/emergent-coexistence/data/raw/Sanger/CASEU_pilot2/CASEU_pilot2_plating.csv", col_types = cols()) %>%
   mutate(Isolate1ColonyFreq = Isolate1Colony / (Isolate1Colony + Isolate2Colony),
     Isolate2ColonyFreq = Isolate2Colony / (Isolate1Colony + Isolate2Colony))
 ```
 
-Join the CASEU predicted result of control pairs in `CASEU_pilot2` with the plating result in `CASEU_pilot2_plating`. The pair CYC_control_50_50_CD has a lot colonies and the colony count of C is just approximation (n=300)
-
-```{r}
-CASEU_pilot2_control <- CASEU_pilot2 %>%
-  filter(Treatment == "control") %>%
-  left_join(CASEU_pilot2_plating, by = c("MixtureName", "User", "Treatment", "Isolate1Freq", "Isolate2Freq", "Isolate1", "Isolate2"))
-```
-
-Plot the CASEU predictio vs. colony counts and CASEU prediction vs. OD frequencies
-
-```{r warning=F}
-CASEU_pilot2_p1 <- 
-  CASEU_pilot2_control %>%
-  ggplot(aes(x = Isolate1ColonyFreq, y = Isolate1FreqPredicted, color = Treatment)) +
-  geom_point(size = 2) +
-  geom_abline(slope = 1, intercept = 0, color = "black") +
-  scale_x_continuous(limits = c(-.01, 1.01), breaks = c(0, 0.5, 1)) +
-  scale_y_continuous(limits = c(-.01, 1.01), breaks = c(0, 0.5, 1)) +
-  facet_grid(Isolate1 ~ Isolate2) +
-  theme_bw() +
-  theme(legend.position = "top", panel.grid.minor = element_blank()) +
-  labs(x = "Expected isolate frequency by colony counting", 
-    y = "CASEU predicted isolate frequency") +
-  ggtitle("CASEU prediction vs. Colony counts")
-
-CASEU_pilot2_p2 <- 
-  CASEU_pilot2_control %>%
-  ggplot(aes(x = Isolate1Freq, y = Isolate1FreqPredicted, color = Treatment)) +
-  geom_point(size = 2) +
-  geom_abline(slope = 1, intercept = 0, color = "black") +
-  scale_x_continuous(limits = c(-.01, 1.01)) +
-  scale_y_continuous(limits = c(-.01, 1.01)) +
-  facet_grid(Isolate1 ~ Isolate2) +
-  theme_bw() +
-  theme(legend.position = "top", panel.grid.minor = element_blank()) +
-  labs(x = "Expected isolate frequency by OD", 
-    y = "CASEU predicted isolate frequency") +
-  ggtitle("CASEU prediction vs. OD frequencies")
-```
-
-
-```{r warning=F}
-p <- plot_grid(CASEU_pilot2_p1, CASEU_pilot2_p2, ncol = 1)
-ggsave("figure/02B-CASEU_pilot2_control.png", p, width = 5, height = 10)
-```
-
-
-
-```{r eval = F, include = F}
-### Outcome of pairwise competition
-#There are 24 pairs of C11R1 been sequenced in CASEU pilot2.
-if (FALSE) {
-CASEU_pilot2 <- fread(here::here("data/temp/CASEU_pilot2.csv")) %>% 
-  filter(Treatment == "C11R1") %>%
-  mutate(Community = Treatment) %>%
-  select(Community, Isolate1, Isolate2, Isolate1Freq, Isolate2Freq, Isolate1FreqPredicted, Isolate2FreqPredicted) %>%
-  invnet::switch_pairwise_column()
-
-CASEU_pilot2 %>% 
-  mutate(Pair = paste0(Isolate1, "_", Isolate2)) %>%
-  ggplot(aes(x = Isolate1Freq, y = Isolate1FreqPredicted, color = Pair, Group = Pair)) +
-  geom_point() + geom_line() +
-#  geom_abline(slope = 1, intercept = 0, color = "black") +
-  facet_wrap(.~Community) +
-  theme_bw()
-    
-}
-```
 
 
 ## CASEU pilot3
@@ -497,25 +268,19 @@ CASEU_pilot2 %>%
 The plate layout of PCR plate and list of samples are specified in `output/protocol/protocol_20190923_SequalPrep_Sanger_prep.pdf`. 
 
 ```{r}
-fread(here::here("output/protocol/tab_fig/protocol_20190924_Sanger_seq_prep-genewiz_table_CYC.csv"))
+read_csv("~/Dropbox/lab/emergent-coexistence/data/raw/Sanger/CASEU_pilot3/protocol_20190924_Sanger_seq_prep-genewiz_table_CYC.csv", col_types = cols())
 ```
 
 Read trace matrices for isolates and mixtures
 
 ```{r eval = F}
 # It takes about ~15 mins to run 
-if (run_scripts) source("script/02B-CASEU_sanger_seq-04-pilot3.R")
+if (run_scripts) source("script/02B-CASEU_sanger_seq-03-pilot3.R")
 ```
 
 ```{r}
-CASEU_pilot3 <- read_csv(here::here("data/temp/CASEU_pilot3.csv"))
-CASEU_pilot3 %>%
-  mutate(Isolate1 = factor(Isolate1)) %>%
-  ggplot(aes(x = Isolate1Freq, y = Isolate1FreqPredicted, color = Isolate1, group = paste0(Isolate1, "_", Isolate2))) +
-  geom_point() + geom_line() +
-#  geom_abline(slope = 1, intercept = 0, color = "black") +
-  facet_wrap(.~Community) +
-  theme_bw()
+CASEU_pilot3 <- read_csv("~/Dropbox/lab/emergent-coexistence/data/temp/CASEU_pilot3.csv", col_types = cols())
+CASEU_pilot3
 ```
 
 
@@ -524,26 +289,53 @@ CASEU_pilot3 %>%
 The plate layout of PCR plate and list of samples are specified in `output/protocol/protocol_20191007_Sanger_seq_prep.pdf`. 
 
 ```{r}
-fread(here::here("output/protocol/tab_fig/protocol_20191007_Sanger_seq_prep-genewiz_table_CYC.csv"))
+read_csv("~/Dropbox/lab/emergent-coexistence/data/raw/Sanger/CASEU_pilot4/protocol_20191007_Sanger_seq_prep-genewiz_table_CYC.csv", col_types = cols())
 ```
 
 Read trace matrices for isolates and mixtures
 
 ```{r eval = F}
 # It takes about ~15 mins to run
-if (run_scripts) source("script/02B-CASEU_sanger_seq-05-pilot4.R")
+if (run_scripts) source("script/02B-CASEU_sanger_seq-04-pilot4.R")
 ```
 
 
 ```{r}
-CASEU_pilot4 <- read_csv(here::here("data/temp/CASEU_pilot4.csv"))
-CASEU_pilot4 %>%
-  mutate(Isolate1 = factor(Isolate1)) %>%
-  ggplot(aes(x = Isolate1Freq, y = Isolate1FreqPredicted, color = Isolate1, group = paste0(Isolate1, "_", Isolate2))) +
-  geom_point() + geom_line() +
-  facet_wrap(.~Community) +
-  theme_bw()
+CASEU_pilot4 <- read_csv("~/Dropbox/lab/emergent-coexistence/data/temp/CASEU_pilot4.csv", col_types = cols())
+CASEU_pilot4
 ```
+
+
+## CASEU six plates
+
+- Genewiz submission code: CASEU_RN_5 (which is not correct because these are not RN plates)
+- Plates:
+    - B2 T7 933 P2
+    - B2 T7 444 P2
+    - C2 T7 13A P2
+    - C2 T7 13B P2
+    - D T7 75 P2
+    - D T7 5543 P2
+- Notes: the plates must be placed in order!!
+
+```{r}
+# Generate sequencing csv
+if (FALSE) {
+genewiz_table <- tibble(Sample = 1:(96*6), 
+       `DNA Name` = paste0(rep(c("B2_T7_933_P2", "B2_T7_444_P2", "C2_T7_13A_P2", "C2_T7_13B_P2",  "D_T7_75_P2", "D_T7_5543_P2"), each = 96), "_", rep(1:96, 6)), 
+       `Length (bp)` = 1000, `Concentration (ng/uL)` = 0.83, Primer = "27F")
+
+write_csv(genewiz_table, file = here::here("output/protocol/tab_fig/20211202_Sanger_seq_prep-genewiz_table_CYC.csv"))
+
+}
+```
+
+
+
+
+
+
+
 
 
 ## Random network, CASEU batch 1
@@ -701,29 +493,6 @@ CASEU_RN4
 
 
 
-## CASEU six plates
-
-- Genewiz submission code: CASEU_RN_5 (which is not correct because these are not RN plates)
-- Plates:
-    - B2 T7 933 P2
-    - B2 T7 444 P2
-    - C2 T7 13A P2
-    - C2 T7 13B P2
-    - D T7 75 P2
-    - D T7 5543 P2
-- Notes: the plates must be placed in order!!
-
-```{r}
-# Generate sequencing csv
-if (FALSE) {
-genewiz_table <- tibble(Sample = 1:(96*6), 
-       `DNA Name` = paste0(rep(c("B2_T7_933_P2", "B2_T7_444_P2", "C2_T7_13A_P2", "C2_T7_13B_P2",  "D_T7_75_P2", "D_T7_5543_P2"), each = 96), "_", rep(1:96, 6)), 
-       `Length (bp)` = 1000, `Concentration (ng/uL)` = 0.83, Primer = "27F")
-
-write_csv(genewiz_table, file = here::here("output/protocol/tab_fig/20211202_Sanger_seq_prep-genewiz_table_CYC.csv"))
-
-}
-```
 
 
 

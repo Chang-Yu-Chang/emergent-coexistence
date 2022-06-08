@@ -1,11 +1,11 @@
 #' Match the isolate and pairs to the frozen stock saved in 96-well deep-well plates
 library(tidyverse)
 
-communities <- read_csv(here::here("data/output/communities.csv"))
+communities <- read_csv("~/Dropbox/lab/emergent-coexistence/data/output/communities.csv", col_types = cols())
 # Plate layout in data.frame form ----
 ## Batch B2, plate 933 ----
 plate_B2_933 <- data.frame(stringsAsFactors = F,
-  Experiment = rep("Transitivity_B2", 96),
+  Batch = rep("B2", 96),
   PlateLayout = rep("933", 96),
   Well = paste0(rep(LETTERS[1:8], each = 12), sprintf("%02d", rep(1:12, 8))),
   MixIsolate = rep(TRUE, 96),
@@ -43,7 +43,7 @@ plate_B2_933$MixIsolate[plate_B2_933$Well %in% c(
 
 ## Batch B2, plate 444 ----
 plate_B2_444 <- data.frame(stringsAsFactors = F,
-  Experiment = rep("Transitivity_B2", 96),
+  Batch = rep("B2", 96),
   PlateLayout = rep("444", 96),
   Well = paste0(rep(LETTERS[1:8], each = 12), sprintf("%02d", rep(1:12, 8))),
   MixIsolate = rep(TRUE, 96),
@@ -84,7 +84,7 @@ plate_B2_444$MixIsolate[plate_B2_444$Well %in% c(
 
 ## Batch C, plate C11R1 ----
 plate_C_C11R1 <- data.frame(stringsAsFactors = F,
-  Experiment = rep("Transitivity_C", 96),
+  Batch = rep("C", 96),
   PlateLayout = rep("C11R1", 96),
   Well = paste0(rep(LETTERS[1:8], each = 12), sprintf("%02d", rep(1:12, 8))),
   MixIsolate = rep(TRUE, 96),
@@ -121,7 +121,7 @@ plate_C_C11R1$MixIsolate[plate_C_C11R1$Well %in% c(
 
 ## Batch C2, plate 13A ----
 plate_C2_13A <- data.frame(stringsAsFactors = F,
-  Experiment = rep("Transitivity_C2", 96),
+  Batch = rep("C2", 96),
   PlateLayout = rep("13A", 96),
   Well = paste0(rep(LETTERS[1:8], each = 12), sprintf("%02d", rep(1:12, 8))),
   MixIsolate = rep(TRUE, 96),
@@ -141,7 +141,7 @@ plate_C2_13A <- data.frame(stringsAsFactors = F,
 
 ## Batch C2, plate 13B ----
 plate_C2_13B <- data.frame(stringsAsFactors = F,
-  Experiment = rep("Transitivity_C2", 96),
+  Batch = rep("C2", 96),
   PlateLayout = rep("13B", 96),
   Well = paste0(rep(LETTERS[1:8], each = 12), sprintf("%02d", rep(1:12, 8))),
   MixIsolate = rep(TRUE, 96),
@@ -178,7 +178,7 @@ plate_C2_13B$MixIsolate[plate_C2_13B$Well %in% c(
 
 ## Batch D, plate 75 ----
 plate_D_75 <- data.frame(stringsAsFactors = F,
-  Experiment = rep("Transitivity_D", 96),
+  Batch = rep("D", 96),
   PlateLayout = rep("75", 96),
   Well = paste0(rep(LETTERS[1:8], each = 12), sprintf("%02d", rep(1:12, 8))),
   MixIsolate = rep(TRUE, 96),
@@ -210,7 +210,7 @@ plate_D_75$MixIsolate[plate_D_75$Well %in% c(
 
 ## Batch D, plate 5543 ----
 plate_D_5543 <- data.frame(stringsAsFactors = F,
-  Experiment = rep("Transitivity_D", 96),
+  Batch = rep("D", 96),
   PlateLayout = rep("5543", 96),
   Well = paste0(rep(LETTERS[1:8], each = 12), sprintf("%02d", rep(1:12, 8))),
   MixIsolate = rep(TRUE, 96),
@@ -279,7 +279,7 @@ plates <- rbind(plate_B2_933_P1, plate_B2_933_P2, plate_B2_444_P1, plate_B2_444_
 
 
 # Match ambiguous pairs to well position on plates ----
-pairs_ambiguous <- read_csv(here::here("data/temp/pairs_ambiguous.csv"))
+pairs_ambiguous <- read_csv("~/Dropbox/lab/emergent-coexistence/data/temp/pairs_ambiguous.csv", col_types = cols())
 
 ## Switch the isolate1 and isolate2 since the P1 is 50:50 and
 ## rows and columns in P2 P3 are for 95 and 5 respectively
@@ -290,7 +290,7 @@ pairs_ambiguous <- pairs_ambiguous %>% mutate(Isolate1 = factor(Isolate1), Isola
 
 ## Join plates
 pairs_ambiguous_on_DW96 <- pairs_ambiguous %>%
-  left_join(plates, by = c("Community", "Isolate1", "Isolate2", "Experiment", "Isolate1Freq", "Isolate2Freq")) %>%
+  left_join(plates, by = c("Community", "Isolate1", "Isolate2", "Batch", "Isolate1Freq", "Isolate2Freq")) %>%
   mutate(Plate = ifelse((Isolate1Freq != 50 & PlateLayout != "C11R1") , "P2", "P1"),
     Community = ordered(Community, communities$Community)) %>%
   distinct(Community, Isolate1, Isolate2, Isolate1Freq, Isolate2Freq, .keep_all = T) %>%
@@ -301,7 +301,7 @@ pairs_ambiguous_on_DW96 <- pairs_ambiguous %>%
 
 # Across-community and random assembly ----
 # Read data
-isolates <- read_csv(here::here("data/output/isolates.csv"))
+isolates <- read_csv("~/Dropbox/lab/emergent-coexistence/data/output/isolates.csv", col_types = cols())
 community_names <- isolates %>% filter(str_detect(Community, "Ass")) %>% pull(Community) %>% unique
 #community_names_sizes <- rep(8, 4)
 myColor <- c(AcrAss1 = "#ED6A5A", AcrAss2 = "#53A2BE", RanAss1 = "#FFD23F", RanAss2 = "#2CA58D", blank = "#BFBFBF", EP = "purple")
@@ -415,8 +415,8 @@ for (i in 1:length(plate_layout_name)) {
 
 
 
-write_csv(plates_random, here::here("data/output/plates_random.csv"))
-write_csv(plates, here::here("data/output/plates.csv"))
+write_csv(plates_random, "~/Dropbox/lab/emergent-coexistence/data/output/plates_random.csv")
+write_csv(plates, "~/Dropbox/lab/emergent-coexistence/data/output/plates.csv")
 
 
 
