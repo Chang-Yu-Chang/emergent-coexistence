@@ -1,15 +1,91 @@
 #' Read the CASEU result of random network
 #' In this CASEU RN batch 4 (CASEU_RN4), one plate was sent for Sanger sequencing
 #' T3 BD P3
-#' 1. Read the plate layout
-#' 2. Read the isolates trace matrices from the raw Sanger sequences
-#' 3. Read the mixture trace matrices. Map the plate layout
-#' 4. CASEU predicts the relative abundance
+
 library(tidyverse)
-library(data.table)
 library(CASEU)
-`%notin%` <- Negate(`%in%`)
-source(here::here("output/report/script/misc.R"))
+
+read_trace_matrix <- function(abif.file) {
+    x <- sangerseqR::read.abif(abif.file) %>% sangerseqR::sangerseq()
+    return(x@traceMatrix)
+}
+
+folder_directory_RN4 <- "~/Dropbox/lab/emergent-coexistence/data/raw/Sanger/CASEU_RN4/CASEU_RN4_30-481538036_ab1/"
+if (FALSE) {
+plates_random <- read_csv("~/Dropbox/lab/emergent-coexistence/data/output/plates_random.csv", col_types = cols())
+plates_RN4 <- plates_random %>%
+    filter(PlateLayout == "BD", MixPlate == "P3") %>%
+    mutate(Well = factor(Well, paste0(rep(LETTERS[1:8], 12), sprintf("%02d", rep(1:12, each = 8))))) %>%
+    arrange(Well) %>%
+    mutate(Sample = 1:96) %>%
+    mutate(Time = "T3") %>%
+    select(Sample, everything())
+
+write_csv(plates_RN4, "~/Dropbox/lab/emergent-coexistence/data/raw/Sanger/CASEU_RN4/plates_RN4.csv")
+
+}
+plates_RN4 <- read_csv("~/Dropbox/lab/emergent-coexistence/data/raw/Sanger/CASEU_RN4/plates_RN4.csv", col_types = cols())
+
+
+# Isolate trace: load trace_isolate from RN2
+load("~/Dropbox/lab/emergent-coexistence/data/temp/CASEU_RN2.Rdata")
+cat("\nStart reading isolate traces from batch RN2")
+trace_isolate <- CASEU_RN2_trace_isolate
+cat("\nFinish reading", nrow(trace_isolate), "isolate traces")
+
+# Mixture trace
+cat("\nStart reading mixture traces")
+trace_mixture <- plates_RN4 %>%
+    mutate(FileName = paste0(folder_directory_RN4, Sample, "-27F.ab1")) %>%
+    filter(MixIsolate == T, Isolate1 != Isolate2) %>%
+    select(FileName, Sample, Community, Isolate1, Isolate2, Isolate1Freq, Isolate2Freq, Time) %>%
+    rowwise() %>%
+    mutate(Trace = list(read_trace_matrix(FileName))) %>%
+    mutate(TraceLength = nrow(Trace)) %>%
+    arrange(Community, Isolate1, Isolate2) %>%
+    mutate(CASEU = NA, Isolate1FreqPredicted = NA)
+cat("\nFinish reading", nrow(trace_mixture), "mixture traces")
+
+
+# Fit mixture Sanger electropherogram  using CASEU packages. This may take a few minutes.
+cat("\nStart caseu fitting", nrow(trace_mixture), "pairs")
+for (i in 1:nrow(trace_mixture)) {
+    minimal_trace_length <- min(c(trace_mixture$TraceLength, trace_isolate$TraceLength))
+    isolate1_index <- which(trace_isolate$Community == trace_mixture$Community[i] & trace_isolate$Isolate == trace_mixture$Isolate1[i])
+    isolate2_index <- which(trace_isolate$Community == trace_mixture$Community[i] & trace_isolate$Isolate == trace_mixture$Isolate2[i])
+
+    # CASEU output
+    trace_mixture$CASEU[i] <- CASEU::fitSangerMixture(
+        mixture = trace_mixture$Trace[[i]],
+        components = list(trace_isolate$Trace[[isolate1_index]], trace_isolate$Trace[[isolate2_index]]),
+        knots = seq(1500, minimal_trace_length, by = 1500),
+        tol = 0.01
+    ) %>% list
+
+    # Extract predicted fraction
+    trace_mixture$Isolate1FreqPredicted[i] <- trace_mixture$CASEU[[i]]$frac[1]
+
+    # Output intermediate
+    CASEU_RN4 <- trace_mixture %>% select(FileName,Community, Isolate1, Isolate2, Isolate1Freq, Isolate2Freq, Time, Isolate1FreqPredicted)
+    write_csv(CASEU_RN4, "~/Dropbox/lab/emergent-coexistence/data/temp/CASEU_RN4.csv")
+    cat("\nrow", i, "out of", nrow(trace_mixture), "is finished")
+}
+
+CASEU_RN4_trace_isolate <- trace_isolate
+CASEU_RN4_trace_mixture <- trace_mixture
+save(CASEU_RN4_trace_isolate, CASEU_RN4_trace_mixture, file = "~/Dropbox/lab/emergent-coexistence/data/temp/CASEU_RN4.Rdata")
+
+
+
+
+
+
+
+
+
+
+
+if (FALSE) {
 
 # Read plate layout ----
 plates_random <- fread(here::here("data/output/plates_random.csv")) %>% as_tibble()
@@ -124,3 +200,9 @@ CASEU_RN4_mixture_list <- mixture_list # list of the mixture
 #save(CASEU_RN4_raw_output, CASEU_RN4_mixture_list, file = here::here("data/temp/CASEU_RN4_raw_output.Rdata"))
 
 fwrite(CASEU_RN4, here::here("data/temp/CASEU_RN4.csv"))
+}
+
+
+
+
+

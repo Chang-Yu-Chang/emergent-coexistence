@@ -9,196 +9,96 @@
 #'  T0 OD-converted CFU frequencies and T8 CFU frequencies with uncertainties.
 
 library(tidyverse)
-switch_pairwise_column <- function (df, bypair = T) {
-    if (any(is.factor(df$Isolate1))) df$Isolate1 <- as.numeric(df$Isolate1); df$Isolate2 <- as.numeric(df$Isolate2)
-    if ("Isolate1FreqPredicted" %in% colnames(df)) {
-        if (bypair == T) {
-            temp_index <- df$Isolate1 > df$Isolate2
-            df[temp_index, c("Isolate1", "Isolate2", "Isolate1Freq", "Isolate2Freq", "Isolate1FreqPredicted", "Isolate2FreqPredicted")] <-
-                df[temp_index, c("Isolate2", "Isolate1", "Isolate2Freq", "Isolate1Freq", "Isolate2FreqPredicted", "Isolate1FreqPredicted")]
+swap_pairwise_column <- function (df) {
+    # Swap the column names for those rows with isolate1 number larger than isolate2
+    temp <- df %>%
+        filter(df$Isolate1 > df$Isolate2) %>%
+        rename(Isolate1 = Isolate2, Isolate2 = Isolate1, Isolate1Freq = Isolate2Freq, Isolate2Freq = Isolate1Freq) %>%
+        mutate(Isolate1FreqPredicted = 1 - Isolate1FreqPredicted)
 
-            df %>% arrange(Isolate1, Isolate2, Isolate1Freq) %>% return()
-        } else if (bypair == F) {
-            temp_index <- df$Isolate1Freq == 5
-            df[temp_index, c("Isolate1", "Isolate2", "Isolate1Freq", "Isolate2Freq", "Isolate1FreqPredicted", "Isolate2FreqPredicted")] <-
-                df[temp_index, c("Isolate2", "Isolate1", "Isolate2Freq", "Isolate1Freq", "Isolate2FreqPredicted", "Isolate1FreqPredicted")]
+    df %>%
+        filter(df$Isolate1 <= df$Isolate2) %>%
+        bind_rows(temp) %>%
+        arrange(Community, Isolate1, Isolate2, Isolate1Freq, Isolate2Freq)
 
-            df %>% arrange(Isolate1Freq, Isolate1, Isolate2) %>% return()
-        }
-    } else {
-
-        if (bypair == T) {
-            temp_index <- df$Isolate1 > df$Isolate2
-            df[temp_index, c("Isolate1", "Isolate2", "Isolate1Freq", "Isolate2Freq")] <-
-                df[temp_index, c("Isolate2", "Isolate1", "Isolate2Freq", "Isolate1Freq")]
-
-            df %>% arrange(Isolate1, Isolate2, Isolate1Freq) %>% return()
-        } else if (bypair == F) {
-            temp_index <- df$Isolate1Freq == 5
-            df[temp_index, c("Isolate1", "Isolate2", "Isolate1Freq", "Isolate2Freq")] <-
-                df[temp_index, c("Isolate2", "Isolate1", "Isolate2Freq", "Isolate1Freq")]
-
-            df %>% arrange(Isolate1Freq, Isolate1, Isolate2) %>% return()
-        }
-    }
 }
-# Read data ----
-## CASEU results
-CASEU_pilot2 <- read_csv(here::here("data/temp/CASEU_pilot2.csv")) %>%
-    filter(Treatment == "C11R1") %>%
-    mutate(Isolate1 = as.numeric(Isolate1), Isolate2 = as.numeric(Isolate2)) %>%
-    switch_pairwise_column(bypair = T) %>%
+
+# CASEU results
+CASEU_pilot2 <- read_csv("~/Dropbox/lab/emergent-coexistence/data/temp/CASEU_pilot2.csv", col_types = cols()) %>%
+    # Remove the control pairs using ABCD as isolate name
+    filter(Isolate1 %in% 1:9) %>%
+    mutate(across(Isolate1:Isolate2, as.numeric))
+CASEU_pilot3 <- read_csv("~/Dropbox/lab/emergent-coexistence/data/temp/CASEU_pilot3.csv", col_types = cols())
+CASEU_pilot4 <- read_csv("~/Dropbox/lab/emergent-coexistence/data/temp/CASEU_pilot4.csv", col_types = cols())
+CASEU_sixplates <- read_csv("~/Dropbox/lab/emergent-coexistence/data/temp/CASEU_sixplates.csv", col_types = cols())
+
+pairs_freq_caseu <- bind_rows(CASEU_pilot2, CASEU_pilot3, CASEU_pilot4, CASEU_sixplates) %>%
+    swap_pairwise_column() %>%
     mutate(
-        Community = Treatment,
-        Isolate1Freq = Isolate1Freq * 100,
-        Isolate2Freq = Isolate2Freq * 100,
+        Isolate1InitialODFreq = Isolate1Freq,
+        Isolate2InitialODFreq = Isolate2Freq,
         Time = "T8",
-        Isolate1CFUFreq = Isolate1FreqPredicted,
-        ErrorIsolate1CFUFreq = NA,
-        RawDataType = "Sanger"
+        Isolate1MeasuredFreq = Isolate1FreqPredicted,
+        ErrorIsolate1MeasuredFreq = NA,
+        RawDataType = "CASEU"
     ) %>%
-    select(Community, Isolate1, Isolate2, Isolate1Freq, Isolate2Freq, Time, Isolate1CFUFreq, ErrorIsolate1CFUFreq, RawDataType)
+    select(Community, Isolate1, Isolate2, Isolate1InitialODFreq, Isolate2InitialODFreq, Time, Isolate1MeasuredFreq, ErrorIsolate1MeasuredFreq, RawDataType) %>%
+    arrange(Community, Isolate1, Isolate2, Isolate1InitialODFreq, Isolate2InitialODFreq, Time) %>%
+    # Remove duplicate
+    filter(!is.na(Isolate1MeasuredFreq)) %>%
+    distinct(Community, Isolate1, Isolate2, Isolate1InitialODFreq, Isolate2InitialODFreq, Time, .keep_all = T)
 
-CASEU_pilot3 <- read_csv(here::here("data/temp/CASEU_pilot3.csv")) %>%
+
+
+# CFU results
+pairs_freq_cfu <- read_csv("~/Dropbox/lab/emergent-coexistence/data/temp/pairs_CFU_freq_uncertainty.csv", col_types = cols()) %>%
     mutate(
-        Isolate1Freq = Isolate1Freq * 100,
-        Isolate2Freq = Isolate2Freq * 100,
-        Time = "T8",
-        Isolate1CFUFreq = Isolate1FreqPredicted,
-        ErrorIsolate1CFUFreq = NA,
-        RawDataType = "Sanger"
+        Isolate1InitialODFreq = Isolate1Freq,
+        Isolate2InitialODFreq = Isolate2Freq,
+        Isolate1MeasuredFreq = Isolate1CFUFreq,
+        ErrorIsolate1MeasuredFreq = ErrorIsolate1CFUFreq,
+        RawDataType = ifelse(Time == "T8", "CFU", RawDataType)
     ) %>%
-    select(Community, Isolate1, Isolate2, Isolate1Freq, Isolate2Freq, Time, Isolate1CFUFreq, ErrorIsolate1CFUFreq, RawDataType)
-
-CASEU_pilot4 <- read_csv(here::here("data/temp/CASEU_pilot4.csv")) %>%
-    mutate(
-        Isolate1Freq = Isolate1Freq * 100,
-        Isolate2Freq = Isolate2Freq * 100,
-        Time = "T8",
-        Isolate1CFUFreq = Isolate1FreqPredicted,
-        ErrorIsolate1CFUFreq = NA,
-        RawDataType = "Sanger"
-    ) %>%
-    select(Community, Isolate1, Isolate2, Isolate1Freq, Isolate2Freq, Time, Isolate1CFUFreq, ErrorIsolate1CFUFreq, RawDataType)
+    select(Community, Isolate1, Isolate2, Isolate1InitialODFreq, Isolate2InitialODFreq, Time, Isolate1MeasuredFreq, ErrorIsolate1MeasuredFreq, RawDataType) %>%
+    arrange(Community, Isolate1, Isolate2, Isolate1InitialODFreq, Isolate2InitialODFreq, Time)
 
 
-## CFU results
-pairs_CFU_freq_uncertainty <- read_csv(here::here("data/temp/pairs_CFU_freq_uncertainty.csv")) %>%
-    mutate(Isolate1 = as.character(Isolate1), Isolate2 = as.character(Isolate2))
-
-
-# Match CASEU result to colony morphology ambiguous pairs----
-pairs_freq <- pairs_CFU_freq_uncertainty %>%
-    # Configurate the variable names
-    mutate(Isolate1InitialODFreq = Isolate1Freq,
-           Isolate2InitialODFreq = Isolate2Freq,
-           Isolate1MeasuredFreq = Isolate1CFUFreq,
-           ErrorIsolate1MeasuredFreq = ErrorIsolate1CFUFreq) %>%
-    select(Community, Isolate1, Isolate2, Isolate1InitialODFreq, Isolate2InitialODFreq, Time, Isolate1MeasuredFreq, ErrorIsolate1MeasuredFreq, RawDataType, Contamination)
-
-
-## Fill in ambiguous pairs with CASEU pilot2 result. Note that if a pair has both CFU and CASEU result, CASEU will overwrite the CFU result
-for (i in 1:nrow(CASEU_pilot2)) {
-    index_row <- which(pairs_freq$Time == "T8" &
-                           pairs_freq$Community == CASEU_pilot2$Community[i] &
-                           pairs_freq$Isolate1 == CASEU_pilot2$Isolate1[i] &
-                           pairs_freq$Isolate2 == CASEU_pilot2$Isolate2[i] &
-                           pairs_freq$Isolate1InitialODFreq == CASEU_pilot2$Isolate1Freq[i] &
-                           pairs_freq$Isolate2InitialODFreq == CASEU_pilot2$Isolate2Freq[i])
-
-    pairs_freq[index_row, c("Isolate1MeasuredFreq", "ErrorIsolate1MeasuredFreq","RawDataType")] <-
-        CASEU_pilot2[i, c("Isolate1CFUFreq", "ErrorIsolate1CFUFreq", "RawDataType")]
-}
-
-## Fill in ambiguous pairs with CASEU pilot3 result
-for (i in 1:nrow(CASEU_pilot3)) {
-    index_row <- which(pairs_freq$Time == "T8" &
-                           pairs_freq$Community == CASEU_pilot3$Community[i] &
-                           pairs_freq$Isolate1 == CASEU_pilot3$Isolate1[i] &
-                           pairs_freq$Isolate2 == CASEU_pilot3$Isolate2[i] &
-                           pairs_freq$Isolate1InitialODFreq == CASEU_pilot3$Isolate1Freq[i] &
-                           pairs_freq$Isolate2InitialODFreq == CASEU_pilot3$Isolate2Freq[i])
-
-    pairs_freq[index_row, c("Isolate1MeasuredFreq", "ErrorIsolate1MeasuredFreq","RawDataType")] <-
-        CASEU_pilot3[i, c("Isolate1CFUFreq", "ErrorIsolate1CFUFreq", "RawDataType")]
-}
-
-
-## Fill in ambiguous pairs with CASEU pilot4 result
-for (i in 1:nrow(CASEU_pilot4)) {
-    index_row <- which(pairs_freq$Time == "T8" &
-                           pairs_freq$Community == CASEU_pilot4$Community[i] &
-                           pairs_freq$Isolate1 == CASEU_pilot4$Isolate1[i] &
-                           pairs_freq$Isolate2 == CASEU_pilot4$Isolate2[i] &
-                           pairs_freq$Isolate1InitialODFreq == CASEU_pilot4$Isolate1Freq[i] &
-                           pairs_freq$Isolate2InitialODFreq == CASEU_pilot4$Isolate2Freq[i])
-
-    pairs_freq[index_row, c("Isolate1MeasuredFreq", "ErrorIsolate1MeasuredFreq","RawDataType")] <-
-        CASEU_pilot4[i, c("Isolate1CFUFreq", "ErrorIsolate1CFUFreq", "RawDataType")]
-}
-pairs_freq <- pairs_freq %>% as_tibble()
-
+# Combine CASEU and CFU results
+pairs_freq <- bind_rows(pairs_freq_caseu, pairs_freq_cfu)
 
 
 # Random assembly pairs
 ## T3 C P2
-CASEU_RN2 <- read_csv(here::here("data/temp/CASEU_RN2.csv")) %>%
-    mutate(Time = "T3") %>%
-    mutate(
-        Isolate1InitialODFreq = Isolate1Freq * 100,
-        Isolate2InitialODFreq = Isolate2Freq * 100,
-        Isolate1MeasuredFreq = Isolate1FreqPredicted,
-        ErrorIsolate1MeasuredFreq = NA,
-        RawDataType = "Sanger"
-    ) %>%
-    select(Community, Isolate1, Isolate2, Isolate1InitialODFreq, Isolate2InitialODFreq, Time, Isolate1MeasuredFreq, ErrorIsolate1MeasuredFreq, RawDataType)
+CASEU_RN2 <- read_csv("~/Dropbox/lab/emergent-coexistence/data/temp/CASEU_RN2.csv", col_types = cols())
 ## T0 C P2, T0 AD P2, T3 AD P2
-CASEU_RN3 <- read_csv(here::here("data/temp/CASEU_RN3.csv")) %>%
-    mutate(
-        Isolate1InitialODFreq = Isolate1Freq * 100,
-        Isolate2InitialODFreq = Isolate2Freq * 100,
-        Isolate1MeasuredFreq = Isolate1FreqPredicted,
-        ErrorIsolate1MeasuredFreq = NA,
-        RawDataType = "Sanger"
-    ) %>%
-    select(Community, Isolate1, Isolate2, Isolate1InitialODFreq, Isolate2InitialODFreq, Time, Isolate1MeasuredFreq, ErrorIsolate1MeasuredFreq, RawDataType)
+CASEU_RN3 <- read_csv("~/Dropbox/lab/emergent-coexistence/data/temp/CASEU_RN3.csv", col_types = cols())
 ## T3 BD P3
-CASEU_RN4 <- read_csv(here::here("data/temp/CASEU_RN4.csv")) %>%
-    mutate(
-        Isolate1InitialODFreq = Isolate1Freq * 100,
-        Isolate2InitialODFreq = Isolate2Freq * 100,
-        Isolate1MeasuredFreq = Isolate1FreqPredicted,
-        ErrorIsolate1MeasuredFreq = NA,
-        RawDataType = "Sanger"
-    ) %>%
-    select(Community, Isolate1, Isolate2, Isolate1InitialODFreq, Isolate2InitialODFreq, Time, Isolate1MeasuredFreq, ErrorIsolate1MeasuredFreq, RawDataType)
-
-## T0 BR P2
+CASEU_RN4 <- read_csv("~/Dropbox/lab/emergent-coexistence/data/temp/CASEU_RN4.csv", col_types = cols())
+## T0 BR P2 only has OD data
 CASEU_RN5 <- CASEU_RN4 %>%
     mutate(
         Time = "T0",
-        Isolate1MeasuredFreq = Isolate1InitialODFreq / 100,
+        Isolate1MeasuredFreq = Isolate1Freq / 100,
         ErrorIsolate1MeasuredFreq = NA,
         RawDataType = "OD"
     )
 
+
 pairs_freq_random <- bind_rows(CASEU_RN2, CASEU_RN3, CASEU_RN4, CASEU_RN5) %>%
-    mutate(Isolate1 = as.character(Isolate1), Isolate2 = as.character(Isolate2)) %>%
-    arrange(Community, Isolate1, Isolate2, Time, Isolate1InitialODFreq)
+    swap_pairwise_column() %>%
+    mutate(
+        Isolate1InitialODFreq = Isolate1Freq * 100,
+        Isolate2InitialODFreq = Isolate2Freq * 100,
+        Isolate1MeasuredFreq = Isolate1FreqPredicted,
+        ErrorIsolate1MeasuredFreq = NA,
+        RawDataType = "CASEU"
+    ) %>%
+    select(Community, Isolate1, Isolate2, Isolate1InitialODFreq, Isolate2InitialODFreq, Time, Isolate1MeasuredFreq, ErrorIsolate1MeasuredFreq, RawDataType) %>%
+    arrange(Community, Isolate1, Isolate2, Isolate1InitialODFreq, Isolate2InitialODFreq, Time)
 
 
-if (FALSE) {
-pairs_freq_random %>%
-    select(-ErrorIsolate1CFUFreq, -RawDataType) %>%
-    pivot_wider(id_cols = c(Community, Isolate1, Isolate2, Isolate1Freq, Isolate2Freq), names_from = Time, values_from = Isolate1CFUFreq) %>%
-    filter(!is.na(T0)) %>%
-    {.}
-    view()
-    distinct(Community, Isolate1, Isolate2, Time)
+write_csv(pairs_freq, "~/Dropbox/lab/emergent-coexistence/data/output/pairs_freq.csv")
+write_csv(pairs_freq_random, "~/Dropbox/lab/emergent-coexistence/data/output/pairs_freq_random.csv")
 
-}
 
-#
-pairs_freq <- bind_rows(pairs_freq, pairs_freq_random)
-write_csv(pairs_freq, file = here::here("data/output/pairs_freq.csv"))
 

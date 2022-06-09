@@ -1,27 +1,82 @@
 #' Determine the pairwise interaction by the result of competition in three inital frequencies.
 #' This script has the following content
-#' 1. Read and plot the data of frequency changes
+#' 1. Divide the frequency data into three sets:
+#'    - CFU only
+#'    - CASEU only
+#'    - CFU filled by CASEU
+#'
 #' 2. Compute the sign of frequency changes
 #' 3. Determine the interaction types by the fitness function
 library(tidyverse)
-library(data.table)
-communities <- read_csv(here::here("data/output/communities.csv"))
 
-# Frequency changes of pairs ----
-pairs_freq <- read_csv(here::here("data/output/pairs_freq.csv")) %>%
-    #mutate(Community = ordered(Community, levels = communities$Community)) %>%
-    arrange(Time, Community, Isolate1, Isolate2, Isolate1InitialODFreq, Isolate2InitialODFreq)
+communities <- read_csv("~/Dropbox/lab/emergent-coexistence/data/output/communities.csv", col_types = cols())
+pairs_freq <- read_csv("~/Dropbox/lab/emergent-coexistence/data/output/pairs_freq.csv", col_types = cols()) %>%
+    arrange(Time, RawDataType, Community, Isolate1, Isolate2, Isolate1InitialODFreq, Isolate2InitialODFreq) %>%
+    mutate(Time = case_when(
+        Time == "T0" ~ "Tini",
+        Time == "T8" ~ "Tend",
+    ))
+pairs_ID <- read_csv("~/Dropbox/lab/emergent-coexistence/data/temp/pairs_ID.csv", col_types = cols())
+
+
+
+# Divide the frequency day into three sets, each should have 186*3*2=1116 rows
+## Pair-freq ID
+pairs_freq_ID <- pairs_ID %>%
+    slice(rep(1:n(), each = 3)) %>%
+    mutate(Isolate1InitialODFreq = rep(c(5,50,95), n()/3), Isolate2InitialODFreq = rep(c(95,50,5), n()/3)) %>%
+    slice(rep(1:n(), each = 2)) %>%
+    mutate(Time = rep(c("Tini", "Tend"), n()/2)) %>%
+    group_by(PairID) %>%
+    mutate(PairFreqID = rep(1:3, each = 2)) %>%
+    select(PairID, PairFreqID, everything())
+
+## Set 1: CFU only
+pairs_freq_Tini <- pairs_freq %>% filter(Time == "Tini")
+pairs_freq_cfu <- pairs_freq %>% filter(RawDataType == "CFU")
+pairs_freq_set1 <- pairs_freq_ID %>%
+    left_join(bind_rows(pairs_freq_Tini, pairs_freq_cfu)) %>%
+    mutate(Set = "CFUonly")
+
+## Set 2: CASEU only
+pairs_freq_caseu <- pairs_freq %>% filter(RawDataType == "CASEU")
+pairs_freq_set2 <- pairs_freq_ID %>%
+    left_join(bind_rows(pairs_freq_Tini, pairs_freq_caseu)) %>%
+    mutate(Set = "CASEUonly")
+
+## Set 3: CFU mainly, and filled by CASEU
+## Find cfu pairs with at least one missing freq. There are 30 of them
+temp1 <- pairs_freq_cfu %>%
+    arrange(Community, Isolate1, Isolate2) %>%
+    group_by(Community, Isolate1, Isolate2) %>%
+    select(group_cols(), Isolate1MeasuredFreq) %>%
+    filter(is.na(Isolate1MeasuredFreq)) %>%
+    ungroup() %>%
+    distinct(Community, Isolate1, Isolate2)
+
+temp2 <- pairs_freq_caseu %>% right_join(temp1) %>% arrange(Community, Isolate1, Isolate2) # CASEU pairs
+temp3 <- pairs_freq_cfu %>% anti_join(temp1) %>% arrange(Community, Isolate1, Isolate2) # CFU pairs
+
+pairs_freq_set3 <- pairs_freq_ID %>%
+    left_join(bind_rows(pairs_freq_Tini, temp2, temp3)) %>%
+    mutate(Set = "CFUandCASEU")
+
+
+## Combine the three sets
+pairs_freq_wide <- bind_rows(pairs_freq_set1, pairs_freq_set2, pairs_freq_set3) %>%
+    select(Set, everything()) %>%
+    select(-RawDataType) %>%
+    # If Isolate1MeasuredFreq is available and the error is NA, set the error to 0
+    mutate(ErrorIsolate1MeasuredFreq = case_when(
+        !is.na(Isolate1MeasuredFreq) & is.na(ErrorIsolate1MeasuredFreq) ~ 0,
+        !is.na(Isolate1MeasuredFreq) & !is.na(ErrorIsolate1MeasuredFreq) ~ ErrorIsolate1MeasuredFreq
+    )) %>%
+    pivot_wider(names_from = Time, values_from = c(Isolate1MeasuredFreq, ErrorIsolate1MeasuredFreq)) %>%
+    view
+
 
 if (FALSE) {
-temp <- tibble(comm = LETTERS[1:4], Community = c("AcrAss1", "AcrAss2", "RanAss1", "RanAss2"))
-pairs_freq %>%
-    filter(str_detect(Community, "Ass")) %>%
-    left_join(temp) %>%
-    group_by(comm, Time) %>%
-    summarize(n())
-    distinct(Community, Isolate1, Isolate2, Time, Isolate1InitialODFreq)
 
-}
 
 
 ## R Function for plotting frequencies changes
@@ -70,9 +125,30 @@ pairs_freq_T8 <- pairs_freq %>%
     select(Community, Isolate1, Isolate2, Isolate1InitialODFreq, Isolate2InitialODFreq,
            Isolate1MeasuredFreqT8, ErrorIsolate1MeasuredFreqT8, RawDataTypeT8)
 
-pairs_freq_spread <- pairs_freq_T0 %>% left_join(pairs_freq_T8) %>%
+pairs_freq_wide <- pairs_freq_T0 %>% left_join(pairs_freq_T8) %>%
     # Drop the incomplete pairs
     filter(!is.na(Isolate1MeasuredFreqT0), !is.na(Isolate1MeasuredFreqT8))
+}
+
+
+
+
+
+"permute and get pairwise interactions for the three sets"
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 # Compute the sign of frequency changes between T0 and T8 ----
@@ -86,40 +162,45 @@ pairs_freq_spread <- pairs_freq_T0 %>% left_join(pairs_freq_T8) %>%
 #'  difference of these two values are then recorded for this bootstrap.
 #'  Then I repeated the simulations for 10000 times.
 
-b = 10000
+
+
+
+
+
+b = 1000
 p <- 0.05 # Significant value
 
-pairs_freq_spread$DifferenceT8T0 <- NA
-pairs_freq_spread$DifferenceT8T0pvalue <- NA
+pairs_freq_wide$DifferenceT8T0 <- NA
+pairs_freq_wide$DifferenceT8T0pvalue <- NA
 
-for (i in 1:nrow(pairs_freq_spread)) {
-    if (!is.na(pairs_freq_spread$Isolate1MeasuredFreqT8)) {
-        T0_sd <- ifelse(is.na(pairs_freq_spread$ErrorIsolate1MeasuredFreqT0[i]), 0, pairs_freq_spread$ErrorIsolate1MeasuredFreqT0[i])
-        T8_sd <- ifelse(is.na(pairs_freq_spread$ErrorIsolate1MeasuredFreqT8[i]), 0, pairs_freq_spread$ErrorIsolate1MeasuredFreqT8[i])
+for (i in 1:nrow(pairs_freq_wide)) {
+    if (!is.na(pairs_freq_wide$Isolate1MeasuredFreqT8)) {
+        T0_sd <- ifelse(is.na(pairs_freq_wide$ErrorIsolate1MeasuredFreqT0[i]), 0, pairs_freq_wide$ErrorIsolate1MeasuredFreqT0[i])
+        T8_sd <- ifelse(is.na(pairs_freq_wide$ErrorIsolate1MeasuredFreqT8[i]), 0, pairs_freq_wide$ErrorIsolate1MeasuredFreqT8[i])
 
         # Draw from normal distribution
         df_temp <- data.frame(
-            T0 = rnorm(b, mean = pairs_freq_spread$Isolate1MeasuredFreqT0[i], sd = T0_sd),
-            T8 = rnorm(b, mean = pairs_freq_spread$Isolate1MeasuredFreqT8[i], sd = T8_sd))
+            T0 = rnorm(b, mean = pairs_freq_wide$Isolate1MeasuredFreqT0[i], sd = T0_sd),
+            T8 = rnorm(b, mean = pairs_freq_wide$Isolate1MeasuredFreqT8[i], sd = T8_sd))
 
         # p value
         temp <- sum((df_temp$T8 - df_temp$T0) > 0) / b
-        pairs_freq_spread$DifferenceT8T0pvalue[i] <- min(temp, 1-temp)
+        pairs_freq_wide$DifferenceT8T0pvalue[i] <- min(temp, 1-temp)
 
         # Growing or decreasing
         # 1 means that the difference is growing from T0 to T8; 0 for non-significance; -1 for decreasing
-        pairs_freq_spread$DifferenceT8T0[i] <- ifelse(temp > 0.5, 1, -1)
+        pairs_freq_wide$DifferenceT8T0[i] <- ifelse(temp > 0.5, 1, -1)
         #cat(i); cat(" ")
     }
 }
 
 ## 0 for non-significance
-pairs_freq_spread$DifferenceT8T0[pairs_freq_spread$DifferenceT8T0pvalue > p] <- 0
+pairs_freq_wide$DifferenceT8T0[pairs_freq_wide$DifferenceT8T0pvalue > p] <- 0
 
 
 
 ## Spread the df and paste the frequency changes. Reduce the row number to 186 (total 186 pairs)
-pairs_interaction_fitness <- pairs_freq_spread %>%
+pairs_interaction_fitness <- pairs_freq_wide %>%
     select(Community, Isolate1, Isolate2, Isolate1InitialODFreq, DifferenceT8T0) %>%
     group_by(Community, Isolate1, Isolate2) %>%
     pivot_wider(names_from = Isolate1InitialODFreq, values_from = DifferenceT8T0) %>%
@@ -131,7 +212,7 @@ pairs_interaction_fitness <- pairs_freq_spread %>%
 # Extract the T8 frequencies ----
 ## Spread the df and compute the final frequencies. Reduce row number to 186 (total 186 pairs)
 pairs_interaction_T8_freq <-
-    pairs_freq_spread %>%
+    pairs_freq_wide %>%
     select(Community, Isolate1, Isolate2, Isolate1InitialODFreq, Isolate1MeasuredFreqT8) %>%
     group_by(Community, Isolate1, Isolate2) %>%
     pivot_wider(names_from = Isolate1InitialODFreq, values_from = Isolate1MeasuredFreqT8) %>%

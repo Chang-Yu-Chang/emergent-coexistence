@@ -1,14 +1,15 @@
 #' OD-CFU conversion for pairwise competition
 #' This script calculate the mean of conversion
 
+library(tidyverse)
 
 # Calculate the mean of measurement ----
 ## Step1: Calculate epsilon for monoculture from T8 ----
 # Isolates
-isolates_epsilon <- fread(here::here("data/temp/isolates_epsilon.csv"))
+isolates_epsilon <- read_csv("~/Dropbox/lab/emergent-coexistence/data/temp/isolates_epsilon.csv", col_types = cols())
 
 # Pairs
-pairs_competition <- fread(here::here("data/temp/pairs_competition.csv")) %>%
+pairs_competition <- read_csv("~/Dropbox/lab/emergent-coexistence/data/temp/pairs_competition.csv", col_types = cols()) %>%
   mutate(Isolate1 = ordered(Isolate1, 1:12), Isolate2 = ordered(Isolate2, 1:12))%>%
   mutate(ColonyCount2 = ColonyCount - ColonyCount1)
 
@@ -57,4 +58,4 @@ pairs_CFU_freq <- pairs_CFU_freq_T0 %>%
   gather("Time", "Isolate1CFUFreq", 6:7)
 
 
-fwrite(pairs_CFU_freq, file = here::here("data/temp/pairs_CFU_freq.csv"))
+write_csv(pairs_CFU_freq, "~/Dropbox/lab/emergent-coexistence/data/temp/pairs_CFU_freq.csv")

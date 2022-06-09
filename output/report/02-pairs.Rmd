@@ -36,7 +36,7 @@ run_scripts <- F
 
 The script below generates the table for manual key-in
 
-```{r eval = F}
+```{r}
 if (FALSE) source("script/02A-pairs_experiment-01-pairwise_manual_key_in.R")
 ```
 
@@ -110,7 +110,7 @@ isolates_ambiguous
 ## Map pairs and isolates to the DW96 plate layout
 
 ```{r}
-source("script/02A-pairs_experiment-04-pairwise_plate_layout.R")
+if (run_scripts) source("script/02A-pairs_experiment-04-pairwise_plate_layout.R")
 ```
 
 Each plate has 96 rows and has the following variables
@@ -217,7 +217,7 @@ Table: isolates
 Read trace matrices for isolates and mixtures
 
 ```{r}
-if(run_scripts) source("script/02B-CASEU_sanger_seq-01-pilot1.R")
+if (run_scripts) source("script/02B-CASEU_sanger_seq-01-pilot1.R")
 ```
 
 
@@ -244,8 +244,8 @@ C1R7 isolate 2  | B         | Pseudomonas
 C1R7 isolate 1  | C         | Enterobacter
 C1R7 isolate 7  | D         | Raoultella
 
-```{r eval = F}
-source("script/02B-CASEU_sanger_seq-02-pilot2.R")
+```{r}
+if (run_scripts) source("script/02B-CASEU_sanger_seq-02-pilot2.R")
 #source("script/02B-CASEU_sanger_seq-02a-pilot2_Sylvie.R") # Run Sylvie's sequence
 ```
 
@@ -273,7 +273,7 @@ read_csv("~/Dropbox/lab/emergent-coexistence/data/raw/Sanger/CASEU_pilot3/protoc
 
 Read trace matrices for isolates and mixtures
 
-```{r eval = F}
+```{r}
 # It takes about ~15 mins to run 
 if (run_scripts) source("script/02B-CASEU_sanger_seq-03-pilot3.R")
 ```
@@ -294,7 +294,7 @@ read_csv("~/Dropbox/lab/emergent-coexistence/data/raw/Sanger/CASEU_pilot4/protoc
 
 Read trace matrices for isolates and mixtures
 
-```{r eval = F}
+```{r}
 # It takes about ~15 mins to run
 if (run_scripts) source("script/02B-CASEU_sanger_seq-04-pilot4.R")
 ```
@@ -325,16 +325,14 @@ genewiz_table <- tibble(Sample = 1:(96*6),
        `DNA Name` = paste0(rep(c("B2_T7_933_P2", "B2_T7_444_P2", "C2_T7_13A_P2", "C2_T7_13B_P2",  "D_T7_75_P2", "D_T7_5543_P2"), each = 96), "_", rep(1:96, 6)), 
        `Length (bp)` = 1000, `Concentration (ng/uL)` = 0.83, Primer = "27F")
 
-write_csv(genewiz_table, file = here::here("output/protocol/tab_fig/20211202_Sanger_seq_prep-genewiz_table_CYC.csv"))
+write_csv(genewiz_table, here::here("output/protocol/tab_fig/20211202_Sanger_seq_prep-genewiz_table_CYC.csv"))
 
 }
 ```
 
-
-
-
-
-
+```{r}
+CASEU_sixplates <- read_csv("~/Dropbox/lab/emergent-coexistence/data/temp/CASEU_sixplates.csv", col_types = cols())
+```
 
 
 
@@ -344,71 +342,35 @@ write_csv(genewiz_table, file = here::here("output/protocol/tab_fig/20211202_San
 - Plate layout: T3 C P2
 - Description: samples 3, 4, 5, 12, 13, 27, 29, 33, 73, 85, 86, 91, and 94 (order by column in the plate layout) arrived Genewiz dry, so they are not processed.
 
-```{r eval = F}
+```{r}
+# If will take ~2 hr to run
 if (run_scripts) source("script/02B-random_network_CASEU-01-batch1.R")
 ```
 
 ```{r}
-CASEU_RN1 <- read_csv(here::here("data/temp/CASEU_RN1.csv"))
-```
-
-```{r}
-CASEU_RN1 %>%
-  mutate(T0 = Isolate1Freq, T3 = Isolate1FreqPredicted, InitialFrequency = factor(T0)) %>% 
-  select(Community, Isolate1, Isolate2, InitialFrequency, T0, T3) %>%
-  pivot_longer(cols = c(T0, T3), names_to = "Transfer", values_to = "Isolate1Freq") %>%
-  mutate(Transfer = ordered(Transfer, levels = c("T0", "T3"))) %>%
-  ggplot(aes(x = Transfer, y = Isolate1Freq, color = InitialFrequency, group = InitialFrequency)) +
-  geom_point() + geom_line() +
-  facet_grid(Isolate1 ~ Isolate2) + 
-  scale_y_continuous(limits = c(0,1)) +
-  theme_bw() +
-  ggtitle("Random network 1") +
-  labs(x = "transfer", y = "isolate1 frequency")
-
+CASEU_RN1 <- read_csv("~/Dropbox/lab/emergent-coexistence/data/temp/CASEU_RN1.csv", col_types = cols())
 ```
 
 
 
-## Random network, CASEU batch2
+## Random network, CASEU batch 2
 
 - Genewiz submission code: Caseu_RN_2
 - Plate layout: T3 C P2
 - Description: this plate layout contains the isolates for all 4 random assembled communities 
 
 ```{r}
-source("script/02B-random_network_CASEU-02-batch2.R")
+# It takes ~30 mins
+if (run_scripts) source("script/02B-random_network_CASEU-02-batch2.R")
 ```
 
 ```{r}
-CASEU_RN2 <- read_csv(here::here("data/temp/CASEU_RN2.csv"))
+CASEU_RN2 <- read_csv("~/Dropbox/lab/emergent-coexistence/data/temp/CASEU_RN2.csv", col_types = cols())
+CASEU_RN2
 ```
 
 
-```{r}
-CASEU_RN2 %>%
-  mutate(T0 = Isolate1Freq, T3 = Isolate1FreqPredicted, InitialFrequency = factor(T0)) %>% 
-  select(Community, Isolate1, Isolate2, InitialFrequency, T0, T3) %>%
-  pivot_longer(cols = c(T0, T3), names_to = "Transfer", values_to = "Isolate1Freq") %>%
-  mutate(Transfer = ordered(Transfer, levels = c("T0", "T3"))) %>%
-  ggplot(aes(x = Transfer, y = Isolate1Freq, color = InitialFrequency, group = InitialFrequency)) +
-  geom_point() + geom_line() +
-  facet_grid(Isolate1 ~ Isolate2) + 
-  scale_y_continuous(limits = c(0,1)) +
-  theme_bw() +
-  ggtitle("Random network 1") +
-  labs(x = "transfer", y = "isolate1 frequency")
-
-```
-
-```{r}
-load(here::here("data/temp/CASEU_RN2_raw_output.Rdata"))
-which(is.na(CASEU_RN2_raw_output))
-CASEU_RN2_mixture_list
-```
-
-
-## Random network, CASEU batch3
+## Random network, CASEU batch 3
 
 - Genewiz submisstion code: Caseu_RN_3
 - Plate layout: 
@@ -417,53 +379,20 @@ CASEU_RN2_mixture_list
     - P3 (T3 AD P2), tracking number 30-333649517
 - Description: AD plates have the isolates assembled from the self-assembled communities but different communities
 
-```{r eval = F}
+```{r}
+# It takes ~1.5 hr
 if (run_scripts) source("script/02B-random_network_CASEU-03-batch3.R")
 ```
 
 Use T0 OD frequencies
 
 ```{r}
-CASEU_RN3 <- read_csv(here::here("data/temp/CASEU_RN3.csv"))
-temp <- CASEU_RN3 %>% 
-  filter(Community == "AcrAss1") %>%
-  mutate(InitialFrequency = factor(Isolate1Freq), Time = ordered(Time, c("T0", "T3")))
-
-temp$Isolate1FreqPredicted[temp$Time == "T0"] <- temp$Isolate1Freq[temp$Time == "T0"]
-  
-temp %>%
-  select(Time, Community, Isolate1, Isolate2, InitialFrequency, Isolate1FreqPredicted) %>%
-  arrange(Isolate1, Isolate2, InitialFrequency, Time) %>%
-  ggplot(aes(x = Time, y = Isolate1FreqPredicted, color = InitialFrequency, group = InitialFrequency)) +
-  geom_point() + geom_line() +
-  facet_grid(Isolate1 ~ Isolate2) + 
-  scale_y_continuous(limits = c(0,1)) +
-  theme_bw() +
-  ggtitle("AcrAss1") +
-  labs(x = "transfer", y = "isolate1 frequency")
+CASEU_RN3 <- read_csv("~/Dropbox/lab/emergent-coexistence/data/temp/CASEU_RN3.csv", col_types = cols())
 ```
 
 
-Use CASEU predicted frequencies
 
-```{r}
-CASEU_RN3 %>% 
-  filter(Community == "AcrAss1") %>%
-  mutate(InitialFrequency = factor(Isolate1Freq), Time = ordered(Time, c("T0", "T3"))) %>%
-  select(-Sample, -Mixture, -RSquare, -Isolate2FreqPredicted) %>%
-  select(Time, Community, Isolate1, Isolate2, InitialFrequency, Isolate1FreqPredicted) %>%
-  arrange(Isolate1, Isolate2, InitialFrequency, Time) %>%
-  ggplot(aes(x = Time, y = Isolate1FreqPredicted, color = InitialFrequency, group = InitialFrequency)) +
-  geom_point() + geom_line() +
-  facet_grid(Isolate1 ~ Isolate2) + 
-  scale_y_continuous(limits = c(0,1)) +
-  theme_bw() +
-  ggtitle("AcrAss1") +
-  labs(x = "transfer", y = "isolate1 frequency")
-```
-
-
-## Random network, caseu batch 4
+## Random network, CASEU batch 4
 
 - Genewiz submisstion code: Caseu_RN_4
 - Plate layout: T3 BD P3
@@ -471,30 +400,13 @@ CASEU_RN3 %>%
 
 
 ```{r}
-if (run_scripts) source("script/02B-random_network_CASEU-02-batch4.R")
+if (run_scripts) source("script/02B-random_network_CASEU-04-batch4.R")
 ```
 
 
 ```{r}
-CASEU_RN4 <- read_csv(here::here("data/temp/CASEU_RN4.csv"))
-CASEU_RN4
+CASEU_RN4 <- read_csv("~/Dropbox/lab/emergent-coexistence/data/temp/CASEU_RN4.csv", col_types = cols())
 ```
-
-
-## Random network, caseu batch 5
-
-- Genewiz submission code: 
-- Plate layout:
-    - T0 BD P2
-
-```{r}
-
-```
-
-
-
-
-
 
 
 
@@ -547,8 +459,7 @@ For dilution factor $10^{n}$, it has the the mean $(\frac{V_1}{V_1+V_2})^n$. To 
 
 
 ```{r}
-dilution_factor <- 
-  data.frame(n = c(4, 5), V1 = 10, V2 = 90, ErrorV1 = 0.4, ErrorV2 = 2) %>%
+dilution_factor <- tibble(n = c(4, 5), V1 = 10, V2 = 90, ErrorV1 = 0.4, ErrorV2 = 2) %>%
   mutate(PartialV1 = n * V1^(n-1) * V2 / (V1+V2)^(n+1), #-n*(V1+V2)^(n-1)*V2/(V1^(n+1)),
          PartialV2 = -n * V1^(n-1) / (V1+V2)^(n+1), #n*(V1+V2)^(n-1)/(V1^n),
          DF = (V1/(V1+V2))^n,
@@ -564,7 +475,7 @@ $$\delta \epsilon = \sqrt{(\frac{\partial  \epsilon}{\partial DF}\delta DF)^2 +(
 
 
 ```{r}
-isolates_epsilon_uncertainty <- read_csv(here::here("data/temp/isolates_epsilon_uncertainty.csv"))
+isolates_epsilon_uncertainty <- read_csv("~/Dropbox/lab/emergent-coexistence/data/temp/isolates_epsilon_uncertainty.csv", col_types = cols())
 isolates_epsilon_uncertainty
 ```
 
@@ -588,21 +499,21 @@ $f^C_1 = \frac{f^o_1\epsilon_1DFv}{f^o_1\epsilon_1DFv + f^o_2\epsilon_2DFv}=\fra
 where $\epsilon$ of each isolate was pre-calculated from T8 dataset. DF and v are the same in conversion.
 
 ```{r}
-pairs_CFU_freq <- read_csv(here::here("data/temp/pairs_CFU_freq.csv"))
+pairs_CFU_freq <- read_csv("~/Dropbox/lab/emergent-coexistence/data/temp/pairs_CFU_freq.csv", col_types = cols())
 pairs_CFU_freq
 ```
 
 
 ## Uncertainty in T0 CFU frequencies
 
-```{r warning = F}
+```{r}
 if (run_scripts) source("script/02C-pairs_OD_CFU-03-CFU_frequency_uncertainty.R")
 ```
 
 Write CFU frequencies to `data/temp/pairs_CFU_freq_uncertainty.csv`
 
 ```{r}
-pairs_CFU_freq_uncertainty <- read_csv(here::here("data/temp/pairs_CFU_freq_uncertainty.csv"))
+pairs_CFU_freq_uncertainty <- read_csv("~/Dropbox/lab/emergent-coexistence/data/temp/pairs_CFU_freq_uncertainty.csv", col_types = cols())
 pairs_CFU_freq_uncertainty
 ```
 
@@ -617,7 +528,6 @@ Raw data (e.g., CFU counts and CASEU Sanger sequences) are processed and generat
 
 2. `02C-pairs_OD_CFU` reads pair_competition and dilution factor data, and it outputs `temp/pairs_CFU_freq_uncertainty.csv`, which has the T0 OD-converted CFU frequencies and T8 CFU frequencies with uncertainties.
 
-**Note that if a pair has both CFU and CASEU result, CASEU will overwrite the CFU result**
 
 ```{r}
 if (run_scripts) source("script/02D-determine_pairwise_interaction-01-combine_CFU_CASEU_result.R")
@@ -635,46 +545,26 @@ The script in this section returns a data.frame `pairs_freq` that has the follow
 - `Contamination`: logical. There are contamination in three pairs at T8 plates.
 
 186x3x2=1116 pair-freq at two time points for the self-assembled community networks.
-Plus the across-community and random networks (20211108 in progress)
+
 
 ```{r}
-pairs_freq <- read_csv(here::here("data/output/pairs_freq.csv"))
+pairs_freq <- read_csv("~/Dropbox/lab/emergent-coexistence/data/output/pairs_freq.csv", col_types = cols())
 pairs_freq
 ```
 
-
-```{r}
-pairs_freq %>%
-    filter(Community == "C11R2") %>%
-    filter(Isolate1 == 1, Isolate2 == 4) %>%
-    mutate(Time = ordered(Time, c("T0", "T8")), Isolate1InitialODFreq = factor(Isolate1InitialODFreq)) %>%
-    ggplot(aes(x = Time, y = Isolate1MeasuredFreq, color = Isolate1InitialODFreq, group = Isolate1InitialODFreq)) +
-    geom_line() + geom_point() +
-    facet_grid(Isolate1 ~ Isolate2) +
-    theme_bw()
-```
-
-
-There is one pair-freq that cannot be specified because of contamination.
-
-```{r}
-pairs_freq %>%
-  filter(Time == "T8") %>%
-  filter(is.na(Isolate1MeasuredFreq))
-```
 
 
 
 ## Determine pairwise interactions
 
-```{r warning = F, message = F}
+```{r}
 if (run_scripts) source("script/02D-determine_pairwise_interaction-02-determine_pairwise_interaction.R")
 ```
 
 Table of all 27 + 4 possible combinations of fitness function and their interaction types 
 
 ```{r}
-interaction_type <- read_csv(here::here("data/temp/interaction_type.csv"))
+interaction_type <- read_csv("~/Dropbox/lab/emergent-coexistence/ data/temp/interaction_type.csv", col_types = cols())
 interaction_type
 ```
 
