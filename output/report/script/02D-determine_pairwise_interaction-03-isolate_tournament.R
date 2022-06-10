@@ -1,17 +1,17 @@
 #' Tournament ranks
 library(tidyverse)
-source(here::here("plotting_scripts/network_functions.R"))
+source(here::here("plotting_scripts/misc.R"))
 
-isolates <- read_csv(here::here("data/output/isolates.csv"))
-pairs <- read_csv(here::here("data/output/pairs.csv"))
-communities <- read_csv(here::here("data/output/communities.csv"))
+isolates_ID_match <- read_csv("~/Dropbox/lab/emergent-coexistence/data/temp/isolates_ID_match.csv", col_types = cols())
+pairs_interaction <- read_csv("~/Dropbox/lab/emergent-coexistence/data/output/pairs_interaction.csv", col_types = cols())
+communities <- read_csv("~/Dropbox/lab/emergent-coexistence/data/output/communities.csv", col_types = cols())
 
 isolates_tournament <- communities %>%
     select(comm = Community, everything()) %>%
     rowwise() %>%
-    mutate(pairs_comm = pairs %>% filter(Community == comm) %>% list()) %>%
+    mutate(pairs_comm = pairs_interaction %>% filter(Community == comm) %>% list()) %>%
     mutate(tournaments_comm = pairs_comm %>% tournament_rank() %>% list()) %>%
     select(Community = comm, tournaments_comm) %>%
     unnest(cols = tournaments_comm)
 
-write_csv(isolates_tournament, file = here::here("data/temp/isolates_tournament.csv"))
+write_csv(isolates_tournament, "~/Dropbox/lab/emergent-coexistence/data/temp/isolates_tournament.csv")

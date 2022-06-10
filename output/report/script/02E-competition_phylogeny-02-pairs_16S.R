@@ -1,26 +1,21 @@
 #' Read and match isolates' 16S to pairs
 library(tidyverse)
 
-# Read data ----
-## Read isolates' RDP and ID match
-isolates_RDP <- read_csv(here::here("data/temp/isolates_RDP.csv"))
-isolates_ID_match <- read_csv(here::here("data/temp/isolates_ID_match.csv")) %>% select(ExpID, ID, Community, Isolate)
-communities <- read_csv(here::here("data/output/communities.csv"))
+isolates_RDP <- read_csv("~/Dropbox/lab/emergent-coexistence/data/temp/isolates_RDP.csv", col_types = cols())
+isolates_ID_match <- read_csv("~/Dropbox/lab/emergent-coexistence/data/temp/isolates_ID_match.csv", col_types = cols())
+pairs_ID <- read_csv("~/Dropbox/lab/emergent-coexistence/data/temp/pairs_ID.csv", col_types = cols())
+communities <- read_csv("~/Dropbox/lab/emergent-coexistence/data/output/communities.csv", col_types = cols())
 
-## Read pairs
-pairs_ID <- read_csv(here::here("data/temp/pairs_ID.csv"))
-#pairs_freq_func <- fread(here::here("data/temp/pairs_freq_func.csv"))
 
-## Match isolates' information
+# Match isolates' information
 isolates_RDP_ID <- isolates_ID_match %>%
-  left_join(isolates_RDP, by = c("ID")) %>%
+  left_join(isolates_RDP) %>%
   filter(Community %in% communities$Community) %>%
   select(ExpID, ID, Community, Isolate, Family, Genus, GenusScore, Fermenter, Sequence) %>%
   as_tibble()
 
 
-# Match the isolates taxonomic information to pairs ----
-
+# Match the isolates taxonomic information to pairs
 ## R function for computing pairwise alignment difference of two sequences
 sequence1 <- isolates_RDP_ID$Sequence[1]
 sequence2 <- isolates_RDP_ID$Sequence[2]
@@ -38,27 +33,35 @@ get_aligment_difference <- function(sequence1, sequence2, print = FALSE, type = 
 
   if (print == TRUE) return(algn) else return(c(bp_diff, nchar(as.character(Biostrings::pattern(algn)))))
 }
-
 get_aligment_difference(isolates_RDP_ID$Sequence[1], isolates_RDP_ID$Sequence[2], print = F)
 
 
 ## Loop through 183 pairs and compute 16S base pair difference. Skip C10R2 isolate 3 that has no sequence
-pairs_ID$SeqDifference <- NA
-pairs_ID$SeqLength <- NA
-
-for (i in 1:nrow(pairs_ID)) {
-  seq1 <- isolates_RDP_ID$Sequence[which(isolates_RDP_ID$Community == pairs_ID$Community[i] & isolates_RDP_ID$Isolate == pairs_ID$Isolate1[i])]
-  seq2 <- isolates_RDP_ID$Sequence[which(isolates_RDP_ID$Community == pairs_ID$Community[i] & isolates_RDP_ID$Isolate == pairs_ID$Isolate2[i])]
-
-  if (!is.na(seq1) & !is.na(seq2)) {
-    align_diff <- get_aligment_difference(seq1, seq2)
-    pairs_ID$SeqDifference[i] <- align_diff[1]
-    pairs_ID$SeqLength[i] <- align_diff[2]
-  }
-  cat(paste0(i, " "))
-}
-
-pairs_16S <- pairs_ID
+pairs_16S <- pairs_ID %>%
+    left_join(rename_with(isolates_ID_match, ~ paste0(., "1"), !contains("Community"))) %>%
+    left_join(rename_with(isolates_ID_match, ~ paste0(., "2"), !contains("Community"))) %>%
+    left_join(rename_with(isolates_RDP, ~ paste0(., "1"), !contains("Community"))) %>%
+    left_join(rename_with(isolates_RDP, ~ paste0(., "2"), !contains("Community"))) %>%
+    rowwise() %>%
+    mutate(temp = get_aligment_difference(Sequence1, Sequence2) %>% list) %>%
+    mutate(SequenceDifference = temp[1], SequenceLength = temp[2]) %>%
+    select(PairID, Community, Isolate1, Isolate2, SequenceDifference, SequenceLength)
 
 #
-write_csv(pairs_16S, file = here::here("data/temp/pairs_16S.csv"))
+write_csv(pairs_16S, "~/Dropbox/lab/emergent-coexistence/data/temp/pairs_16S.csv")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

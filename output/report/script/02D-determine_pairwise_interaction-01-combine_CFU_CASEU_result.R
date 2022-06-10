@@ -7,6 +7,12 @@
 #' 2. `02C-pairs_OD_CFU` reads pair_competition and dilution factor data,
 #' and it outputs `temp/pairs_CFU_freq_uncertainty.csv`, which has
 #'  T0 OD-converted CFU frequencies and T8 CFU frequencies with uncertainties.
+#'
+#' 3. Divide the frequency data into three sets:
+#'    - CFU only
+#'    - CASEU only
+#'    - CFU filled by CASEU
+
 
 library(tidyverse)
 swap_pairwise_column <- function (df) {
@@ -23,7 +29,7 @@ swap_pairwise_column <- function (df) {
 
 }
 
-# CASEU results
+# CASEU results ----
 CASEU_pilot2 <- read_csv("~/Dropbox/lab/emergent-coexistence/data/temp/CASEU_pilot2.csv", col_types = cols()) %>%
     # Remove the control pairs using ABCD as isolate name
     filter(Isolate1 %in% 1:9) %>%
@@ -50,7 +56,7 @@ pairs_freq_caseu <- bind_rows(CASEU_pilot2, CASEU_pilot3, CASEU_pilot4, CASEU_si
 
 
 
-# CFU results
+# CFU results ----
 pairs_freq_cfu <- read_csv("~/Dropbox/lab/emergent-coexistence/data/temp/pairs_CFU_freq_uncertainty.csv", col_types = cols()) %>%
     mutate(
         Isolate1InitialODFreq = Isolate1Freq,
@@ -64,10 +70,74 @@ pairs_freq_cfu <- read_csv("~/Dropbox/lab/emergent-coexistence/data/temp/pairs_C
 
 
 # Combine CASEU and CFU results
-pairs_freq <- bind_rows(pairs_freq_caseu, pairs_freq_cfu)
+pairs_freq <- bind_rows(pairs_freq_caseu, pairs_freq_cfu) %>%
+    arrange(Time, RawDataType, Community, Isolate1, Isolate2, Isolate1InitialODFreq, Isolate2InitialODFreq) %>%
+    mutate(Time = case_when(
+        Time == "T0" ~ "Tini",
+        Time == "T8" ~ "Tend",
+    ))
+
+# Divide the frequency day into three sets ----
+pairs_ID <- read_csv("~/Dropbox/lab/emergent-coexistence/data/temp/pairs_ID.csv", col_types = cols())
+# Each should have 186*3*2=1116 rows
+# Pair-freq ID
+pairs_freq_ID <- pairs_ID %>%
+    slice(rep(1:n(), each = 3)) %>%
+    mutate(Isolate1InitialODFreq = rep(c(5,50,95), n()/3), Isolate2InitialODFreq = rep(c(95,50,5), n()/3)) %>%
+    slice(rep(1:n(), each = 2)) %>%
+    mutate(Time = rep(c("Tini", "Tend"), n()/2)) %>%
+    group_by(PairID) %>%
+    mutate(PairFreqID = rep(1:3, each = 2)) %>%
+    select(PairID, PairFreqID, everything())
+
+# Set 1: CFU only
+pairs_freq_Tini <- pairs_freq %>% filter(Time == "Tini")
+pairs_freq_cfu <- pairs_freq %>% filter(RawDataType == "CFU")
+pairs_freq_set1 <- pairs_freq_ID %>%
+    left_join(bind_rows(pairs_freq_Tini, pairs_freq_cfu)) %>%
+    mutate(Set = "CFUonly")
+
+# Set 2: CASEU only
+pairs_freq_caseu <- pairs_freq %>% filter(RawDataType == "CASEU")
+pairs_freq_set2 <- pairs_freq_ID %>%
+    left_join(bind_rows(pairs_freq_Tini, pairs_freq_caseu)) %>%
+    mutate(Set = "CASEUonly")
+
+# Set 3: CFU mainly, and filled by CASEU
+## Find cfu pairs with at least one missing freq. There are 30 of them
+temp1 <- pairs_freq_cfu %>%
+    arrange(Community, Isolate1, Isolate2) %>%
+    group_by(Community, Isolate1, Isolate2) %>%
+    select(group_cols(), Isolate1MeasuredFreq) %>%
+    filter(is.na(Isolate1MeasuredFreq)) %>%
+    ungroup() %>%
+    distinct(Community, Isolate1, Isolate2)
+
+temp2 <- pairs_freq_caseu %>% right_join(temp1) %>% arrange(Community, Isolate1, Isolate2) # CASEU pairs
+temp3 <- pairs_freq_cfu %>% anti_join(temp1) %>% arrange(Community, Isolate1, Isolate2) # CFU pairs
+
+## Two pair-freq are NA in CASEU, use CFU instead
+temp4 <- pairs_freq_ID %>%
+    left_join(bind_rows(pairs_freq_Tini, temp2, temp3)) %>%
+    ungroup() %>%
+    filter(is.na(Isolate1MeasuredFreq)) %>%
+    select(Community, Isolate1, Isolate2, Isolate1InitialODFreq)
+temp5 <- pairs_freq_cfu %>% right_join(temp4)
+pairs_freq_set3 <- pairs_freq_ID %>%
+    left_join(bind_rows(pairs_freq_Tini, temp2, temp3, temp5)) %>%
+    arrange(PairID, Community, Isolate1, Isolate2, Isolate1InitialODFreq) %>%
+    ungroup() %>%
+    mutate(Set = "CFUandCASEU")
 
 
-# Random assembly pairs
+# Combine the three sets
+pairs_freq <- bind_rows(pairs_freq_set1, pairs_freq_set2, pairs_freq_set3) %>%
+    select(Set, everything())
+write_csv(pairs_freq, "~/Dropbox/lab/emergent-coexistence/data/output/pairs_freq.csv")
+
+
+
+# Random assembly pairs ----
 ## T3 C P2
 CASEU_RN2 <- read_csv("~/Dropbox/lab/emergent-coexistence/data/temp/CASEU_RN2.csv", col_types = cols())
 ## T0 C P2, T0 AD P2, T3 AD P2
@@ -97,8 +167,4 @@ pairs_freq_random <- bind_rows(CASEU_RN2, CASEU_RN3, CASEU_RN4, CASEU_RN5) %>%
     arrange(Community, Isolate1, Isolate2, Isolate1InitialODFreq, Isolate2InitialODFreq, Time)
 
 
-write_csv(pairs_freq, "~/Dropbox/lab/emergent-coexistence/data/output/pairs_freq.csv")
 write_csv(pairs_freq_random, "~/Dropbox/lab/emergent-coexistence/data/output/pairs_freq_random.csv")
-
-
-

@@ -1,29 +1,21 @@
 #' Make pairwise network from outcome of pairwise competitions
 library(tidyverse)
-library(data.table)
 library(tidygraph)
 library(ggraph)
-source(here::here("plotting_scripts/network_functions.R"))
+source(here::here("plotting_scripts/misc.R"))
 
-# Read data ----
-communities <- read_csv(here::here("data/output/communities.csv"))
-isolates <- read_csv(here::here("data/output/isolates.csv"))
-pairs <- read_csv(here::here("data/output/pairs.csv")) %>% mutate(InteractionType = ifelse(InteractionType == "neutrality", "coexistence", InteractionType))
+communities <- read_csv("~/Dropbox/lab/emergent-coexistence/data/output/communities.csv", col_types = cols())
+isolates <- read_csv("~/Dropbox/lab/emergent-coexistence/data/output/isolates.csv", col_types = cols())
+pairs <- read_csv("~/Dropbox/lab/emergent-coexistence/data/output/pairs.csv", col_types = cols()) %>%
+    mutate(InteractionType = ifelse(InteractionType == "neutrality", "coexistence", InteractionType))
 
-# Make network, which self-contain all isolates and pairs information
-net_list <- rep(list(NA), length(communities$Community)) # tbl graph object
-names(net_list) <- communities$Community
-#names(net_tbl_list) <- communities$Community
+communities_network <- communities %>%
+    rename(comm = Community) %>%
+    rowwise() %>%
+    mutate(Isolates = filter(isolates, Community == comm) %>% list) %>%
+    mutate(Pairs = filter(pairs, Community == comm) %>% list) %>%
+    mutate(Network = make_network(Isolates, Pairs) %>% list) %>%
+    mutate(NetworkPlot = plot_competitive_network(Network) %>% list) %>%
+    rename(Community = comm)
 
-for (i in 1:length(communities$Community)) {
-    net_list[[i]] <- make_network(isolates = filter(isolates, Community == communities$Community[i]),
-                                  pairs = filter(pairs, Community == communities$Community[i]))
-}
-
-# Plot
-p_net_list <- rep(list(NA), length(net_list))
-for (i in 1:length(net_list)) p_net_list[[i]] <- plot_competitive_network(net_list[[i]], node_size = 2, edge_width = 1)
-#plot_grid(plotlist = p_net_list, labels = names(net_list))
-
-save(net_list, p_net_list, file = here::here("data/output/network_community.Rdata"))
-save(net_list, p_net_list, file = "~/Dropbox/lab/invasion-network/data/output/network_community.Rdata")
+save(communities_network, file = "~/Dropbox/lab/emergent-coexistence/data/output/communities_network.Rdata")

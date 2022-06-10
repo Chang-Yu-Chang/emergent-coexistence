@@ -1,25 +1,26 @@
 #' Read and combine data for pairwise competition
+#' 1. `pairs.csv` pairwise competiton only
+#' 2. `pairs_meta.csv` append the isolate' metabolitic trait
 library(tidyverse)
 
-communities <- read_csv(here::here("data/output/communities.csv"))
+communities <- read_csv("~/Dropbox/lab/emergent-coexistence/data/output/communities.csv", col_types = cols())
+pairs_ID <- read_csv("~/Dropbox/lab/emergent-coexistence/data/temp/pairs_ID.csv", col_types = cols())
 
-# Pairwise only data ----
-pairs_ID <- read_csv(here::here("data/temp/pairs_ID.csv"))
-
-## From 02D
-pairs_freq <- read_csv(here::here("data/output/pairs_freq.csv"))
-pairs_interaction <- read_csv(here::here("data/temp/pairs_interaction.csv"))
+## From 02D. For this script, use the CFU-CASEU mix result
+pairs_freq <- read_csv("~/Dropbox/lab/emergent-coexistence/data/output/pairs_freq.csv", col_types = cols()) %>%
+    filter(Set == "CFUandCASEU")
+pairs_interaction <- read_csv("~/Dropbox/lab/emergent-coexistence/data/output/pairs_interaction.csv", col_types = cols()) %>%
+    filter(Set == "CFUandCASEU")
 
 ## From 02E
-pairs_taxonomy <- read_csv(here::here("data/temp/pairs_taxonomy.csv"))
-pairs_16S <- read_csv(here::here("data/temp/pairs_16S.csv"))
-#pairs_tree_distance <- read_csv(here::here("data/temp/pairs_tree_distance.csv"))
+pairs_taxonomy <- read_csv("~/Dropbox/lab/emergent-coexistence/data/temp/pairs_taxonomy.csv", col_types = cols())
+pairs_16S <- read_csv("~/Dropbox/lab/emergent-coexistence/data/temp/pairs_16S.csv", col_types = cols())
 
 ## Combine data by assigning pairs information.186 pairs
 pairs <- pairs_ID %>%
     left_join(pairs_interaction, by = c("Community", "Isolate1", "Isolate2")) %>%
-    left_join(pairs_taxonomy, by = c("Community", "Isolate1", "Isolate2")) %>%
-    left_join(pairs_16S, by = c("Community", "Isolate1", "Isolate2"))
+    left_join(pairs_taxonomy, by = c("PairID", "Community", "Isolate1", "Isolate2")) %>%
+    left_join(pairs_16S, by = c("PairID", "Community", "Isolate1", "Isolate2"))
 
 
 # Flip the sign so that Isolate1 is the dominant and Isolate2 is subdominant
@@ -32,7 +33,7 @@ pairs_coexist_dominant <- pairs %>%
     filter(Isolate1InitialODFreq == 50) %>%
     select(Community, Isolate1, Isolate2, Time, Isolate1MeasuredFreq) %>%
     pivot_wider(names_from = "Time", values_from = "Isolate1MeasuredFreq") %>%
-    mutate(Isolate1Dominant = T8 > T0) %>%
+    mutate(Isolate1Dominant = Tend > Tini) %>%
     select(Community, Isolate1, Isolate2, Isolate1Dominant)
 
 pairs <- left_join(pairs, pairs_coexist_dominant) %>%
@@ -42,9 +43,11 @@ pairs <- left_join(pairs, pairs_coexist_dominant) %>%
     select(Assembly, everything())
 
 
-# Attach metabolic data
+if (FALSE) {
+
+# Append metabolic data ----
+# Run this scipt when isolate.csv is ready
 pairs_meta <- pairs
-#%>% filter(!(is.na(InteractionType) & Assembly != "self_assembly"))
 
 # Swap so that fermenter is always isolate1
 for (i in 1:nrow(pairs_meta)) {
@@ -109,7 +112,7 @@ for (i in 1:nrow(pairs_meta)) {
 
 
 # Isolates data from 01-isolates ----
-isolates_to_be_joint <- read_csv(here::here("data/output/isolates.csv")) %>%
+isolates_to_be_joint <- read_csv("~/Dropbox/lab/emergent-coexistence/data/output/isolates.csv", col_types = cols()) %>%
     select(Community, Isolate, Score, Rank, PlotRank, starts_with("X_"), starts_with("pH_"), ends_with("dCS"), ends_with("hr"), ends_with("curver"))
 
 pairs_meta <- pairs_meta %>%
@@ -151,9 +154,10 @@ pairs_meta <- pairs_meta %>%
         X_succinate_16hr_d = X_succinate_16hr1 - X_succinate_16hr2, X_succinate_28hr_d = X_succinate_28hr1 - X_succinate_28hr2, X_succinate_48hr_d = X_succinate_48hr1 - X_succinate_48hr2,
         X_lactate_16hr_d = X_lactate_16hr1 - X_lactate_16hr2, X_lactate_28hr_d = X_lactate_28hr1 - X_lactate_28hr2, X_lactate_48hr_d = X_lactate_48hr1 - X_lactate_48hr2,
     )
+write_csv(pairs_meta, "~/Dropbox/lab/emergent-coexistence/data/output/pairs_meta.csv")
+}
 
 #
-write_csv(pairs, here::here("data/output/pairs.csv"))
-write_csv(pairs_meta, file = here::here("data/output/pairs_meta.csv"))
+write_csv(pairs, "~/Dropbox/lab/emergent-coexistence/data/output/pairs.csv")
 
 

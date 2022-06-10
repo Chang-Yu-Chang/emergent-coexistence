@@ -14,10 +14,6 @@ library(tidyverse)
 library(cowplot)
 source(here::here("plotting_scripts/misc.R"))
 run_scripts <- F
-# communities <- read_csv(here::here("data/output/communities.csv"))
-# interaction_type <- c("exclusion", "coexistence", "neutrality")
-# interaction_color = c("#DB7469", "#557BAA", "#8650C4")
-# names(interaction_color) <- interaction_type
 ```
 
 
@@ -34,7 +30,7 @@ run_scripts <- F
 
 ## Read the pairwise competitive outcomes determined by colony counting on TSA
 
-The script below generates the table for manual key-in
+The script below generates the table for manual keyin
 
 ```{r}
 if (FALSE) source("script/02A-pairs_experiment-01-pairwise_manual_key_in.R")
@@ -50,7 +46,7 @@ C2    | 11.2
 D     | 1.2, 1.4, 1.6, 1.7, 4.1, 11.5
 
 
-```{r}
+``` {r}
 # Read result colony counts and dilution factor
 if (run_scripts) source("script/02A-pairs_experiment-02-colony_count.R")
 ```
@@ -82,6 +78,7 @@ pairs_ID
 ```{r}
 if (run_scripts) source("script/02A-pairs_experiment-03-pairwise_ambiguous.R")
 ```
+
 
 There are 67 pair-freqs that the competition outcome cannot be determined by TSA plate counting because of ambiguous morphology. The ambiguous pairs will be later examined by using selective media or Sanger sequencing. 
 
@@ -222,8 +219,7 @@ if (run_scripts) source("script/02B-CASEU_sanger_seq-01-pilot1.R")
 
 
 ```{r}
-CASEU_pilot1 <- read_csv("~/Dropbox/lab/emergent-coexistence/data/temp/CASEU_pilot1.csv", col_types = cols())
-CASEU_pilot1
+read_csv("~/Dropbox/lab/emergent-coexistence/data/temp/CASEU_pilot1.csv", col_types = cols())
 ```
 
 
@@ -259,6 +255,7 @@ CASEU_pilot2 <- read_csv("~/Dropbox/lab/emergent-coexistence/data/temp/CASEU_pil
 CASEU_pilot2_plating <- read_csv("~/Dropbox/lab/emergent-coexistence/data/raw/Sanger/CASEU_pilot2/CASEU_pilot2_plating.csv", col_types = cols()) %>%
   mutate(Isolate1ColonyFreq = Isolate1Colony / (Isolate1Colony + Isolate2Colony),
     Isolate2ColonyFreq = Isolate2Colony / (Isolate1Colony + Isolate2Colony))
+CASEU_pilot2
 ```
 
 
@@ -279,8 +276,7 @@ if (run_scripts) source("script/02B-CASEU_sanger_seq-03-pilot3.R")
 ```
 
 ```{r}
-CASEU_pilot3 <- read_csv("~/Dropbox/lab/emergent-coexistence/data/temp/CASEU_pilot3.csv", col_types = cols())
-CASEU_pilot3
+read_csv("~/Dropbox/lab/emergent-coexistence/data/temp/CASEU_pilot3.csv", col_types = cols())
 ```
 
 
@@ -301,8 +297,7 @@ if (run_scripts) source("script/02B-CASEU_sanger_seq-04-pilot4.R")
 
 
 ```{r}
-CASEU_pilot4 <- read_csv("~/Dropbox/lab/emergent-coexistence/data/temp/CASEU_pilot4.csv", col_types = cols())
-CASEU_pilot4
+read_csv("~/Dropbox/lab/emergent-coexistence/data/temp/CASEU_pilot4.csv", col_types = cols())
 ```
 
 
@@ -331,7 +326,7 @@ write_csv(genewiz_table, here::here("output/protocol/tab_fig/20211202_Sanger_seq
 ```
 
 ```{r}
-CASEU_sixplates <- read_csv("~/Dropbox/lab/emergent-coexistence/data/temp/CASEU_sixplates.csv", col_types = cols())
+read_csv("~/Dropbox/lab/emergent-coexistence/data/temp/CASEU_sixplates.csv", col_types = cols())
 ```
 
 
@@ -348,7 +343,7 @@ if (run_scripts) source("script/02B-random_network_CASEU-01-batch1.R")
 ```
 
 ```{r}
-CASEU_RN1 <- read_csv("~/Dropbox/lab/emergent-coexistence/data/temp/CASEU_RN1.csv", col_types = cols())
+read_csv("~/Dropbox/lab/emergent-coexistence/data/temp/CASEU_RN1.csv", col_types = cols())
 ```
 
 
@@ -365,8 +360,7 @@ if (run_scripts) source("script/02B-random_network_CASEU-02-batch2.R")
 ```
 
 ```{r}
-CASEU_RN2 <- read_csv("~/Dropbox/lab/emergent-coexistence/data/temp/CASEU_RN2.csv", col_types = cols())
-CASEU_RN2
+read_csv("~/Dropbox/lab/emergent-coexistence/data/temp/CASEU_RN2.csv", col_types = cols())
 ```
 
 
@@ -387,7 +381,7 @@ if (run_scripts) source("script/02B-random_network_CASEU-03-batch3.R")
 Use T0 OD frequencies
 
 ```{r}
-CASEU_RN3 <- read_csv("~/Dropbox/lab/emergent-coexistence/data/temp/CASEU_RN3.csv", col_types = cols())
+read_csv("~/Dropbox/lab/emergent-coexistence/data/temp/CASEU_RN3.csv", col_types = cols())
 ```
 
 
@@ -405,7 +399,7 @@ if (run_scripts) source("script/02B-random_network_CASEU-04-batch4.R")
 
 
 ```{r}
-CASEU_RN4 <- read_csv("~/Dropbox/lab/emergent-coexistence/data/temp/CASEU_RN4.csv", col_types = cols())
+read_csv("~/Dropbox/lab/emergent-coexistence/data/temp/CASEU_RN4.csv", col_types = cols())
 ```
 
 
@@ -499,8 +493,7 @@ $f^C_1 = \frac{f^o_1\epsilon_1DFv}{f^o_1\epsilon_1DFv + f^o_2\epsilon_2DFv}=\fra
 where $\epsilon$ of each isolate was pre-calculated from T8 dataset. DF and v are the same in conversion.
 
 ```{r}
-pairs_CFU_freq <- read_csv("~/Dropbox/lab/emergent-coexistence/data/temp/pairs_CFU_freq.csv", col_types = cols())
-pairs_CFU_freq
+read_csv("~/Dropbox/lab/emergent-coexistence/data/temp/pairs_CFU_freq.csv", col_types = cols())
 ```
 
 
@@ -513,8 +506,7 @@ if (run_scripts) source("script/02C-pairs_OD_CFU-03-CFU_frequency_uncertainty.R"
 Write CFU frequencies to `data/temp/pairs_CFU_freq_uncertainty.csv`
 
 ```{r}
-pairs_CFU_freq_uncertainty <- read_csv("~/Dropbox/lab/emergent-coexistence/data/temp/pairs_CFU_freq_uncertainty.csv", col_types = cols())
-pairs_CFU_freq_uncertainty
+read_csv("~/Dropbox/lab/emergent-coexistence/data/temp/pairs_CFU_freq_uncertainty.csv", col_types = cols())
 ```
 
 
@@ -548,8 +540,7 @@ The script in this section returns a data.frame `pairs_freq` that has the follow
 
 
 ```{r}
-pairs_freq <- read_csv("~/Dropbox/lab/emergent-coexistence/data/output/pairs_freq.csv", col_types = cols())
-pairs_freq
+read_csv("~/Dropbox/lab/emergent-coexistence/data/output/pairs_freq.csv", col_types = cols())
 ```
 
 
@@ -564,32 +555,23 @@ if (run_scripts) source("script/02D-determine_pairwise_interaction-02-determine_
 Table of all 27 + 4 possible combinations of fitness function and their interaction types 
 
 ```{r}
-interaction_type <- read_csv("~/Dropbox/lab/emergent-coexistence/ data/temp/interaction_type.csv", col_types = cols())
-interaction_type
+read_csv("~/Dropbox/lab/emergent-coexistence/data/output/pairs_interaction_table.csv", col_types = cols())
 ```
 
 
 Table of interaction types
 
 ```{r}
-pairs_interaction_fitness <- read_csv(here::here("data/temp/pairs_interaction_fitness.csv"))
+pairs_interaction_fitness <- read_csv("~/Dropbox/lab/emergent-coexistence/data/temp/pairs_interaction_fitness.csv", col_types = cols())
 pairs_interaction_fitness %>%
-  group_by(InteractionType) %>%
-  summarize(Count = n()) 
+  group_by(Set, InteractionType) %>%
+  summarize(Count = n(), .groups = "keep") 
 ```
-
-Interaction table
-
-```{r}
-pairs_interaction_table <- read_csv(here::here("data/output/pairs_interaction_table.csv"))
-pairs_interaction_table
-```
-
 
 ## Isolate tournament
 
 
-```{r warning = F, message = F}
+```{r}
 if (run_scripts) source("script/02D-determine_pairwise_interaction-03-isolate_tournament.R")
 ```
 
@@ -613,13 +595,12 @@ Tournament ranks of each isolate. Note that I consider neturality and bistabilit
 
 ## Isolates' RDP taxonomy
 
-```{r warning = F}
+```{r}
 if (run_scripts) source("script/02E-competition_phylogeny-01-pairs_taxonomy.R")
 ```
 
 ```{r}
-pairs_taxonomy <- read_csv(here::here("data/temp/pairs_taxonomy.csv"))
-pairs_taxonomy
+read_csv("~/Dropbox/lab/emergent-coexistence/data/temp/pairs_taxonomy.csv", col_types = cols())
 ```
 
 
@@ -627,36 +608,15 @@ pairs_taxonomy
 ## Isolates' 16S sequence difference
 
 
-```{r eval = F}
+```{r}
 if (run_scripts) source("script/02E-competition_phylogeny-02-pairs_16S.R")
 ```
 
 ```{r}
-pairs_16S <- read_csv(here::here("data/temp/pairs_16S.csv"))
-pairs_16S
+read_csv("~/Dropbox/lab/emergent-coexistence/data/temp/pairs_16S.csv", col_types = cols())
 ```
 
 
-```{r include = F}
-# Plot the isolate 16S alignments
-if (FALSE) {
-msa::msaPrettyPrint(aln, file = "isolates_alignment.pdf", output="pdf", 
-  paperHeight = 15, paperWidth = 10,
-  showNames="left", askForOverwrite=FALSE, verbose=FALSE)
-}
-```
-
-
-## Isolates' branch distances on phylogenetic tree (deprecated)
-
-```{r warning = F, message = F}
-if (run_scripts) source("script/02E-competition_phylogeny-03-pairs_tree_branch.R")
-```
-
-```{r}
-pairs_tree_distance <- read_csv(here::here("data/temp/pairs_tree_distance.csv"))
-pairs_tree_distance
-```
 
 
 # Summary
@@ -670,340 +630,38 @@ if (run_scripts) source("script/02-pairs-01-read_data.R")
 186 pairs of self-assembled communities and 112 pair from across-community and random networks
 
 ```{r}
-pairs <- read_csv(here::here("data/output/pairs.csv"))
-pairs
+read_csv("~/Dropbox/lab/emergent-coexistence/data/output/pairs.csv", col_types = cols())
 ```
 
-Pairs data.frame melted by T0/T8 and three initial frequencies. 186x3x2=1116
+Pairs with three initial frequencies and three. 186x3x2=1116
 
 ```{r}
-pairs_freq <- read_csv(here::here("data/output/pairs_freq.csv"))
-pairs_freq
+read_csv("~/Dropbox/lab/emergent-coexistence/data/output/pairs_freq.csv", col_types = cols()) %>%
+    filter(Set == "CFUandCASEU")
 ```
 
 pairs_meta contains the growth traits of isolates. Note that the order of Isolate1 and Isolate2 in some pairs are flipped such that Isolate1 is always the dominant strain and Isolate 2 is the subdomaint one. Dominant strain is the winner in exclusion pairs, and the more abundant strain (50:50 treatment) in coexistence pairs.
 
 ```{r}
-pairs_meta <- read_csv(here::here("data/output/pairs_meta.csv"))
-pairs_meta
+if (FALSE) pairs_meta <- read_csv("~/Dropbox/lab/emergent-coexistence/data/output/pairs_meta.csv", col_types = cols())
 ```
 
+Example outcome types
 
-## Plot outcomes types
-
-```{r warning = F}
+```{r}
 if (run_scripts) source("script/02-pairs-02-outcome_types.R")
-interaction_type <- c("exclusion", "bistability", "coexistence", "neutrality")
-interaction_type_finer <- c("competitive exclusion", "mutual exclusion", "stable coexistence", "frequency-dependent coexistence", "neutrality")
 ```
+
+Coarse-grained 
 
 ```{r}
-# R function for plotting frequency changes
-plot_pairs_freq <- function(pairs_list, pairs_freq_df, show_strip = TRUE) {
-  # A list of pairs with Community, Isolate1, and Isolate2
-  pairs_list %>%
-    # Joint the df `pairs_freq` that saves frequency data
-    left_join(pairs_freq_df, by = c("Community", "Isolate1", "Isolate2")) %>%
-    ungroup() %>%
-    mutate(Isolate1InitialODFreq = factor(Isolate1InitialODFreq),
-      InteractionType = ordered(InteractionType, c("exclusion", "bistability", "coexistence", "neutrality")),
-      InteractionTypeFiner = ordered(InteractionTypeFiner, c("competitive exclusion", "mutual exclusion",
-        "stable coexistence", "frequency-dependent coexistence", "neutrality"))) %>%
-    ggplot(aes(x = Time, y = Isolate1MeasuredFreq, color = Isolate1InitialODFreq, group = Isolate1InitialODFreq)) +
-    geom_point(size = 2) +
-    geom_line(size = 1) +
-    scale_y_continuous(breaks = seq(0,1,0.5)) +
-    theme_bw() +
-    theme(
-      axis.title.x = element_blank(),
-      panel.spacing = unit(5, "mm"),
-      panel.grid.minor = element_blank()
-      ) +
-      {if (show_strip == FALSE) theme(strip.background = element_blank(), strip.text = element_blank())} +
-    guides(color = F) +
-    labs(x = "transfer", y = "isolate relative abundance")
-}
+read_csv("~/Dropbox/lab/emergent-coexistence/data/output/pairs_example_outcomes.csv", col_types = cols())
 ```
-
+Fine-grained 
 
 ```{r}
-# R function for plotting bars
-plot_bar <- function(pairs, bar_by = "InteractionType", fill_by = "InteractionType", show_fill_legend = F) {
-  # Modify bars
-  pairs$InteractionTypeFiner[pairs$InteractionTypeFiner == "frequency-dependent coexistence"] <- "frequency-dependent\ncoexistence"
-
-  # Color palettes
-  interaction_type <- c("exclusion", "coexistence", "neutrality", "mutual exclusion", "frequency-dependent\ncoexistence")
-  myColor = c("#DB7469", "#557BAA", "#8650C4", "red", "blue")
-  names(myColor) <- interaction_type
-
-  # Plot
-  pairs %>%
-    ungroup() %>%
-    mutate(
-      InteractionType = ordered(InteractionType, c("exclusion", "coexistence", "neutrality")),
-      InteractionTypeFiner = ordered(InteractionTypeFiner, c("competitive exclusion", "mutual exclusion",
-        "stable coexistence", "frequency-dependent\ncoexistence", "neutrality"))) %>%
-    group_by_at(.vars = c(bar_by, fill_by)) %>%
-    summarize(Count = n(), Fraction = n()/nrow(.)) %>%
-    ggplot() +
-    geom_bar(aes_string(x = bar_by, y = "Fraction", fill = fill_by), stat = "identity", color = 1, position = "dodge") +
-    scale_y_continuous(limits = c(0, 1)) +
-    scale_fill_manual(values = myColor) +
-    facet_grid(as.formula(paste0("~", bar_by)), scale = "free_x") +
-    { if (show_fill_legend == FALSE) guides(fill = "none") } +
-    theme_cowplot() +
-    theme(axis.title.x = element_blank(),
-      panel.spacing = unit(0, "mm"),
-      panel.grid.major.x = element_blank(),
-      legend.position = "top",
-      legend.title = element_blank(),
-      strip.text = element_blank())
-}
-
+read_csv("~/Dropbox/lab/emergent-coexistence/data/output/pairs_example_outcomes_finer.csv", col_types = cols())
 ```
-
-
-Four example outcomes: coexistence and exclusion
-
-```{r}
-pairs_example_outcomes <- read_csv(here::here("data/output/pairs_example_outcomes.csv"))
-pairs_freq <- read_csv(here::here("data/output/pairs_freq.csv"))
-# Plot pairs example dynamics
-p_pairs_example_outcomes <- pairs_example_outcomes %>%
-    filter(InteractionType != "neutrality") %>%
-    left_join(pairs_freq, by = c("Community", "Isolate1", "Isolate2")) %>%
-    mutate(Isolate1InitialODFreq = factor(Isolate1InitialODFreq),
-           InteractionType = factor(InteractionType, interaction_type)) %>%
-    ggplot(aes(x = Time, y = Isolate1MeasuredFreq, color = Isolate1InitialODFreq, group = Isolate1InitialODFreq)) +
-    geom_point(size = 2) +
-    geom_line(size = 1) +
-    scale_y_continuous(breaks = seq(0,1,0.5)) +
-    facet_grid(.~InteractionType) +
-    theme_classic() +
-    theme(axis.title.x = element_blank(), panel.spacing = unit(0, "mm"), strip.text.x = element_blank()) +
-    guides(color = "none") +
-    labs(x = "transfer", y = "isolate relative abundance")
-p_pairs_example_outcomes
-
-```
-The frequencies of coexistence vs. exclusion
-
-
-```{r fig.width = 3, fig.height = 5}
-pairs <- read_csv(here::here("data/output/pairs.csv"))
-
-p_pairs_interaction <- pairs %>%
-    mutate(InteractionType = ifelse(InteractionType == "neutrality", "coexistence", InteractionType)) %>%
-    mutate(InteractionType = factor(InteractionType, interaction_type)) %>%
-    ggplot() +
-    geom_bar(aes(x = InteractionType, fill = InteractionType), color = 1) +
-    geom_text(x = Inf, y = Inf, label = paste0("n = ", nrow(pairs), " pairs"), vjust = 1, hjust = 1) +
-    scale_fill_manual(values = interaction_color) +
-    facet_grid(Assembly~., scales = "free_y") +
-    theme_classic() +
-    theme(axis.title.x = element_blank(), legend.position = "none") +
-    labs(x = "")
-p_pairs_interaction
-```
-
-```{r fig.width = 4, fig.height = 3}
-p <- plot_grid(p_pairs_interaction, p_pairs_example_outcomes, ncol = 1, align = "v", rel_heights = c(1, 0.5))
-p
-ggsave(here::here("output/report/figure/02-pairs-pairs_outcomes.pdf"), p, width = 5, height = 6)
-```
-
-
-Four example outcomes: bistability, coexistence, exclusion, and neutrality 
-
-```{r warning = F}
-pairs_example_outcomes_finer <- read_csv(here::here("data/output/pairs_example_outcomes_finer.csv"))
-# Plot pairs example dynamics
-p_pairs_example_outcomes_finer <- pairs_example_outcomes_finer %>%
-  plot_pairs_freq(pairs_freq_df = pairs_freq, show_strip = F) +
-  facet_grid(.~InteractionTypeFiner)
-
-# The frequencies of five finer outcomes
-p_pairs_interaction_finer <- plot_bar(pairs, bar_by = "InteractionTypeFiner", fill_by = "InteractionType", show_fill_legend = T)
-
-```
-
-```{r fig.width = 5, fig.height = 3}
-# Combine plot
-#theme_set(theme_cowplot(font_size=12))
-p <- plot_grid(p_pairs_interaction_finer, p_pairs_example_outcomes_finer, ncol = 1, align = "v", rel_heights = c(1, 0.4))
-p
-ggsave(here::here("output/report/figure/02-pairs-pairs_outcomes.pdf"), p, width = 8, height = 6)
-```
-
-
-## Taxonomy vs. pairwise competition
-
-### RDP taxonomy
-
-Fermenter vs. Interaction type
-
-```{r fig.width=3, fig.height=2}
-pairs <- read_csv(here::here("data/output/pairs.csv"))
-pairs_meta <- read_csv(here::here("data/output/pairs_meta.csv"))
-pairs_meta %>%
-    filter(Assembly == "self_assembly") %>%
-    filter(!is.na(PairFermenter)) %>%
-    ggplot() +
-    geom_bar(aes(x = PairFermenter, fill = InteractionType), color = 1, position = "fill") +
-    scale_fill_manual(values = interaction_color) +
-    theme_classic() +
-    theme(legend.position = "top") +
-    labs(fill = "")
-```
-
-Family vs. Interaction type
-
-```{r fig.width=3, fig.height=2}
-pairs <- read_csv(here::here("data/output/pairs.csv"))
-pairs_meta <- read_csv(here::here("data/output/pairs_meta.csv"))
-pairs_meta %>%
-    filter(Assembly == "self_assembly") %>%
-    filter(!is.na(PairFamily)) %>%
-    ggplot() +
-    geom_bar(aes(x = PairFamily, fill = InteractionType), color = 1, position = "fill") +
-    scale_fill_manual(values = interaction_color) +
-    theme_classic() +
-    theme(legend.position = "top") +
-    labs(fill = "")
-```
-
-### Pairwise 16S differences
-
-Pairwise 16S differences
-
-```{r}
-pairs %>%
-  filter(!is.na(SeqDifference)) %>% 
-  ggplot(aes(x = SeqDifference, fill = PairFermenter)) +
-  geom_histogram(col = "black", binwidth = 5) +
-  theme_classic() +
-  theme(legend.position = "top") +
-  labs(x = "pairwise 16S base pair differences", fill = "") 
-```
-
-
-# Relative abundance within pairs (unfinished)
-
-```{r}
-if (run_scripts) source("script/02-pairs-03-pairs_relative_abundance.R")
-```
-
-
-Relative abundance of fermenter vs. non-fermenter pairs
-
-```{r}
-load(here::here("data/temp/pairs_hist_plots.Rdata"))
-pairs_freq_taxonomy_fermenter %>%
-  filter(Time == "T8") %>%
-  filter(!Isolate1MeasuredFreq %in% c(0,1)) %>%
-  ggplot() +
-  geom_histogram(aes(x = Isolate1MeasuredFreq), col = "black", fill = "white") +
-  facet_grid(PairFermenter~., scale = "free") +
-  theme_bw() +
-  labs("frequencies of isolate 1 at T8")
-```
-
-Relative abundance of Enterobacteriaceae and Pseudomonadaceae pairs
-
-```{r}
-pairs_freq_taxonomy_family %>%
-  filter(Time == "T8") %>%
-  filter(!Isolate1MeasuredFreq %in% c(0,1)) %>%
-  ggplot() +
-  geom_histogram(aes(x = Isolate1MeasuredFreq), col = "black", fill = "white") +
-  facet_grid(PairFamily~., scale = "free") +
-  theme_bw() +
-  labs("frequencies of isolate 1 at T8")
-
-```
-
-
-
-# Fraction of pairwise coexistence within community  
-
-```{r}
-communities_pair_coext <- pairs %>%
-  mutate(Community = ordered(Community, levels = communities$Community)) %>%
-  filter(InteractionType != "") %>%
-  filter(InteractionType %in% c("exclusion", "coexistence")) %>%
-  group_by(Community, InteractionType) %>%
-  summarize(Count = n()) %>%
-  spread(InteractionType, Count) %>%
-  mutate(FracCoext = coexistence / (coexistence + exclusion)) %>%
-  ungroup() %>%
-  mutate(CommunitySize = communities$CommunitySize)
-
-communities_pair_coext$FracCoext[is.na(communities_pair_coext$FracCoext)] <- 0
-```
-
-Fraction of coexistence in 13 communities
-
-```{r}
-p_communities_pair_coext <- 
-communities_pair_coext %>%
-  ggplot() +
-  geom_bar(aes(x = Community, y = FracCoext), stat = "identity", col = 1) +
-  scale_y_continuous(limits = c(0, 1)) +
-  theme_bw() +
-  theme(axis.text.x = element_text(angle = 90)) +
-  labs(x = "community", y = "fraction of coexistence")
-
-p_communities_pair_coext
-ggsave("figure/02-communities_fraction_coexistence.png", p_communities_pair_coext, width = 5, height = 3)
-```
-
-# Community hierarchy in communities
-
-
-From Higgins2017, the competitive score $s_i$ of each strain $i$ was defined as its mean fraction $f_{ij}$ after co-culture with each of the $n-1$ competitor strains:
-
-$$s_i=(\sum_{i\neq j}f_{ij})/(n-1)$$
-
-The hierarchy score $h$ for an n-member netowkr is calculated as:
-
-$$h = \sum_{s_i>s_j}f_{ij}$$
-
-```{r}
-communities_hierarchy <- read_csv(here::here("data/temp/communities_hierarchy.csv"))
-
-p_communities_hierarchy <- communities_hierarchy %>%
-  ggplot() +
-  geom_bar(aes(x = Community, y = HierarchyScore), stat = "identity", col = 1) +
-  scale_y_continuous(limits = c(0, 1)) +
-  theme_bw() +
-  theme(axis.text.x = element_text(angle = 90)) +
-  labs(x = "community", y = "hierarchy score")
-
-p_communities_hierarchy
-pdf(here::here("output/figure/communities_hierarchy.pdf"), width = 5, height = 3); p_communities_hierarchy; invisible(dev.off())
-
-    
-```
-
-
-
-
-# Growth traits vs coexistence (Deprecated)
-
-```{r}
-if (FALSE) {
-source("script/02-pairs-05-growth_rates.R")
-pairs_growth_rate
-p_pairs_growth_rate_hist
-p_pairs_growth_rate_density
-
-pdf(here::here("output/figure/pairs_growth_rates_hist.pdf"), width = 10, height = 5); for (i in 1:11) print(p_pairs_growth_rate_hist_list[[i]]); invisible(dev.off())
-
-pdf(here::here("output/figure/pairs_growth_rates_density.pdf"), width = 10, height = 5); for (i in 1:11) print(p_pairs_growth_rate_density_list[[i]]); invisible(dev.off())
-}
-```
-
 
 
 

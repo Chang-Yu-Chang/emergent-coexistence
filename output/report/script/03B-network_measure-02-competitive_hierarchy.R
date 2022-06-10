@@ -2,13 +2,15 @@
 #' Three measures
 #' 1. Higgins et al 2017, based on relative abundances in pairs
 #' 2. The fraction of pairs that follow the ranks
-#' 3.
+
 library(tidyverse)
-source(here::here("plotting_scripts/network_functions.R"))
-isolates <- read_csv(here::here("data/output/isolates.csv")) %>% filter(Assembly == "self_assembly")
-pairs <- read_csv(here::here("data/output/pairs.csv"))
-pairs_freq <- read_csv(here::here("data/output/pairs_freq.csv"))
-communities <- read_csv(here::here("data/output/communities.csv")) %>% filter(str_detect(Community, "C\\d")) %>% mutate(Community = factor(Community))
+source(here::here("plotting_scripts/misc.R"))
+isolates <- read_csv("~/Dropbox/lab/emergent-coexistence/data/output/isolates.csv", col_types = cols())
+pairs <- read_csv("~/Dropbox/lab/emergent-coexistence/data/output/pairs.csv", col_types = cols())
+pairs_freq <- read_csv("~/Dropbox/lab/emergent-coexistence/data/output/pairs_freq.csv", col_types = cols())
+communities <- read_csv("~/Dropbox/lab/emergent-coexistence/data/output/communities.csv", col_types = cols())
+load("~/Dropbox/lab/emergent-coexistence/data/output/communities_network.RData")
+load("~/Dropbox/lab/emergent-coexistence/data/output/communities_network_randomized.RData")
 
 b = 1000
 
@@ -21,7 +23,7 @@ compute_comp_score1 <- function(pairs_comm, target_isolate) {
         filter(Isolate1 == target_isolate | Isolate2 == target_isolate) %>%
         mutate(Freq = ifelse(Isolate1 == target_isolate, Isolate1MeasuredFreq, 1-Isolate1MeasuredFreq)) %>%
         pull(Freq) %>%
-        mean()
+        mean(na.rm = T)
 }
 
 ## Compute hierarchy score for a community
@@ -30,6 +32,7 @@ compute_hierarchy1 <- function(isolates_mock, pairs_mock) {
         rowwise() %>%
         # Subset the pairs for each community
         mutate(CompetitiveScore = compute_comp_score1(pairs_mock, Isolate)) %>%
+        select(Community, Isolate, CompetitiveScore) %>%
         arrange(Community, desc(CompetitiveScore)) %>%
         # Ranking by competitive score
         pull(Isolate)
@@ -48,6 +51,17 @@ compute_hierarchy1 <- function(isolates_mock, pairs_mock) {
         return()
 
 }
+## Data: isolate and pairs
+communities_hierarchy_obv1 <- communities %>%
+    select(comm = Community) %>%
+    rowwise() %>%
+    mutate(isolates_comm = isolates %>% filter(Community == comm) %>% list()) %>%
+    mutate(pairs_comm = pairs_freq %>% filter(Isolate1InitialODFreq == 50, Time == "Tend", Set == "CFUandCASEU") %>% filter(Community == comm) %>% list()) %>%
+    mutate(HierarchyScore = compute_hierarchy1(isolates_comm, pairs_comm)) %>%
+    select(-isolates_comm, -pairs_comm) %>%
+    select(Community = comm, HierarchyScore)
+
+if (FALSE) {
 
 ## Randomized pairs with shuffled relative abundances within a community
 randomize_pairs1 <- function(x) {
@@ -67,12 +81,13 @@ tt <- proc.time()
 for (i in 1:length(communities_randomized_list)) {
     temp_tt <- proc.time()
     pairs_temp <- pairs_freq %>%
-        filter(Isolate1InitialODFreq == 50, Time == "T8") %>%
+        filter(Set == "CFUandCASEU") %>%
+        filter(Isolate1InitialODFreq == 50, Time == "Tend") %>%
         filter(Community == communities$Community[i]) %>%
         select(Community, Isolate1, Isolate2, Isolate1MeasuredFreq)
 
     pairs_temp <- randomize_pairs1(pairs_temp)
-    isolates_temp <- tibble(Community = unique(pairs_temp$Community), Isolate = sort(unique(c(pairs_temp$Isolate1, pairs_temp$Isolate2))))
+    isolates_temp <- communities_network_randomized$Isolates[i][[1]] %>% select(Community, Isolate)
 
     communities_randomized_list[[i]] <- tibble(Community = communities$Community[i], Replicate = 1:b) %>%
         mutate(pairs_comm = list(pairs_temp), isolates_comm = list(isolates_temp)) %>%
@@ -87,16 +102,6 @@ communities_hierarchy_randomized1 <- bind_rows(communities_randomized_list) %>%
     select(Community, Replicate, HierarchyScore) %>%
     mutate(Community = factor(Community))
 
-## Data: isolate and pairs
-communities_hierarchy_obv <- communities %>%
-    select(comm = Community, everything()) %>%
-    rowwise() %>%
-    mutate(isolates_comm = isolates %>% filter(Community == comm) %>% list()) %>%
-    mutate(pairs_comm = pairs_freq %>% filter(Isolate1InitialODFreq == 50, Time == "T8") %>% filter(Community == comm) %>% list()) %>%
-    mutate(HierarchyScore = compute_hierarchy1(isolates_comm, pairs_comm)) %>%
-    select(-isolates_comm, -pairs_comm) %>%
-    select(Community = comm, HierarchyScore)
-
 ## Compute p value
 communities_hierarchy_pvalue <- communities_hierarchy_randomized1 %>%
     group_by(Community) %>%
@@ -109,9 +114,7 @@ communities_hierarchy_pvalue <- communities_hierarchy_randomized1 %>%
     slice(1) %>%
     mutate(Significance = Percentile < 0.05) %>%
     select(Community, Percentile, Significance)
-
-communities_hierarchy1 <- communities_hierarchy_obv %>%
-    left_join(communities_hierarchy_pvalue)
+}
 
 
 # 2. Violation of ranks ----
@@ -147,17 +150,25 @@ randomize_pairs2 <- function(x) {
     return(x)
 }
 
+## Data: isolate and pairs
+communities_hierarchy_obv2 <- communities %>%
+    select(comm = Community) %>%
+    rowwise() %>%
+    mutate(pairs_comm = pairs %>% filter(Community == comm) %>% list()) %>%
+    mutate(HierarchyScore = compute_hierarchy2(pairs_comm)) %>%
+    select(-pairs_comm) %>%
+    select(Community = comm, HierarchyScore)
+
+if (FALSE) {
 # Randomized networks
 communities_randomized_list <- rep(list(NA), nrow(communities))
 tt <- proc.time()
 for (i in 1:length(communities_randomized_list)) {
     temp_tt <- proc.time()
     pairs_temp <- pairs %>%
-        filter(Community == communities$Community[i])
-
-    pairs_temp <- randomize_pairs2(pairs_temp)
-    isolates_temp <- tibble(Community = unique(pairs_temp$Community), Isolate = sort(unique(c(pairs_temp$Isolate1, pairs_temp$Isolate2))))
-
+        filter(Community == communities$Community[i]) %>%
+        randomize_pairs2()
+    isolates_temp <- communities_network_randomized$Isolates[i][[1]] %>% select(Community, Isolate)
     communities_randomized_list[[i]] <- tibble(Community = communities$Community[i], Replicate = 1:b) %>%
         mutate(pairs_comm = list(pairs_temp)) %>%
         mutate(pairs_randomized = map(pairs_comm, randomize_pairs2)) %>%
@@ -170,15 +181,6 @@ for (i in 1:length(communities_randomized_list)) {
 communities_hierarchy_randomized2 <- bind_rows(communities_randomized_list) %>%
     select(Community, Replicate, HierarchyScore) %>%
     mutate(Community = factor(Community))
-
-## Data: isolate and pairs
-communities_hierarchy_obv <- communities %>%
-    select(comm = Community, everything()) %>%
-    rowwise() %>%
-    mutate(pairs_comm = pairs %>% filter(Community == comm) %>% list()) %>%
-    mutate(HierarchyScore = compute_hierarchy2(pairs_comm)) %>%
-    select(-pairs_comm) %>%
-    select(Community = comm, HierarchyScore)
 
 ## Compute p value
 communities_hierarchy_pvalue <- communities_hierarchy_randomized2 %>%
@@ -195,22 +197,25 @@ communities_hierarchy_pvalue <- communities_hierarchy_randomized2 %>%
 communities_hierarchy2 <- communities_hierarchy_obv %>%
     left_join(communities_hierarchy_pvalue)
 
-# 3. Shuffle exclusions
+}
 
 
 
-# Joint date
-communities_hierarchy <- communities_hierarchy1 %>%
+
+# Joint data
+communities_hierarchy <- communities_hierarchy_obv1 %>%
     rename_with(~ paste0(., "1"), !contains("Community")) %>%
-    left_join(rename_with(communities_hierarchy2, ~ paste0(., "2"), !contains("Community")))
-
+    left_join(rename_with(communities_hierarchy_obv2, ~ paste0(., "2"), !contains("Community")))
+if (FALSE) {
 communities_hierarchy_randomized <- communities_hierarchy_randomized1 %>%
     rename_with(~ paste0(., "1"), !contains("Community") & !contains("Replicate")) %>%
     left_join(rename_with(communities_hierarchy_randomized2, ~ paste0(., "2"), !contains("Community") & !contains("Replicate")))
 
-#
-write_csv(communities_hierarchy, here::here("data/output/communities_hierarchy.csv"))
-write_csv(communities_hierarchy_randomized, here::here("data/output/communities_hierarchy_randomized.csv"))
+}
+
+
+write_csv(communities_hierarchy, "~/Dropbox/lab/emergent-coexistence/data/output/communities_hierarchy.csv")
+#write_csv(communities_hierarchy_randomized, "~/Dropbox/lab/emergent-coexistence/data/output/communities_hierarchy_randomized.csv")
 
 
 

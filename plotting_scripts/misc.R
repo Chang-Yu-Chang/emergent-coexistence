@@ -77,6 +77,7 @@ draw_plate_from_df <- function(plate, well_size = 6, text_size = 3) {
         filter(!str_detect(TextLabel, "blank")) %>%
         filter(!str_detect(FillLabel, "blank"))
 
+    empty_well <- tibble(Row = rep(1:8, each = 12), Col = rep(1:12, 8))
     # Plot segments
     g_empty_well <- geom_point(data = empty_well, aes(x = Col, y = Row),
                                shape = 1, size = well_size, color = "black", fill = NA)

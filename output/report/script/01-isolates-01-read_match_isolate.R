@@ -19,14 +19,14 @@ isolates_growth_traits <- read_csv("~/Dropbox/lab/emergent-coexistence/data/temp
 
 ## From 02D
 #' Note that `isolates_tournament` is from 02D
-#isolates_tournament <- read_csv("~/Dropbox/lab/emergent-coexistence/data/temp/isolates_tournament.csv", col_types = cols())
+isolates_tournament <- read_csv("~/Dropbox/lab/emergent-coexistence/data/temp/isolates_tournament.csv", col_types = cols())
 
 # Match isolates' information of 68 isolates
 isolates <- isolates_ID_match %>%
     select(Assembly, ExpID, ID, Community, Isolate) %>%
     left_join(isolates_RDP, by = c("ExpID")) %>%
     left_join(isolates_epsilon, by = c("Community", "Isolate")) %>%
-    #left_join(isolates_tournament, by = c("Community", "Isolate")) %>%
+    left_join(isolates_tournament, by = c("Community", "Isolate")) %>%
     select(-OD620) %>%
     left_join(isolates_growth_traits, by = c("ID", "Community", "Isolate")) %>%
     mutate(Community = ordered(Community, levels = communities$Community)) %>%

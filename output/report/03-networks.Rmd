@@ -1,5 +1,5 @@
 ---
-title: "Analysis on the empirical invasion networks"
+title: "Analysis on the empirical networks"
 author: "Chang-Yu Chang"
 date: "`r Sys.Date()`"
 output:
@@ -10,16 +10,13 @@ output:
 
 ```{r setup, include = F}
 knitr::opts_chunk$set(cache = FALSE, echo = FALSE)
-
 library(tidyverse)
-library(data.table)
 library(cowplot)
 library(igraph)
 library(tidygraph)
 library(ggraph)
-source(here::here("plotting_scripts/network_functions.R"))
+source(here::here("plotting_scripts/misc.R"))
 run_scripts <- F
-communities <- read_csv(here::here("data/output/communities.csv"))
 ```
 
 # Introduction
@@ -41,29 +38,44 @@ if (run_scripts) source("script/03A-make_network-01-make_pairwise_network.R")
 ```
 
 
-```{r fig.width=10, fig.height=8}
-load(here::here("data/output/network_community.Rdata"))
-p_net_list <- lapply(net_list, plot_competitive_network) %>% suppressWarnings()
-plot_grid(plotlist = p_net_list, ncol = 4)
+Networks in matrix form
+
+
+```{r fig.width=10, fig.height=1}
+p_list <- lapply(communities_network$Network, plot_adjacent_matrix)
+plot_grid(plotlist = p_list, labels = 1:13, nrow = 1, scale = .9)
 ```
+
+
+Networks in graph
+
+```{r fig.width=10, fig.height=1, warning=F}
+p_list <- lapply(communities_network$Network, function(x) plot_competitive_network(x, node_size = 0))
+plot_grid(plotlist = p_list, labels = 1:13, nrow = 1, hjust = 1)
+```
+
 
 
 ## Randomize networks
 
 ```{r}
+# It takes ~850 seconds = 15 mins to randomize 1000 times
 if (run_scripts) source("script/03A-make_network-03-randomize_network.R")
 ```
 
-For record, it took 2603 seconds ~= 40 mins to generate 10000 randomized networks for all 13 communities. 
+C11R2
+Left: observation
+Right: one randomized network
 
-It took ~50 seconds to randomize 1000 times for each of the communities. So total of 641 seconds needed.
-
-The randomized networks are saved in `data/output/network_randomized.Rdata` which contains a two-layer R list `net_randomized_list` in which the first layer has the 13 communities and the second layer has 1000 randomized networks.
-
-Example of randomized network matrix
-```{r fig.width = 3, fig.height = 3}
-load(here::here("data/output/network_randomized.Rdata"))
-net_randomized_list$C11R2[[1]] %>% plot_adjacent_matrix()
+```{r fig.width = 4, fig.height = 2}
+load("~/Dropbox/lab/emergent-coexistence/data/output/communities_network_randomized.Rdata")
+p1 <- communities_network_randomized %>% 
+    filter(Community == "C11R2") %>% 
+    pull(Network) %>% `[[`(1) %>% 
+    plot_adjacent_matrix(show.legend = T) + 
+    theme(legend.title = element_blank())
+p2 <- communities_network_randomized$NetworkRandomized$C11R2[[1]] %>% plot_adjacent_matrix()
+plot_grid(p1, p2, nrow = 1, axis = "tb", align = "h")
 ```
 
 
@@ -71,26 +83,23 @@ net_randomized_list$C11R2[[1]] %>% plot_adjacent_matrix()
 
 ## Detect motifs in networks
 
-```{r eval = F}
-# This may take ~5 minutes for 10000 bootstrapping
+```{r}
 if (run_scripts) source("script/03B-network_measure-01-detect_motif.R")
 ```
 
-- `networks_motif`: data.frame
+- `communities_motif`: data.frame
 - `networks_motif_randomized`: data.frame for all randomized networks motif counts
 
 Empirical network motifs. 13 communities x 7 motifs = 91 rows
 
 ```{r}
-networks_motif <- read_csv(here::here("data/output/networks_motif.csv"))
-networks_motif
+read_csv("~/Dropbox/lab/emergent-coexistence/data/output/communities_motif.csv", col_types = cols())
 ```
 
 Shuffled network motifs. 13 communities x 7 motifs x 1000 bootstraps = 91000 rows
 
 ```{r}
-networks_motif_randomized <- read_csv(here::here("data/output/networks_motif_randomized.csv"))
-networks_motif_randomized
+read_csv("~/Dropbox/lab/emergent-coexistence/data/output/communities_motif_randomized.csv", col_types = cols())
 ```
 
 ## Competitive hierarchy
@@ -104,52 +113,65 @@ See Higgins2017 for the hierarchy score calculation. Briefly, the hierarchy scor
 The hierarchy score of each communities is compared to a set of 1000 randomized networks which keeps the same relative abundances of each pairs but shuffled. 
 
 
+From Higgins2017, the competitive score $s_i$ of each strain $i$ was defined as its mean fraction $f_{ij}$ after co-culture with each of the $n-1$ competitor strains:
+
+$$s_i=(\sum_{i\neq j}f_{ij})/(n-1)$$
+
+The hierarchy score $h$ for an n-member netowkr is calculated as:
+
+$$h = \sum_{s_i>s_j}f_{ij}$$
+
+```{r}
+read_csv("~/Dropbox/lab/emergent-coexistence/data/output/communities_hierarchy.csv", col_types = cols())
+```
+
+
+
+
 ## Diagonal analysis
 
 ```{r}
-# It takes 26 minutes to run this script for 10000 bootstraps
+# It takes 1 minutes to run this script for 1000 bootstraps
 if (run_scripts) source("script/03B-network_measure-03-distance_to_diagonal.R")
 ```
 
-For record, it took 1655 seconds ~= 26 minutes to compute the diagonal measures for 13 communities X 10000 randomization, merge them into one single data frame.
+For record, it took 671 seconds ~= 11 minutes to compute the diagonal measures for 13 communities X 1000 randomization, merge them into one single data frame.
 
-`data/output/networks_diag`
+`data/output/communities_diag`
 
-`data/output/networks_diag_randomized`
+`data/output/communities_diag_randomized`
 
-For a network matrix $m_{ij}$, the fraction of coexistence as a fucntion of distance to diagonal is calculated as the
+For a network matrix $m_{ij}$, the fraction of coexistence as a function of distance to diagonal is calculated as the
 
 $$\frac{}{\lvert i-j \lvert}$$
  
-`networks_diag_randomized` has four columns
+`communities_diag_randomized` has four columns
 
 `Randomization`: the number of randomization 
 
 ```{r}
-networks_diag <- read_csv(here::here("data/output/networks_diag.csv"))
-networks_diag_randomized
+read_csv("~/Dropbox/lab/emergent-coexistence/data/output/communities_diag.csv", col_types = cols())
 ```
 
 ```{r}
-networks_diag_randomized <- read_csv(here::here("data/output/networks_diag_randomized.csv"))
-networks_diag_randomized
+read_csv("~/Dropbox/lab/emergent-coexistence/data/output/communities_diag_randomized.csv", col_types = cols())
 ```
+
 
 ## Node degree in coexistence-only network
 
 ```{r}
+# It takes 3 minutes to finish it
 if (run_scripts) source("script/03B-network_measure-04-node_degree.R")
 ```
 
 
 ```{r}
-networks_degree <- read_csv(here::here("data/output/networks_degree.csv"))
-networks_degree
+read_csv("~/Dropbox/lab/emergent-coexistence/data/output/communities_degree.csv", col_types = cols())
 ```
 
 ```{r}
-networks_degree_randomized <- read_csv(here::here("data/output/networks_degree_randomized.csv"))
-networks_degree_randomized
+read_csv("~/Dropbox/lab/emergent-coexistence/data/output/communities_degree_randomized.csv", col_types = cols())
 ```
 
 
@@ -163,15 +185,12 @@ if (run_scripts) source("script/03B-network_measure-05-component_count.R")
 
 
 ```{r}
-networks_component <- read_csv(here::here("data/output/networks_component.csv"))
-networks_component
+read_csv("~/Dropbox/lab/emergent-coexistence/data/output/networks_component.csv", col_types = cols())
 ```
 
 
 ```{r}
-networks_component_randomized <- read_csv(here::here("data/output/networks_component_randomized.csv"))
-networks_component_randomized
-
+read_csv("~/Dropbox/lab/emergent-coexistence/data/output/networks_component_randomized.csv", col_types = cols())
 ```
 
 
@@ -181,78 +200,24 @@ networks_component_randomized
 
 - `isolates`: 68 isolates
 - `pairs`: 186 pairs
-- `communities`: metadata of 13 communities
-- `network_community.Rdata` saves one R lists. `net_list`  has 13 `tbl_graph` objects. that describes the competitive networks of my communities, where `p_net_list` has 13 pictures.
-
-```{r echo = T}
-isolates <- read_csv(here::here("data/output/isolates.csv"))
-pairs <- read_csv(here::here("data/output/pairs.csv"))
-communities <- read_csv(here::here("data/output/communities.csv"))
-load(here::here("data/output/network_community.Rdata"))
-```
-
-
-## Convert the graph file into txt 
-
-So that the graph is readable in python
+- `communities_network` 13 communities with network graph as one of the columns
 
 ```{r}
-load(here::here("data/output/network_community.Rdata"))
-load(here::here("data/output/motif_list.Rdata"))
-
-# Only use those that are 
-library(igraph)
-for (i in 1:length(net_list)) {
-    write_graph(net_list[[i]], here::here(paste0("data/temp/networks/", names(net_list)[i], ".txt")))
-}
-for (i in 1:length(motif_list)) {
-    write_graph(motif_list[[i]], here::here(paste0("data/temp/networks/motif", i, ".txt")))
-}
-
-
-write_graph(net_list[[i]], here::here(paste0("data/temp/networks/", names(net_list)[i], ".txt")))
-write_graph(motif_list[[i]], here::here(paste0("data/temp/networks/", names(net_list)[i], ".txt")))
-
+isolates <- read_csv("~/Dropbox/lab/emergent-coexistence/data/output/isolates.csv", col_types = cols())
+pairs <- read_csv("~/Dropbox/lab/emergent-coexistence/data/output/pairs.csv", col_types = cols())
+load("~/Dropbox/lab/emergent-coexistence/data/output/communities_network.Rdata")
 ```
-
-
-
-## Plot network in matrix
-
-Upper half matrices
-
-```{r fig.width=5, fig.height=8}
-p_net_matrix_list <- lapply(net_list, function(x) plot_adjacent_matrix(x)) %>% setNames(communities$Community)
-p_net_matrix_list <- p_net_matrix_list[order(communities$CommunitySize, decreasing = T)]
-plot_grid(plotlist = p_net_matrix_list, labels = LETTERS[2:14], ncol = 3, hjust = 1)
-```
-
-## Plot network in graph
-
-There are some functions to play with 
-```{r, fig.width=5, fig.height=8}
-p_net_list <- p_net_list[order(communities$CommunitySize,decreasing = T)]
-plot_grid(plotlist = p_net_list, labels = LETTERS[2:14], ncol = 3, hjust = -1)
-```
-
-## Combine matrix and network plot
 
 ```{r}
-p_list <- rep(list(NA), length(net_list))
-names(p_list) <- communities$Community
-
-for (i in 1:length(net_list)) {
-  p_list[[i]] <- ggdraw(p_net_matrix_list[[i]]) +
-    draw_plot(plot = p_net_list[[i]], x = 0, y = 0, width = 0.45, height = 0.5)
-}
+isolates
 ```
 
-
-```{r, fig.width=10, fig.height=16}
-p <- plot_grid(plotlist = p_list, ncol = 3, hjust = -1, vjust = 1)
-ggsave("figure/03-networks.png", width = 20, height = 32)
-p
+```{r}
+pairs
 ```
 
+```{r}
+communities_network
+```
 
 
