@@ -40,7 +40,10 @@ isolates_abundance <- bind_rows(sequences_abundance_list) %>%
     select(Community, ExpID, RelativeAbundance, CommunityESVID) %>%
     # Match it to isolate
     right_join(isolates_ID_match, by = c("Community", "ExpID")) %>%
-    select(Assembly, Community, Isolate, ExpID, RelativeAbundance)
+    select(Assembly, Community, Isolate, ExpID, RelativeAbundance) %>%
+    group_by(Community) %>%
+    mutate(RankRelativeAbundance = rank(-RelativeAbundance))
+
 
 write_csv(isolates_abundance, "~/Dropbox/lab/emergent-coexistence/data/temp/isolates_abundance.csv")
 

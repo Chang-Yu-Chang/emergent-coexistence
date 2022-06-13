@@ -1,6 +1,6 @@
 #' Read and combine data for pairwise competition
 #' 1. `pairs.csv` pairwise competiton only
-#' 2. `pairs_meta.csv` append the isolate' metabolitic trait
+#' 2. `pairs_meta.csv` append the isolate' metabolic trait
 library(tidyverse)
 
 communities <- read_csv("~/Dropbox/lab/emergent-coexistence/data/output/communities.csv", col_types = cols())

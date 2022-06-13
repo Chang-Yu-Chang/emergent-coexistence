@@ -40,14 +40,16 @@ if (run_scripts) source("script/04B-summary-01-pairs.R")
 186 pairs of self-assembled communities and 112 pair from across-community and random networks
 
 ```{r}
-read_csv("~/Dropbox/lab/emergent-coexistence/data/output/pairs.csv", col_types = cols())
+pairs <- read_csv("~/Dropbox/lab/emergent-coexistence/data/output/pairs.csv", col_types = cols())
+pairs
 ```
 
 Pairs with three initial frequencies and three. 186x3x2=1116
 
 ```{r}
-read_csv("~/Dropbox/lab/emergent-coexistence/data/output/pairs_freq.csv", col_types = cols()) %>%
+pairs_freq <- read_csv("~/Dropbox/lab/emergent-coexistence/data/output/pairs_freq.csv", col_types = cols()) %>%
     filter(Set == "CFUandCASEU")
+pairs_freq
 ```
 
 pairs_meta contains the growth traits of isolates. Note that the order of Isolate1 and Isolate2 in some pairs are flipped such that Isolate1 is always the dominant strain and Isolate 2 is the subdomaint one. Dominant strain is the winner in exclusion pairs, and the more abundant strain (50:50 treatment) in coexistence pairs.
