@@ -688,6 +688,7 @@ p <- ggdraw(p_waffle) +
           plot.margin = unit(c(0,0,0,0), "mm"))
 
 ggsave(here::here("plots/FigS4.png"), p, width = 20, height = 6)
+ggsave(here::here("plots/FigS4.pdf"), p, width = 20, height = 6)
 
 
 
@@ -695,14 +696,32 @@ ggsave(here::here("plots/FigS4.png"), p, width = 20, height = 6)
 
 
 # Table S1. Pairwise interaction tables ----
-ft1 <- read_csv("~/Dropbox/lab/emergent-coexistence/data/output/pairs_interaction_table.csv", col_types = cols()) %>%
+t1 <- read_csv("~/Dropbox/lab/emergent-coexistence/data/output/pairs_interaction_table.csv", col_types = cols()) %>%
     mutate(InteractionType = ifelse(InteractionType == "neutrality", "coexistence", InteractionType)) %>%
     arrange(Set, InteractionType, InteractionTypeFiner, FromRare, FromMedium, FromAbundant) %>%
-    setNames(c("DataType", "From 5%", "From 50%", "From 95%", "Outcome", "Finer outcome", "Count")) %>%
+    setNames(c("Data type", "From 5%", "From 50%", "From 95%", "Outcome", "Finer outcome", "Count"))
+
+
+ft1_1 <- t1 %>%
+    filter(`Data type` == "CFUonly") %>%
     flextable() %>%
-    width(j = 1:3, width = 1) %>%
-    width(j = 5, width = 2.5)
-save_as_image(ft1, here::here("plots/TableS1.png"))
+    width(j = 1:4, width = 1) %>%
+    width(j = 6, width = 2.5)
+ft1_2 <- t1 %>%
+    filter(`Data type` == "CASEUonly") %>%
+    flextable() %>%
+    width(j = 1:4, width = 1) %>%
+    width(j = 6, width = 2.5)
+ft1_3 <- t1 %>%
+    filter(`Data type` == "CFUandCASEU") %>%
+    flextable() %>%
+    width(j = 1:4, width = 1) %>%
+    width(j = 6, width = 2.5)
+
+
+save_as_image(ft1_1, here::here("plots/TableS1_1.png"), webshot = "webshot2")
+save_as_image(ft1_2, here::here("plots/TableS1_2.png"), webshot = "webshot2")
+save_as_image(ft1_3, here::here("plots/TableS1_3.png"), webshot = "webshot2")
 
 
 # Table S2. Isolates ----
@@ -754,8 +773,10 @@ ft2_2 <- t2_2 %>%
     border(j = 1:6, border = fp_border(), part = "body")
 
 
-save_as_image(ft2_1, here::here("plots/TableS2_1.png"))
-save_as_image(ft2_2, here::here("plots/TableS2_2.png"))
+save_as_image(ft2_1, here::here("plots/TableS2_1.png"), webshot = "webshot2")
+save_as_image(ft2_2, here::here("plots/TableS2_2.png"), webshot = "webshot2")
+
+
 
 
 

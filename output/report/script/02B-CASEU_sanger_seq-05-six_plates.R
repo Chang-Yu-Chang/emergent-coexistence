@@ -26,6 +26,7 @@ read_trace_matrix <- function(abif.file) {
 folder_directory <- "~/Dropbox/lab/emergent-coexistence/data/raw/Sanger/CASEU_six_plates/all_ab1/"
 
 # Plate layout: join experiment plates and sequencing plates
+if (FALSE) {
 plates_experiment <- read_csv("~/Dropbox/lab/emergent-coexistence/data/output/plates.csv", col_types = cols()) %>%
     filter(Plate == "P2", PlateLayout %in% c("933", "444", "13A", "13B", "75", "5543"))
 plates_sequencing <- read_csv("~/Dropbox/lab/emergent-coexistence/data/raw/Sanger/CASEU_six_plates/20211202_Sanger_seq_prep-genewiz_table_CYC.csv", col_types = cols()) %>%
@@ -35,11 +36,26 @@ plates_sequencing <- read_csv("~/Dropbox/lab/emergent-coexistence/data/raw/Sange
     select(-Well_ID) %>%
     # This is important: caseu label the wells by column
     mutate(Well = paste0(rep(LETTERS[1:8], 12), rep(sprintf("%02d", 1:12), each = 8)) %>% rep(6))
-
 plates <- plates_experiment %>%
     left_join(plates_sequencing) %>%
     select(Sample, FileName, Community, Isolate1, Isolate2, Isolate1Freq, Isolate2Freq, MixIsolate)
     #select(Sample, FileName, Batch, PlateLayout, Community, Isolate1, Isolate2, Isolate1Freq, Isolate2Freq)
+plates_experiment %>%
+    left_join(plates_sequencing) %>%
+    select(Sample, Batch, PlateLayout, MixPlate = Plate, Well, Community, Isolate1, Isolate2, Isolate1Freq, Isolate2Freq, MixIsolate) %>%
+    mutate(Time = "T7") %>%
+    arrange(Sample) %>%
+    write_csv("~/Dropbox/lab/emergent-coexistence/data/raw/Sanger/CASEU_six_plates/plates_six_plates.csv" )
+}
+plates_sequencing <- read_csv("~/Dropbox/lab/emergent-coexistence/data/raw/Sanger/CASEU_six_plates/20211202_Sanger_seq_prep-genewiz_table_CYC.csv", col_types = cols()) %>%
+    select(Sample, FileName = `DNA Name`) %>%
+    separate(col = FileName, remove = F, into = c("Batch", "Time", "PlateLayout", "Plate", "Well_ID"), sep = "_") %>%
+    mutate(FileName = paste0(folder_directory, FileName, "-27F.ab1")) %>%
+    select(Sample, FileName)
+
+plates <- read_csv("~/Dropbox/lab/emergent-coexistence/data/raw/Sanger/CASEU_six_plates/plates_six_plates.csv", col_types = cols()) %>%
+    left_join(plates_sequencing) %>%
+    select(Sample, FileName, Community, Isolate1, Isolate2, Isolate1Freq, Isolate2Freq, MixIsolate)
 
 
 # Isolate trace

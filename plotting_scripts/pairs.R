@@ -28,3 +28,69 @@ pairs_interaction %>%
     group_by(ResultMatch) %>%
     summarize(Count = n())
 
+
+pairs %>%
+    filter(Community == "C7R1") %>%
+    select(PairID, Community, Isolate1, Isolate2, InteractionType)
+
+
+pairs_example_freq <- pairs %>%
+    mutate(InteractionType = factor(InteractionType, c("exclusion", "coexistence"))) %>%
+    mutate(InteractionTypeFiner = ordered(InteractionTypeFiner, c("competitive exclusion", "mutual exclusion", "stable coexistence", "frequency-dependent coexistence", "neutrality"))) %>%
+    arrange(InteractionType, InteractionTypeFiner) %>%
+    # Add the coordinate in the grid
+    bind_rows(tibble(InteractionType = rep(NA, 4), InteractionTypeFiner = rep(NA, 4))) %>%
+    filter(!is.na(tibble(InteractionType))) %>%
+    # Join the frequency data
+    select(Set, PairID, InteractionType, InteractionTypeFiner) %>%
+    left_join(filter(pairs_freq, Set == "CFUandCASEU"), by = c("Set", "PairID")) %>%
+    select(PairID, InteractionType, InteractionTypeFiner, Isolate1InitialODFreq, Time, Isolate1MeasuredFreq) %>%
+    mutate(Isolate1InitialODFreq = factor(Isolate1InitialODFreq),
+           Time = factor(Time, c("Tini", "Tend")))
+
+
+pairs_example_freq %>%
+    filter(PairID == 29) %>%
+    view
+
+
+
+
+pairs_freq %>%
+    filter(Set == "CFUandCASEU") %>%
+    group_by(PairID) %>%
+    filter(Time == "Tend") %>%
+    summarize(Mix = length(unique(RawDataType))) %>%
+    filter(Mix == 2)
+    group_by(Mix) %>%
+    summarize(Count = n())
+    filter(is.na(Isolate1MeasuredFreq))
+
+
+
+
+
+
+pairs_freq %>%
+    filter(PairID %in% c(120, 144)) %>%
+    filter(Set == "CFUandCASEU") %>%
+    filter(Time == "Tend")  %>% view
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

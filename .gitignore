@@ -1,14 +1,9 @@
 # Ignore R project
-*.Rproj
-data/raw/*
 .DS_Store
 
 # History files
 .Rhistory
 .Rapp.history
-
-# Session Data files
-.RData
 
 # User-specific files
 .Ruserdata
@@ -21,9 +16,6 @@ data/raw/*
 
 # Output files from R CMD check
 /*.Rcheck/
-
-# RStudio files
-.Rproj.user/
 
 # produced vignettes
 vignettes/*.html
@@ -42,3 +34,4 @@ vignettes/*.pdf
 
 # R Environment Variables
 .Renviron
+.Rproj.user
