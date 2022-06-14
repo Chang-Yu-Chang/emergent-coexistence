@@ -4,14 +4,12 @@ library(igraph)
 library(tidygraph)
 source(here::here("plotting_scripts/misc.R"))
 
-isolates <- read_csv("~/Dropbox/lab/emergent-coexistence/data/output/isolates.csv", col_types = cols())
-pairs <- read_csv("~/Dropbox/lab/emergent-coexistence/data/output/pairs.csv", col_types = cols())
-communities <- read_csv("~/Dropbox/lab/emergent-coexistence/data/output/communities.csv", col_types = cols())
 load("~/Dropbox/lab/emergent-coexistence/data/output/communities_network.Rdata")
+communities <- read_csv("~/Dropbox/lab/emergent-coexistence/data/output/communities.csv", col_types = cols())
+
 
 # Randomize networks
 b <- 1000 # Number of bootstrapping/randomization
-
 
 # Make an empty two-layer R list
 net_randomized_list <- rep(list(rep(list(NA), b)), nrow(communities_network))

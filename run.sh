@@ -22,10 +22,6 @@ echo  '${Running script}', 02B-CASEU_sanger_seq-05-six_plates.R; Rscript output/
 echo  '${Running script}', 02C-pairs_OD_CFU-01-epsilon_uncertainty.R; Rscript output/report/script/02C-pairs_OD_CFU-01-epsilon_uncertainty.R
 echo  '${Running script}', 02C-pairs_OD_CFU-02-CFU_frequency.R; Rscript output/report/script/02C-pairs_OD_CFU-02-CFU_frequency.R
 echo  '${Running script}', 02C-pairs_OD_CFU-03-CFU_frequency_uncertainty.R; Rscript output/report/script/02C-pairs_OD_CFU-03-CFU_frequency_uncertainty.R
-
-
-# Run the following scripts in bash
-
 echo  '${Running script}', 02D-determine_pairwise_interaction-01-combine_CFU_CASEU_result.R; Rscript output/report/script/02D-determine_pairwise_interaction-01-combine_CFU_CASEU_result.R
 echo  '${Running script}', 02D-determine_pairwise_interaction-02-determine_pairwise_interaction.R; Rscript output/report/script/02D-determine_pairwise_interaction-02-determine_pairwise_interaction.R
 echo  '${Running script}', 02D-determine_pairwise_interaction-03-isolate_tournament.R; Rscript output/report/script/02D-determine_pairwise_interaction-03-isolate_tournament.R

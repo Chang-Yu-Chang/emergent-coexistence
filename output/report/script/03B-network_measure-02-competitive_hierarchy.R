@@ -5,14 +5,14 @@
 
 library(tidyverse)
 source(here::here("plotting_scripts/misc.R"))
-isolates <- read_csv("~/Dropbox/lab/emergent-coexistence/data/output/isolates.csv", col_types = cols())
+isolates_tournament <- read_csv("~/Dropbox/lab/emergent-coexistence/data/temp/isolates_tournament.csv", col_types = cols())
 pairs_interaction <- read_csv("~/Dropbox/lab/emergent-coexistence/data/output/pairs_interaction.csv", col_types = cols()) %>%
     mutate(InteractionType = ifelse(InteractionType == "neutrality", "coexistence", InteractionType)) %>%
     filter(Set == "CFUandCASEU")
 pairs_freq <- read_csv("~/Dropbox/lab/emergent-coexistence/data/output/pairs_freq.csv", col_types = cols())
 communities <- read_csv("~/Dropbox/lab/emergent-coexistence/data/output/communities.csv", col_types = cols())
 load("~/Dropbox/lab/emergent-coexistence/data/output/communities_network.RData")
-load("~/Dropbox/lab/emergent-coexistence/data/output/communities_network_randomized.RData")
+#load("~/Dropbox/lab/emergent-coexistence/data/output/communities_network_randomized.RData")
 
 b = 1000
 
@@ -57,7 +57,7 @@ compute_hierarchy1 <- function(isolates_mock, pairs_mock) {
 communities_hierarchy_obv1 <- communities %>%
     select(comm = Community) %>%
     rowwise() %>%
-    mutate(isolates_comm = isolates %>% filter(Community == comm) %>% list()) %>%
+    mutate(isolates_comm = isolates_tournament %>% filter(Community == comm) %>% list()) %>%
     mutate(pairs_comm = pairs_freq %>% filter(Isolate1InitialODFreq == 50, Time == "Tend", Set == "CFUandCASEU") %>% filter(Community == comm) %>% list()) %>%
     mutate(HierarchyScore = compute_hierarchy1(isolates_comm, pairs_comm)) %>%
     select(-isolates_comm, -pairs_comm) %>%

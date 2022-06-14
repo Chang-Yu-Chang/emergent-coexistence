@@ -136,6 +136,7 @@ pairs_freq <- bind_rows(pairs_freq_set1, pairs_freq_set2, pairs_freq_set3) %>%
 write_csv(pairs_freq, "~/Dropbox/lab/emergent-coexistence/data/output/pairs_freq.csv")
 
 
+if (FALSE) {
 
 # Random assembly pairs ----
 ## T3 C P2
@@ -168,3 +169,5 @@ pairs_freq_random <- bind_rows(CASEU_RN2, CASEU_RN3, CASEU_RN4, CASEU_RN5) %>%
 
 
 write_csv(pairs_freq_random, "~/Dropbox/lab/emergent-coexistence/data/output/pairs_freq_random.csv")
+}
+

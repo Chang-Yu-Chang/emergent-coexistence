@@ -10,11 +10,11 @@ Preprint link: [Emergent coexistence in multispecies microbial communities](http
 Change the current working directory to the location where you want the cloned directory.
 
 ```
-$ cd /directory/to/where/you/want/ # Directory to where you want
+$ cd /directory/to/where/you/want/
 $ git clone https://github.com/Chang-Yu-Chang/emergent-coexistence
 ```
 
-### Step 2: install r environment dependency
+### Step 2: install R environment dependency
 
 This project is operated under the latest R `4.2.0`
 
@@ -37,7 +37,7 @@ loaded via a namespace (and not attached):
 [1] compiler_4.2.0      BiocManager_1.30.18 tools_4.2.0         renv_0.15.5    
 ```
 
-To install the package dependency, we use `renv` to record the packages used in this project. After cloning this repo into the local directory, open your code editor (e.g., Rstudio) and run the following two lines in R console. 
+To install the package dependency, we use `renv` to record the packages used in this project. After cloning this repository into the local directory, open your code editor (e.g., Rstudio) and run the following two lines in R console. 
 
 ```
 > install.packages("renv")
@@ -53,7 +53,7 @@ Link to the raw data
 
 https://www.dropbox.com/sh/60rw7xmerown3vk/AACMzcZMR-DzF_5vG3KF0CG-a?dl=0
 
-The data are currently stored in the directory `~/Dropbox/lab/emergent-coexistence/data/`, where the all scripts are written to read this absolute directory. For the following scripts to work, this directory has to be set up.
+The data are currently stored in the directory `~/Dropbox/lab/emergent-coexistence/data/`, with three subdirectories `raw/`, `temp/`, and `output/` where the all scripts are written to read these absolute directories. For the following scripts to work, this directory has to be set up.
 
 
 ## Data

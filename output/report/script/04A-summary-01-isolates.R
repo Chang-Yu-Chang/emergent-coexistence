@@ -15,7 +15,7 @@ isolates_epsilon <- read_csv("~/Dropbox/lab/emergent-coexistence/data/temp/isola
 
 ## From 01D
 isolates_growth_traits <- read_csv("~/Dropbox/lab/emergent-coexistence/data/temp/isolates_growth_traits.csv", col_types = cols()) %>%
-    select(-Assembly, -ExpID, -Family, -Genus)
+    select(-Assembly, -ExpID)
 
 ## From 01E
 isolates_abundance <- read_csv("~/Dropbox/lab/emergent-coexistence/data/temp/isolates_abundance.csv", col_types = cols())
