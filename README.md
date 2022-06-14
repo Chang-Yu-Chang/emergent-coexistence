@@ -14,9 +14,10 @@ $ cd /directory/to/where/you/want/ # Directory to where you want
 $ git clone https://github.com/Chang-Yu-Chang/emergent-coexistence
 ```
 
-### Step3: install r environment dependency
+### Step 2: install r environment dependency
 
-This project is based on the lasted R `4.2.0`
+This project is operated under the latest R `4.2.0`
+
 ```
 > sessionInfo()
 R version 4.2.0 (2022-04-22)
@@ -36,14 +37,14 @@ loaded via a namespace (and not attached):
 [1] compiler_4.2.0      BiocManager_1.30.18 tools_4.2.0         renv_0.15.5    
 ```
 
-To install the dependent R packages, we use `renv` to record the packages used in this project. After cloning this repo into the local directory, open your code editor (e.g., Rstudio) and run the following two lines in R console. 
+To install the package dependency, we use `renv` to record the packages used in this project. After cloning this repo into the local directory, open your code editor (e.g., Rstudio) and run the following two lines in R console. 
 
 ```
 > install.packages("renv")
 > renv::init(bioconductor = T)
 ```
 
-This will automatically install all packages on which this project depends. It may takes a few minutes. The installed packages will not be stored in your global environment but instead remain project-specific (saved in the subdirectory `renv/library/`). When you open a new R session under the R project structure (the folder that contains `emergent-coexistence.Rproj`), for instance in R studio, these project-specific packages will be already installed. 
+This will automatically install all packages on which this project depends. It may takes a few minutes. The installed packages will not be stored in your global environment but instead remain project-specific (saved in the subdirectory `renv/library/`). When you open a new R session under the R project structure (the folder that contains `emergent-coexistence.Rproj`, the directory you decided in step 1), for instance in R studio, these project-specific packages will be already installed. 
 
 
 ### Step 3: sync the raw data to Dropbox
