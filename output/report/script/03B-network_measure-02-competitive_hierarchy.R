@@ -6,7 +6,9 @@
 library(tidyverse)
 source(here::here("plotting_scripts/misc.R"))
 isolates <- read_csv("~/Dropbox/lab/emergent-coexistence/data/output/isolates.csv", col_types = cols())
-pairs <- read_csv("~/Dropbox/lab/emergent-coexistence/data/output/pairs.csv", col_types = cols())
+pairs_interaction <- read_csv("~/Dropbox/lab/emergent-coexistence/data/output/pairs_interaction.csv", col_types = cols()) %>%
+    mutate(InteractionType = ifelse(InteractionType == "neutrality", "coexistence", InteractionType)) %>%
+    filter(Set == "CFUandCASEU")
 pairs_freq <- read_csv("~/Dropbox/lab/emergent-coexistence/data/output/pairs_freq.csv", col_types = cols())
 communities <- read_csv("~/Dropbox/lab/emergent-coexistence/data/output/communities.csv", col_types = cols())
 load("~/Dropbox/lab/emergent-coexistence/data/output/communities_network.RData")
@@ -154,7 +156,7 @@ randomize_pairs2 <- function(x) {
 communities_hierarchy_obv2 <- communities %>%
     select(comm = Community) %>%
     rowwise() %>%
-    mutate(pairs_comm = pairs %>% filter(Community == comm) %>% list()) %>%
+    mutate(pairs_comm = pairs_interaction %>% filter(Community == comm) %>% list()) %>%
     mutate(HierarchyScore = compute_hierarchy2(pairs_comm)) %>%
     select(-pairs_comm) %>%
     select(Community = comm, HierarchyScore)
@@ -165,7 +167,7 @@ communities_randomized_list <- rep(list(NA), nrow(communities))
 tt <- proc.time()
 for (i in 1:length(communities_randomized_list)) {
     temp_tt <- proc.time()
-    pairs_temp <- pairs %>%
+    pairs_temp <- pairs_interaction %>%
         filter(Community == communities$Community[i]) %>%
         randomize_pairs2()
     isolates_temp <- communities_network_randomized$Isolates[i][[1]] %>% select(Community, Isolate)
@@ -202,7 +204,7 @@ communities_hierarchy2 <- communities_hierarchy_obv %>%
 
 
 
-# Joint data
+# Join data
 communities_hierarchy <- communities_hierarchy_obv1 %>%
     rename_with(~ paste0(., "1"), !contains("Community")) %>%
     left_join(rename_with(communities_hierarchy_obv2, ~ paste0(., "2"), !contains("Community")))

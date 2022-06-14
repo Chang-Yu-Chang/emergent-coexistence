@@ -18,7 +18,7 @@ pairs_16S <- read_csv("~/Dropbox/lab/emergent-coexistence/data/temp/pairs_16S.cs
 
 ## Combine data by assigning pairs information.186 pairs
 pairs <- pairs_ID %>%
-    left_join(pairs_interaction, by = c("Community", "Isolate1", "Isolate2")) %>%
+    left_join(pairs_interaction, by = c("PairID", "Community", "Isolate1", "Isolate2")) %>%
     left_join(pairs_taxonomy, by = c("PairID", "Community", "Isolate1", "Isolate2")) %>%
     left_join(pairs_16S, by = c("PairID", "Community", "Isolate1", "Isolate2"))
 

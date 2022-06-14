@@ -77,7 +77,7 @@ pairs_freq <- bind_rows(pairs_freq_caseu, pairs_freq_cfu) %>%
         Time == "T8" ~ "Tend",
     ))
 
-# Divide the frequency day into three sets ----
+# Divide the frequency data into three sets ----
 pairs_ID <- read_csv("~/Dropbox/lab/emergent-coexistence/data/temp/pairs_ID.csv", col_types = cols())
 # Each should have 186*3*2=1116 rows
 # Pair-freq ID

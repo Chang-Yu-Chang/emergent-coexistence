@@ -69,19 +69,6 @@ pairs_interaction_Tend_freq <- pairs_freq_wide %>%
     mutate(PairIsolate1MeasuredFreqTend = paste(round(`5`, 2), round(`50`, 2), round(`95`, 2), sep = "_")) %>%
     select(-`5`, -`50`, -`95`)
 
-if (FALSE) {
-    ## Update the column `Isolate1Win`, which indicates the competitive exclusion that cannot be specified by fitness functions
-    pairs_interaction_Tend_freq[pairs_interaction_Tend_freq$PairIsolate1MeasuredFreqTend == "1_1_1","Isolate1Win"] <- TRUE
-    pairs_interaction_Tend_freq[pairs_interaction_Tend_freq$PairIsolate1MeasuredFreqTend == "0_0_0","Isolate1Win"] <- FALSE
-    pairs_interaction_Tend_freq[pairs_interaction_Tend_freq$PairIsolate1MeasuredFreqTend == "1_NA_1","Isolate1Win"] <- TRUE
-    pairs_interaction_Tend_freq[pairs_interaction_Tend_freq$PairIsolate1MeasuredFreqTend == "0_NA_0","Isolate1Win"] <- FALSE
-
-    pairs_interaction_Tend_freq <- pairs_interaction_Tend_freq %>%
-        select(Community, Isolate1, Isolate2, PairIsolate1MeasuredFreqTend, Isolate1Win) %>%
-        arrange(Community, Isolate1, Isolate2, PairIsolate1MeasuredFreqTend, Isolate1Win)
-
-}
-
 
 # Determine the interaction types by fitness functions ----
 # Table for determining interaction types
@@ -103,29 +90,30 @@ interaction_type_two <- tibble(
 interaction_type <- bind_rows(interaction_type_three, interaction_type_two)
 
 ## Assign interaction types to combinations of frequency changes signs
-interaction_type$InteractionType[c(1,14, 10, 13, 28, 31, 32)] <- "exclusion"
-interaction_type$InteractionType[c(2, 3, 5, 8, 9, 23, 26, 11, 12, 15, 17, 20, 29:30, 33:35)] <- "coexistence"
+interaction_type$InteractionType[c(1, 14, 28, 32, 10, 13, 31)] <- "exclusion"
+interaction_type$InteractionType[c(2, 3, 5, 8, 9, 23, 26, 29, 30, 33, 4, 11, 12, 15, 17, 20, 34, 35)] <- "coexistence"
 interaction_type$InteractionType[c(27, 36)] <- "neutrality"
 
 ## Assign finer interaction types to combinations of frequency changes signs
 interaction_type$InteractionTypeFiner[c(1, 14, 28, 32)] <- "competitive exclusion"
 interaction_type$InteractionTypeFiner[c(10, 13, 31)] <- "mutual exclusion"
 interaction_type$InteractionTypeFiner[c(2, 3, 5, 8, 9, 23, 26, 29, 30, 33)] <- "stable coexistence"
-interaction_type$InteractionTypeFiner[c(11, 12, 15, 17, 20, 34:35)] <- "frequency-dependent coexistence"
+interaction_type$InteractionTypeFiner[c(4, 11, 12, 15, 17, 20, 34, 35)] <- "frequency-dependent coexistence"
 interaction_type$InteractionTypeFiner[c(27,36)] <- "neutrality"
 
 interaction_type <- interaction_type %>%  mutate(FreqFunc = paste(FromRare, FromMedium, FromAbundant, sep = "_"))
 
 
-
-
 # Combine the frequency data with the isolate data
-pairs_interaction_fitness <- pairs_freq_wide %>%
+temp <- pairs_freq_wide %>%
     group_by(Set, PairID, Community, Isolate1, Isolate2) %>%
     select(group_cols(), Isolate1InitialODFreq, DifferenceTiniTend) %>%
     pivot_wider(names_from = Isolate1InitialODFreq, values_from = DifferenceTiniTend) %>%
     mutate(FreqFunc = paste(`5`, `50`, `95`, sep = "_")) %>%
-    select(-`5`, -`50`, -`95`) %>%
+    select(-`5`, -`50`, -`95`)
+
+
+pairs_interaction_fitness <- temp %>%
     # Join two dfs: frequency changes and Tend frequency
     left_join(pairs_interaction_Tend_freq) %>%
     # Join the fitness and interaction tables
@@ -144,8 +132,38 @@ pairs_interaction_fitness <- pairs_freq_wide %>%
     ungroup()
 
 pairs_interaction <- pairs_interaction_fitness %>%
-    select(Set, Community, Isolate1, Isolate2, InteractionType, InteractionTypeFiner, From, To)
+    select(Set, PairID, Community, Isolate1, Isolate2, InteractionType, InteractionTypeFiner, From, To)
 
+
+# Update pairs that show strong exclusion but cannot be identified because of the error bars
+temp <- pairs_interaction_Tend_freq %>%
+    ungroup() %>%
+    filter(PairIsolate1MeasuredFreqTend %in% c("1_1_1", "0_0_0", "1_NA_1", "0_NA_0")) %>%
+    mutate(InteractionType = "exclusion") %>%
+    mutate(InteractionTypeFiner = "competitive exclusion") %>%
+    mutate(Isolate1Win = case_when(
+        PairIsolate1MeasuredFreqTend %in% c("1_1_1", "1_NA_1") ~ T,
+        PairIsolate1MeasuredFreqTend %in% c("0_0_0", "0_NA_0") ~ F
+    )) %>%
+    mutate(From = case_when(
+        PairIsolate1MeasuredFreqTend %in% c("1_1_1", "1_NA_1") ~ Isolate1,
+        PairIsolate1MeasuredFreqTend %in% c("0_0_0", "0_NA_0") ~ Isolate2
+    )) %>%
+    mutate(To = case_when(
+        PairIsolate1MeasuredFreqTend %in% c("1_1_1", "1_NA_1") ~ Isolate2,
+        PairIsolate1MeasuredFreqTend %in% c("0_0_0", "0_NA_0") ~ Isolate1
+    )) %>%
+    select(Set, PairID, Community, Isolate1, Isolate2, InteractionType, InteractionTypeFiner, From, To)
+
+
+pairs_interaction <- pairs_interaction %>%
+    anti_join(select(temp, Set, PairID)) %>%
+    bind_rows(temp) %>%
+    arrange(Set, PairID)
+
+pairs_interaction %>%
+    group_by(Set, InteractionType) %>%
+    summarize(Count = n())
 
 
 # Print the interaction tables ----
