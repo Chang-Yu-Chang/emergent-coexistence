@@ -192,32 +192,3 @@ read_csv("~/Dropbox/lab/emergent-coexistence/data/output/networks_component.csv"
 ```{r}
 read_csv("~/Dropbox/lab/emergent-coexistence/data/output/networks_component_randomized.csv", col_types = cols())
 ```
-
-
-
-# Summary
-
-
-- `isolates`: 68 isolates
-- `pairs`: 186 pairs
-- `communities_network` 13 communities with network graph as one of the columns
-
-```{r}
-isolates <- read_csv("~/Dropbox/lab/emergent-coexistence/data/output/isolates.csv", col_types = cols())
-pairs <- read_csv("~/Dropbox/lab/emergent-coexistence/data/output/pairs.csv", col_types = cols())
-load("~/Dropbox/lab/emergent-coexistence/data/output/communities_network.Rdata")
-```
-
-```{r}
-isolates
-```
-
-```{r}
-pairs
-```
-
-```{r}
-communities_network
-```
-
-

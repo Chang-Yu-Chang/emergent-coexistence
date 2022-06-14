@@ -67,11 +67,10 @@ The data wrangling steps are conducted in order in four master Rmd along with as
 
 A quick overview of these steps is reported in the generated notebooks `01-isolates.nb.html`, `02-pairs.nb.html`, `03-networks.nb.html`, and `04-summary.nb.html`. 
 
-To generate all ready-for-figure data in `~/Dropbox/lab/emergent-coexistence/data/output/`, basically run all R scripts in `output/report/script/` in order, either by executing the code chunks in the four Rmd files, or using terminal commands saved in a master zsh.
+To generate all ready-for-figure data in `~/Dropbox/lab/emergent-coexistence/data/output/`, basically run all R scripts in `output/report/script/` in order, either by executing the code chunks in the four Rmd files, or using terminal commands saved in a master shell script `run.sh`. Note that for the shell script to work, the working directory has to be the project directory (where `emergent-coexistence.Rproj` is located)
 
 ```
-$ cd output/report/script/
-$ zsh run.zsh
+$ zsh run.sh
 ```
 
 ## Figures

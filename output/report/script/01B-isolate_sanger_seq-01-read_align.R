@@ -27,18 +27,18 @@ library(tidyverse)
 library(sangeranalyseR)
 
 #
-alignment1 <- sangeranalyseR::SangerAlignment(parentDirectory = "~/Dropbox/lab/emergent-coexistence/data/raw/Sanger/sanger_seq_16S_20180702",
-                                              suffixForwardRegExp = "F.ab1$",
-                                              suffixReverseRegExp = "R.ab1$")
+alignment1 <- sangeranalyseR::SangerAlignment(ABIF_Directory = "~/Dropbox/lab/emergent-coexistence/data/raw/Sanger/sanger_seq_16S_20180702",
+                                              REGEX_SuffixForward = "F.ab1$",
+                                              REGEX_SuffixReverse = "R.ab1$")
 sangeranalyseR::writeFasta(alignment1,
                            outputDir = "~/Dropbox/lab/emergent-coexistence/data/raw/Sanger/sanger_seq_16S_20180702",
                            compress = FALSE,
                            compression_level = NA,
                            selection = "all")
 
-alignment2 <- sangeranalyseR::SangerAlignment(parentDirectory = "~/Dropbox/lab/emergent-coexistence/data/raw/Sanger/sanger_seq_16S_20180726",
-                                              suffixForwardRegExp = "F.ab1$",
-                                              suffixReverseRegExp = "R.ab1$")
+alignment2 <- sangeranalyseR::SangerAlignment(ABIF_Directory = "~/Dropbox/lab/emergent-coexistence/data/raw/Sanger/sanger_seq_16S_20180726",
+                                              REGEX_SuffixForward = "F.ab1$",
+                                              REGEX_SuffixReverse = "R.ab1$")
 
 sangeranalyseR::writeFasta(alignment2,
                            outputDir = "~/Dropbox/lab/emergent-coexistence/data/raw/Sanger/sanger_seq_16S_20180726",
