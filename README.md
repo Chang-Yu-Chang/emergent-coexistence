@@ -41,10 +41,10 @@ To install the package dependency, we use `renv` to record the packages used in 
 
 ```
 > install.packages("renv")
-> renv::init(bioconductor = T)
+> renv::restore()
 ```
 
-This will automatically install all packages on which this project depends. It may takes a few minutes. The installed packages will not be stored in your global environment but instead remain project-specific (saved in the subdirectory `renv/library/`). When you open a new R session under the R project structure (the folder that contains `emergent-coexistence.Rproj`, the directory you decided in step 1), for instance in R studio, these project-specific packages will be already installed. 
+You will be prompt to confirm the installation. This will automatically install all packages on which this project depends. It may takes a few minutes. The installed packages will not be stored in your global environment but instead remain project-specific (saved in the subdirectory `renv/library/`). When you open a new R session under the R project structure (the folder that contains `emergent-coexistence.Rproj`, the directory you decided in step 1), for instance in R studio, these project-specific packages will be already installed. 
 
 
 ### Step 3: sync the raw data to Dropbox
