@@ -277,14 +277,14 @@ ggsave(here::here("plots/Fig3.png"), p, width = 12, height = 4)
 
 # Figure 4 ----
 # Figure 4A One example network
-node_size = 5
-edge_width = 1.5
+node_size = 7
+edge_width = 1
 p_net <- communities_network$Network[communities_network$Community == "C7R1"] %>%
     `[[`(1) %>%
     activate(nodes) %>%
     mutate(y = -Rank) %>%
     arrange(Rank) %>%
-    mutate(x = c(.5, .4, .6, .5)) %>%
+    mutate(x = c(.5, .3, .7, .5)) %>%
     ungroup() %>%
     ggraph(layout = "nicely") +
     geom_edge_link(aes(color = InteractionType), width = edge_width,
@@ -309,8 +309,8 @@ p_net <- communities_network$Network[communities_network$Community == "C7R1"] %>
 
 pA <- p_net +
     draw_image(here::here("plots/cartoons/Fig1B_1.png"), x = 0, y = -1, vjust = 0.5, hjust = 0, clip = "on", scale = .8) +
-    draw_image(here::here("plots/cartoons/Fig1B_3.png"), x = -.12, y = -2, vjust = 0.5, hjust = 0, clip = "on", scale = .8) +
-    draw_image(here::here("plots/cartoons/Fig1B_4.png"), x = .12, y = -3, vjust = 0.5, hjust = 0, clip = "on", scale = .8) +
+    draw_image(here::here("plots/cartoons/Fig1B_3.png"), x = -.17, y = -2, vjust = 0.5, hjust = 0, clip = "on", scale = .8) +
+    draw_image(here::here("plots/cartoons/Fig1B_4.png"), x = .17, y = -3, vjust = 0.5, hjust = 0, clip = "on", scale = .8) +
     draw_image(here::here("plots/cartoons/Fig1B_2.png"), x = 0, y = -4, vjust = .6, hjust = 0, clip = "on", scale = .8) +
     draw_plot(p_legend_network, x = -0.1, y = -6.2, height = 1.5) +
     paint_white_background()
@@ -392,10 +392,6 @@ plot_network_hierarchy <- function(net, n_rank = 12, n_break = 12) {
 
 }
 communities_network_hierachy <- communities_network %>%
-    #mutate(Community = factor(Community, community_factor)) %>%
-    #arrange(Community) %>%
-    #left_join(as_tibble_col(net_list, column_name = "Network") %>% mutate(Community = names(net_list))) %>%
-    #select(Community, CommunitySize, Network) %>%
     rowwise() %>%
     mutate(NetworkHierarchyPlot = plot_network_hierarchy(Network, n_rank = CommunitySize) %>% list())
 
@@ -599,10 +595,6 @@ temp_list <- pairs_example_freq %>%
     arrange(Set, PairID) %>%
     group_split(PairID) %>%
     lapply(plot_sidebyside_freq)
-
-# tb <- pairs_example_freq %>%
-#     filter(PairID == 4)
-# temp_list[[4]]
 
 ## Grid layout
 m <- matrix(c(1:186, rep(NA, 4)), nrow = 10)

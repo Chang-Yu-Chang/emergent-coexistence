@@ -77,10 +77,81 @@ pairs_freq %>%
     filter(Time == "Tend")  %>% view
 
 
+pairs_freq %>%
+    filter(Community == "C8R4") %>%
+    filter(Set == "CFUandCASEU") %>%
+    #filter(Time == "Tend")  %>%
+    view
 
 
+pairs_example_freq <- pairs_interaction %>%
+    left_join(pairs_ID) %>%
+    select(Set, InteractionType, PairID) %>%
+    mutate(InteractionType = factor(InteractionType, c("exclusion", "coexistence"))) %>%
+    arrange(Set, InteractionType) %>%
+    right_join(pairs_freq) %>%
+    select(Set, PairID, InteractionType, Isolate1InitialODFreq, Time, Isolate1MeasuredFreq) %>%
+    mutate(Set = factor(Set, c("CFUonly", "CASEUonly", "CFUandCASEU"))) %>%
+    arrange(PairID, Set)
 
+pairs_ID_grid <- pairs %>%
+    mutate(InteractionType = factor(InteractionType, c("exclusion", "coexistence"))) %>%
+    mutate(InteractionTypeFiner = ordered(InteractionTypeFiner, c("competitive exclusion", "mutual exclusion", "stable coexistence", "frequency-dependent coexistence", "neutrality"))) %>%
+    arrange(InteractionType, InteractionTypeFiner) %>%
+    # Add the coordinate in the grid
+    bind_rows(tibble(InteractionType = rep(NA, 4), InteractionTypeFiner = rep(NA, 4))) %>%
+    filter(!is.na(tibble(InteractionType))) %>%
+    # Join the frequency data
+    select(Set, PairID, InteractionType, InteractionTypeFiner) %>%
+    left_join(filter(pairs_freq, Set == "CFUandCASEU"), by = c("Set", "PairID")) %>%
+    select(PairID, InteractionType, InteractionTypeFiner, Isolate1InitialODFreq, Time, Isolate1MeasuredFreq) %>%
+    mutate(Isolate1InitialODFreq = factor(Isolate1InitialODFreq),
+           Time = factor(Time, c("Tini", "Tend"))) %>%
+    arrange(InteractionTypeFiner, PairID) %>%
+    distinct(PairID)
 
+plot_sidebyside_freq <- function(tb) {
+
+    temp <- distinct(tb, Set, InteractionType)
+    if (nrow(temp) != 3) cat("The outcome of one data type is not unique")
+
+    tb %>%
+        mutate(Isolate1InitialODFreq = factor(Isolate1InitialODFreq)) %>%
+        mutate(Time = factor(Time, c("Tini", "Tend"))) %>%
+        mutate(Set = factor(Set, c("CFUonly", "CASEUonly", "CFUandCASEU"))) %>%
+        ggplot() +
+        geom_rect(data = temp, size = .5, xmin = -Inf, xmax = Inf, ymin = -Inf, ymax = Inf, aes(fill = InteractionType, linetype = Set), color = 1, alpha = .4) +
+        geom_hline(size = .2, yintercept = c(0,1), linetype = 1, color = "grey90") +
+        geom_point(size = .4, aes(x = Time, y = Isolate1MeasuredFreq, color = Isolate1InitialODFreq, group = Isolate1InitialODFreq)) +
+        geom_line(size = .4, aes(x = Time, y = Isolate1MeasuredFreq, color = Isolate1InitialODFreq, group = Isolate1InitialODFreq)) +
+        scale_y_continuous(breaks = c(0, .5, 1), limits = c(-.1, 1.1)) +
+        scale_color_manual(values = frequency_color, label = c("95%", "50%", "5%")) +
+        scale_fill_manual(values = c(assign_interaction_color(), "NA" = "grey90")) +
+        scale_linetype_manual(values = c("CFUonly" = 1, "CASEUonly" = 2, "CFUandCASEU" = 3), name = "") +
+        facet_grid(.~Set) +
+        theme_bw() +
+        theme(panel.spacing = unit(0, "mm"),
+              strip.background = element_blank(),
+              strip.text = element_blank(),
+              #panel.border = element_rect(color = 1, fill = NA, size = 1),
+              panel.border = element_blank(),
+              panel.grid = element_blank(),
+              panel.grid.minor.y = element_blank(),
+              axis.title = element_blank(), axis.text = element_blank(),
+              axis.ticks = element_blank(),
+              plot.background = element_blank(),
+              plot.title = element_text(size = 6, margin = margin(0,0,0,0)),
+              plot.margin = margin(0,0,0,0, "mm")) +
+        guides(color = "none", fill = "none", linetype = "none") +
+        labs(x = "Time", y = "Frequency") +
+        ggtitle(unique(tb$PairID))
+}
+temp_list <- pairs_example_freq %>%
+    filter(PairID %in% 4:6) %>%
+    mutate(PairID = factor(PairID, pairs_ID_grid$PairID)) %>%
+    arrange(Set, PairID) %>%
+    group_split(PairID) %>%
+    lapply(plot_sidebyside_freq)
 
 
 
