@@ -46,6 +46,7 @@ trace_mixture <- trace_mixture %>%
     mutate(TraceLength = nrow(Trace)) %>%
     mutate(CASEU = NA, Isolate1FreqPredicted = NA)
 
+
 # Fit mixture Sanger electropherogram  using CASEU packages. This may take a few minutes.
 cat("\nStart caseu fitting", nrow(trace_mixture), "pairs")
 for (i in 1:nrow(trace_mixture)) {
