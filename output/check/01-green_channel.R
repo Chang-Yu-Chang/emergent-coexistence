@@ -18,7 +18,6 @@ Do not repeatedly run this script if the pro if the image has been processed in 
 library(tidyverse)
 library(EBImage)
 
-# This is done in
 list_batches <- c("C")
 
 for (j in 1:length(list_batches)) {
@@ -50,6 +49,8 @@ for (j in 1:length(list_batches)) {
 
             # Extract only the green channel
             p <- p[,,2]
+
+            # Output the file
             writeImage(p, output_file, quality = 85)
         }
     }
