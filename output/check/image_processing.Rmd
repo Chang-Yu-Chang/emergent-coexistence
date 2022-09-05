@@ -186,14 +186,14 @@ display(colorLabels(image_watershed), method = "raster")
 # Output the example
 
 ```{r}
-# writeImage(image_original, paste0(folder_main, "example/", image_name, "-00-original.tiff"))
-# writeImage(image_green, paste0(folder_main, "example/", image_name, "-01-green.tiff"))
-writeImage(image_rolled, paste0(folder_main, "example/", image_name, "-02-rolled.tiff"))
-writeImage(image_thresholded, paste0(folder_main, "example/", image_name, "-03-threshold.tiff"))
-#writeImage(colorLabels(image_object), paste0(folder_main, "example/", image_name, "-03a-object.tiff"))
-writeImage(image_round, paste0(folder_main, "example/", image_name, "-04-round_object.tiff"))
-writeImage(normalize(image_distancemap), paste0(folder_main, "example/", image_name, "-05-distance_map.tiff"))
-writeImage(colorLabels(image_watershed), paste0(folder_main, "example/", image_name, "-06-watershed.tiff"))
+# # writeImage(image_original, paste0(folder_main, "example/", image_name, "-00-original.tiff"))
+# # writeImage(image_green, paste0(folder_main, "example/", image_name, "-01-green.tiff"))
+# writeImage(image_rolled, paste0(folder_main, "example/", image_name, "-02-rolled.tiff"))
+# writeImage(image_thresholded, paste0(folder_main, "example/", image_name, "-03-threshold.tiff"))
+# #writeImage(colorLabels(image_object), paste0(folder_main, "example/", image_name, "-03a-object.tiff"))
+# writeImage(image_round, paste0(folder_main, "example/", image_name, "-04-round_object.tiff"))
+# writeImage(normalize(image_distancemap), paste0(folder_main, "example/", image_name, "-05-distance_map.tiff"))
+# writeImage(colorLabels(image_watershed), paste0(folder_main, "example/", image_name, "-06-watershed.tiff"))
 ```
 
 

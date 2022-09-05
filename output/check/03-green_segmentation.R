@@ -8,10 +8,12 @@ detect_nonround_object <- function (image_object) {
     object_shape <- computeFeatures.shape(image_object) %>% as_tibble(rownames = "ObjectID")
     object_shape_round <- object_shape %>%
         # Area
-        filter(s.area > 800 & s.area < 500000) %>%
-        # Roundness = 1 means a perfect circle
-        mutate(Roundness = (s.radius.max - s.radius.min)/2) %>%
-        filter(Roundness > 0.1 & Roundness < 50) %>%
+        filter(s.area > 800 & s.area < 20000) %>%
+        # Remove tape and label that has really large variation in radius
+        filter(s.radius.sd < 10) %>%
+        # Roundness.
+        # mutate(Roundness = (s.radius.max - s.radius.min)/2) %>%
+        # filter(Roundness > 0.1 & Roundness < 50) %>%
         # Circularity = 1 means a perfect circle and goes down to 0 for non-cicular shapes
         mutate(Circularity = 4 * pi * s.area / s.perimeter^2) %>%
         filter(Circularity > 0.3) %>%
@@ -80,6 +82,9 @@ for (i in 1:nrow(list_images)) {
             select(ObjectID, starts_with("b."), starts_with("s."), starts_with("m.")) %>%
             # Remove the round plate lid crack that has high intensity variability
             filter(b.sd < 0.3)
+            # Remove plate label and tape that has very dark pixels
+            #filter(b.q001 > 0)
+
 
         write_csv(object_feature, paste0(folder_green_feature, image_name, ".csv"))
         cat("\tfeature\t", i, "/", nrow(list_images), "\t", list_images$image_name[i])

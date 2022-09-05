@@ -8,10 +8,9 @@ detect_nonround_object <- function (image_object) {
     object_shape <- computeFeatures.shape(image_object) %>% as_tibble(rownames = "ObjectID")
     object_shape_round <- object_shape %>%
         # Area
-        filter(s.area > 800 & s.area < 500000) %>%
-        # Roundness = 1 means a perfect circle
-        mutate(Roundness = (s.radius.max - s.radius.min)/2) %>%
-        filter(Roundness > 0.1 & Roundness < 50) %>%
+        filter(s.area > 800 & s.area < 20000) %>%
+        # Remove tape and label that has really large variation in radius
+        filter(s.radius.sd < 10) %>%
         # Circularity = 1 means a perfect circle and goes down to 0 for non-cicular shapes
         mutate(Circularity = 4 * pi * s.area / s.perimeter^2) %>%
         filter(Circularity > 0.3) %>%

@@ -131,8 +131,9 @@ for (i in 1:nrow(list_image_mapping_folder)) {
         theme_void()
 
     # Plot
+    title <- "blue channel"
     legend <- get_legend(p1 + theme(legend.box.margin = margin(0, 0, 0, 12)))
-    p <- plot_grid(p1 + theme(legend.position = "none"),
+    p <- plot_grid(p1 + theme(legend.position = "none") + ggtitle(title),
                    p2 + theme(legend.position = "none"),
                    p3 + theme(legend.position = "none"),
                    p4 + theme(legend.position = "none"),

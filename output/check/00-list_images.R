@@ -8,7 +8,7 @@ folder_script <- "/Users/chang-yu/Desktop/Lab/emergent-coexistence/output/check/
 
 batch_names <- c("D", "C", "C2", "B2", "chromo")
 
-j=1
+
 for (j in 1:length(batch_names)) {
     folder_original <- paste0(folder_main, "check/", batch_names[j], "-00-original/")
     image_names <- list.files(folder_original) %>%
