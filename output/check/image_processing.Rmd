@@ -24,20 +24,20 @@ list_images <- tibble(
     image_name = c("D_T8_C1R2_1", "D_T8_C1R2_2", "D_T8_C1R2_5-95_1_2"),
     folder_original = rep(paste0(folder_main, "check/D-00-original/"), 3),
     folder_green = rep(paste0(folder_main, "example/"), 3),
-    folder_rolled = rep(paste0(folder_main, "example/"), 3),
-    folder_watershed = rep(paste0(folder_main, "example/"), 3),
-    folder_red = rep(paste0(folder_main, "example/"), 3),
-    folder_blue = rep(paste0(folder_main, "example/"), 3)
+    folder_green_rolled = rep(paste0(folder_main, "example/"), 3),
+    folder_green_watershed = rep(paste0(folder_main, "example/"), 3),
+    folder_green_feature = rep(paste0(folder_main, "example/"), 3),
+    folder_green_cluster = rep(paste0(folder_main, "example/"), 3)
 )
+
 
 i = 3
 image_name <- list_images$image_name[i]
 folder_original <- list_images$folder_original[i]
 folder_green <- list_images$folder_green[i]
-folder_red <- list_images$folder_red[i]
-folder_blue <- list_images$folder_blue[i]
-folder_rolled <- list_images$folder_rolled[i]
-folder_watershed <- list_images$folder_rolled[i]
+folder_green_rolled <- list_images$folder_green_rolled[i]
+folder_green_watershed <- list_images$folder_green_watershed[i]
+folder_green_feature <- list_images$folder_green_feature[i]
 ```
 
 # 0. original image
@@ -57,26 +57,6 @@ image_green <- temp[,,2]
 writeImage(image_green, paste0(folder_green, image_name, "-01-green.tiff"))
 display(image_green, method = "raster")
 ```
-Red channel
-
-```{r}
-temp <- image_original
-colorMode(temp) = Grayscale
-image_red <- temp[,,1]
-writeImage(image_red, paste0(folder_red, image_name, "-11-red.tiff"))
-display(image_red, method = "raster")
-```
-
-Blue channel
-
-```{r}
-temp <- image_original
-colorMode(temp) = Grayscale
-image_blue <- temp[,,1]
-writeImage(image_blue, paste0(folder_blue, image_name, "-21-blue.tiff"))
-display(image_blue, method = "raster")
-```
-
 
 
 
@@ -86,7 +66,7 @@ Python code from `rolling_ball.py`
 
 ```{r}
 py$file_green <- paste0(folder_green, image_name, ".tiff")
-py$file_rolled <- paste0(folder_rolled, image_name, "-02-rolled.tiff")
+py$file_green_rolled <- paste0(folder_green_rolled, image_name, "-02-rolled.tiff")
 ```
 
 The R variables should be passed to python but somehow failed. Not sure where the problem is from, probably reticualte. 20220902 use the externally generated rolled images.
@@ -112,13 +92,13 @@ def rolling_ball_light(image):
     
 image = io.imread(file_green)
 image_rolled = rolling_ball_light(image)
-io.imsave(file_rolled, image_rolled)
+io.imsave(file_green_rolled, image_rolled)
 ```
 
 Display the rolled result
 
 ```{r}
-image_rolled <- readImage(paste0(folder_rolled, image_name, "-02-rolled.tiff"))
+image_rolled <- readImage(paste0(folder_green_rolled, image_name, "-02-rolled.tiff"))
 display(image_rolled, method = "raster")
 ```
 
@@ -148,10 +128,12 @@ object_shape <- computeFeatures.shape(image_object) %>% as_tibble(rownames = "Ob
 
 object_shape_round <- object_shape %>%
     # Area
-    filter(s.area > 500 & s.area < 500000) %>%
-    # Roundness = 1 means a perfect circle
-    mutate(Roundness = (s.radius.max - s.radius.min)/2) %>%
-    filter(Roundness > 0.1 & Roundness < 50) %>%
+    filter(s.area > 800 & s.area < 20000) %>%
+    # Remove tape and label that has really large variation in radius
+    filter(s.radius.sd < 10) %>%
+    # # Roundness = 1 means a perfect circle
+    # mutate(Roundness = (s.radius.max - s.radius.min)/2) %>%
+    # filter(Roundness > 0.1 & Roundness < 50) %>%
     # Circularity = 1 means a perfect circle and goes down to 0 for non-cicular shapes
     mutate(Circularity = 4 * pi * s.area / s.perimeter^2) %>%
     filter(Circularity > 0.3) %>%
@@ -171,6 +153,10 @@ The distance map contains for each pixel the distance to the nearest background 
 image_distancemap <- distmap(image_round)
 display(normalize(image_distancemap), method = "raster")
 ```
+
+
+
+
 
 # 6. Watershed
 

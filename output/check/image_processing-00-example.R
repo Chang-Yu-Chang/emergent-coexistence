@@ -1,12 +1,12 @@
 library(tidyverse)
 library(EBImage)
+library(EBImageExtra)
 library(reticulate)
 library(tidypredict)
 library(gridExtra)
 
 # This main folder depends on your home directory and user name. Python somehow does not read ~/ instead I have to specify /Users/chang-yu/
 folder_main <- "/Users/chang-yu/Dropbox/lab/emergent-coexistence/data/raw/plate_scan/emergent_coexistence_plate_scan_check/"
-
 
 #' Example pair
 #'  D_T8_C1R2_1
@@ -16,14 +16,24 @@ folder_main <- "/Users/chang-yu/Dropbox/lab/emergent-coexistence/data/raw/plate_
 # 0. Generate two mapping file
 ## List of images
 list_images <- tibble(
-    image_name = c("D_T8_C1R2_1", "D_T8_C1R2_2", "D_T8_C1R2_5-95_1_2"),
+    #image_name = c("D_T8_C1R2_1", "D_T8_C1R2_2", "D_T8_C1R2_5-95_1_2"),
+    #image_name = c("D_T8_C1R2_1", "D_T8_C1R2_3", "D_T8_C1R2_5-95_1_3"),
+    image_name = c("D_T8_C1R2_1", "D_T8_C1R2_4", "D_T8_C1R2_5-95_1_4"),
     folder_original = rep(paste0(folder_main, "check/D-00-original/"), 3),
     folder_green = rep(paste0(folder_main, "check/D-01-green_channel/"), 3),
-    folder_rolled = rep(paste0(folder_main, "check/D-02-green_rolled/"), 3),
-    folder_watershed = rep(paste0(folder_main, "check/D-06-watershed/"), 3),
-    folder_feature = rep(paste0(folder_main, "check/D-07-feature/"), 3),
-    folder_cluster = rep(paste0(folder_main, "check/D-08-cluster/"), 3),
+    folder_green_rolled = rep(paste0(folder_main, "check/D-02-green_rolled/"), 3),
+    #folder_green_threshold = rep(paste0(folder_main, "check/D-03-green_threshold/"), 3),
+    #folder_green_round = rep(paste0(folder_main, "check/D-04-green_round/"), 3),
+    folder_green_watershed_file = rep(paste0(folder_main, "check/D-05-green_watershed_file/"), 3),
+    folder_green_watershed = rep(paste0(folder_main, "check/D-06-green_watershed/"), 3),
+    folder_green_feature = rep(paste0(folder_main, "check/D-07-green_feature/"), 3),
+    folder_green_cluster = rep(paste0(folder_main, "check/D-08-green_cluster/"), 3),
 )
+
+
+
+i = 1
+image_name <- list_images$image_name[i]
 
 
 ## List of image mapping between pair and isolate
@@ -42,36 +52,46 @@ list_image_mapping <- tibble(
 
 for (i in 1:nrow(list_images)) {
     image_name <- list_images$image_name[i]
-    folder_original <- list_images$folder_original[i]
-    folder_green <- list_images$folder_green[i]
-    folder_rolled <- list_images$folder_rolled[i]
 
     # 0. original image
-    image_original <- readImage(paste0(folder_original, image_name, ".tiff"))
+    image_original <- readImage(paste0(list_images$folder_original[i], image_name, ".tiff"))
 
     # 1. Green channel
     temp <- image_original
     colorMode(temp) = Grayscale
     image_green <- temp[,,2]
-    writeImage(image_green, paste0(folder_green, image_name, ".tiff"))
+    writeImage(image_green, paste0(list_images$folder_green[i], image_name, ".tiff"))
     cat("\ngreen channel\t", i, "/", nrow(list_images), "\t", list_images$image_name[i])
 }
 
 
-# 2. Rolling ball. This will take a while
+# 2. Rolling ball. This will take a while. Usually one image takes ~1min
 # This rolling ball takes the image_processing-01-example.csv as input
-py_run_file("image_processing-02-rolling_ball.py")
+#py_run_file("image_processing-02-rolling_ball.py")
 
 
-#
+# 3-6. segmentation
+detect_nonround_object <- function (image_object) {
+        object_shape <- computeFeatures.shape(image_object) %>% as_tibble(rownames = "ObjectID")
+        object_shape_round <- object_shape %>%
+            # Area
+            filter(s.area > 800 & s.area < 20000) %>%
+            # Remove tape and label that has really large variation in radius
+            filter(s.radius.sd < 10) %>%
+            # Circularity = 1 means a perfect circle and goes down to 0 for non-cicular shapes
+            mutate(Circularity = 4 * pi * s.area / s.perimeter^2) %>%
+            filter(Circularity > 0.3) %>%
+            arrange(desc(s.area))
+        object_ID_nonround <- object_shape$ObjectID[!(object_shape$ObjectID %in% object_shape_round$ObjectID)]
+        return(object_ID_nonround)
+}
+
 for (i in 1:nrow(list_images)) {
+
     image_name <- list_images$image_name[i]
-    folder_rolled <- list_images$folder_rolled[i]
-    folder_watershed <- list_images$folder_watershed[i]
-    folder_feature <- list_images$folder_feature[i]
 
     # Rolled image
-    image_rolled <- readImage(paste0(folder_rolled, image_name, ".tiff"))
+    image_rolled <- readImage(paste0(list_images$folder_green_rolled[i], image_name, ".tiff"))
 
     # 3. Thresholding
     threshold <- otsu(image_rolled)
@@ -80,40 +100,109 @@ for (i in 1:nrow(list_images)) {
 
     # 4. Detect round shaped object and remove super small size
     image_object <- bwlabel(image_thresholded)
-    detect_nonround_object <- function (image_object) {
-        object_shape <- computeFeatures.shape(image_object) %>% as_tibble(rownames = "ObjectID")
-        object_shape_round <- object_shape %>%
-            # Area
-            filter(s.area > 500 & s.area < 500000) %>%
-            # Roundness = 1 means a perfect circle
-            mutate(Roundness = (s.radius.max - s.radius.min)/2) %>%
-            filter(Roundness > 0.1 & Roundness < 50) %>%
-            # Circularity = 1 means a perfect circle and goes down to 0 for non-cicular shapes
-            mutate(Circularity = 4 * pi * s.area / s.perimeter^2) %>%
-            filter(Circularity > 0.3) %>%
-            arrange(desc(s.area))
-        object_ID_nonround <- object_shape$ObjectID[!(object_shape$ObjectID %in% object_shape_round$ObjectID)]
-        return(object_ID_nonround)
-    }
     object_ID_nonround <- detect_nonround_object(image_object)
     image_round <- rmObjects(image_object, object_ID_nonround, reenumerate = T)
     cat("\tround object")
 
-    # 5. Distance map
+    # 5-6. Watershed
     image_distancemap <- distmap(image_round)
     cat("\tdistance map")
-
-    # 6. Watershed
     image_watershed <- watershed(image_distancemap, tolerance = 1)
-
-    ## Second filter removing objects that are too small to be colonies
+    ## After watershed, apply a second filter removing objects that are too small to be colonies
     object_ID_nonround2 <- detect_nonround_object(image_watershed)
     image_watershed2 <- rmObjects(image_watershed, object_ID_nonround2, reenumerate = T)
-    writeImage(colorLabels(image_watershed2), paste0(folder_watershed, image_name, ".tiff"))
+    save(image_watershed2, file = paste0(list_images$folder_green_watershed_file[i], image_name, ".RData")) # save watersed image object
+    writeImage(colorLabels(image_watershed2), paste0(list_images$folder_green_watershed[i], image_name, ".tiff")) # save
     cat("\twatershed")
 
-    # 7. Calculate feature
+}
+
+
+
+# i for image_names
+# j for objects
+# k for pixels
+# 7. Calculate the features
+## Transection
+
+extract_transection <- function (watershed, ref) {
+    #' Arguments:
+    #'  watershed is the watershed image with object labels
+    #'  ref is the original image with intensity data. This has to be single-channel
+    oc <- ocontour(watershed)
+    transection <- NULL # should be the number of objects
+    #max_radius <- NULL # A test for object ID -> good. As long I use the oc output, they should be good
+    for (j in 1:length(oc)) {
+        z <- oc[[j]] # coordinate of contour pixels of a point
+        cz <- apply(z, 2, mean) # object center
+        radius = sqrt(rowSums((z - rep(cz, each=nrow(z)))^2)) # all radius from the center pixel to the contour pixels
+        mz <- z[which.min(abs(radius - median(radius))),] # the coordinate of contour pixels with the median radius (or closest to the median)
+        # max_radius[j] <- max(radius)
+        # The coordinates of all along the line to the maximum line: this is arranged such that it's always from the center to the periphery
+        lz <- bresenham(c(cz[1], mz[1]), c(cz[2], mz[2]))
+        radial_gradient <- NULL
+        for (k in 1:length(lz$x)) radial_gradient[k] <- ref@.Data[lz$x[k], lz$y[k]]
+        transection[[j]] <- radial_gradient
+    }
+    return(transection)
+}
+transections <- NULL
+for (i in 1:nrow(list_images)) {
+    image_name <- list_images$image_name[i]
+    image_rolled <- readImage(paste0(list_images$folder_green_rolled[i], image_name, ".tiff"))
+    load(paste0(list_images$folder_green_watershed_file[i], image_name, ".RData")) # this should contain one R object image_watershed2
+
+    transections[[i]] <- extract_transection(image_watershed2, image_rolled) %>%
+        lapply(function(x) tibble(Intensity = x, DistanceToCenter = 1:length(x))) %>%
+        bind_rows(.id = "ObjectID")
+}
+
+# This is 1-4
+bind_rows(
+    mutate(transections[[1]], Group = "isolate1"),
+    mutate(transections[[2]], Group = "isolate2"),
+    mutate(transections[[3]], Group = "pair")
+) %>%
+    group_by(Group, ObjectID) %>%
+    mutate(DistanceToCenter = DistanceToCenter/max(DistanceToCenter)) %>%
+    filter(Group != "pair") %>%
+    ggplot() +
+    geom_line(aes(x = DistanceToCenter, y = Intensity, color = Group, group = interaction(Group, ObjectID)), lwd = .3) +
+    theme_classic() +
+    #guides(color = "none") +
+    labs()
+
+transections[[1]] %>%
+    group_by(ObjectID) %>%
+    mutate(DistanceToCenter = DistanceToCenter/max(DistanceToCenter)) %>%
+    ggplot() +
+    geom_line(aes(x = DistanceToCenter, y = Intensity, group = ObjectID), lwd = .3) +
+    theme_classic() +
+    #guides(color = "none") +
+    labs()
+
+
+
+"
+plot it on EBImage for each transection used
+THis should be a line per colony
+"
+
+"finish this
+- smooth the transection curve
+also these values have to match the Object ID
+1) fit the curve to have a value for concavity
+2) normalize the size and calculate the slope
+3) the number of valleys
+"
+
+
+# 7. Calculate feature
+for (i in 1:nrow(list_images)) {
+    i=1
     ## Compute feature. It is NULL if no object (no colony)
+    load(paste0(list_images$folder_green_watershed_file, image_name, ".RData")) # this should contain one R object image_watershed2
+
     object_feature <- computeFeatures(
         image_watershed2, image_rolled,
         methods.noref = c("computeFeatures.shape"),
@@ -122,7 +211,7 @@ for (i in 1:nrow(list_images)) {
 
     ## Execute the name cleanup only if there is at least 1 object
     if (is_null(object_feature)) {
-        #write_csv(object_feature, paste0(folder_feature, image_name, ".csv"))
+        #write_csv(object_feature, paste0(list_images$folder_green_feature, image_name, ".csv"))
         cat("\tno object\t", i, "/", nrow(list_images), "\t", list_images$image_name[i])
     }
 
@@ -131,15 +220,17 @@ for (i in 1:nrow(list_images)) {
             as_tibble(rownames = "ObjectID") %>%
             # Remove duplicatedly calculated properties
             select(ObjectID, starts_with("x.0"), starts_with("x.Ba")) %>%
-            # Remove the redundant prefix
+            # Remove the redundant prefix in the column names
             rename_with(function(x) str_replace(x,"x.0.", ""), starts_with("x.0")) %>%
             rename_with(function(x) str_replace(x,"x.Ba.", ""), starts_with("x.Ba")) %>%
             #
             select(ObjectID, starts_with("b."), starts_with("s."), starts_with("m."))
-        write_csv(object_feature, paste0(folder_feature, image_name, ".csv"))
+        write_csv(object_feature, paste0(list_images$folder_green_feature, image_name, ".csv"))
         cat("\tfeature\t", i, "/", nrow(list_images), "\t", list_images$image_name[i])
     }
 }
+
+
 
 
 # 8. Cluster
@@ -149,9 +240,9 @@ list_images <- paste0(folder_script, "00-list_images-", batch, ".csv") %>% read_
 list_image_mapping <- paste0(folder_script, "00-list_image_mapping-", batch, ".csv") %>% read_csv(show_col_types = F)
 
 list_image_mapping_folder <- list_image_mapping %>%
-    left_join(select(list_images, image_name_pair = image_name, folder_feature_pair = folder_feature, folder_cluster), by = "image_name_pair") %>%
-    left_join(select(list_images, image_name_isolate1 = image_name, folder_feature_isolate1 = folder_feature), by = "image_name_isolate1") %>%
-    left_join(select(list_images, image_name_isolate2 = image_name, folder_feature_isolate2 = folder_feature), by = "image_name_isolate2")
+    left_join(select(list_images, image_name_pair = image_name, folder_feature_pair = folder_green_feature, folder_green_cluster), by = "image_name_pair") %>%
+    left_join(select(list_images, image_name_isolate1 = image_name, folder_feature_isolate1 = folder_green_feature), by = "image_name_isolate1") %>%
+    left_join(select(list_images, image_name_isolate2 = image_name, folder_feature_isolate2 = folder_green_feature), by = "image_name_isolate2")
 
 ## Read the feature files
 #which(list_image_mapping_folder$image_name_pair == "D_T8_C1R2_5-95_1_3")
@@ -272,7 +363,7 @@ p <- plot_grid(p1 + theme(legend.position = "none"),
                legend, nrow = 2, align = "hv", axis = "lrtb") +
     theme(plot.background = element_rect(fill = "white"))
 #p_output <- plot_grid(p, legend, rel_widths = c(2,1), nrow = 1) + theme(plot.background = element_rect(fill = "white"))
-ggsave(filename = paste0(folder_cluster, image_name, ".png"), plot = p, width = 10, height = 6)
+ggsave(filename = paste0(list_images$folder_green_cluster[i], image_name, ".png"), plot = p, width = 10, height = 6)
 cat("\nplot feature\t", i, "/", nrow(list_image_mapping_folder), "\t", image_name)
 
 

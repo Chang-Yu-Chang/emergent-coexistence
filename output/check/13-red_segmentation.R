@@ -21,12 +21,7 @@ detect_nonround_object <- function (image_object) {
 
 for (i in 1:nrow(list_images)) {
     image_name <- list_images$image_name[i]
-    folder_red_rolled <- list_images$folder_red_rolled[i]
-    folder_red_watershed <- list_images$folder_red_watershed[i]
-    folder_red_feature <- list_images$folder_red_feature[i]
-
-    #
-    image_rolled <- readImage(paste0(folder_red_rolled, image_name, ".tiff"))
+    image_rolled <- readImage(paste0(list_images$folder_red_rolled[i], image_name, ".tiff"))
 
     # 3. Thresholding
     threshold <- otsu(image_rolled)
@@ -39,50 +34,48 @@ for (i in 1:nrow(list_images)) {
     image_round <- rmObjects(image_object, object_ID_nonround, reenumerate = T)
     cat("\tround object")
 
-    # 5. Distance map
+    # 5-6. Watershed
     image_distancemap <- distmap(image_round)
     cat("\tdistance map")
-
-    # 6. Watershed
     image_watershed <- watershed(image_distancemap, tolerance = 1)
-
-    ## Second filter removing watershed objects that are too small to be colonies
+    ## After watershed, apply a second filter removing objects that are too small to be colonies
     object_ID_nonround2 <- detect_nonround_object(image_watershed)
     image_watershed2 <- rmObjects(image_watershed, object_ID_nonround2, reenumerate = T)
-    writeImage(colorLabels(image_watershed2), paste0(folder_red_watershed, image_name, ".tiff"))
-    cat("\twatershed")
+    save(image_watershed2, file = paste0(list_images$folder_red_watershed_file[i], image_name, ".RData")) # save watersed image object
+    writeImage(colorLabels(image_watershed2), paste0(list_images$list_images$folder_red_watershed[i], image_name, ".tiff")) # save
+    cat("\twatershed\t", i, "/", nrow(list_images), "\t", list_images$image_name[i])
 
-    # 7. Calculate feature
-    ## Compute feature. It is NULL if no object (no colony)
-    object_feature <- computeFeatures(
-        image_watershed2, image_rolled,
-        methods.noref = c("computeFeatures.shape"),
-        methods.ref = c("computeFeatures.basic", "computeFeatures.moment"),
-        basic.quantiles = c(0.01, 0.05, seq(0.1, 0.9, by = .1), 0.95, 0.99)
-    )
-
-    ## Execute the name cleanup only if there is at least 1 object
-    if (is_null(object_feature)) {
-        #write_csv(object_feature, paste0(folder_red_feature, image_name, ".csv"))
-        cat("\tno object\t", i, "/", nrow(list_images), "\t", list_images$image_name[i])
-    }
-
-    if (!is_null(object_feature)) {
-        object_feature <- object_feature %>%
-            as_tibble(rownames = "ObjectID") %>%
-            # Remove duplicatedly calculated properties
-            select(ObjectID, starts_with("x.0"), starts_with("x.Ba")) %>%
-            # Remove the redundant prefix
-            rename_with(function(x) str_replace(x,"x.0.", ""), starts_with("x.0")) %>%
-            rename_with(function(x) str_replace(x,"x.Ba.", ""), starts_with("x.Ba")) %>%
-            #
-            select(ObjectID, starts_with("b."), starts_with("s."), starts_with("m.")) %>%
-            # Remove the round plate lid crack that has high intensity variability
-            filter(b.sd < 0.3)
-
-        write_csv(object_feature, paste0(folder_red_feature, image_name, ".csv"))
-        cat("\tfeature\t", i, "/", nrow(list_images), "\t", list_images$image_name[i])
-    }
+    # # 7. Calculate feature
+    # ## Compute feature. It is NULL if no object (no colony)
+    # object_feature <- computeFeatures(
+    #     image_watershed2, image_rolled,
+    #     methods.noref = c("computeFeatures.shape"),
+    #     methods.ref = c("computeFeatures.basic", "computeFeatures.moment"),
+    #     basic.quantiles = c(0.01, 0.05, seq(0.1, 0.9, by = .1), 0.95, 0.99)
+    # )
+    #
+    # ## Execute the name cleanup only if there is at least 1 object
+    # if (is_null(object_feature)) {
+    #     #write_csv(object_feature, paste0(list_images$folder_red_feature[i], image_name, ".csv"))
+    #     cat("\tno object\t", i, "/", nrow(list_images), "\t", list_images$image_name[i])
+    # }
+    #
+    # if (!is_null(object_feature)) {
+    #     object_feature <- object_feature %>%
+    #         as_tibble(rownames = "ObjectID") %>%
+    #         # Remove duplicatedly calculated properties
+    #         select(ObjectID, starts_with("x.0"), starts_with("x.Ba")) %>%
+    #         # Remove the redundant prefix
+    #         rename_with(function(x) str_replace(x,"x.0.", ""), starts_with("x.0")) %>%
+    #         rename_with(function(x) str_replace(x,"x.Ba.", ""), starts_with("x.Ba")) %>%
+    #         #
+    #         select(ObjectID, starts_with("b."), starts_with("s."), starts_with("m.")) %>%
+    #         # Remove the round plate lid crack that has high intensity variability
+    #         filter(b.sd < 0.3)
+    #
+    #     write_csv(object_feature, paste0(list_images$folder_red_feature[i], image_name, ".csv"))
+    #     cat("\tfeature\t", i, "/", nrow(list_images), "\t", list_images$image_name[i])
+    # }
 
 }
 
