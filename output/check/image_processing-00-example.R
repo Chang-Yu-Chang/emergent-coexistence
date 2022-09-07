@@ -583,17 +583,19 @@ object_feature_isolates %>%
 
 
 
+
+
 # Figures
-legend <- get_legend(p1 + theme(legend.box.margin = margin(0, 0, 0, 12)))
-p <- plot_grid(p1 + theme(legend.position = "none"),
-               p2 + theme(legend.position = "none"),
-               p3 + theme(legend.position = "none"),
-               p4 + theme(legend.position = "none"),
-               p5 + theme(legend.position = "none"),
-               legend, nrow = 2, align = "hv", axis = "lrtb") +
-    theme(plot.background = element_rect(fill = "white"))
-#p_output <- plot_grid(p, legend, rel_widths = c(2,1), nrow = 1) + theme(plot.background = element_rect(fill = "white"))
-ggsave(filename = paste0(list_images$folder_green_cluster[i], image_name, ".png"), plot = p, width = 10, height = 6)
+# legend <- get_legend(p1 + theme(legend.box.margin = margin(0, 0, 0, 12)))
+# p <- plot_grid(p1 + theme(legend.position = "none"),
+#                p2 + theme(legend.position = "none"),
+#                p3 + theme(legend.position = "none"),
+#                p4 + theme(legend.position = "none"),
+#                p5 + theme(legend.position = "none"),
+#                legend, nrow = 2, align = "hv", axis = "lrtb") +
+#     theme(plot.background = element_rect(fill = "white"))
+# #p_output <- plot_grid(p, legend, rel_widths = c(2,1), nrow = 1) + theme(plot.background = element_rect(fill = "white"))
+# ggsave(filename = paste0(list_images$folder_green_cluster[i], image_name, ".png"), plot = p, width = 10, height = 6)
 cat("\nplot feature\t", i, "/", nrow(list_image_mapping_folder), "\t", image_name)
 
 
