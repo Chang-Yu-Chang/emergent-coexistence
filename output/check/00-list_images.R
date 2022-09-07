@@ -35,21 +35,24 @@ for (j in 1:length(batch_names)) {
         folder_green_watershed_file = rep(paste0(folder_main, "check/", batch_names[j], "-05-green_watershed_file/"), n_images),
         folder_green_watershed = rep(paste0(folder_main, "check/", batch_names[j], "-06-green_watershed/"), n_images),
         folder_green_feature = rep(paste0(folder_main, "check/", batch_names[j], "-07-green_feature/"), n_images),
-        folder_green_cluster = rep(paste0(folder_main, "check/", batch_names[j], "-08-green_cluster/"), n_images),
+        folder_green_transection = rep(paste0(folder_main, "check/", batch_names[j], "-08-green_transection/"), n_images),
+        folder_green_cluster = rep(paste0(folder_main, "check/", batch_names[j], "-09-green_cluster/"), n_images),
 
         folder_red = rep(paste0(folder_main, "check/", batch_names[j], "-11-red_channel/"), n_images),
         folder_red_rolled = rep(paste0(folder_main, "check/", batch_names[j], "-12-red_rolled/"), n_images),
         folder_red_watershed_file = rep(paste0(folder_main, "check/", batch_names[j], "-15-red_watershed_file/"), n_images),
         folder_red_watershed = rep(paste0(folder_main, "check/", batch_names[j], "-16-red_watershed/"), n_images),
         folder_red_feature = rep(paste0(folder_main, "check/", batch_names[j], "-17-red_feature/"), n_images),
-        folder_red_cluster = rep(paste0(folder_main, "check/", batch_names[j], "-18-red_cluster/"), n_images),
+        folder_red_transection = rep(paste0(folder_main, "check/", batch_names[j], "-18-red_transection/"), n_images),
+        folder_red_cluster = rep(paste0(folder_main, "check/", batch_names[j], "-19-red_cluster/"), n_images),
 
         folder_blue = rep(paste0(folder_main, "check/", batch_names[j], "-21-blue_channel/"), n_images),
         folder_blue_rolled = rep(paste0(folder_main, "check/", batch_names[j], "-22-blue_rolled/"), n_images),
         folder_blue_watershed_file = rep(paste0(folder_main, "check/", batch_names[j], "-25-blue_watershed_file/"), n_images),
         folder_blue_watershed = rep(paste0(folder_main, "check/", batch_names[j], "-26-blue_watershed/"), n_images),
         folder_blue_feature = rep(paste0(folder_main, "check/", batch_names[j], "-27-blue_feature/"), n_images),
-        folder_blue_cluster = rep(paste0(folder_main, "check/", batch_names[j], "-28-blue_cluster/"), n_images)
+        folder_blue_transection = rep(paste0(folder_main, "check/", batch_names[j], "-28-blue_transection/"), n_images),
+        folder_blue_cluster = rep(paste0(folder_main, "check/", batch_names[j], "-29-blue_cluster/"), n_images)
     )
 
     write_csv(list_images, paste0(folder_script, "00-list_images-", batch_names[j], ".csv"))
