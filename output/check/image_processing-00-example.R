@@ -4,14 +4,14 @@ library(EBImage)
 # This main folder depends on your home directory and user name. Python somehow does not read ~/ instead I have to specify /Users/chang-yu/
 #folder_main <- "/Users/chang-yu/Dropbox/lab/emergent-coexistence/data/raw/plate_scan/emergent_coexistence_plate_scan_check/"
 folder_main <- "~/Dropbox/lab/emergent-coexistence/data/raw/plate_scan/emergent_coexistence_plate_scan_check/"
-
+folder_script <- "~/Desktop/Lab/emergent-coexistence/output/check/"
 
 #' Example pair
 #'  D_T8_C1R2_1
 #'  D_T8_C1R2_2
 #'  D_T8_C1R2_5-95_1_2
 
-# 0. Generate two mapping file
+# 00. generate two mapping files ----
 ## List of images
 list_images <- tibble(
     #image_name = c("D_T8_C1R2_1", "D_T8_C1R2_2", "D_T8_C1R2_5-95_1_2"),
@@ -21,23 +21,18 @@ list_images <- tibble(
                    c("D_T8_C1R6_1", "D_T0_C1R6_3", "D_T8_C1R6_5-95_1_3"))
 ) %>%
     mutate(
-    folder_original = rep(paste0(folder_main, "check/D-00-original/"), n()),
-    folder_green = rep(paste0(folder_main, "check/D-01-green_channel/"), n()),
-    folder_green_rolled = rep(paste0(folder_main, "check/D-02-green_rolled/"), n()),
-    # folder_green_threshold = rep(paste0(folder_main, "check/D-03-green_threshold/"), n()),
-    # folder_green_round = rep(paste0(folder_main, "check/D-04-green_round/"), n()),
-    # folder_green_watershed_file = rep(paste0(folder_main, "check/D-05-green_watershed_file/"), n()),
-    folder_green_watershed_file = rep(paste0(folder_main, "check/D-05-green_watershed_file/"), n()),
-    folder_green_watershed = rep(paste0(folder_main, "check/D-06-green_watershed/"), n()),
-    folder_green_feature = rep(paste0(folder_main, "check/D-07-green_feature/"), n()),
-    folder_green_transection = rep(paste0(folder_main, "check/D-08-green_transection/"), n()),
-    folder_green_cluster = rep(paste0(folder_main, "check/D-09-green_cluster/"), n()),
-)
-
-
-
-i = 1
-image_name <- list_images$image_name[i]
+        folder_original = rep(paste0(folder_main, "check/D-00-original/"), n()),
+        folder_green = rep(paste0(folder_main, "check/D-01-green_channel/"), n()),
+        folder_green_rolled = rep(paste0(folder_main, "check/D-02-green_rolled/"), n()),
+        # folder_green_threshold = rep(paste0(folder_main, "check/D-03-green_threshold/"), n()),
+        # folder_green_round = rep(paste0(folder_main, "check/D-04-green_round/"), n()),
+        # folder_green_watershed_file = rep(paste0(folder_main, "check/D-05-green_watershed_file/"), n()),
+        folder_green_watershed_file = rep(paste0(folder_main, "check/D-05-green_watershed_file/"), n()),
+        folder_green_watershed = rep(paste0(folder_main, "check/D-06-green_watershed/"), n()),
+        folder_green_feature = rep(paste0(folder_main, "check/D-07-green_feature/"), n()),
+        folder_green_transection = rep(paste0(folder_main, "check/D-08-green_transection/"), n()),
+        folder_green_cluster = rep(paste0(folder_main, "check/D-09-green_cluster/"), n()),
+    )
 
 
 ## List of image mapping between pair and isolate
@@ -54,6 +49,8 @@ list_image_mapping <- tibble(
 )
 
 
+# 01. green channel and grey scale ----
+
 for (i in 1:nrow(list_images)) {
     image_name <- list_images$image_name[i]
 
@@ -69,13 +66,15 @@ for (i in 1:nrow(list_images)) {
 }
 
 
-# 2. Rolling ball. This will take a while. Usually one image takes ~1min
+# 02. background subtraction  ----
+# rolling ball
+# This will take a while. Usually one image takes ~1min
 library(reticulate)
 # This rolling ball takes the image_processing-01-example.csv as input
 #py_run_file("image_processing-02-rolling_ball.py")
 
 
-# 3-6. segmentation
+# 03. segmentation ----
 detect_nonround_object <- function (image_object, watershed = F) {
     # Reomve too large or too small objects before watershed to reduce computational load
     if (!watershed) {
@@ -144,7 +143,7 @@ for (i in 1:nrow(list_images)) {
 # k for pixels
 
 
-# 7. Calculate the features
+# 04. calculate the features ----
 library(EBImageExtra)
 library(purrr)
 extract_transection <- function (watershed, ref) {
@@ -282,46 +281,32 @@ this can wait. Using the new feature, do the model selection for clustering
 run a set of model selection algorithm
 "
 
+
+# 05. clustering ----
+
 # 8. Clustering
-# 8.1 feature selection
-#' 1. run regsubset to get the best models for p variables.
-#' 2. divide the data into k-fold cross-validaiton. Find the one with lowest MSE
-#' 3.
 
-hitters <- na.omit(ISLR::Hitters) %>% as_tibble
-
-set.seed(1)
-sample <- sample(c(TRUE, FALSE), nrow(hitters), replace = T, prob = c(0.6,0.4))
-train <- hitters[sample, ]
-test <- hitters[!sample, ]
-
-
-best_subset <- regsubsets(Salary ~ ., train, nvmax = 19)#, method = "forward")
-broom::tidy(best_subset)
-
-
-
-
-# 8. Cluster
-library(caret) # for easy machine learning workflow
-library(leaps) # for computing stepwise regression
+#' 1. stepwise selection over the best subset selection: run regsubset to get the best models for p variables.
+#' 3. compare models: divide the data into k-fold cross-validaiton. Find the one with lowest MSE
+# library(caret) # for easy machine learning workflow
+# library(bestglm) # extension to include glm in leaps
+# library(glmnet) # for fitting glm via penalized maximum likelihood
+library(leaps) # for computing stepwise regression. But it only fits lm
+library(glmulti) # extension to include glm in leaps
+#library(tidyverse)
 library(tidypredict)
 library(gridExtra)
 
-folder_script <- "/Users/chang-yu/Desktop/Lab/emergent-coexistence/output/check/"
-batch <- "D"
-list_images <- paste0(folder_script, "00-list_images-", batch, ".csv") %>% read_csv(show_col_types = F)
-list_image_mapping <- paste0(folder_script, "00-list_image_mapping-", batch, ".csv") %>% read_csv(show_col_types = F)
 
+list_images <- read_csv("~/Desktop/Lab/emergent-coexistence/output/check/00-list_images-D.csv", show_col_types = F)
+list_image_mapping <- read_csv(paste0(folder_script, "00-list_image_mapping-D.csv"), show_col_types = F)
 list_image_mapping_folder <- list_image_mapping %>%
     left_join(select(list_images, image_name_pair = image_name, folder_feature_pair = folder_green_feature, folder_green_cluster), by = "image_name_pair") %>%
     left_join(select(list_images, image_name_isolate1 = image_name, folder_feature_isolate1 = folder_green_feature), by = "image_name_isolate1") %>%
     left_join(select(list_images, image_name_isolate2 = image_name, folder_feature_isolate2 = folder_green_feature), by = "image_name_isolate2")
 
-## Read the feature files
-#which(list_image_mapping_folder$image_name_pair == "D_T8_C1R2_5-95_1_3")
-which(list_image_mapping_folder$image_name_pair == "D_T8_C1R4_5-95_2_3")
-i = 54
+## 8.1 read the feature files
+i = 2
 read_feature_combined <- function () {
     object_feature_pair <- paste0(
         list_image_mapping_folder$folder_feature_pair[i],
@@ -349,85 +334,256 @@ read_feature_combined <- function () {
 
     #
     object_feature_combined <- bind_rows(object_feature_pair, object_feature_isolate1, object_feature_isolate2) %>%
-        select(image_name, Group, everything())
+        dplyr::select(image_name, Group, everything())
 
     return(object_feature_combined)
 }
-set_color_names <- function() {
-    color_names <- c(2, 3, 1) %>% setNames(
-        c(list_image_mapping_folder$image_name_isolate1[i],
-          list_image_mapping_folder$image_name_isolate2[i],
-          list_image_mapping_folder$image_name_pair[i])
-    )
+list_image_mapping_folder$image_name_pair[i]
 
-}
-plot_one_feature <- function (object_feature_combined, feature1) {
-    object_feature_combined %>%
-        ggplot() +
-        geom_histogram(aes_string(x = feature1, fill = "image_name"), color = 1, bins = 50, alpha = .5, position = "identity") +
-        scale_fill_manual(values = color_names) +
+feature_candidates <- c("b.mean", "b.sd", "b.mad",
+                        "s.area", "s.radius.mean", "s.radius.sd",
+                        "b.tran.mean", "b.tran.sd", "b.tran.mad",
+                        "b.center", "b.periphery", "b.diff.cp")
+#feature_candidates_test <- c("b.mean", "b.sd", "b.mad", "s.area", "s.radius.mean")
+object_feature_combined <- read_feature_combined() %>%
+    mutate(GroupBinary = case_when(
+        Group == "isolate1" ~ 0,
+        Group == "isolate2" ~ 1,
+    )) %>%
+    # Start with these parameters
+    dplyr::select(image_name, ObjectID, Group, GroupBinary, all_of(feature_candidates))
+object_feature_isolates <- object_feature_combined %>%
+    filter(!is.na(GroupBinary))
+object_feature_pair <- object_feature_combined %>%
+    filter(is.na(GroupBinary))
+names(object_feature_isolates)
+
+# 8.2 exhaustive stepwise selection and cross-validation
+best_subset <- glmulti(
+    y = "GroupBinary",
+    #xr = c("b.mean"),
+    xr = feature_candidates,
+    #xr = str_subset(names(object_feature_isolates), "^b."),
+    # xr = names(object_feature_combined)[names(object_feature_isolates) != c("Group", "ObjectID")],
+    data = object_feature_isolates,
+    level = 1,
+    method = "h",
+    crit = "aicc",
+    minsize = 2,
+    maxsize = 5,
+    confsetsize = 5, # Keep the top n models
+    plotty = F, report = T,
+    fitfunction = "glm"
+    #family = binomial # logistic
+)
+# plot(best_subset)
+# top <- weightable(best_subset)
+# top <- top[top$aicc <= min(top$aicc) + 2,]
+# broom::tidy(best_subset@objects[[1]])
+"plot this. or should be able to turn this into ggplot here"
+plot(best_subset, type = "s")
+model <- best_subset@objects[[1]]
+broom::tidy(model)
+# Linear Models: the absolute value of the t-statistic for each model parameter is used.
+model_importance <- broom::tidy(model) %>%
+    arrange(desc(abs(statistic))) %>%
+    filter(term != "(Intercept)") %>%
+    pull(term)
+
+# object_feature_isolates %>%
+#     ggplot() +
+#     geom_point(aes(x = b.mean, y = b.sd, color = Group)) +
+#     theme_classic()
+object_feature_isolates %>%
+    ggplot() +
+    geom_point(aes_string(x = model_importance[1], y = model_importance[2], color = "Group")) +
+    theme_classic()
+
+
+
+
+
+
+
+
+
+if (FALSE) {
+
+    predict_regsubsets <- function(model_object, newdata, id ,...) {
+        form <- as.formula(model_object$call[[2]])
+        mat <- model.matrix(form, newdata)
+        coefi <- coef(model_object, id = id)
+        xvars <- names(coefi)
+        mat[, xvars] %*% coefi
+    }
+    n_feature_max = 10
+    #best_subset <- regsubsets(GroupBinary ~ ., object_feature_isolates, nvmax = n_feature_max, method = "exhaustive")
+    #results <- broom::tidy(best_subset)
+
+    ## k-fold cross-validation
+    number_k <- 10
+    set.seed(1)
+    folds <- sample(1:number_k, nrow(object_feature_isolates), replace = TRUE) # Not all training set will be of the size but roughly
+    cv_errors <- matrix(NA, n_feature_max, number_k, dimnames = list(paste(1:n_feature_max), NULL)) # output cross-validation matrix
+    for (k in 1:number_k) {
+        # Perform best subset on row that are NOT in the test test k
+        best_subset <- regsubsets(GroupBinary ~ . - image_name - ObjectID - Group, object_feature_isolates[folds != k,], nvmax = n_feature_max, method = "exhaustive")
+        # Perform cross-validation
+        for (j in 1:n_feature_max) {
+            pred_x <- predict_regsubsets(best_subset, object_feature_isolates[folds == k,], id = j)
+            cv_errors[j,k] <- mean((object_feature_isolates$GroupBinary[folds == k] - pred_x)^2)
+        }
+    }
+
+    ## Find the best model
+    best_model_index <- which.min(rowMeans(cv_errors))
+    p1 <- tibble(NumberOfPredictors = 1:n_feature_max, CrossValidationError = rowMeans(cv_errors)) %>%
+        ggplot(aes(x = NumberOfPredictors, y = CrossValidationError)) +
+        geom_line() +
+        geom_point(shape = 1, size = 3, stroke = 1) +
+        geom_vline(xintercept = best_model_index, color = "red", linetype = 2) +
+        scale_x_continuous(breaks = 1:n_feature_max) +
         theme_classic() +
-        theme(legend.position = "none")
-}
-plot_two_features <- function (object_feature_combined, feature1, feature2) {
-    object_feature_combined %>%
+        ggtitle("cross-validation for best model")
+
+    ## Coefficients of the best model
+    final_best_subset <- regsubsets(GroupBinary ~ . - image_name - ObjectID - Group, object_feature_isolates, nvmax = n_feature_max, method = "exhaustive")
+    #plot(final_best_subset, scale = "adjr2") is the default alternative for the ggplot plot below
+    p2 <- final_best_subset %>%
+        broom::tidy() %>%
+        mutate(NumberOfPredictor = 1:n()) %>%
+        pivot_longer(cols = -c(NumberOfPredictor, r.squared, adj.r.squared, BIC, mallows_cp), names_to = "Feature", values_to = "Value") %>%
+        mutate(adj.r.squared.discrete = factor(round(adj.r.squared,4))) %>%
+        mutate(Feature = factor(Feature, c("(Intercept)", feature_candidates))) %>%
         ggplot() +
-        geom_point(aes_string(x = feature1, y = feature2, color = "image_name"), size = 1, shape = 1, stroke = .5) +
-        scale_color_manual(values = color_names) +
-        theme_classic()
+        geom_tile(aes(x = NumberOfPredictor, y = Feature, fill = Value, alpha = adj.r.squared)) +
+        geom_vline(xintercept = c(1:n_feature_max)+0.5, color = grey(.8)) +
+        geom_hline(yintercept = c(1:length(feature_candidates))+0.5, color = grey(.8)) +
+        scale_fill_manual(values = c("TRUE" = "black", "FALSE" = "white")) +
+        scale_x_continuous(expand = c(0,0), breaks = 1:n_feature_max) +
+        scale_y_discrete(expand = c(0,0)) +
+        theme_classic() +
+        theme(panel.border = element_rect(fill = NA, color = 1)) +
+        guides(fill = "none") +
+        ggtitle("each column is a n-feature model")
+
+    ## Coefficient importance by the abs(coef)
+    best_model_coef <- coef(final_best_subset, best_model_index)
+    best_model_coef_importance <- best_model_coef %>%
+        enframe(name = "Feature", value = "Value") %>%
+        mutate(Sign = ifelse(Value > 0, "positive", "negative"),
+               Rank = rank(abs(Value))) %>%
+        arrange(desc(Rank)) %>%
+        mutate(Feature = ordered(Feature, rev(Feature)))
+
+    p3 <- best_model_coef_importance %>%
+        ggplot() +
+        geom_col(aes(x = Feature, y = abs(Value), fill = Sign), color = 1) +
+        #scale_x_reverse() +
+        scale_fill_manual(values = c("positive" = "white", "negative" = "black")) +
+        coord_flip() +
+        theme_minimal() +
+        theme(legend.position = c(.8, .3)) +
+        labs(y = "coefficient")
+    p3
 }
-subset_training_set <- function (x) {
-    x %>%
-        filter(Group != "pair") %>%
-        # Dummy variable for logistic regression
-        mutate(dummy = case_when(
-            Group == "isolate1" ~ 0,
-            Group == "isolate2" ~ 1
-        ))
+if (FALSE) {
+"there should a way to extract to extract the confidence interaval for each selected variables
+now I can only extract coeff"
+
+#best_model_coef <- coef(best_subset, best_model_index)
+#names(best_model_coef)
+predict_model_coef <- function (tibble_test, model_coef, ...) {
+    #model_coef <- best_model_coef
+    #    stopifnot(names(model_coef)[1] == "(Intercept)")
+    #    tibble_test <- object_feature_pair
+    coef_names <- names(model_coef)[-1]
+    prediction <- rep(model_coef["(Intercept)"], nrow(tibble_test)) %>% unname
+    for (i in 1:length(coef_names)) {
+        prediction <- prediction + unname(unlist(tibble_test[, "b.mean"])) * model_coef[coef_names[i]]
+    }
+
+    return(prediction)
 }
 
-object_feature_combined <- read_feature_combined()
-color_names <- set_color_names()
-#object_feature_combined$image_name %>% unique
-# p0 <- plot_one_feature(object_feature_combined, "b.mean")
-p1 <- plot_two_features(object_feature_combined, "b.mean", "b.sd")
-p2 <- plot_two_features(object_feature_combined, "b.mean", "b.mad")
-p3 <- plot_two_features(object_feature_combined, "b.sd", "b.mad")
+}
 
-# Logistic regression using the three main features
-training <- subset_training_set(object_feature_combined)
-model <- glm(dummy ~ b.mean + b.sd + b.mad, data = training, family = "binomial")
+library(cowplot)
+plot_grid(p1, p2, ncol = 1, align = "v", axis = "lr")
+plot_grid(p1, p3, p2, NULL, ncol = 2, align = "v", axis = "lr")
 
-object_feature_predicted <- object_feature_combined %>%
-    filter(Group == "pair") %>%
-    tidypredict_to_column(model, vars = "PredictedGroupProbability") %>%
-    select(image_name, ObjectID, PredictedGroupProbability)
+# Model predict
+object_feature_predicted <- object_feature_pair %>%
+    mutate(PredictedGroupProbability = predict(model, object_feature_pair)) %>%
+    dplyr::select(image_name, ObjectID, PredictedGroupProbability) %>%
+    mutate(PredictedGroup = ifelse(PredictedGroupProbability < 0.5, 0, 1) %>% factor(c(0,1)))
+#mutate(PredictedGroup = ifelse(PredictedGroupProbability < 0.5, 0, 1) %>% factor(c(0,1)))
 
 object_feature_predicted_count <- object_feature_predicted %>%
     mutate(PredictedGroup = ifelse(PredictedGroupProbability < 0.5, 0, 1) %>% factor(c(0,1))) %>%
-    group_by(PredictedGroup) %>%
+    group_by(PredictedGroup, .drop = F) %>%
     count(name = "Count") %>%
     ungroup() %>%
     mutate(Group = c("isolate1", "isolate2"), Align = c("right", "left"))
 
-# Model predict
 p4 <- object_feature_predicted %>%
     ggplot() +
     geom_histogram(aes(x = PredictedGroupProbability), color = 1, fill = NA, bins = 30) +
     geom_vline(xintercept = 0.5, linetype = 2, color = "red") +
     geom_text(data = object_feature_predicted_count, aes(x = 0.5, hjust = Align, label = paste0("  ", Group, ": ", Count, "  ")), y = Inf, vjust = 2) +
-    scale_x_continuous(limits = c(0,1)) +
+    scale_x_continuous(expand = c(0,1)) +
+    scale_y_continuous(expand = c(0,0)) +
     theme_classic()
 
-# Model fit
-p5 <- ggplot() +
-    geom_point() +
-    annotation_custom(tableGrob(broom::tidy(model), theme = ttheme_default(base_size = 8)), xmin = .2, xmax = .8, ymin = .2, ymax = .8) +
-    scale_x_continuous(limits = c(0,1)) +
-    scale_y_continuous(limits = c(0,1)) +
-    theme_void()
+p4
+
+# Scatterplot for clustering intuition
+set_color_names <- function() {
+    c(2,3,2,3) %>% setNames(c(
+        paste0(list_image_mapping_folder$image_name_isolate1[i], " isolate1"),
+        paste0(list_image_mapping_folder$image_name_isolate2[i], " isolate2"),
+        paste0(list_image_mapping_folder$image_name_pair[i], " predicted isolate1"),
+        paste0(list_image_mapping_folder$image_name_pair[i], " predicted isolate2")
+    ))
+}
+set_shape_names <- function() c(16, 21) %>% setNames(c("pair", "isolate"))
+color_names <- set_color_names()
+shape_names <- set_shape_names()
+
+p5 <- object_feature_predicted %>%
+    select(image_name, ObjectID, PredictedGroup) %>%
+    mutate(Group = case_when(
+        PredictedGroup == 0 ~ paste0("predicted isolate1"),
+        PredictedGroup == 1 ~ paste0("predicted isolate2")
+    )) %>%
+    left_join(select(object_feature_pair, -GroupBinary, -Group), by = c("image_name", "ObjectID")) %>%
+    bind_rows(object_feature_isolates) %>%
+    mutate(ColorLabel = paste(image_name, Group),
+           ShapeLabel = ifelse(str_detect(Group, "predicted"), "pair", "isolate")) %>%
+    # select(ColorLabel, ShapeLabel, image_name, Group) %>%
+    # distinct()
+    ggplot() +
+    geom_point(aes_string(x = model_importance[1],
+                          y = model_importance[2],
+                          color = "ColorLabel", shape = "ShapeLabel"),
+               size = 1, stroke = .8) +
+    scale_color_manual(values = color_names) +
+    scale_shape_manual(values = shape_names) +
+    theme_classic()
 
 
+# PCA with the model selected variables
+library(ggfortify)
+object_feature_isolates %>%
+    select(all_of(model_importance)) %>%
+    scale() %>%
+    prcomp() %>%
+    autoplot(data = object_feature_isolates %>% select(Group, all_of(feature_candidates)), colour = "Group") +
+    theme_classic()
+
+
+
+# Figures
 legend <- get_legend(p1 + theme(legend.box.margin = margin(0, 0, 0, 12)))
 p <- plot_grid(p1 + theme(legend.position = "none"),
                p2 + theme(legend.position = "none"),
@@ -442,33 +598,140 @@ cat("\nplot feature\t", i, "/", nrow(list_image_mapping_folder), "\t", image_nam
 
 
 
+
+
+
+# # Logistic regression using the three main features
+# training <- subset_training_set(object_feature_combined)
+# model <- glm(dummy ~ b.mean + b.sd + b.mad, data = training, family = "binomial")
+
+# Test plot for features selected
+if (FALSE) {
+    plot_one_feature <- function (object_feature_combined, feature1) {
+        object_feature_combined %>%
+            ggplot() +
+            geom_histogram(aes_string(x = feature1, fill = "image_name"), color = 1, bins = 50, alpha = .5, position = "identity") +
+            scale_fill_manual(values = color_names) +
+            theme_classic() +
+            theme(legend.position = "none")
+    }
+    plot_two_features <- function (object_feature_combined, feature1, feature2) {
+        object_feature_combined %>%
+            ggplot() +
+            geom_point(aes_string(x = feature1, y = feature2, color = "image_name"), size = 1, shape = 1, stroke = .5) +
+            scale_color_manual(values = color_names) +
+            theme_classic()
+    }
+    subset_training_set <- function (x) {
+        x %>%
+            filter(Group != "pair") %>%
+            # Dummy variable for logistic regression
+            mutate(dummy = case_when(
+                Group == "isolate1" ~ 0,
+                Group == "isolate2" ~ 1
+            ))
+    }
+    p1 <- plot_two_features(object_feature_combined, "b.mean", "b.sd")
+    p2 <- plot_two_features(object_feature_combined, "b.mean", "b.mad")
+    p3 <- plot_two_features(object_feature_combined, "b.sd", "b.mad")
+
+    # Featured selected
+    results %>%
+        select(starts_with("b."), starts_with("s.")) %>%
+        mutate(NumberOfPredictor = 1:n()) %>%
+        pivot_longer(cols = -NumberOfPredictor, names_to = "Feature", values_to = "Value") %>%
+        mutate(Feature = factor(Feature, names(object_feature_isolates)[-1])) %>%
+        filter(Value) %>%
+        ggplot() +
+        geom_point(aes(x = NumberOfPredictor, y = Feature), size = 4) +
+        scale_x_continuous(breaks = 1:10) +
+        scale_y_discrete(drop = F) +
+        #scale_y_discrete(breaks = names(object_feature_isolates)[-1]) +
+        theme_classic() +
+        theme(panel.grid.major = element_line(color = grey(0.9)))
+
+    # fitting scores across the models
+    results %>%
+        mutate(NumberOfPredictors = 1:n()) %>%
+        select(NumberOfPredictors, adj.r.squared, mallows_cp, BIC) %>%
+        pivot_longer(cols = -NumberOfPredictors, names_to = "Statistic", values_to = "Value") %>%
+        ggplot(aes(x = NumberOfPredictors, y = Value, color = Statistic)) +
+        geom_line() +
+        geom_point() +
+        facet_wrap(~ Statistic, scale = "free") +
+        theme_classic() +
+        guides(color = "none")
+
+}
+# glmulti(
+#     y = "GroupBinary",
+#     #xr = c("b.mean"),
+#     xr = names(object_feature_isolates)[-1],
+#     #xr = str_subset(names(object_feature_isolates), "^b."),
+#     # xr = names(object_feature_combined)[names(object_feature_isolates) != c("Group", "ObjectID")],
+#     data = object_feature_isolates,
+#     method = "h",
+#     crit = "aic",
+#     confsetsize = 5, # Keep 5 best models
+#     plotty = F, report = F,
+#     fitfunction = "glm"
+# )
+if (FALSE) {
+
+
+    # 8.3 cross-validation
+    # create training - testing data
+    set.seed(5)
+    sample <- sample(c(TRUE, FALSE), nrow(object_feature_isolates), replace = T, prob = c(0.6,0.4))
+    train <- object_feature_isolates[sample, ]
+    test <- object_feature_isolates[!sample, ]
+
+    # perform best subset selection
+    best_subset <- regsubsets(Salary ~ ., train, nvmax = 19)
+    ## build an “X” matrix from data
+    test_m <- model.matrix(Salary ~ ., data = test)
+    ## create empty vector to fill with error values
+    validation_errors <- vector("double", length = 19)
+
+    for(j in 1:19) {
+        j=1
+        coef_x <- coef(best_subset, id = j)                     # extract coefficients for model size i
+        pred_x <- test_m[ , names(coef_x)] %*% coef_x           # predict salary using matrix algebra
+        validation_errors[j] <- mean((test$Salary - pred_x)^2)  # compute test error btwn actual & predicted salary
+    }
+    plot(validation_errors, type = "b")
+
+}
+
+
+
 # Quantile
 if (FALSE) {
 
-plot_two_features(object_feature_combined, "b.q095", "b.q05")
-quantile_name_mapping <- tibble(Quantile = 1:999, QuantileColumn = str_replace(paste0("b.q", sprintf("%03d", 1:999)), "0+$", ""))
+    plot_two_features(object_feature_combined, "b.q095", "b.q05")
+    quantile_name_mapping <- tibble(Quantile = 1:999, QuantileColumn = str_replace(paste0("b.q", sprintf("%03d", 1:999)), "0+$", ""))
 
-object_feature_quantile <- object_feature_combined %>%
-    select(image_name, ObjectID, Group, starts_with("b.q")) %>%
-    pivot_longer(cols = starts_with("b."), names_to = "QuantileColumn", values_to = "Value") %>%
-    left_join(quantile_name_mapping) %>% select(-QuantileColumn)
+    object_feature_quantile <- object_feature_combined %>%
+        select(image_name, ObjectID, Group, starts_with("b.q")) %>%
+        pivot_longer(cols = starts_with("b."), names_to = "QuantileColumn", values_to = "Value") %>%
+        left_join(quantile_name_mapping) %>% select(-QuantileColumn)
 
 
-object_feature_quantile %>%
-    unite(col = "UniqueID", Group, ObjectID) %>%
-    ggplot(aes(x = Quantile, y = Value, color = image_name, group = UniqueID)) +
-    geom_point(alpha = 0.3, size = .5) +
-    geom_line(alpha = 0.3, size = .5) +
-    scale_color_manual(values = color_names) +
-    theme_classic()
+    object_feature_quantile %>%
+        unite(col = "UniqueID", Group, ObjectID) %>%
+        ggplot(aes(x = Quantile, y = Value, color = image_name, group = UniqueID)) +
+        geom_point(alpha = 0.3, size = .5) +
+        geom_line(alpha = 0.3, size = .5) +
+        scale_color_manual(values = color_names) +
+        theme_classic()
 
-object_feature_quantile %>%
-    mutate(Quantile = factor(Quantile)) %>%
-    ggplot() +
-    geom_boxplot(aes(x = Quantile, y = Value, color = image_name)) +
-    geom_point(aes(x = Quantile, y = Value, color = image_name), position = position_jitterdodge(jitter.width = .1), size = .2) +
-    scale_color_manual(values = color_names) +
-    theme_classic()
+    object_feature_quantile %>%
+        mutate(Quantile = factor(Quantile)) %>%
+        ggplot() +
+        geom_boxplot(aes(x = Quantile, y = Value, color = image_name)) +
+        geom_point(aes(x = Quantile, y = Value, color = image_name), position = position_jitterdodge(jitter.width = .1), size = .2) +
+        scale_color_manual(values = color_names) +
+        theme_classic()
 }
 
 
