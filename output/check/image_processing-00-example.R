@@ -584,7 +584,6 @@ object_feature_isolates %>%
 
 
 
-
 # Figures
 # legend <- get_legend(p1 + theme(legend.box.margin = margin(0, 0, 0, 12)))
 # p <- plot_grid(p1 + theme(legend.position = "none"),
