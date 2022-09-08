@@ -78,10 +78,21 @@ library(reticulate)
 detect_nonround_object <- function (image_object, watershed = F) {
     # Reomve too large or too small objects before watershed to reduce computational load
     if (!watershed) {
+        # Check if the are away from the image border (use 100 pixel)
+        oc <- ocontour(image_object)
+        inside <- sapply(oc, function (x) {
+            if (all(x[,1] > 100 & x[,1] < 2120 & x[,2] > 100 & x[,2] < 2120)) {
+                return (T)
+            } else return(F)
+        })
         object_shape <- computeFeatures.shape(image_object) %>% as_tibble(rownames = "ObjectID")
         object_shape_round <- object_shape %>%
+            mutate(inside = inside) %>%
             # Area
-            filter(s.area > 300 & s.area < 20000)
+            filter(s.area > 300 & s.area < 20000) %>%
+            #
+            filter(inside)
+
     }
 
     # Filter for circularity only after watershed segmentation
@@ -91,11 +102,13 @@ detect_nonround_object <- function (image_object, watershed = F) {
 
         object_shape_round <- object_shape %>%
             left_join(object_moment, by = "ObjectID") %>%
+            # Area. Remove super small object after segementation
+            filter(s.area > 300 & s.area < 20000) %>%
             # Circularity = 1 means a perfect circle and goes down to 0 for non-circular shapes
             mutate(Circularity = 4 * pi * s.area / s.perimeter^2) %>%
-            filter(Circularity > 0.3) %>%
+            filter(Circularity > 0.7) %>%
             # Remove tape and label that has really large variation in radius
-            filter(s.radius.sd/s.radius.mean < 1/2) %>%
+            filter(s.radius.sd/s.radius.mean < 0.2) %>%
             filter(m.eccentricity < 0.8) # Circle eccentricity=0, straight line eccentricity=1
     }
 
@@ -104,7 +117,8 @@ detect_nonround_object <- function (image_object, watershed = F) {
     object_ID_nonround <- object_shape$ObjectID[!(object_shape$ObjectID %in% object_shape_round$ObjectID)]
     return(object_ID_nonround)
 }
-
+list_images <- read_csv("~/Desktop/Lab/emergent-coexistence/output/check/00-list_images-D.csv", show_col_types = F)
+i = which(list_images$image_name == "D_T8_C1R2_5-95_2_4")
 for (i in 1:nrow(list_images)) {
     image_name <- list_images$image_name[i]
 
@@ -130,13 +144,20 @@ for (i in 1:nrow(list_images)) {
     ## After watershed, apply a second filter removing objects that are too small to be colonies
     object_ID_nonround2 <- detect_nonround_object(image_watershed, watershed = T)
     image_watershed2 <- rmObjects(image_watershed, object_ID_nonround2, reenumerate = T)
+    #display(image_watershed2, method = "raster")
     save(image_watershed2, file = paste0(list_images$folder_green_watershed_file[i], image_name, ".RData")) # save watersed image object
     writeImage(colorLabels(image_watershed2), paste0(list_images$folder_green_watershed[i], image_name, ".tiff"))
     cat("\twatershed\t", i, "/", nrow(list_images), "\t", list_images$image_name[i])
 
 }
 
-
+# temp <- read_csv(paste0(folder_main, "check/D-07-green_feature/D_T8_C1R7_50-50_3_6.csv"), show_col_types = F)
+# temp %>%
+#     mutate(Circularity = 4 * pi * s.area / s.perimeter^2) %>%
+#     filter(Circularity > 0.3) %>%
+#     mutate(s.ratio = s.radius.sd/s.radius.mean) %>%
+#     select(starts_with("s."), Circularity) %>%
+#     view
 
 # i for image_names
 # j for objects
@@ -288,15 +309,10 @@ run a set of model selection algorithm
 
 #' 1. stepwise selection over the best subset selection: run regsubset to get the best models for p variables.
 #' 3. compare models: divide the data into k-fold cross-validaiton. Find the one with lowest MSE
-# library(caret) # for easy machine learning workflow
-# library(bestglm) # extension to include glm in leaps
-# library(glmnet) # for fitting glm via penalized maximum likelihood
 library(metafor) # a meta-analysis package
 library(leaps) # for computing stepwise regression. But it only fits lm
-library(glmulti) # extension to include glm in leaps
-#library(tidyverse)
-library(tidypredict)
-library(gridExtra)
+library(glmulti) # an extension to include glm in feature selection
+library(gridExtra) # for plotting tables on the graph
 
 
 list_images <- read_csv("~/Desktop/Lab/emergent-coexistence/output/check/00-list_images-D.csv", show_col_types = F)
@@ -345,7 +361,7 @@ feature_candidates <- c("b.mean", "b.sd", "b.mad",
                         "s.area", "s.radius.mean", "s.radius.sd",
                         "b.tran.mean", "b.tran.sd", "b.tran.mad",
                         "b.center", "b.periphery", "b.diff.cp")
-#feature_candidates_test <- c("b.mean", "b.sd", "b.mad", "s.area", "s.radius.mean")
+
 object_feature_combined <- read_feature_combined() %>%
     mutate(GroupBinary = case_when(
         Group == "isolate1" ~ 0,
@@ -361,10 +377,7 @@ object_feature_pair <- object_feature_combined %>%
 # 8.2 exhaustive stepwise selection and cross-validation
 best_subset <- glmulti(
     y = "GroupBinary",
-    #xr = c("b.mean"),
     xr = feature_candidates,
-    #xr = str_subset(names(object_feature_isolates), "^b."),
-    # xr = names(object_feature_combined)[names(object_feature_isolates) != c("Group", "ObjectID")],
     data = object_feature_isolates,
     level = 1,
     method = "h",
@@ -372,18 +385,14 @@ best_subset <- glmulti(
     minsize = 2,
     maxsize = 5,
     confsetsize = 100, # Keep the top n models
-    plotty = F, report = T,
+    plotty = F, report = F,
     fitfunction = glm
     #family = binomial # logistic
 )
 
-# plot(best_subset)
-#top <- weightable(best_subset)
-#top <- top[top$aicc <= min(top$aicc) + 2,]
-
-# The importance value for a particular predictor is equal to the sum of the weights/probabilities for the models in which the variable appears.
-# these values can be regarded as the overall support for each variable across all models in the candidate set
-#plot(best_subset, type = "s") # The ggplot version is below
+#plot(best_subset)
+# Top models
+weightable(best_subset) %>%  as_tibble()
 
 # Multimodel inference, using the metafor package
 eval(metafor:::.glmulti)
@@ -432,81 +441,104 @@ p2 <- cowplot::ggdraw() +
 object_feature_predicted <- object_feature_pair %>%
     mutate(PredictedGroupProbability = predict(model, object_feature_pair)) %>%
     dplyr::select(image_name, ObjectID, PredictedGroupProbability) %>%
-    mutate(PredictedGroup = ifelse(PredictedGroupProbability < 0.5, 0, 1) %>% factor(c(0,1)))
-#mutate(PredictedGroup = ifelse(PredictedGroupProbability < 0.5, 0, 1) %>% factor(c(0,1)))
+    # Criteria for catagorizing
+    mutate(Group = case_when(
+        PredictedGroupProbability < 0.4 ~ "predicted isolate1",
+        PredictedGroupProbability > 0.6 ~ "predicted isolate2",
+        PredictedGroupProbability > 0.4 & PredictedGroupProbability < 0.6 ~ "undecided"
+    )) %>%
+    mutate(Group = factor(Group, c("predicted isolate1", "predicted isolate2", "undecided"),))
 
 object_feature_predicted_count <- object_feature_predicted %>%
-    mutate(PredictedGroup = ifelse(PredictedGroupProbability < 0.5, 0, 1) %>% factor(c(0,1))) %>%
-    group_by(PredictedGroup, .drop = F) %>%
+    group_by(Group, .drop = F) %>%
     count(name = "Count") %>%
     ungroup() %>%
-    mutate(Group = c("isolate1", "isolate2"), Align = c("right", "left"))
+    mutate(Group = Group, Halign = c("right", "left", "center"), Valign = c(2, 2, 4))
 
 p3 <- object_feature_predicted %>%
     ggplot() +
     geom_histogram(aes(x = PredictedGroupProbability), color = 1, fill = NA, bins = 30) +
-    geom_vline(xintercept = 0.5, linetype = 2, color = "red") +
+    geom_vline(xintercept = c(0.4, 0.6), linetype = 2, color = "red") +
     geom_vline(xintercept = c(0,1), linetype = 2, color = "black") +
-    geom_text(data = object_feature_predicted_count, aes(x = 0.5, hjust = Align, label = paste0("  ", Group, ": ", Count, "  ")), y = Inf, vjust = 2) +
+    geom_text(data = object_feature_predicted_count, x = c(.4,.6,.5), aes(hjust = Halign, vjust = Valign, label = paste0("  ", Group, ": ", Count, "  ")), y = Inf) +
     scale_x_continuous(expand = c(0,0.1), breaks = seq(-2,2, .2)) +
     scale_y_continuous(expand = c(0,0)) +
     theme_classic()
 
+cat("\tprediction")
 
 # Scatterplot for clustering intuition
 set_color_names <- function () {
-    c(2,3,1,1) %>% setNames(c(
-        paste0(list_image_mapping_folder$image_name_isolate1[i], " isolate1"),
-        paste0(list_image_mapping_folder$image_name_isolate2[i], " isolate2"),
-        paste0(list_image_mapping_folder$image_name_pair[i], " predicted isolate1"),
-        paste0(list_image_mapping_folder$image_name_pair[i], " predicted isolate2")
-    ))
+    c("#FF5A5F","#087E8B","#FF5A5F","#087E8B", "black") %>%
+        setNames(c(
+            paste0(list_image_mapping_folder$image_name_isolate1[i], " isolate1"),
+            paste0(list_image_mapping_folder$image_name_isolate2[i], " isolate2"),
+            paste0(list_image_mapping_folder$image_name_pair[i], " predicted isolate1"),
+            paste0(list_image_mapping_folder$image_name_pair[i], " predicted isolate2"),
+            paste0(list_image_mapping_folder$image_name_pair[i], " undecided")
+        ))
 }
 set_fill_names <- function () {
-    c("white","white",2,3) %>% setNames(c(
-        paste0(list_image_mapping_folder$image_name_isolate1[i], " isolate1"),
-        paste0(list_image_mapping_folder$image_name_isolate2[i], " isolate2"),
-        paste0(list_image_mapping_folder$image_name_pair[i], " predicted isolate1"),
-        paste0(list_image_mapping_folder$image_name_pair[i], " predicted isolate2")
-    ))
+    # c("white","white","#FF5A5F","#087E8B", "black") %>%
+    # c("white","white","white","white", "white") %>%
+    rep(NA, 5) %>%
+        setNames(c(
+            paste0(list_image_mapping_folder$image_name_isolate1[i], " isolate1"),
+            paste0(list_image_mapping_folder$image_name_isolate2[i], " isolate2"),
+            paste0(list_image_mapping_folder$image_name_pair[i], " predicted isolate1"),
+            paste0(list_image_mapping_folder$image_name_pair[i], " predicted isolate2"),
+            paste0(list_image_mapping_folder$image_name_pair[i], " undecided")
+        ))
 }
-set_shape_names <- function() {
-    c(1,1,21,21) %>% setNames(c(
+set_shape_names <- function () {
+    # c(21,21,21,21,21) %>% # solid point with fill
+    rep(1, 5) %>% # Hallow point
+        setNames(c(
+            paste0(list_image_mapping_folder$image_name_isolate1[i], " isolate1"),
+            paste0(list_image_mapping_folder$image_name_isolate2[i], " isolate2"),
+            paste0(list_image_mapping_folder$image_name_pair[i], " predicted isolate1"),
+            paste0(list_image_mapping_folder$image_name_pair[i], " predicted isolate2"),
+            paste0(list_image_mapping_folder$image_name_pair[i], " undecided")
+        ))
+}
+set_alpha_names <- function () {
+    c(.3,.3,1,1,1) %>% setNames(c(
         paste0(list_image_mapping_folder$image_name_isolate1[i], " isolate1"),
         paste0(list_image_mapping_folder$image_name_isolate2[i], " isolate2"),
         paste0(list_image_mapping_folder$image_name_pair[i], " predicted isolate1"),
-        paste0(list_image_mapping_folder$image_name_pair[i], " predicted isolate2")
+        paste0(list_image_mapping_folder$image_name_pair[i], " predicted isolate2"),
+        paste0(list_image_mapping_folder$image_name_pair[i], " undecided")
     ))
 }
 color_names <- set_color_names()
 fill_names <- set_fill_names()
 shape_names <- set_shape_names()
+alpha_names <- set_alpha_names()
 
 ## combined the prediction and object label
 object_feature_plot <- object_feature_predicted %>%
-    select(image_name, ObjectID, PredictedGroup) %>%
-    mutate(Group = case_when(
-        PredictedGroup == 0 ~ paste0("predicted isolate1"),
-        PredictedGroup == 1 ~ paste0("predicted isolate2")
-    )) %>%
+    select(image_name, ObjectID, Group) %>%
     left_join(select(object_feature_pair, -GroupBinary, -Group), by = c("image_name", "ObjectID")) %>%
-    bind_rows(object_feature_isolates) %>%
+    bind_rows(select(object_feature_isolates, -GroupBinary)) %>%
     mutate(ColorLabel = paste(image_name, Group),
            FillLabel = paste(image_name, Group),
-           ShapeLabel = paste(image_name, Group))
+           ShapeLabel = paste(image_name, Group),
+           AlphaLabel = paste(image_name, Group))
 
 p4 <-  object_feature_plot %>%
+    arrange(ColorLabel) %>%
     ggplot() +
     geom_point(aes_string(x = model_importance$Feature[1], y = model_importance$Feature[2],
-                          color = "ColorLabel", fill = "FillLabel", shape = "ShapeLabel"),
-               size = 1, stroke = .8) +
+                          color = "ColorLabel", fill = "FillLabel", shape = "ShapeLabel", alpha = "AlphaLabel"),
+               size = 2, stroke = .8) +
     scale_color_manual(values = color_names, name = "", label = names(color_names)) +
     scale_fill_manual(values = fill_names, name = "", label = names(color_names)) +
     scale_shape_manual(values = shape_names, name = "", label = names(color_names)) +
+    scale_alpha_manual(values = alpha_names, name = "", label = names(color_names)) +
     theme_classic()
+cat("\tclusterplot")
 
 # PCA with the model selected variables
-#install.packages(ggbiplot)
 pcobj <- object_feature_plot %>%
     select(all_of(names(coef(model))[-1])) %>% # names(coef(model))[-1] # remove intercept term
     prcomp(center = TRUE, scale. = TRUE)
@@ -557,19 +589,23 @@ u.axis.labs <- temp$u.axis.labs
 
 p5 <- df.u %>%
     bind_cols(object_feature_plot) %>%
+    arrange(ColorLabel) %>%
     ggplot() +
     # Draw directions of axis
-    geom_segment(data = df.v, aes(x = 0, y = 0, xend = xvar, yend = yvar), arrow = arrow(length = unit(1/2, 'picas')), color = muted('red')) +
+    geom_segment(data = df.v, aes(x = 0, y = 0, xend = xvar, yend = yvar), arrow = arrow(length = unit(1/2, 'picas')), color = scales::muted('red')) +
     # Draw scores
-    geom_point(aes(x = xvar, y = yvar, color = ColorLabel, fill = FillLabel, shape = ShapeLabel), size = 1, stroke = .8) +
+    geom_point(aes(x = xvar, y = yvar,
+                   color = ColorLabel, fill = FillLabel, shape = ShapeLabel, alpha = AlphaLabel),
+               size = 2, stroke = .8) +
     # Label the variable axes
-    geom_text(data = df.v, aes(label = varname, x = xvar, y = yvar, angle = angle, hjust = hjust), color = 'darkred', size = 3) +
+    geom_text(data = df.v, aes(label = varname, x = xvar, y = yvar, angle = angle, hjust = hjust), color = 'blue', size = 3) +
     scale_color_manual(values = color_names, name = "", label = names(color_names)) +
     scale_fill_manual(values = fill_names, name = "", label = names(color_names)) +
     scale_shape_manual(values = shape_names, name = "", label = names(color_names)) +
-    #coord_equal() +
+    scale_alpha_manual(values = alpha_names, name = "", label = names(color_names)) +
     theme_classic() +
     labs(x = u.axis.labs[1], y = u.axis.labs[2])
+cat("\tpcaplot")
 
 
 library(cowplot)
@@ -584,7 +620,7 @@ p <- plot_grid(
 ) + theme(plot.background = element_rect(fill = "white"))
 
 ggsave(filename = paste0(list_images$folder_green_cluster[i], list_images$image_name[i], ".png"), plot = p, width = 10, height = 6)
-cat("\nplot feature\t", i, "/", nrow(list_image_mapping_folder), "\t", image_name)
+cat("\nplot feature\t", i, "/", nrow(list_image_mapping_folder), "\t", list_images$image_name[i])
 
 
 

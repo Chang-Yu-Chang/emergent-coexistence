@@ -3,9 +3,8 @@ library(EBImage)
 library(EBImageExtra)
 library(purrr)
 
-list_images <- read_csv(commandArgs(trailingOnly = T)[1])
-#list_images <- read_csv("~/Desktop/Lab/emergent-coexistence/output/check/00-list_images-D.csv")
-
+list_images <- read_csv(commandArgs(trailingOnly = T)[1], show_col_types = F)
+#list_images <- read_csv("~/Desktop/Lab/emergent-coexistence/output/check/00-list_images-D.csv", show_col_types = F)
 extract_transection <- function (watershed, ref) {
     #' This function searches for all objects on an image and return the pixel intensity along the transection of each object
     #' Arguments:
@@ -49,6 +48,15 @@ draw_pixels <- function (img, pixel.x, pixel.y) {
 }
 
 
+#i = which(list_images$image_name %in% c("D_T8_C1R2_5-95_2_1")
+images_tocheck_index = which(list_images$image_name %in% c("D_T8_C1R2_5-95_2_1",
+                                        "D_T8_C1R2_5-95_2_4",
+                                        "D_T8_C1R6_5",
+                                        "D_T8_C1R7_50-50_3_4",
+                                        "D_T8_C11R5_1",
+                                        "D_T8_C11R5_50-50_1_4"))
+
+#for (i in images_tocheck_index) {
 for (i in 1:nrow(list_images)) {
     image_name <- list_images$image_name[i]
     image_rolled <- readImage(paste0(list_images$folder_green_rolled[i], image_name, ".tiff"))
@@ -95,7 +103,7 @@ for (i in 1:nrow(list_images)) {
 
     ## Execute the name cleanup only if there is at least 1 object
     if (is_null(object_feature)) {
-        cat("\tno object\t", i, "/", nrow(list_images), "\t", list_images$image_name[i])
+        cat("\tno object\t", i, "/", nrow(list_images), "\t", image_name)
     } else if (!is_null(object_feature)) {
         object_feature <- object_feature %>%
             as_tibble(rownames = "ObjectID") %>%
@@ -112,6 +120,6 @@ for (i in 1:nrow(list_images)) {
             left_join(transection_feature, by = "ObjectID")
 
         write_csv(object_feature, paste0(list_images$folder_green_feature[i], image_name, ".csv"))
-        cat("\tfeature\t", i, "/", nrow(list_images), "\t", list_images$image_name[i])
+        cat("\tfeature\t", i, "/", nrow(list_images), "\t", image_name)
     }
 }

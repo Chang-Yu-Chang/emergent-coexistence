@@ -6,20 +6,20 @@ library(glmulti) # extension to include glm in leaps
 library(gridExtra)
 
 
-folder_script <- "/Users/chang-yu/Desktop/Lab/emergent-coexistence/output/check/"
+folder_script <- "~/Desktop/Lab/emergent-coexistence/output/check/"
 list_images <- read_csv(commandArgs(trailingOnly = T)[1], show_col_types = F)
 list_image_mapping <- read_csv(commandArgs(trailingOnly = T)[2], show_col_types = F)
-# batch <- "D"
-# list_images <- paste0(folder_script, "00-list_images-", batch, ".csv") %>% read_csv(show_col_types = F)
-# list_image_mapping <- paste0(folder_script, "00-list_image_mapping-", batch, ".csv") %>% read_csv(show_col_types = F)
 
-#
+# list_images <- read_csv(paste0(folder_script, "00-list_images-D.csv"), show_col_types = F)
+# list_image_mapping <- read_csv(paste0(folder_script, "00-list_image_mapping-D.csv") , show_col_types = F)
+
 list_image_mapping_folder <- list_image_mapping %>%
     left_join(select(list_images, image_name_pair = image_name, folder_feature_pair = folder_green_feature, folder_green_cluster), by = "image_name_pair") %>%
     left_join(select(list_images, image_name_isolate1 = image_name, folder_feature_isolate1 = folder_green_feature), by = "image_name_isolate1") %>%
     left_join(select(list_images, image_name_isolate2 = image_name, folder_feature_isolate2 = folder_green_feature), by = "image_name_isolate2")
 
-i = 1
+#i = which(list_images$image_name %in% c("D_T8_C1R2_5-95_2_1"))
+#i = which(list_images$image_name %in% c("D_T8_C11R5_5-95_1_2"))
 
 for (i in 1:nrow(list_image_mapping_folder)) {
 
@@ -75,13 +75,17 @@ for (i in 1:nrow(list_image_mapping_folder)) {
         filter(is.na(GroupBinary))
     cat("\nread feature")
 
+    # model_table
+    # best_subset@objects[[1]]
+    # glm(GroupBinary ~ b.mean + s.area + b.tran.mean + b.tran.sd + b.periphery, data = object_feature_isolates, family = binomial) %>%
+    #     broom::tidy() %>%
+    #     arrange(abs(estimate))
+
+
     # 8.2 exhaustive stepwise selection and cross-validation
     n_models <- glmulti(
         y = "GroupBinary",
-        #xr = c("b.mean"),
         xr = feature_candidates,
-        #xr = str_subset(names(object_feature_isolates), "^b."),
-        # xr = names(object_feature_combined)[names(object_feature_isolates) != c("Group", "ObjectID")],
         data = object_feature_isolates,
         level = 1,
         method = "d",
@@ -98,10 +102,7 @@ for (i in 1:nrow(list_image_mapping_folder)) {
 
     best_subset <- glmulti(
         y = "GroupBinary",
-        #xr = c("b.mean"),
         xr = feature_candidates,
-        #xr = str_subset(names(object_feature_isolates), "^b."),
-        # xr = names(object_feature_combined)[names(object_feature_isolates) != c("Group", "ObjectID")],
         data = object_feature_isolates,
         level = 1,
         method = "h",
@@ -110,8 +111,7 @@ for (i in 1:nrow(list_image_mapping_folder)) {
         maxsize = 5,
         confsetsize = 100, # Keep the top n models
         plotty = F, report = F,
-        fitfunction = glm
-        #family = binomial # logistic
+        fitfunction = glm# logistic
     )
 
     # Multimodel inference, using the metafor package
@@ -162,81 +162,105 @@ for (i in 1:nrow(list_image_mapping_folder)) {
 
     # Model predict
     object_feature_predicted <- object_feature_pair %>%
-        mutate(PredictedGroupProbability = predict(model, object_feature_pair)) %>%
+        mutate(PredictedGroupProbability = predict(model, object_feature_pair, type = "response")) %>%
         dplyr::select(image_name, ObjectID, PredictedGroupProbability) %>%
-        mutate(PredictedGroup = ifelse(PredictedGroupProbability < 0.5, 0, 1) %>% factor(c(0,1)))
-
+        # Criteria for catagorizing
+        mutate(Group = case_when(
+            PredictedGroupProbability < 0.4 ~ "predicted isolate1",
+            PredictedGroupProbability > 0.6 ~ "predicted isolate2",
+            PredictedGroupProbability > 0.4 & PredictedGroupProbability < 0.6 ~ "undecided"
+        )) %>%
+        mutate(Group = factor(Group, c("predicted isolate1", "predicted isolate2", "undecided"),))
 
     object_feature_predicted_count <- object_feature_predicted %>%
-        mutate(PredictedGroup = ifelse(PredictedGroupProbability < 0.5, 0, 1) %>% factor(c(0,1))) %>%
-        group_by(PredictedGroup, .drop = F) %>%
+        group_by(Group, .drop = F) %>%
         count(name = "Count") %>%
         ungroup() %>%
-        mutate(Group = c("isolate1", "isolate2"), Align = c("right", "left"))
+        mutate(Group = Group, Halign = c("right", "left", "center"), Valign = c(2, 2, 4))
 
     p3 <- object_feature_predicted %>%
         ggplot() +
         geom_histogram(aes(x = PredictedGroupProbability), color = 1, fill = NA, bins = 30) +
-        geom_vline(xintercept = 0.5, linetype = 2, color = "red") +
+        geom_vline(xintercept = c(0.4, 0.6), linetype = 2, color = "red") +
         geom_vline(xintercept = c(0,1), linetype = 2, color = "black") +
-        geom_text(data = object_feature_predicted_count, aes(x = 0.5, hjust = Align, label = paste0("  ", Group, ": ", Count, "  ")), y = Inf, vjust = 2) +
+        geom_text(data = object_feature_predicted_count, x = c(.4,.6,.5), aes(hjust = Halign, vjust = Valign, label = paste0("  ", Group, ": ", Count, "  ")), y = Inf) +
         scale_x_continuous(expand = c(0,0.1), breaks = seq(-2,2, .2)) +
         scale_y_continuous(expand = c(0,0)) +
         theme_classic()
+
     cat("\tprediction")
 
     # Scatterplot for clustering intuition
     set_color_names <- function () {
-        c(2,3,1,1) %>% setNames(c(
-            paste0(list_image_mapping_folder$image_name_isolate1[i], " isolate1"),
-            paste0(list_image_mapping_folder$image_name_isolate2[i], " isolate2"),
-            paste0(list_image_mapping_folder$image_name_pair[i], " predicted isolate1"),
-            paste0(list_image_mapping_folder$image_name_pair[i], " predicted isolate2")
+        c("#FF5A5F","#087E8B","#FF5A5F","#087E8B", "black") %>%
+            setNames(c(
+                paste0(list_image_mapping_folder$image_name_isolate1[i], " isolate1"),
+                paste0(list_image_mapping_folder$image_name_isolate2[i], " isolate2"),
+                paste0(list_image_mapping_folder$image_name_pair[i], " predicted isolate1"),
+                paste0(list_image_mapping_folder$image_name_pair[i], " predicted isolate2"),
+                paste0(list_image_mapping_folder$image_name_pair[i], " undecided")
         ))
     }
     set_fill_names <- function () {
-        c("white","white",2,3) %>% setNames(c(
-            paste0(list_image_mapping_folder$image_name_isolate1[i], " isolate1"),
-            paste0(list_image_mapping_folder$image_name_isolate2[i], " isolate2"),
-            paste0(list_image_mapping_folder$image_name_pair[i], " predicted isolate1"),
-            paste0(list_image_mapping_folder$image_name_pair[i], " predicted isolate2")
+       # c("white","white","#FF5A5F","#087E8B", "black") %>%
+       # c("white","white","white","white", "white") %>%
+            rep(NA, 5) %>%
+            setNames(c(
+                paste0(list_image_mapping_folder$image_name_isolate1[i], " isolate1"),
+                paste0(list_image_mapping_folder$image_name_isolate2[i], " isolate2"),
+                paste0(list_image_mapping_folder$image_name_pair[i], " predicted isolate1"),
+                paste0(list_image_mapping_folder$image_name_pair[i], " predicted isolate2"),
+                paste0(list_image_mapping_folder$image_name_pair[i], " undecided")
+            ))
+    }
+    set_shape_names <- function () {
+        # c(21,21,21,21,21) %>% # solid point with fill
+        rep(1, 5) %>% # Hallow point
+            setNames(c(
+                paste0(list_image_mapping_folder$image_name_isolate1[i], " isolate1"),
+                paste0(list_image_mapping_folder$image_name_isolate2[i], " isolate2"),
+                paste0(list_image_mapping_folder$image_name_pair[i], " predicted isolate1"),
+                paste0(list_image_mapping_folder$image_name_pair[i], " predicted isolate2"),
+                paste0(list_image_mapping_folder$image_name_pair[i], " undecided")
         ))
     }
-    set_shape_names <- function() {
-        c(1,1,21,21) %>% setNames(c(
+    set_alpha_names <- function () {
+        c(.3,.3,1,1,1) %>% setNames(c(
             paste0(list_image_mapping_folder$image_name_isolate1[i], " isolate1"),
             paste0(list_image_mapping_folder$image_name_isolate2[i], " isolate2"),
             paste0(list_image_mapping_folder$image_name_pair[i], " predicted isolate1"),
-            paste0(list_image_mapping_folder$image_name_pair[i], " predicted isolate2")
+            paste0(list_image_mapping_folder$image_name_pair[i], " predicted isolate2"),
+            paste0(list_image_mapping_folder$image_name_pair[i], " undecided")
         ))
     }
     color_names <- set_color_names()
     fill_names <- set_fill_names()
     shape_names <- set_shape_names()
+    alpha_names <- set_alpha_names()
 
     ## combined the prediction and object label
     object_feature_plot <- object_feature_predicted %>%
-        select(image_name, ObjectID, PredictedGroup) %>%
-        mutate(Group = case_when(
-            PredictedGroup == 0 ~ paste0("predicted isolate1"),
-            PredictedGroup == 1 ~ paste0("predicted isolate2")
-        )) %>%
+        select(image_name, ObjectID, Group) %>%
         left_join(select(object_feature_pair, -GroupBinary, -Group), by = c("image_name", "ObjectID")) %>%
-        bind_rows(object_feature_isolates) %>%
+        bind_rows(select(object_feature_isolates, -GroupBinary)) %>%
         mutate(ColorLabel = paste(image_name, Group),
                FillLabel = paste(image_name, Group),
-               ShapeLabel = paste(image_name, Group))
+               ShapeLabel = paste(image_name, Group),
+               AlphaLabel = paste(image_name, Group))
 
     p4 <-  object_feature_plot %>%
+        arrange(ColorLabel) %>%
         ggplot() +
         geom_point(aes_string(x = model_importance$Feature[1], y = model_importance$Feature[2],
-                              color = "ColorLabel", fill = "FillLabel", shape = "ShapeLabel"),
+                              color = "ColorLabel", fill = "FillLabel", shape = "ShapeLabel", alpha = "AlphaLabel"),
                    size = 2, stroke = .8) +
         scale_color_manual(values = color_names, name = "", label = names(color_names)) +
         scale_fill_manual(values = fill_names, name = "", label = names(color_names)) +
         scale_shape_manual(values = shape_names, name = "", label = names(color_names)) +
+        scale_alpha_manual(values = alpha_names, name = "", label = names(color_names)) +
         theme_classic()
     cat("\tclusterplot")
+
     # PCA with the model selected variables
     pcobj <- object_feature_plot %>%
         select(all_of(names(coef(model))[-1])) %>% # names(coef(model))[-1] # remove intercept term
@@ -288,18 +312,20 @@ for (i in 1:nrow(list_image_mapping_folder)) {
 
     p5 <- df.u %>%
         bind_cols(object_feature_plot) %>%
+        arrange(ColorLabel) %>%
         ggplot() +
         # Draw directions of axis
         geom_segment(data = df.v, aes(x = 0, y = 0, xend = xvar, yend = yvar), arrow = arrow(length = unit(1/2, 'picas')), color = scales::muted('red')) +
         # Draw scores
-        geom_point(aes(x = xvar, y = yvar, color = ColorLabel, fill = FillLabel, shape = ShapeLabel),
+        geom_point(aes(x = xvar, y = yvar,
+                       color = ColorLabel, fill = FillLabel, shape = ShapeLabel, alpha = AlphaLabel),
                    size = 2, stroke = .8) +
         # Label the variable axes
         geom_text(data = df.v, aes(label = varname, x = xvar, y = yvar, angle = angle, hjust = hjust), color = 'blue', size = 3) +
         scale_color_manual(values = color_names, name = "", label = names(color_names)) +
         scale_fill_manual(values = fill_names, name = "", label = names(color_names)) +
         scale_shape_manual(values = shape_names, name = "", label = names(color_names)) +
-        #coord_equal() +
+        scale_alpha_manual(values = alpha_names, name = "", label = names(color_names)) +
         theme_classic() +
         labs(x = u.axis.labs[1], y = u.axis.labs[2])
     cat("\tpcaplot")
@@ -311,7 +337,7 @@ for (i in 1:nrow(list_image_mapping_folder)) {
         p4 + theme(legend.position = "none"),
         p5 + theme(legend.position = "none"),
         legend,
-        nrow = 2, rel_widths = c(1,1,1),
+        nrow = 2, rel_widths = c(1,1,1), scale = .9,
         align = "hv", axis = " tblr"
     ) + theme(plot.background = element_rect(fill = "white"))
 
