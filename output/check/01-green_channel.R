@@ -2,7 +2,8 @@ library(tidyverse)
 library(EBImage)
 
 list_images <- read_csv(commandArgs(trailingOnly = T)[1])
-#list_images <- read_csv("~/Desktop/Lab/emergent-coexistence/output/check/00-list_images-D.csv")
+#list_images <- read_csv("~/Desktop/Lab/emergent-coexistence/output/check/00-list_images-D.csv", show_col_types = F)
+#i = which(list_images$image_name == "D_T8_C4R1_50-50_1_3_-4")
 
 for (i in 1:nrow(list_images)) {
     image_name <- list_images$image_name[i]

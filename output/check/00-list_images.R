@@ -8,8 +8,9 @@ folder_script <- "~/Desktop/Lab/emergent-coexistence/output/check/"
 
 batch_names <- c("D", "C", "C2", "B2", "chromo")
 
-
+j=1
 for (j in 1:length(batch_names)) {
+
     folder_original <- paste0(folder_main, "check/", batch_names[j], "-00-original/")
     image_names <- list.files(folder_original) %>%
         # Remove folders
@@ -22,6 +23,11 @@ for (j in 1:length(batch_names)) {
         # Remove all mixing pairs, for example with suffix 1_1, 2_2, etc
         str_subset(paste0("^((?!", paste(paste0("_", 1:13, "_", 1:13), collapse = "|"), ").)*$")) %>%
         sort()
+
+    # Manual key in plates using different naming convention
+    if (batch_names[j] == "D") {
+        image_names <- c(image_names, "D_T8_C4R1_50-50_1_3_-4") %>% sort
+    }
 
     n_images <- length(image_names)
 
@@ -69,7 +75,7 @@ for (j in 1:length(batch_names)) {
     #' For example, D_T8_C1R7_3 has a length of 4 and is an isolate image
     #' whereas D_T8_C1R7_5-95_1_3 has a length of 6 and is a pair image
     name_length <- image_names %>% str_split("_") %>% sapply(length)
-    index_pair <- name_length == 6
+    index_pair <- name_length == 6 | name_length == 7 # To include the plate with addition dilution factor specified
 
     ## Parse file name
     list_image_pairs <- tibble(image_name_pair = image_names[index_pair]) %>%

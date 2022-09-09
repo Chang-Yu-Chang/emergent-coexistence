@@ -3,8 +3,8 @@ library(EBImage)
 
 list_images <- read_csv(commandArgs(trailingOnly = T)[1], show_col_types = F)
 #list_images <- read_csv("~/Desktop/Lab/emergent-coexistence/output/check/00-list_images-D.csv", show_col_types = F)
-
-detect_nonround_object <- function (image_object, watershed = F) {
+i = which(list_images$image_name == "D_T8_C4R1_50-50_1_3_-4")
+detect_nonround_object <- function (image_object, watershed = F, ref = NULL) {
     # Reomve too large or too small objects before watershed to reduce computational load
     if (!watershed) {
         # Check if the are away from the image border (use 100 pixel)
@@ -38,7 +38,10 @@ detect_nonround_object <- function (image_object, watershed = F) {
             filter(Circularity > 0.7) %>%
             # Remove tape and label that has really large variation in radius
             filter(s.radius.sd/s.radius.mean < 0.2) %>%
-            filter(m.eccentricity < 0.8) # Circle eccentricity=0, straight line eccentricity=1
+            filter(m.eccentricity < 0.8) %>% # Circle eccentricity=0, straight line eccentricity=1
+            # Remove objects that are too dark to be colonies
+            #filter(b.mean > 0) %>%
+            {.}
     }
 
     # Arrange by area size

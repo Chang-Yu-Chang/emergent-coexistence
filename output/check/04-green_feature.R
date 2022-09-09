@@ -46,7 +46,7 @@ draw_pixels <- function (img, pixel.x, pixel.y) {
 
     return(ans)
 }
-
+i = which(list_images$image_name == "D_T8_C4R1_50-50_1_3_-4")
 
 #i = which(list_images$image_name %in% c("D_T8_C1R2_5-95_2_1")
 images_tocheck_index = which(list_images$image_name %in% c("D_T8_C1R2_5-95_2_1",
@@ -112,7 +112,6 @@ for (i in 1:nrow(list_images)) {
             # Remove the redundant prefix
             rename_with(function(x) str_replace(x,"x.0.", ""), starts_with("x.0")) %>%
             rename_with(function(x) str_replace(x,"x.Ba.", ""), starts_with("x.Ba")) %>%
-            #
             select(ObjectID, starts_with("b."), starts_with("s."), starts_with("m.")) %>%
             # # Remove the round plate lid crack that has high intensity variability
             # filter(b.sd < 0.3)

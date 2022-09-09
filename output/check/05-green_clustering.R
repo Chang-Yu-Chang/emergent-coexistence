@@ -18,8 +18,10 @@ list_image_mapping_folder <- list_image_mapping %>%
     left_join(select(list_images, image_name_isolate1 = image_name, folder_feature_isolate1 = folder_green_feature), by = "image_name_isolate1") %>%
     left_join(select(list_images, image_name_isolate2 = image_name, folder_feature_isolate2 = folder_green_feature), by = "image_name_isolate2")
 
-#i = which(list_images$image_name %in% c("D_T8_C1R2_5-95_2_1"))
+#i = which(list_image_mapping_folder$image_name_pair %in% c("D_T8_C1R2_5-95_2_1"))
 #i = which(list_images$image_name %in% c("D_T8_C11R5_5-95_1_2"))
+#i = which(list_images$image_name %in% c("D_T8_C1R2_5-95_2_3"))
+i = which(list_image_mapping_folder$image_name_pair == "D_T8_C4R1_50-50_1_3_-4")
 
 for (i in 1:nrow(list_image_mapping_folder)) {
 
@@ -53,6 +55,9 @@ for (i in 1:nrow(list_image_mapping_folder)) {
         object_feature_combined <- bind_rows(object_feature_pair, object_feature_isolate1, object_feature_isolate2) %>%
             dplyr::select(image_name, Group, everything())
 
+        # Remove dark objects that are too dark to be colonies
+        object_feature_combined <- object_feature_combined %>% filter(b.mean > 0)
+
         return(object_feature_combined)
     }
     list_image_mapping_folder$image_name_pair[i]
@@ -74,12 +79,6 @@ for (i in 1:nrow(list_image_mapping_folder)) {
     object_feature_pair <- object_feature_combined %>%
         filter(is.na(GroupBinary))
     cat("\nread feature")
-
-    # model_table
-    # best_subset@objects[[1]]
-    # glm(GroupBinary ~ b.mean + s.area + b.tran.mean + b.tran.sd + b.periphery, data = object_feature_isolates, family = binomial) %>%
-    #     broom::tidy() %>%
-    #     arrange(abs(estimate))
 
 
     # 8.2 exhaustive stepwise selection and cross-validation
@@ -148,9 +147,15 @@ for (i in 1:nrow(list_image_mapping_folder)) {
         theme_classic() +
         ggtitle("model-averaged importance of predictors")
     cat("\timportance")
-    # The final best model and table of coefficient
-    model <- best_subset@objects[[1]]
-    model_table <- broom::tidy(model) %>%
+
+    # Use the feature to build a logit model
+    selected_features <- model_importance %>% filter(Importance > 0.8) %>% pull(Feature)
+    model_logit <- glm(GroupBinary ~ ., data = select(object_feature_isolates, GroupBinary, all_of(selected_features)),
+        family = binomial, control = list(maxit = 50))
+
+    # Plot the table of coefficient from the logti regression model
+    #model <- best_subset@objects[[1]]
+    model_table <- broom::tidy(model_logit) %>%
         mutate(estimate = round(estimate, 4),
                std.error = round(std.error, 4),
                statistic = round(statistic, 4))
@@ -160,15 +165,16 @@ for (i in 1:nrow(list_image_mapping_folder)) {
         theme(legend.position = "none")
     cat("\tcoefficient")
 
+
     # Model predict
     object_feature_predicted <- object_feature_pair %>%
-        mutate(PredictedGroupProbability = predict(model, object_feature_pair, type = "response")) %>%
+        mutate(PredictedGroupProbability = predict(model_logit, object_feature_pair, type = "response")) %>%
         dplyr::select(image_name, ObjectID, PredictedGroupProbability) %>%
         # Criteria for catagorizing
         mutate(Group = case_when(
-            PredictedGroupProbability < 0.4 ~ "predicted isolate1",
-            PredictedGroupProbability > 0.6 ~ "predicted isolate2",
-            PredictedGroupProbability > 0.4 & PredictedGroupProbability < 0.6 ~ "undecided"
+            PredictedGroupProbability < 0.2 ~ "predicted isolate1",
+            PredictedGroupProbability > 0.8 ~ "predicted isolate2",
+            PredictedGroupProbability > 0.2 & PredictedGroupProbability < 0.8 ~ "undecided"
         )) %>%
         mutate(Group = factor(Group, c("predicted isolate1", "predicted isolate2", "undecided"),))
 
@@ -180,14 +186,16 @@ for (i in 1:nrow(list_image_mapping_folder)) {
 
     p3 <- object_feature_predicted %>%
         ggplot() +
-        geom_histogram(aes(x = PredictedGroupProbability), color = 1, fill = NA, bins = 30) +
-        geom_vline(xintercept = c(0.4, 0.6), linetype = 2, color = "red") +
+        geom_histogram(aes(x = PredictedGroupProbability), binwidth = .02, color = 1, fill = "white", breaks = seq(0,1,.02)) +
+        # geom_histogram(aes(x = PredictedGroupProbability), binwidth = 0.05, color = 1, fill = NA, bins = 30) +
+        geom_vline(xintercept = c(0.2, 0.8), linetype = 2, color = "red") +
         geom_vline(xintercept = c(0,1), linetype = 2, color = "black") +
-        geom_text(data = object_feature_predicted_count, x = c(.4,.6,.5), aes(hjust = Halign, vjust = Valign, label = paste0("  ", Group, ": ", Count, "  ")), y = Inf) +
-        scale_x_continuous(expand = c(0,0.1), breaks = seq(-2,2, .2)) +
+        geom_text(data = object_feature_predicted_count, x = c(.45,.55,.5), aes(hjust = Halign, vjust = Valign, label = paste0("  ", Group, ": ", Count, "  ")), y = Inf) +
+        scale_x_continuous(expand = c(0,0.1), breaks = seq(0,1,.2)) +
         scale_y_continuous(expand = c(0,0)) +
         theme_classic()
-
+    # Output the prediction
+    write_csv(object_feature_predicted, paste0(list_image_mapping_folder$folder_green_cluster[i], list_image_mapping_folder$image_name_pair[i], ".csv"))
     cat("\tprediction")
 
     # Scatterplot for clustering intuition
@@ -204,7 +212,7 @@ for (i in 1:nrow(list_image_mapping_folder)) {
     set_fill_names <- function () {
        # c("white","white","#FF5A5F","#087E8B", "black") %>%
        # c("white","white","white","white", "white") %>%
-            rep(NA, 5) %>%
+            c(NA,NA,NA,NA, grey(.8)) %>%
             setNames(c(
                 paste0(list_image_mapping_folder$image_name_isolate1[i], " isolate1"),
                 paste0(list_image_mapping_folder$image_name_isolate2[i], " isolate2"),
@@ -215,7 +223,8 @@ for (i in 1:nrow(list_image_mapping_folder)) {
     }
     set_shape_names <- function () {
         # c(21,21,21,21,21) %>% # solid point with fill
-        rep(1, 5) %>% # Hallow point
+        # rep(1, 5) %>% # Hallow point
+        c(1,1,1,1,21) %>%
             setNames(c(
                 paste0(list_image_mapping_folder$image_name_isolate1[i], " isolate1"),
                 paste0(list_image_mapping_folder$image_name_isolate2[i], " isolate2"),
@@ -262,9 +271,17 @@ for (i in 1:nrow(list_image_mapping_folder)) {
     cat("\tclusterplot")
 
     # PCA with the model selected variables
-    pcobj <- object_feature_plot %>%
-        select(all_of(names(coef(model))[-1])) %>% # names(coef(model))[-1] # remove intercept term
-        prcomp(center = TRUE, scale. = TRUE)
+    if (length(coef(model_logit)) >= 3) {
+        # When more than two features picked
+        pcobj <- object_feature_plot %>%
+            select(all_of(names(coef(model_logit))[-1])) %>%
+            prcomp(center = TRUE, scale. = TRUE)
+    } else if (length(coef(model_logit)) == 2) {
+        # When only one feature picked, use the top two important features
+        pcobj <- object_feature_plot %>%
+            select(all_of(model_importance$Feature[1:2])) %>%
+            prcomp(center = TRUE, scale. = TRUE)
+    }
     compute_pca_coord <- function (pcobj) {
         #' The function below comes from the source code of ggbiplot
         #' to replace the use of ggbiplot
@@ -339,7 +356,7 @@ for (i in 1:nrow(list_image_mapping_folder)) {
         legend,
         nrow = 2, rel_widths = c(1,1,1), scale = .9,
         align = "hv", axis = " tblr"
-    ) + theme(plot.background = element_rect(fill = "white"))
+    ) + theme(plot.background = element_rect(fill = "white", color = NA))
 
     ggsave(filename = paste0(list_image_mapping_folder$folder_green_cluster[i], list_image_mapping_folder$image_name_pair[i], ".png"), plot = p, width = 15, height = 8)
     cat("\t", i, "/", nrow(list_image_mapping_folder), "\t", list_image_mapping_folder$image_name_pair[i])
