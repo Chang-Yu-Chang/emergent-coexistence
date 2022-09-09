@@ -15,13 +15,9 @@ list_image_mapping_folder <- list_image_mapping %>%
     left_join(select(list_images, image_name_isolate2 = image_name, folder_feature_isolate2 = folder_green_feature), by = "image_name_isolate2")
 
 
-#images_tocheck <- c("D_T8_C1R2_1", "D_T8_C1R2_4", "D_T8_C1R2_5-95_1_4")
-#images_tocheck <- c("D_T8_C1R2_1", "D_T8_C1R2_3", "D_T8_C1R2_5-95_1_3")
-# to check objects
-#images_tocheck <- c("D_T8_C1R2_5-95_2_4", "D_T8_C1R6-5", "D_T8_C1R7_50-50_3_4", "D_T8_C11R5_1", "D_T8_C11R5_50-50_1_4")
-images_tocheck <- c("D_T8_C1R2_5-95_2_1")
 # to check many colonies on plates
 #images_tocheck <- c("D_T8_C1R6_5-95_2_1", "D_T8_C1R5_5-95_3_1", "D_T8_C1R6_50-50_2_5", "D_T8_C1R7_5-95_1_6", "D_T8_C1R7_5-95_5_2")
+images_tocheck <- c("D_T8_C1R2_2")
 images_tocheck_index <- which(list_images$image_name %in% images_tocheck)
 
 folder_examination <- paste0(folder_main, "examination/")
@@ -54,3 +50,70 @@ for (i in images_tocheck_index) {
     }
     cat("\n ", image_name)
 }
+
+
+# morphology: Perform morphological operations on images
+# x = readImage(system.file("images", "shapes.png", package="EBImage"))
+# kern = makeBrush(5, shape='diamond')
+#
+# display(x)
+# display(kern, title='Structuring element')
+# display(erode(x, kern), title='Erosion of x') # cut each pixel using the pattern kern
+# display(dilate(x, kern), title='Dilatation of x') # dilate each pixel using the paterrn kern
+# display(opening(x,kern)) # erosion followed by dilation
+# display(makeBrush(size = , shape='diamond'))
+# display(makeBrush(size = 101, shape='disc', step = T)) # THis may be use to identify the objects in the plates
+# display(makeBrush(size = 99, shape='disc', step=FALSE))
+# display(2000*makeBrush(501, shape='Gaussian', sigma=10))
+
+
+## load images
+nuc = readImage(system.file('images', 'nuclei.tif', package='EBImage'))
+display(nuc, title='nucleus', method = "raster", frame = 1)
+cel = readImage(system.file('images', 'cells.tif', package='EBImage'))
+display(cel, title='cell', method = "raster", frame = 1)
+img = rgbImage(green=cel, blue=nuc)
+display(img, title='Cells', method = "raster", frame = 1)
+
+## segment nuclei
+nuc = readImage(system.file('images', 'nuclei.tif', package='EBImage'))
+display(nuc, title='nucleus', method = "raster", frame = 1)
+nmask = thresh(nuc, 10, 10, 0.05) # this may be the solution to replace otsu
+display(nmask, method = "raster", frame = 1)
+# nmask <- nuc > otsu(nuc)
+# display(nmask, method = "raster", frame = 1)
+nmask = opening(nmask, makeBrush(5, shape='disc')) # erosion and dilation to remove wierd shits at the object border
+display(nmask, method = "raster", frame = 1)
+
+nmask = fillHull(nmask) # fill hollow center
+display(nmask, method = "raster", frame = 1)
+nmask = bwlabel(nmask) # label
+display(nmask, method = "raster", frame = 1)
+#display(normalize(nmask), title='Cell nuclei mask')
+
+## segment cells, using propagate and nuclei as 'seeds'
+ctmask = opening(cel>0.1, makeBrush(5, shape='disc')) # morphology: Perform morphological operations on images
+display(ctmask, method = "raster", frame = 1)
+#in EBImage: Image processing and analysis toolbox for R
+#Functions to perform morphological operations on binary and grayscale images.
+display(ctmask, title='Cell mask', method = "raster", frame = 1)
+cmask = propagate(cel, nmask, ctmask)
+display(cmask, title='Cell mask', method = "raster", frame = 1)
+display(normalize(cmask), title='Cell mask', method = "raster", frame = 1))
+
+## using paintObjects to highlight objects
+res = paintObjects(cmask, img, col='#ff00ff')
+res = paintObjects(nmask, res, col='#ffff00')
+display(res, title='Segmented cells')
+
+
+
+
+
+
+
+
+
+
+
+
