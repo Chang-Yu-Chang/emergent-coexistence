@@ -3,8 +3,14 @@
 library(tidyverse)
 
 # This main folder depends on your home directory and user name. Python somehow does not read ~/ instead I have to specify /Users/chang-yu/
-folder_main <- "~/Dropbox/lab/emergent-coexistence/data/raw/plate_scan/emergent_coexistence_plate_scan_check/"
-folder_script <- "~/Desktop/Lab/emergent-coexistence/output/check/"
+# folder_main <- "~/Dropbox/lab/emergent-coexistence/data/raw/plate_scan/emergent_coexistence_plate_scan_check/"
+# folder_script <- "~/Desktop/Lab/emergent-coexistence/output/check/"
+
+# folder_main <- "/Users/chang-yu/Dropbox/lab/emergent-coexistence/data/raw/plate_scan/emergent_coexistence_plate_scan_check/"
+# folder_script <- "/Users/chang-yu//Desktop/Lab/emergent-coexistence/output/check/"
+folder_main <- "/Users/cychang/Dropbox/lab/emergent-coexistence/data/raw/plate_scan/emergent_coexistence_plate_scan_check/"
+folder_script <- "/Users/cychang/Desktop/Lab/emergent-coexistence/output/check/"
+
 
 #batch_names <- c("D", "C", "C2", "B2", "chromo")
 batch_names <- c("D")
@@ -66,8 +72,9 @@ for (j in 1:length(batch_names)) {
     #' Keep populating this list if found new ones
     #' D T0 C1R4 3
     #' D T0 C1R6 3
+    #' D T1 C1R7 7
     list_images %>%
-        filter(str_detect(image_names, "T0")) %>%
+        filter(str_detect(image_names, "T0") | str_detect(image_names, "T1")) %>%
         write_csv(paste0(folder_script, "00-list_images-no_growth_isolates.csv"))
 
     # Mapping file between isolate and pairs

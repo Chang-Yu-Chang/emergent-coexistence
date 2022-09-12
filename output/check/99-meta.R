@@ -145,12 +145,11 @@ object_prediction_count_undecided %>%
 # 2 TRUE           15    0.349
 
 
-# 20222091 among the highly undecided pairs
+# 202220912 among the highly undecided pairs
 #   PairSameBug Count Fraction
 #   <lgl>       <int>    <dbl>
-# 1 FALSE          32    0.711
-# 2 TRUE           13    0.289
-
+# 1 FALSE          22    0.647
+# 2 TRUE           12    0.353
 
 # coculture images that are not the same-bug pairs
 object_prediction_count_undecided_nonsamebug <- object_prediction_count_undecided %>%
@@ -175,7 +174,7 @@ ggsave(paste0(folder_main, "examination/prediction_undecided.png"), p2, width = 
 #p <- plot_grid(p1, p2, p3, ncol = 1, align = "v", axis = "lr")
 
 
-# Undecided gorup by unique species pairs
+# Undecided group by unique species pairs
 pairs_freq <- object_prediction_count_undecided_nonsamebug %>%
     pivot_wider(names_from = Group, values_from = Fraction) %>%
     select(-undecided, -`predicted isolate1`, -`predicted isolate2`, -PairOrder) %>%
@@ -217,7 +216,7 @@ ggsave(paste0(folder_main, "examination/pairs_undecided.png"), p3, width = 10, h
 # Check the community pairs with high undecided number of coculture images
 object_prediction_count_undecided_nonsamebug %>%
     # Toggle this T/F to check the pairs
-    filter(PairSameBug ==  F) %>%
+    filter(PairSameBug ==  T) %>%
     pivot_wider(names_from = Group, values_from = Fraction) %>%
     rowwise() %>%
     mutate(newIsolate1 = min(Isolate1, Isolate2), newIsolate2 = max(Isolate1, Isolate2)) %>%
@@ -253,107 +252,105 @@ object_prediction_count_undecided_nonsamebug %>%
 # 13 C4R1             1        3     3
 
 
-# Remove the same-bug pairs ----
-## Number of non-same-bug pairs
-object_prediction_count %>%
-
-    filter(PairSameBug == F) %>%
-    group_by(undecided_group) %>%
-    count()
-#filter(undecided_group == "high undecided") %>%
-left_join(pairs_samebug_full, by = c("Community", "Isolate1", "Isolate2")) %>%
-    replace_na(list(PairSameBug = F)) %>%
-    arrange(desc(PairSameBug)) %>%
-    mutate(image_name_pair = factor(image_name_pair, image_name_pair)) %>%
-    #filter(PairSameBug == F) %>%
-    pivot_longer(cols = c(undecided, `predicted isolate1`, `predicted isolate2`), names_to = "Group", values_to = "Fraction")
-p2 <- object_prediction_count_undecided_nonsamebug  %>%
-    ggplot() +
-    geom_col(aes(x = image_name_pair, y = Fraction, fill = Group, color = PairSameBug), alpha = .5) +
-    scale_color_manual(values = c("TRUE" = "black", "FALSE" = NA)) +
-    scale_fill_manual(values = fill_names) +
-    scale_y_continuous(expand = c(0,0)) +
-    theme_classic() +
-    theme(axis.text.x = element_text(angle = 90, vjust = 0.5))
-
-
-
-object_prediction_count_undecided_nonsamebug %>%
-    filter(PairSameBug == F)
-pivot_wider(names_from = Group, values_from = Fraction) %>%
-    rowwise() %>%
-    mutate(newIsolate1 = min(Isolate1, Isolate2), newIsolate2 = max(Isolate1, Isolate2)) %>%
-    select(Community, Isolate1 = newIsolate1, Isolate2 = newIsolate2) %>%
-    group_by(Community, Isolate1, Isolate2) %>%
-    arrange(Community, Isolate1, Isolate2) %>%
-    count()
-
-
+# # Remove the same-bug pairs ----
+# ## Number of non-same-bug pairs
+# object_prediction_count %>%
+#     filter(PairSameBug == F) %>%
+#     group_by(undecided_group) %>%
+#     count()
+# #filter(undecided_group == "high undecided") %>%
+# left_join(pairs_samebug_full, by = c("Community", "Isolate1", "Isolate2")) %>%
+#     replace_na(list(PairSameBug = F)) %>%
+#     arrange(desc(PairSameBug)) %>%
+#     mutate(image_name_pair = factor(image_name_pair, image_name_pair)) %>%
+#     #filter(PairSameBug == F) %>%
+#     pivot_longer(cols = c(undecided, `predicted isolate1`, `predicted isolate2`), names_to = "Group", values_to = "Fraction")
+# p2 <- object_prediction_count_undecided_nonsamebug  %>%
+#     ggplot() +
+#     geom_col(aes(x = image_name_pair, y = Fraction, fill = Group, color = PairSameBug), alpha = .5) +
+#     scale_color_manual(values = c("TRUE" = "black", "FALSE" = NA)) +
+#     scale_fill_manual(values = fill_names) +
+#     scale_y_continuous(expand = c(0,0)) +
+#     theme_classic() +
+#     theme(axis.text.x = element_text(angle = 90, vjust = 0.5))
+#
+#
+#
+# object_prediction_count_undecided_nonsamebug %>%
+#     filter(PairSameBug == F)
+# pivot_wider(names_from = Group, values_from = Fraction) %>%
+#     rowwise() %>%
+#     mutate(newIsolate1 = min(Isolate1, Isolate2), newIsolate2 = max(Isolate1, Isolate2)) %>%
+#     select(Community, Isolate1 = newIsolate1, Isolate2 = newIsolate2) %>%
+#     group_by(Community, Isolate1, Isolate2) %>%
+#     arrange(Community, Isolate1, Isolate2) %>%
+#     count()
+#
 
 
 
 
 
 
-# Plot the transection of isoaltes and pair ----
 
-draw_transection <- function (transection, smooth = F, span = .75) {
-    color_names <- c("#FF5A5F","#087E8B", "black") %>% setNames(c("isolate1", "isolate2", "pair"))
-
-    # Smooth the curve
-    if (smooth) {
-        loess_custom <- function (formula, data) loess(formula, data, span = span)
-        transection <- transection %>%
-            nest(data = -ObjectID) %>%
-            mutate(mod = map(data, loess_custom, formula = Intensity ~ DistanceToCenter),
-                   FittedIntensity = map(mod, `[[`, "fitted")) %>%
-            select(-mod) %>%
-            unnest(cols = c(data, FittedIntensity))
-    }
-
-    transection %>%
-        ggplot() +
-        geom_line(aes(x = DistanceToCenter, y = FittedIntensity, group = ObjectID)) +
-        scale_color_manual(values = color_names) +
-        theme_classic() +
-        theme(panel.border = element_rect(color = 1, fill = NA))
-}
-image_tocheck <- "D_T8_C1R6_5-95_3_5"
-image_tocheck_index = which(list_image_mapping_folder$image_name_pair %in% image_tocheck)
-i = image_tocheck_index[1]
-
-for (i in image_tocheck_index) {
-
-    list_image_mapping_folder$image_name_pair[i]
-    transection_isolate1 <- read_csv(paste0(list_image_mapping_folder$folder_transection_isolate1[i], list_image_mapping_folder$image_name_isolate1[i], ".csv"), show_col_types = F)
-    transection_isolate2 <- read_csv(paste0(list_image_mapping_folder$folder_transection_isolate2[i], list_image_mapping_folder$image_name_isolate2[i], ".csv"), show_col_types = F)
-    transection_pair <- read_csv(paste0(list_image_mapping_folder$folder_transection_pair[i], list_image_mapping_folder$image_name_pair[i], ".csv"), show_col_types = F)
-
-
-
-
-    color_names <- c("#FF5A5F","#087E8B", "black") %>% setNames(c("isolate1", "isolate2", "pair"))
-    p3 <- bind_rows(
-        mutate(transection_isolate1, Group = "isolate1"),
-        mutate(transection_isolate2, Group = "isolate2"),
-        mutate(transection_pair, Group = "pair")
-    ) %>%
-        draw_transection()
-
-        # #filter(Group != "pair") %>%
-        # ggplot() +
-        # geom_line(aes(x = DistanceToCenter, y = fitted, color = Group, group = interaction(Group, ObjectID))) +
-        # scale_color_manual(values = color_names) +
-        # facet_wrap(~Group) +
-        # theme_classic() +
-        # theme(panel.border = element_rect(color = 1, fill = NA)) +
-        # ggtitle(list_image_mapping_folder$image_name_pair[i])
-
-    ggsave(paste0(folder_main, "examination/transection-", list_image_mapping_folder$image_name_pair[i],".png"), p3, width = 15, height = 6)
-}
-
-
-
-
-
-
+# # Plot the transection of isoaltes and pair ----
+# draw_transection <- function (transection, smooth = F, span = .75) {
+#     color_names <- c("#FF5A5F","#087E8B", "black") %>% setNames(c("isolate1", "isolate2", "pair"))
+#
+#     # Smooth the curve
+#     if (smooth) {
+#         loess_custom <- function (formula, data) loess(formula, data, span = span)
+#         transection <- transection %>%
+#             nest(data = -ObjectID) %>%
+#             mutate(mod = map(data, loess_custom, formula = Intensity ~ DistanceToCenter),
+#                    FittedIntensity = map(mod, `[[`, "fitted")) %>%
+#             select(-mod) %>%
+#             unnest(cols = c(data, FittedIntensity))
+#     }
+#
+#     transection %>%
+#         ggplot() +
+#         geom_line(aes(x = DistanceToCenter, y = FittedIntensity, group = ObjectID)) +
+#         scale_color_manual(values = color_names) +
+#         theme_classic() +
+#         theme(panel.border = element_rect(color = 1, fill = NA))
+# }
+# image_tocheck <- "D_T8_C1R6_5-95_3_5"
+# image_tocheck_index = which(list_image_mapping_folder$image_name_pair %in% image_tocheck)
+# i = image_tocheck_index[1]
+#
+# for (i in image_tocheck_index) {
+#
+#     list_image_mapping_folder$image_name_pair[i]
+#     transection_isolate1 <- read_csv(paste0(list_image_mapping_folder$folder_transection_isolate1[i], list_image_mapping_folder$image_name_isolate1[i], ".csv"), show_col_types = F)
+#     transection_isolate2 <- read_csv(paste0(list_image_mapping_folder$folder_transection_isolate2[i], list_image_mapping_folder$image_name_isolate2[i], ".csv"), show_col_types = F)
+#     transection_pair <- read_csv(paste0(list_image_mapping_folder$folder_transection_pair[i], list_image_mapping_folder$image_name_pair[i], ".csv"), show_col_types = F)
+#
+#
+#
+#
+#     color_names <- c("#FF5A5F","#087E8B", "black") %>% setNames(c("isolate1", "isolate2", "pair"))
+#     p3 <- bind_rows(
+#         mutate(transection_isolate1, Group = "isolate1"),
+#         mutate(transection_isolate2, Group = "isolate2"),
+#         mutate(transection_pair, Group = "pair")
+#     ) %>%
+#         draw_transection()
+#
+#         # #filter(Group != "pair") %>%
+#         # ggplot() +
+#         # geom_line(aes(x = DistanceToCenter, y = fitted, color = Group, group = interaction(Group, ObjectID))) +
+#         # scale_color_manual(values = color_names) +
+#         # facet_wrap(~Group) +
+#         # theme_classic() +
+#         # theme(panel.border = element_rect(color = 1, fill = NA)) +
+#         # ggtitle(list_image_mapping_folder$image_name_pair[i])
+#
+#     ggsave(paste0(folder_main, "examination/transection-", list_image_mapping_folder$image_name_pair[i],".png"), p3, width = 15, height = 6)
+# }
+#
+#
+#
+#
+#
+#

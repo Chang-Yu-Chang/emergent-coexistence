@@ -44,23 +44,23 @@ detect_nonround_object <- function (image_object, image_intensity = NULL, waters
 
         # Remove segmented objects based on shape
         object_shape_round <- object_feature %>%
-            # Area. Remove super small object after segementation
+            # Area. Remove small objects after segementation
             filter(s.area > 300 & s.area < 20000) %>%
             # Circularity = 1 means a perfect circle and goes down to 0 for non-circular shapes
             mutate(Circularity = 4 * pi * s.area / s.perimeter^2) %>%
             filter(Circularity > 0.7) %>%
             # Remove tape and label that has really large variation in radius
-            filter(s.radius.sd/s.radius.mean < 0.2) %>%
-            filter(m.eccentricity < 0.8 & m.eccentricity != 0) # Circle eccentricity=0, straight line eccentricity=1
+            filter(s.radius.sd/s.radius.mean < 0.2)
+            #filter(m.eccentricity < 0.9) # Circle eccentricity=0, straight line eccentricity=1
 
 
         # Remove outliers by b.sd/b.mean ratio
-        object_shape_round <- object_shape_round %>%
-            ungroup() %>%
-            mutate(b.sd_over_mean = b.sd/b.mean) %>%
-            mutate(b.sd_over_mean.up = quantile(b.sd_over_mean, .75) + 5 * IQR(b.sd_over_mean),
-                   b.sd_over_mean.low = quantile(b.sd_over_mean, .25) - 5 * IQR(b.sd_over_mean)) %>%
-            filter(b.sd_over_mean < b.sd_over_mean.up & b.sd_over_mean > b.sd_over_mean.low)
+        # object_shape_round <- object_shape_round %>%
+        #     ungroup() %>%
+        #     mutate(b.sd_over_mean = b.sd/b.mean) %>%
+        #     mutate(b.sd_over_mean.up = quantile(b.sd_over_mean, .75) + 5 * IQR(b.sd_over_mean),
+        #            b.sd_over_mean.low = quantile(b.sd_over_mean, .25) - 5 * IQR(b.sd_over_mean)) %>%
+        #     filter(b.sd_over_mean < b.sd_over_mean.up & b.sd_over_mean > b.sd_over_mean.low)
     }
 
     # Arrange by area size
@@ -69,9 +69,7 @@ detect_nonround_object <- function (image_object, image_intensity = NULL, waters
     return(object_ID_nonround)
 }
 
-i = which(list_images$image_name %in% c("D_T8_C11R5_50-50_1_2"))
-
-#i=1
+i = which(list_images$image_name %in% c("D_T1_C1R7_7"))
 
 for (i in 1:nrow(list_images)) {
     image_name <- list_images$image_name[i]

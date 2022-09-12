@@ -18,54 +18,60 @@ list_image_mapping_folder <- list_image_mapping %>%
     left_join(select(list_images, image_name_isolate2 = image_name, folder_feature_isolate2 = folder_green_feature), by = "image_name_isolate2")
 
 
-i = which(list_image_mapping_folder$image_name_pair %in% c("D_T8_C1R2_5-95_1_2"))
+read_feature_combined <- function () {
+    object_feature_pair <- paste0(
+        list_image_mapping_folder$folder_feature_pair[i],
+        list_image_mapping_folder$image_name_pair[i], ".csv"
+    ) %>%
+        read_csv(show_col_types = FALSE) %>%
+        mutate(image_name = list_image_mapping_folder$image_name_pair[i],
+               Group = "pair") # Label for supervised learning
+
+    object_feature_isolate1 <- paste0(
+        list_image_mapping_folder$folder_feature_isolate1[i],
+        list_image_mapping_folder$image_name_isolate1[i], ".csv"
+    ) %>%
+        read_csv(show_col_types = FALSE) %>%
+        mutate(image_name = list_image_mapping_folder$image_name_isolate1[i],
+               Group = "isolate1") # Label for supervised learning
+
+    object_feature_isolate2 <- paste0(
+        list_image_mapping_folder$folder_feature_isolate2[i],
+        list_image_mapping_folder$image_name_isolate2[i], ".csv"
+    ) %>%
+        read_csv(show_col_types = FALSE) %>%
+        mutate(image_name = list_image_mapping_folder$image_name_isolate2[i],
+               Group = "isolate2") # Label for supervised learning
+
+    #
+    object_feature_combined <- bind_rows(object_feature_pair, object_feature_isolate1, object_feature_isolate2) %>%
+        dplyr::select(image_name, Group, everything())
+
+    # Remove dark objects that are too dark to be colonies
+    object_feature_combined <- object_feature_combined %>% filter(b.mean > 0)
+
+    return(object_feature_combined)
+}
+#i = which(list_image_mapping_folder$image_name_pair %in% c("D_T8_C4R1_5-95_1_2"))
 #i = which(list_image_mapping_folder$image_name_pair == "D_T8_C4R1_50-50_1_3_-4")
+temp_indices = c(which(str_detect(list_image_mapping_folder$image_name_pair, "C1R7_5-95_\\d_7")),
+      which(str_detect(list_image_mapping_folder$image_name_pair, "C1R7_50-50_\\d_7")),
+      which(str_detect(list_image_mapping_folder$image_name_pair, "C1R7_5-95_7_\\d")))
+
+list_image_mapping_folder$image_name_pair[temp_indices]
 #i=1
-for (i in 1:nrow(list_image_mapping_folder)) {
+for (i in temp_indices) {
+#for (i in 1:nrow(list_image_mapping_folder)) {
     ## 8.1 read the feature files
-    read_feature_combined <- function () {
-        object_feature_pair <- paste0(
-            list_image_mapping_folder$folder_feature_pair[i],
-            list_image_mapping_folder$image_name_pair[i], ".csv"
-        ) %>%
-            read_csv(show_col_types = FALSE) %>%
-            mutate(image_name = list_image_mapping_folder$image_name_pair[i],
-                   Group = "pair") # Label for supervised learning
-
-        object_feature_isolate1 <- paste0(
-            list_image_mapping_folder$folder_feature_isolate1[i],
-            list_image_mapping_folder$image_name_isolate1[i], ".csv"
-        ) %>%
-            read_csv(show_col_types = FALSE) %>%
-            mutate(image_name = list_image_mapping_folder$image_name_isolate1[i],
-                   Group = "isolate1") # Label for supervised learning
-
-        object_feature_isolate2 <- paste0(
-            list_image_mapping_folder$folder_feature_isolate2[i],
-            list_image_mapping_folder$image_name_isolate2[i], ".csv"
-        ) %>%
-            read_csv(show_col_types = FALSE) %>%
-            mutate(image_name = list_image_mapping_folder$image_name_isolate2[i],
-                   Group = "isolate2") # Label for supervised learning
-
-        #
-        object_feature_combined <- bind_rows(object_feature_pair, object_feature_isolate1, object_feature_isolate2) %>%
-            dplyr::select(image_name, Group, everything())
-
-        # Remove dark objects that are too dark to be colonies
-        object_feature_combined <- object_feature_combined %>% filter(b.mean > 0)
-
-        return(object_feature_combined)
-    }
     list_image_mapping_folder$image_name_pair[i]
-
     feature_candidates <- c("b.mean", "b.sd", "b.mad",
                             "b.q005", "b.q05", "b.q095",
                             "s.area", "s.radius.mean", "s.radius.sd",
                             "b.tran.mean", "b.tran.sd", "b.tran.mad",
                             "b.center", "b.periphery", "b.diff.cp",
-                            "b.tran.q005", "b.tran.q05", "b.tran.q095",
-                            "t.bump.number") #"t.bump.onset"
+                            "b.tran.q005", "b.tran.q01", "b.tran.q05", "b.tran.q09", "b.tran.q095",
+                            # "t.bump.number"
+    )
 
     object_feature_combined <- read_feature_combined() %>%
         mutate(GroupBinary = case_when(
@@ -73,7 +79,12 @@ for (i in 1:nrow(list_image_mapping_folder)) {
             Group == "isolate2" ~ 1,
         )) %>%
         # Start with these parameters
-        dplyr::select(image_name, ObjectID, Group, GroupBinary, all_of(feature_candidates))
+        #select(image_name, ObjectID, Group, GroupBinary, all_of(feature_candidates)) %>%
+        {.}
+
+    # Remove outlier objects according to the criterion for each pair/isolate iamage. See this R script for more detail
+    source("05a-remove_outlier_objects.R")
+
     object_feature_isolates <- object_feature_combined %>%
         filter(!is.na(GroupBinary))
     object_feature_pair <- object_feature_combined %>%
@@ -150,9 +161,9 @@ for (i in 1:nrow(list_image_mapping_folder)) {
 
     # Use the feature to build a logit model
     selected_features <- model_importance %>% filter(Importance > 0.8) %>% pull(Feature)
-    ## If no feature passes the importance threshold 0.8, choose the top two features regardless of the importance
-    if (length(selected_features) == 0) {
-        selected_features <- model_importance %>% slice(1:2) %>% pull(Feature)
+    ## If only 0, 1, or 2 features pass the importance threshold 0.8, choose the top three features regardless of the importance
+    if (length(selected_features) <= 2) {
+        selected_features <- model_importance %>% slice(1:3) %>% pull(Feature)
     }
     model_logit <- glm(GroupBinary ~ ., data = select(object_feature_isolates, GroupBinary, all_of(selected_features)),
         family = binomial, control = list(maxit = 50))
@@ -186,7 +197,8 @@ for (i in 1:nrow(list_image_mapping_folder)) {
         group_by(Group, .drop = F) %>%
         count(name = "Count") %>%
         ungroup() %>%
-        mutate(Group = Group, Halign = c("right", "left", "center"), Valign = c(2, 2, 4))
+        mutate(Halign = c("right", "left", "center"), Valign = c(2, 2, 4)) %>%
+        mutate(Group = as.character(Group) %>% str_replace("predicted isolate", "pd_iso"))
 
     p3 <- object_feature_predicted %>%
         ggplot() +

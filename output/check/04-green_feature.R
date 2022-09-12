@@ -78,11 +78,21 @@ calculate_transection <- function (transection_smooth) {
         filter(find_quantile(ScaledDistanceToCenter, 0.05)) %>%
         slice(1) %>% # If there are two pixels equally close to 0.05, for example 0 and 0.1, then choose the first 1
         select(ObjectID, b.tran.q005 = Intensity)
+    transection_q01 <- transection_smooth %>%
+        select(ObjectID, ScaledDistanceToCenter, Intensity) %>%
+        filter(find_quantile(ScaledDistanceToCenter, 0.1)) %>%
+        slice(1) %>% # If there are two pixels equally close to 0.05, for example 0 and 0.1, then choose the first 1
+        select(ObjectID, b.tran.q01 = Intensity)
     transection_q05 <- transection_smooth %>%
         select(ObjectID, ScaledDistanceToCenter, Intensity) %>%
         filter(find_quantile(ScaledDistanceToCenter, 0.5)) %>%
         slice(1) %>% # If there are two pixels equally close to 0.05, for example 0 and 0.1, then choose the first 1
         select(ObjectID, b.tran.q05 = Intensity)
+    transection_q09 <- transection_smooth %>%
+        select(ObjectID, ScaledDistanceToCenter, Intensity) %>%
+        filter(find_quantile(ScaledDistanceToCenter, 0.9)) %>%
+        slice(1) %>% # If there are two pixels equally close to 0.05, for example 0 and 0.1, then choose the first 1
+        select(ObjectID, b.tran.q09 = Intensity)
     transection_q095 <- transection_smooth %>%
         select(ObjectID, ScaledDistanceToCenter, Intensity) %>%
         filter(find_quantile(ScaledDistanceToCenter, 0.95)) %>%
@@ -93,7 +103,9 @@ calculate_transection <- function (transection_smooth) {
     transection_n_bump %>%
         left_join(transection_onset_bump, by = "ObjectID") %>%
         left_join(transection_q005, by = "ObjectID") %>%
+        left_join(transection_q01, by = "ObjectID") %>%
         left_join(transection_q05, by = "ObjectID") %>%
+        left_join(transection_q09, by = "ObjectID") %>%
         left_join(transection_q095, by = "ObjectID") %>%
         return()
 }
@@ -145,7 +157,7 @@ draw_pixels <- function (img, pixel.x, pixel.y) {
     return(ans)
 }
 #i = which(list_images$image_name == "D_T8_C1R2_5-95_1_2")
-i = which(list_images$image_name == "D_T8_C1R2_2")
+i = which(list_images$image_name %in% c("D_T1_C1R7_7"))
 i=1
 for (i in 1:nrow(list_images)) {
     image_name <- list_images$image_name[i]
@@ -212,13 +224,11 @@ for (i in 1:nrow(list_images)) {
             # Remove the redundant prefix
             rename_with(function(x) str_replace(x,"x.0.", ""), starts_with("x.0")) %>%
             rename_with(function(x) str_replace(x,"x.Ba.", ""), starts_with("x.Ba")) %>%
-            select(ObjectID, starts_with("b."), starts_with("s."), starts_with("m.")) %>%
-            # Join the transection summary statistic features
-            left_join(transection_feature, by = "ObjectID")
+            # Join the transection  features
+            left_join(transection_feature, by = "ObjectID") %>%
+            select(ObjectID, starts_with("b."), starts_with("t."),  starts_with("s."), starts_with("m."))
 
         write_csv(object_feature, paste0(list_images$folder_green_feature[i], image_name, ".csv"))
         cat("\tfeature\t", i, "/", nrow(list_images), "\t", list_images$image_name[i])
     }
 }
-
-

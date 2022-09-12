@@ -50,7 +50,7 @@ list_image_mapping <- tibble(
 
 
 # 01. green channel and grey scale ----
-
+i = which(list_images$image_name %in% c("D_T1_C1R7_7"))
 for (i in 1:nrow(list_images)) {
     image_name <- list_images$image_name[i]
 
@@ -76,7 +76,21 @@ library(reticulate)
 
 # 03. segmentation ----
 list_images <- read_csv("~/Desktop/Lab/emergent-coexistence/output/check/00-list_images-D.csv", show_col_types = F)
-detect_nonround_object <- function (image_object, watershed = F) {
+compute_feature <- function (image_object, image_intensity) {
+    computeFeatures(
+        image_object, image_intensity,
+        methods.noref = c("computeFeatures.shape"),
+        methods.ref = c("computeFeatures.basic", "computeFeatures.moment"),
+        basic.quantiles = c(0.01)) %>%
+        as_tibble(rownames = "ObjectID") %>%
+        # Remove duplicatedly calculated properties
+        select(ObjectID, starts_with("x.0"), starts_with("x.Ba")) %>%
+        # Remove the redundant prefix
+        rename_with(function(x) str_replace(x,"x.0.", ""), starts_with("x.0")) %>%
+        rename_with(function(x) str_replace(x,"x.Ba.", ""), starts_with("x.Ba")) %>%
+        select(ObjectID, starts_with("b."), starts_with("s."), starts_with("m."))
+}
+detect_nonround_object <- function (image_object, image_intensity = NULL, watershed = F) {
     # Reomve too large or too small objects before watershed to reduce computational load
     if (!watershed) {
         # Check if the are away from the image border (use 100 pixel)
@@ -86,23 +100,23 @@ detect_nonround_object <- function (image_object, watershed = F) {
                 return (T)
             } else return(F)
         })
-        object_shape <- computeFeatures.shape(image_object) %>% as_tibble(rownames = "ObjectID")
-        object_shape_round <- object_shape %>%
+        object_feature <- computeFeatures.shape(image_object) %>% as_tibble(rownames = "ObjectID")
+        object_shape_round <- object_feature %>%
             mutate(inside = inside) %>%
             # Area
             filter(s.area > 300 & s.area < 20000) %>%
-            #
+            # Contour located away from the edges
             filter(inside)
 
     }
 
     # Filter for circularity only after watershed segmentation
     if (watershed) {
-        object_shape <- computeFeatures.shape(image_object) %>% as_tibble(rownames = "ObjectID")
-        object_moment <- computeFeatures.moment(image_object) %>% as_tibble(rownames = "ObjectID")
+        object_feature <- compute_feature(image_object, image_intensity)
+        #object_feature <- compute_feature(image_watershed, image_rolled)
 
-        object_shape_round <- object_shape %>%
-            left_join(object_moment, by = "ObjectID") %>%
+        # Remove segmented objects based on shape
+        object_shape_round <- object_feature %>%
             # Area. Remove super small object after segementation
             filter(s.area > 300 & s.area < 20000) %>%
             # Circularity = 1 means a perfect circle and goes down to 0 for non-circular shapes
@@ -110,12 +124,22 @@ detect_nonround_object <- function (image_object, watershed = F) {
             filter(Circularity > 0.7) %>%
             # Remove tape and label that has really large variation in radius
             filter(s.radius.sd/s.radius.mean < 0.2) %>%
-            filter(m.eccentricity < 0.8) # Circle eccentricity=0, straight line eccentricity=1
+            filter(m.eccentricity < 0.8 & m.eccentricity != 0) # Circle eccentricity=0, straight line eccentricity=1
+
+
+        # Remove outliers by b.sd/b.mean ratio
+        #' Cannot use this section because in the pair plate it may accidentally remove one morphotype from another
+        # object_shape_round <- object_shape_round %>%
+        #     ungroup() %>%
+        #     mutate(b.sd_over_mean = b.sd/b.mean) %>%
+        #     mutate(b.sd_over_mean.up = quantile(b.sd_over_mean, .75) + 5 * IQR(b.sd_over_mean),
+        #            b.sd_over_mean.low = quantile(b.sd_over_mean, .25) - 5 * IQR(b.sd_over_mean)) %>%
+        #     filter(b.sd_over_mean < b.sd_over_mean.up & b.sd_over_mean > b.sd_over_mean.low)
     }
 
     # Arrange by area size
     object_shape_round <- object_shape_round %>% arrange(desc(s.area))
-    object_ID_nonround <- object_shape$ObjectID[!(object_shape$ObjectID %in% object_shape_round$ObjectID)]
+    object_ID_nonround <- object_feature$ObjectID[!(object_feature$ObjectID %in% object_shape_round$ObjectID)]
     return(object_ID_nonround)
 }
 i = which(list_images$image_name == "D_T8_C1R2_3")
@@ -151,7 +175,7 @@ for (i in 1:nrow(list_images)) {
     cat("\tdistance map")
     image_watershed <- watershed(image_distancemap, tolerance = 1)
     ## After watershed, apply a second filter removing objects that are too small to be colonies
-    object_ID_nonround2 <- detect_nonround_object(image_watershed, watershed = T)
+    object_ID_nonround2 <- detect_nonround_object(image_watershed, image_rolled, watershed = T)
     image_watershed2 <- rmObjects(image_watershed, object_ID_nonround2, reenumerate = T)
     #display(paintObjects(image_watershed2, image_rolled_color, col = "red"), method = "raster")
     #display(image_watershed2, method = "raster")
@@ -166,7 +190,7 @@ for (i in 1:nrow(list_images)) {
 # k for pixels
 
 
-# 04. calculate the features ----
+# 04. features ----
 library(EBImageExtra) # for the bresenham algorithm
 library(purrr) # for applying functional programming to transet curve smoothing
 list_images <- read_csv("~/Desktop/Lab/emergent-coexistence/output/check/00-list_images-D.csv", show_col_types = F)
@@ -216,8 +240,13 @@ diff_transection <- function (transection_smooth) {
         mutate(SecondDerivative = c(NA, diff(Derivative) / diff(ScaledDistanceToCenter))) %>%
         select(ObjectID, x, y, DistanceToCenter, ScaledDistanceToCenter, ends_with("Intensity"), ends_with("Derivative"))
 }
-calculate_trasection_bump <- function (transection_smooth) {
-    # Onset of the first bumps. DIstance to the center is scaled to [0, 1]
+calculate_transection <- function (transection_smooth) {
+    #' This function calculates three types of transection features
+    #' 1. the onset of the fist bumpt.
+    #' 2. the number of bumps
+    #' 3. the intensity of distance_to_center quantiles
+
+    # Onset of the first bump. DIstance to the center is scaled to [0, 1]
     transection_onset_bump <- transection_smooth %>%
         group_by(ObjectID, .drop = F) %>%
         filter(SecondDerivative < 0) %>%
@@ -231,9 +260,30 @@ calculate_trasection_bump <- function (transection_smooth) {
         filter(SecondDerivative < 0) %>%
         count(name = "Count")
 
+    # Transect quantile by distance to center
+    find_quantile <- function (x, q) abs(x - q) == min(abs(x - q))
+    transection_q005 <- transection_smooth %>%
+        select(ObjectID, ScaledDistanceToCenter, Intensity) %>%
+        filter(find_quantile(ScaledDistanceToCenter, 0.05)) %>%
+        slice(1) %>% # If there are two pixels equally close to 0.05, for example 0 and 0.1, then choose the first 1
+        select(ObjectID, b.tran.q005 = Intensity)
+    transection_q05 <- transection_smooth %>%
+        select(ObjectID, ScaledDistanceToCenter, Intensity) %>%
+        filter(find_quantile(ScaledDistanceToCenter, 0.5)) %>%
+        slice(1) %>% # If there are two pixels equally close to 0.05, for example 0 and 0.1, then choose the first 1
+        select(ObjectID, b.tran.q05 = Intensity)
+    transection_q095 <- transection_smooth %>%
+        select(ObjectID, ScaledDistanceToCenter, Intensity) %>%
+        filter(find_quantile(ScaledDistanceToCenter, 0.95)) %>%
+        slice(1) %>% # If there are two pixels equally close to 0.05, for example 0 and 0.1, then choose the first 1
+        select(ObjectID, b.tran.q095 = Intensity)
+
     #
     transection_n_bump %>%
         left_join(transection_onset_bump, by = "ObjectID") %>%
+        left_join(transection_q005, by = "ObjectID") %>%
+        left_join(transection_q05, by = "ObjectID") %>%
+        left_join(transection_q095, by = "ObjectID") %>%
         return()
 }
 plot_transection <- function (transection_smooth, title_name = NULL, scaled_distance = T) {
