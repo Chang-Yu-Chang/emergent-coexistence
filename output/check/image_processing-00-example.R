@@ -75,13 +75,14 @@ library(reticulate)
 
 
 # 03. segmentation ----
+list_images <- read_csv("~/Desktop/Lab/emergent-coexistence/output/check/00-list_images-D.csv", show_col_types = F)
 detect_nonround_object <- function (image_object, watershed = F) {
     # Reomve too large or too small objects before watershed to reduce computational load
     if (!watershed) {
         # Check if the are away from the image border (use 100 pixel)
         oc <- ocontour(image_object)
         inside <- sapply(oc, function (x) {
-            if (all(x[,1] > 100 & x[,1] < 2120 & x[,2] > 100 & x[,2] < 2120)) {
+            if (all(x[,1] > 100 & x[,1] < (nrow(image_rolled)-100) & x[,2] > 100 & x[,2] < (ncol(image_rolled)-100))) {
                 return (T)
             } else return(F)
         })
@@ -117,8 +118,8 @@ detect_nonround_object <- function (image_object, watershed = F) {
     object_ID_nonround <- object_shape$ObjectID[!(object_shape$ObjectID %in% object_shape_round$ObjectID)]
     return(object_ID_nonround)
 }
-list_images <- read_csv("~/Desktop/Lab/emergent-coexistence/output/check/00-list_images-D.csv", show_col_types = F)
-i = which(list_images$image_name == "D_T8_C1R2_5-95_2_4")
+i = which(list_images$image_name == "D_T8_C1R2_3")
+#i=1
 for (i in 1:nrow(list_images)) {
     image_name <- list_images$image_name[i]
 
@@ -126,38 +127,39 @@ for (i in 1:nrow(list_images)) {
     image_rolled <- readImage(paste0(list_images$folder_green_rolled[i], image_name, ".tiff"))
 
     # 3. Thresholding
-    threshold <- otsu(image_rolled)
-    #threshold <- 0.9
-    image_thresholded <- image_rolled < threshold
+    #image_threshold <- image_rolled < otsu(image_rolled)
+    #' thresh() applies a sliding window to calculate the local threshold
+    #' opening() brushes the image to remove very tiny objects
+    image_threshold <- thresh(-image_rolled, w = 150, h = 150, offset = 0.01) %>%
+        opening(makeBrush(11, shape='disc'))
+    #display(image_threshold, method = "raster")
+    writeImage(image_threshold, paste0(list_images$folder_green_threshold[i], image_name, ".tiff"))
     cat("\nthreshold")
 
     # 4. Detect round shaped object and remove super small size
-    image_object <- bwlabel(image_thresholded)
+    image_object <- bwlabel(image_threshold)
     object_ID_nonround <- detect_nonround_object(image_object, watershed = F)
     image_round <- rmObjects(image_object, object_ID_nonround, reenumerate = T)
+    writeImage(image_round, paste0(list_images$folder_green_round[i], image_name, ".tiff"))
+    #display(image_round, method = "raster")
+    # image_rolled_color <- abind(image_rolled, image_rolled, image_rolled, along = 3) %>% Image(colormode = "Color")
+    # display(paintObjects(image_round, image_rolled_color, col = "red"), method = "raster")
     cat("\tround object")
 
-    # 5-6. Watershed
+    # 5. Watershed
     image_distancemap <- distmap(image_round)
     cat("\tdistance map")
     image_watershed <- watershed(image_distancemap, tolerance = 1)
     ## After watershed, apply a second filter removing objects that are too small to be colonies
     object_ID_nonround2 <- detect_nonround_object(image_watershed, watershed = T)
     image_watershed2 <- rmObjects(image_watershed, object_ID_nonround2, reenumerate = T)
+    #display(paintObjects(image_watershed2, image_rolled_color, col = "red"), method = "raster")
     #display(image_watershed2, method = "raster")
-    save(image_watershed2, file = paste0(list_images$folder_green_watershed_file[i], image_name, ".RData")) # save watersed image object
+    save(image_watershed2, file = paste0(list_images$folder_green_watershed[i], image_name, ".RData")) # save watersed image object
     writeImage(colorLabels(image_watershed2), paste0(list_images$folder_green_watershed[i], image_name, ".tiff"))
     cat("\twatershed\t", i, "/", nrow(list_images), "\t", list_images$image_name[i])
 
 }
-
-# temp <- read_csv(paste0(folder_main, "check/D-07-green_feature/D_T8_C1R7_50-50_3_6.csv"), show_col_types = F)
-# temp %>%
-#     mutate(Circularity = 4 * pi * s.area / s.perimeter^2) %>%
-#     filter(Circularity > 0.3) %>%
-#     mutate(s.ratio = s.radius.sd/s.radius.mean) %>%
-#     select(starts_with("s."), Circularity) %>%
-#     view
 
 # i for image_names
 # j for objects
@@ -165,8 +167,9 @@ for (i in 1:nrow(list_images)) {
 
 
 # 04. calculate the features ----
-library(EBImageExtra)
-library(purrr)
+library(EBImageExtra) # for the bresenham algorithm
+library(purrr) # for applying functional programming to transet curve smoothing
+list_images <- read_csv("~/Desktop/Lab/emergent-coexistence/output/check/00-list_images-D.csv", show_col_types = F)
 extract_transection <- function (watershed, ref) {
     #' This function searches for all objects on an image and return the pixel intensity along the transection of each object
     #' Arguments:
@@ -190,6 +193,78 @@ extract_transection <- function (watershed, ref) {
 
     return(transection)
 }
+smooth_transection <- function (transection, span = .8) {
+    #' This function smooth the transects using loess that fits a polynomial regression
+    #' the parameter span controls the degree of smoothing. from span = 0 very rugged to span = 1 very smooth
+    loess_custom <- function (formula, data) loess(formula, data, span = span)
+    transection %>%
+        # Smooth intensity
+        nest(data = -ObjectID) %>%
+        mutate(mod = map(data, loess_custom, formula = Intensity ~ DistanceToCenter),
+               FittedIntensity = map(mod, `[[`, "fitted")) %>%
+        select(-mod) %>%
+        unnest(cols = c(data, FittedIntensity))
+}
+diff_transection <- function (transection_smooth) {
+    #' This function scales the transection and calculate the derivative
+    # Derivative. f'(x) = (f(x+h)-f(h)) / h
+    transection_smooth %>%
+        group_by(ObjectID) %>%
+        # Scale the Distance
+        mutate(ScaledDistanceToCenter = DistanceToCenter / max(DistanceToCenter)) %>%
+        mutate(Derivative = c(NA, diff(FittedIntensity) / diff(ScaledDistanceToCenter))) %>%
+        mutate(SecondDerivative = c(NA, diff(Derivative) / diff(ScaledDistanceToCenter))) %>%
+        select(ObjectID, x, y, DistanceToCenter, ScaledDistanceToCenter, ends_with("Intensity"), ends_with("Derivative"))
+}
+calculate_trasection_bump <- function (transection_smooth) {
+    # Onset of the first bumps. DIstance to the center is scaled to [0, 1]
+    transection_onset_bump <- transection_smooth %>%
+        group_by(ObjectID, .drop = F) %>%
+        filter(SecondDerivative < 0) %>%
+        slice(1) %>%
+        select(ObjectID, OnsetBump = ScaledDistanceToCenter)
+
+
+    # Number of bumps
+    transection_n_bump <- transection_smooth %>%
+        group_by(ObjectID, .drop = F) %>%
+        filter(SecondDerivative < 0) %>%
+        count(name = "Count")
+
+    #
+    transection_n_bump %>%
+        left_join(transection_onset_bump, by = "ObjectID") %>%
+        return()
+}
+plot_transection <- function (transection_smooth, title_name = NULL, scaled_distance = T) {
+    p <- transection_smooth %>%
+        pivot_longer(cols = c(Intensity, FittedIntensity, Derivative, SecondDerivative), names_to = "Measure", values_to = "Value") %>%
+        mutate(Measure = ordered(Measure, c("Intensity", "FittedIntensity", "Derivative", "SecondDerivative"))) %>%
+        ggplot() +
+        facet_grid(Measure~., scales = "free_y") +
+        theme_classic() +
+        theme(panel.border = element_rect(color = 1, fill = NA)) +
+        ggtitle(title_name)
+
+    if (scaled_distance) {
+        p <- p +
+            geom_line(aes(x = ScaledDistanceToCenter, y = Value, group = ObjectID), lwd = .3) +
+            geom_point(aes(x = ScaledDistanceToCenter, y = Value, group = ObjectID), size = .1)
+    }
+
+    if (scaled_distance == F) {
+        p <- p +
+            geom_line(aes(x = DistanceToCenter, y = Value, group = ObjectID), lwd = .3) +
+            geom_point(aes(x = DistanceToCenter, y = Value, group = ObjectID), size = .1)
+    }
+
+    p <- p +
+        geom_hline(data = tibble(Measure = factor(c("Intensity", "FittedIntensity", "Derivative", "SecondDerivative"), c("Intensity", "FittedIntensity", "Derivative", "SecondDerivative")),
+                                 yintercept = c(NA, NA, 0, 0)),
+                   aes(yintercept = yintercept), color = "red", linetype = 2)
+
+    return(p)
+}
 draw_pixels <- function (img, pixel.x, pixel.y) {
     #' This function takes an image and draw red on the assigned pixels
     stopifnot(length(pixel.x) == length(pixel.y))
@@ -209,111 +284,145 @@ draw_pixels <- function (img, pixel.x, pixel.y) {
     return(ans)
 }
 
-for (i in 1:nrow(list_images)) {
-    image_name <- list_images$image_name[i]
-    image_rolled <- readImage(paste0(list_images$folder_green_rolled[i], image_name, ".tiff"))
-    load(paste0(list_images$folder_green_watershed_file[i], image_name, ".RData")) # this should contain one R object image_watershed2
 
-    # 7.1 Extract transection data
-    #transections[[i]] <- extract_transection(image_watershed2, image_rolled) %>%
-    transection <- extract_transection(image_watershed2, image_rolled) %>%
-        lapply(function(x) mutate(x, DistanceToCenter = 1:length(x))) %>%
-        bind_rows(.id = "ObjectID")
-    write_csv(transection, file = paste0(list_images$folder_green_transection[i], image_name, ".csv"))
-    cat("\ntransection")
+image_tocheck <- c("D_T8_C1R2_1", "D_T8_C1R2_2", "D_T8_C1R2_3")
+image_tocheck_index <- which(list_images$image_name %in% image_tocheck)
+i=38
 
-    # Save the transection image
-    image_transect <- draw_pixels(image_rolled, transection$x, transection$y)
-    writeImage(image_transect, paste0(list_images$folder_green_transection[i], image_name, ".tiff"))
-    cat("\ndraw transection")
+image_name <- list_images$image_name[i]
+image_rolled <- readImage(paste0(list_images$folder_green_rolled[i], image_name, ".tiff"))
+load(paste0(list_images$folder_green_watershed[i], image_name, ".RData")) # this should contain one R object image_watershed2
 
-    # 7.2 Smooth the curves using loess
-    transection_smooth <- transections[[i]] %>%
-        nest(data = -ObjectID) %>%
-        mutate(mod = map(data, loess, formula = Intensity ~ DistanceToCenter),
-               fitted = map(mod, `[[`, "fitted")) %>%
-        select(-mod) %>%
-        unnest(cols = c(data, fitted))
-    cat("\nsmooth curve")
+# 7.1 Extract transection data
+#transections[[i]] <- extract_transection(image_watershed2, image_rolled) %>%
+transection <- extract_transection(image_watershed2, image_rolled) %>%
+    lapply(function(x) mutate(x, DistanceToCenter = 0:(length(x)-1))) %>%
+    bind_rows(.id = "ObjectID")
 
-    # transection_smooth %>%
-    #     #filter(ObjectID == 5) %>%
-    #     ggplot() +
-    #     geom_line(aes(x = DistanceToCenter, y = fitted, group = ObjectID), lwd = .3) +
-    #     #geom_point(data = transections[[1]], aes(x = DistanceToCenter, y = Intensity, group = ObjectID)) +
-    #     theme_classic() +
-    #     guides(color = "none") +
-    #     labs()
+# 7.2 Mark the transects and contour
+image_transect <- draw_pixels(image_rolled, transection$x, transection$y)
+image_transect <- paintObjects(image_watershed2, image_transect)
+writeImage(image_transect, paste0(list_images$folder_green_transection[i], image_name, ".tiff"))
+#display(paintObjects(image_watershed2, image_transect), method = "raster")
+cat("\tdraw transects")
 
-    # 7.3 calculate features using the transection gradient
-    transection_feature <- transection %>%
-        group_by(ObjectID) %>%
-        summarize(b.tran.mean = mean(Intensity), # summary statistics
-                  b.tran.sd = sd(Intensity),
-                  b.tran.mad = mad(Intensity),
-                  b.center = Intensity[1], # center intensity
-                  b.periphery = last(Intensity) ) %>% # periphery intensity
-        mutate(b.diff.cp = b.periphery - b.center)
 
-    # 7.4 Compute feature. The output table is NULL if no object (no colony)
-    #load(paste0(list_images$folder_green_watershed_file, image_name, ".RData")) # this should contain one R object image_watershed2
-    object_feature <- computeFeatures(
-        image_watershed2, image_rolled,
-        methods.noref = c("computeFeatures.shape"),
-        methods.ref = c("computeFeatures.basic", "computeFeatures.moment"),
-        basic.quantiles = c(0.01, 0.05, seq(0.1, 0.9, by = .1), 0.95, 0.99)
-    )
+# 7.3 Calculate transect features
+# Smooth
+transection_smooth <- transection %>%
+    smooth_transection() %>%
+    diff_transection()
+write_csv(transection_smooth, file = paste0(list_images$folder_green_transection[i], image_name, ".csv"))
+cat("\ntransection")
+#plot_transection(transection_smooth, image_name, scaled_distance = T)
 
-    ## Execute the name cleanup only if there is at least 1 object
-    if (is_null(object_feature)) {
-        #write_csv(object_feature, paste0(list_images$folder_green_feature[i], image_name, ".csv"))
-        cat("\tno object\t", i, "/", nrow(list_images), "\t", list_images$image_name[i])
-    }
+"
+How do I describe the outer rings!?!?
+"
 
-    if (!is_null(object_feature)) {
-        object_feature <- object_feature %>%
-            as_tibble(rownames = "ObjectID") %>%
-            # Remove duplicatedly calculated properties
-            select(ObjectID, starts_with("x.0"), starts_with("x.Ba")) %>%
-            # Remove the redundant prefix
-            rename_with(function(x) str_replace(x,"x.0.", ""), starts_with("x.0")) %>%
-            rename_with(function(x) str_replace(x,"x.Ba.", ""), starts_with("x.Ba")) %>%
-            #
-            select(ObjectID, starts_with("b."), starts_with("s."), starts_with("m.")) %>%
-            # # Remove the round plate lid crack that has high intensity variability
-            # filter(b.sd < 0.3)
-            # Join the transection summary statistic features
-            left_join(transection_feature, )
+transection_feature <- transection_smooth %>%
+    group_by(ObjectID) %>%
+    # Summary statistics
+    summarize(b.tran.mean = mean(Intensity),
+              b.tran.sd = sd(Intensity),
+              b.tran.mad = mad(Intensity),
+              b.center = Intensity[1], # center intensity
+              b.periphery = last(Intensity), # periphery intensity
+    ) %>%
+    mutate(b.diff.cp = b.periphery - b.center) %>%
+    # Transect
+    left_join(calculate_trasection_bump(transection_smooth), by = "ObjectID") %>%
+    rename(t.bump.number = Count, # number of transect bumps
+           t.bump.onset = OnsetBump) # onset of the first transect bump
 
-        write_csv(object_feature, paste0(list_images$folder_green_feature[i], image_name, ".csv"))
-        cat("\tfeature\t", i, "/", nrow(list_images), "\t", list_images$image_name[i])
-    }
+if (FALSE) {
+# Distribution of the first bumps
+transection_smooth %>%
+    group_by(ObjectID, .drop = F) %>%
+    filter(SecondDerivative < 0) %>%
+    #filter(DistanceToCenter > 0.1) %>%
+    slice(1) %>%
+    ggplot() +
+    geom_histogram(aes(x = DistanceToCenter)) +
+    theme_classic()
+
+
+# Number of bumps
+transection_smooth %>%
+    group_by(ObjectID, .drop = F) %>%
+    filter(SecondDerivative < 0) %>%
+    count(name = "Count") %>%
+    ggplot() +
+    geom_histogram(aes(x = Count)) +
+    scale_x_continuous(breaks = 0:20) +
+    theme_classic()
+
+print(plot_grid(p1, p2, nrow = 2))
+
+
+# Plot smooth
+color_names <- c("#FF5A5F","#087E8B", "black") %>% setNames(c("isolate1", "isolate2", "pair"))
+transection_smooth %>%
+    #filter(ObjectID %in% 1:10) %>%
+    pivot_longer(cols = c(Intensity, FittedIntensity, Derivative, SecondDerivative), names_to = "Measure", values_to = "Value") %>%
+    mutate(Measure = ordered(Measure, c("Intensity", "FittedIntensity", "Derivative", "SecondDerivative"))) %>%
+    ggplot() +
+    geom_line(aes(x = DistanceToCenter, y = Value, group = ObjectID), lwd = .3) +
+    geom_point(aes(x = DistanceToCenter, y = Value, group = ObjectID), size = .1) +
+    facet_grid(Measure~., scales = "free_y") +
+    theme_classic() +
+    theme(panel.border = element_rect(color = 1, fill = NA)) +
+    ggtitle(image_name)
+
 }
 
+# 7.4 Compute feature. The output table is NULL if no object (no colony)
+#load(paste0(list_images$folder_green_watershed_file, image_name, ".RData")) # this should contain one R object image_watershed2
+object_feature <- computeFeatures(
+    image_watershed2, image_rolled,
+    methods.noref = c("computeFeatures.shape"),
+    methods.ref = c("computeFeatures.basic", "computeFeatures.moment"),
+    #basic.quantiles = c(0.01, 0.05, seq(0.1, 0.9, by = .1), 0.95, 0.99)
+    basic.quantiles = c(0.01, 0.05, c(0.1, 0.2, 0.5, 0.8, 0.9), 0.95, 0.99)
+)
 
-"finish this
-- smooth the transection curve -> done
-also these values have to match the Object ID
-1) fit the curve to have a value for concavity
-2) normalize the size and calculate the roungh slope
-3) the number of valleys
-this can wait. Using the new feature, do the model selection for clustering
+## Execute the name cleanup only if there is at least 1 object
+if (is_null(object_feature)) {
+    #write_csv(object_feature, paste0(list_images$folder_green_feature[i], image_name, ".csv"))
+    cat("\tno object\t", i, "/", nrow(list_images), "\t", list_images$image_name[i])
+}
 
-run a set of model selection algorithm
-"
+if (!is_null(object_feature)) {
+    object_feature <- object_feature %>%
+        as_tibble(rownames = "ObjectID") %>%
+        # Remove duplicatedly calculated properties
+        select(ObjectID, starts_with("x.0"), starts_with("x.Ba")) %>%
+        # Remove the redundant prefix
+        rename_with(function(x) str_replace(x,"x.0.", ""), starts_with("x.0")) %>%
+        rename_with(function(x) str_replace(x,"x.Ba.", ""), starts_with("x.Ba")) %>%
+        #
+        select(ObjectID, starts_with("b."), starts_with("s."), starts_with("m.")) %>%
+        # Use the intensity data to filter out non-colony objects
+        filter(b.sd / b.mean < 30) %>%
+
+        "
+
+        move this line to 04 segmentation
+
+    "
+        # Join the transection summary statistic features
+        left_join(transection_feature, by = "ObjectID")
+
+    write_csv(object_feature, paste0(list_images$folder_green_feature[i], image_name, ".csv"))
+    cat("\tfeature\t", i, "/", nrow(list_images), "\t", list_images$image_name[i])
+}
 
 
 # 05. clustering ----
 
-# 8. Clustering
-
-#' 1. stepwise selection over the best subset selection: run regsubset to get the best models for p variables.
-#' 3. compare models: divide the data into k-fold cross-validaiton. Find the one with lowest MSE
-library(metafor) # a meta-analysis package
 library(leaps) # for computing stepwise regression. But it only fits lm
 library(glmulti) # an extension to include glm in feature selection
 library(gridExtra) # for plotting tables on the graph
-
 
 list_images <- read_csv("~/Desktop/Lab/emergent-coexistence/output/check/00-list_images-D.csv", show_col_types = F)
 list_image_mapping <- read_csv(paste0(folder_script, "00-list_image_mapping-D.csv"), show_col_types = F)
@@ -322,8 +431,8 @@ list_image_mapping_folder <- list_image_mapping %>%
     left_join(select(list_images, image_name_isolate1 = image_name, folder_feature_isolate1 = folder_green_feature), by = "image_name_isolate1") %>%
     left_join(select(list_images, image_name_isolate2 = image_name, folder_feature_isolate2 = folder_green_feature), by = "image_name_isolate2")
 
-## 8.1 read the feature files
 i = 1
+## 8.1 read the feature files
 read_feature_combined <- function () {
     object_feature_pair <- paste0(
         list_image_mapping_folder$folder_feature_pair[i],
@@ -370,9 +479,9 @@ object_feature_combined <- read_feature_combined() %>%
     # Start with these parameters
     dplyr::select(image_name, ObjectID, Group, GroupBinary, all_of(feature_candidates))
 object_feature_isolates <- object_feature_combined %>%
-    filter(!is.na(GroupBinary))
+    filter(str_detect(Group, "isolate"))
 object_feature_pair <- object_feature_combined %>%
-    filter(is.na(GroupBinary))
+    filter(str_detect(Group, "pair"))
 
 # 8.2 exhaustive stepwise selection and cross-validation
 best_subset <- glmulti(
@@ -390,9 +499,8 @@ best_subset <- glmulti(
     #family = binomial # logistic
 )
 
-#plot(best_subset)
 # Top models
-weightable(best_subset) %>%  as_tibble()
+weightable(best_subset) %>% as_tibble()
 
 # Multimodel inference, using the metafor package
 eval(metafor:::.glmulti)
@@ -425,27 +533,34 @@ p1 <- model_importance %>%
     theme_classic() +
     ggtitle("model-averaged importance of predictors")
 
-# The final best model and table of coefficent
-model <- best_subset@objects[[1]]
-model_table <- broom::tidy(model) %>%
+# Use the feature to build a logit model
+selected_features <- model_importance %>% filter(Importance > 0.8) %>% pull(Feature)
+model_logit <- glm(GroupBinary ~ ., data = select(object_feature_isolates, GroupBinary, all_of(selected_features)),
+                   family = binomial, control = list(maxit = 50))
+
+# Plot the table of coefficient from the logti regression model
+#model <- best_subset@objects[[1]]
+model_table <- broom::tidy(model_logit) %>%
     mutate(estimate = round(estimate, 4),
            std.error = round(std.error, 4),
-           statistic = round(statistic, 4))
+           statistic = round(statistic, 4),
+           p.value = round(p.value, 4))
 p2 <- cowplot::ggdraw() +
-    annotation_custom(tableGrob(model_table, theme = ttheme_default(base_size = 6)), xmin = 0, xmax = 1, ymin = 0, ymax = 1) +
+    annotation_custom(tableGrob(model_table, theme = ttheme_default(base_size = 8)), xmin = 0, xmax = 1, ymin = 0, ymax = 1) +
     theme_void() +
     theme(legend.position = "none")
+cat("\tcoefficient")
 
 
 # Model predict
 object_feature_predicted <- object_feature_pair %>%
-    mutate(PredictedGroupProbability = predict(model, object_feature_pair)) %>%
+    mutate(PredictedGroupProbability = predict(model_logit, object_feature_pair, type = "response")) %>%
     dplyr::select(image_name, ObjectID, PredictedGroupProbability) %>%
     # Criteria for catagorizing
     mutate(Group = case_when(
-        PredictedGroupProbability < 0.4 ~ "predicted isolate1",
-        PredictedGroupProbability > 0.6 ~ "predicted isolate2",
-        PredictedGroupProbability > 0.4 & PredictedGroupProbability < 0.6 ~ "undecided"
+        PredictedGroupProbability < 0.2 ~ "predicted isolate1",
+        PredictedGroupProbability > 0.8 ~ "predicted isolate2",
+        PredictedGroupProbability > 0.2 & PredictedGroupProbability < 0.8 ~ "undecided"
     )) %>%
     mutate(Group = factor(Group, c("predicted isolate1", "predicted isolate2", "undecided"),))
 
@@ -453,18 +568,21 @@ object_feature_predicted_count <- object_feature_predicted %>%
     group_by(Group, .drop = F) %>%
     count(name = "Count") %>%
     ungroup() %>%
-    mutate(Group = Group, Halign = c("right", "left", "center"), Valign = c(2, 2, 4))
+    mutate(Halign = c("right", "left", "center"), Valign = c(2, 2, 4)) %>%
+    mutate(Group = as.character(Group) %>% str_replace("predicted isolate", "pd_iso"))
 
 p3 <- object_feature_predicted %>%
     ggplot() +
-    geom_histogram(aes(x = PredictedGroupProbability), color = 1, fill = NA, bins = 30) +
-    geom_vline(xintercept = c(0.4, 0.6), linetype = 2, color = "red") +
+    geom_histogram(aes(x = PredictedGroupProbability), binwidth = .02, color = 1, fill = "white", breaks = seq(0,1,.02)) +
+    # geom_histogram(aes(x = PredictedGroupProbability), binwidth = 0.05, color = 1, fill = NA, bins = 30) +
+    geom_vline(xintercept = c(0.2, 0.8), linetype = 2, color = "red") +
     geom_vline(xintercept = c(0,1), linetype = 2, color = "black") +
-    geom_text(data = object_feature_predicted_count, x = c(.4,.6,.5), aes(hjust = Halign, vjust = Valign, label = paste0("  ", Group, ": ", Count, "  ")), y = Inf) +
-    scale_x_continuous(expand = c(0,0.1), breaks = seq(-2,2, .2)) +
+    geom_text(data = object_feature_predicted_count, x = c(.45,.55,.5), aes(hjust = Halign, vjust = Valign, label = paste0("  ", Group, ": ", Count, "  ")), y = Inf) +
+    scale_x_continuous(expand = c(0,0.1), breaks = seq(0,1,.2)) +
     scale_y_continuous(expand = c(0,0)) +
     theme_classic()
-
+# Output the prediction
+write_csv(object_feature_predicted, paste0(list_image_mapping_folder$folder_green_cluster[i], list_image_mapping_folder$image_name_pair[i], ".csv"))
 cat("\tprediction")
 
 # Scatterplot for clustering intuition
@@ -539,9 +657,17 @@ p4 <-  object_feature_plot %>%
 cat("\tclusterplot")
 
 # PCA with the model selected variables
-pcobj <- object_feature_plot %>%
-    select(all_of(names(coef(model))[-1])) %>% # names(coef(model))[-1] # remove intercept term
-    prcomp(center = TRUE, scale. = TRUE)
+if (length(coef(model_logit)) >= 3) {
+    # When more than two features picked
+    pcobj <- object_feature_plot %>%
+        select(all_of(names(coef(model_logit))[-1])) %>%
+        prcomp(center = TRUE, scale. = TRUE)
+} else if (length(coef(model_logit)) == 2) {
+    # When only one feature picked, use the top two important features
+    pcobj <- object_feature_plot %>%
+        select(all_of(model_importance$Feature[1:2])) %>%
+        prcomp(center = TRUE, scale. = TRUE)
+}
 compute_pca_coord <- function (pcobj) {
     #' The function below comes from the source code of ggbiplot
     #' to replace the use of ggbiplot

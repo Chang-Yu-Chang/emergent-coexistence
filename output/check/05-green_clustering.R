@@ -1,9 +1,8 @@
 library(tidyverse)
 library(cowplot)
-library(metafor) # a meta-analysis package
 library(leaps) # for computing stepwise regression. But it only fits lm
 library(glmulti) # extension to include glm in leaps
-library(gridExtra)
+library(gridExtra) # for making the table a grob
 
 
 folder_script <- "~/Desktop/Lab/emergent-coexistence/output/check/"
@@ -18,13 +17,11 @@ list_image_mapping_folder <- list_image_mapping %>%
     left_join(select(list_images, image_name_isolate1 = image_name, folder_feature_isolate1 = folder_green_feature), by = "image_name_isolate1") %>%
     left_join(select(list_images, image_name_isolate2 = image_name, folder_feature_isolate2 = folder_green_feature), by = "image_name_isolate2")
 
-#i = which(list_image_mapping_folder$image_name_pair %in% c("D_T8_C1R2_5-95_2_1"))
-#i = which(list_images$image_name %in% c("D_T8_C11R5_5-95_1_2"))
-#i = which(list_images$image_name %in% c("D_T8_C1R2_5-95_2_3"))
-i = which(list_image_mapping_folder$image_name_pair == "D_T8_C4R1_50-50_1_3_-4")
 
+i = which(list_image_mapping_folder$image_name_pair %in% c("D_T8_C1R2_5-95_1_2"))
+#i = which(list_image_mapping_folder$image_name_pair == "D_T8_C4R1_50-50_1_3_-4")
+#i=1
 for (i in 1:nrow(list_image_mapping_folder)) {
-
     ## 8.1 read the feature files
     read_feature_combined <- function () {
         object_feature_pair <- paste0(
@@ -63,9 +60,12 @@ for (i in 1:nrow(list_image_mapping_folder)) {
     list_image_mapping_folder$image_name_pair[i]
 
     feature_candidates <- c("b.mean", "b.sd", "b.mad",
+                            "b.q005", "b.q05", "b.q095",
                             "s.area", "s.radius.mean", "s.radius.sd",
                             "b.tran.mean", "b.tran.sd", "b.tran.mad",
-                            "b.center", "b.periphery", "b.diff.cp")
+                            "b.center", "b.periphery", "b.diff.cp",
+                            "b.tran.q005", "b.tran.q05", "b.tran.q095",
+                            "t.bump.number") #"t.bump.onset"
 
     object_feature_combined <- read_feature_combined() %>%
         mutate(GroupBinary = case_when(
@@ -90,7 +90,7 @@ for (i in 1:nrow(list_image_mapping_folder)) {
         method = "d",
         crit = "aicc",
         minsize = 2,
-        maxsize = 5,
+        maxsize = 4,
         confsetsize = 100, # Keep the top n models
         plotty = F, report = F,
         fitfunction = glm
@@ -107,7 +107,7 @@ for (i in 1:nrow(list_image_mapping_folder)) {
         method = "h",
         crit = "aicc",
         minsize = 2,
-        maxsize = 5,
+        maxsize = 4,
         confsetsize = 100, # Keep the top n models
         plotty = F, report = F,
         fitfunction = glm# logistic
@@ -150,6 +150,10 @@ for (i in 1:nrow(list_image_mapping_folder)) {
 
     # Use the feature to build a logit model
     selected_features <- model_importance %>% filter(Importance > 0.8) %>% pull(Feature)
+    ## If no feature passes the importance threshold 0.8, choose the top two features regardless of the importance
+    if (length(selected_features) == 0) {
+        selected_features <- model_importance %>% slice(1:2) %>% pull(Feature)
+    }
     model_logit <- glm(GroupBinary ~ ., data = select(object_feature_isolates, GroupBinary, all_of(selected_features)),
         family = binomial, control = list(maxit = 50))
 

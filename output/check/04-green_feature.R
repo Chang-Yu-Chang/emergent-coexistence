@@ -1,7 +1,7 @@
 library(tidyverse)
 library(EBImage)
-library(EBImageExtra)
-library(purrr)
+library(EBImageExtra) # for the bresenham algorithm
+library(purrr) # for applying functional programming to transet curve smoothing
 
 list_images <- read_csv(commandArgs(trailingOnly = T)[1], show_col_types = F)
 #list_images <- read_csv("~/Desktop/Lab/emergent-coexistence/output/check/00-list_images-D.csv", show_col_types = F)
@@ -28,6 +28,104 @@ extract_transection <- function (watershed, ref) {
 
     return(transection)
 }
+smooth_transection <- function (transection, span = .8) {
+    #' This function smooth the transects using loess that fits a polynomial regression
+    #' the parameter span controls the degree of smoothing. from span = 0 very rugged to span = 1 very smooth
+    loess_custom <- function (formula, data) loess(formula, data, span = span)
+    transection %>%
+        # Smooth intensity
+        nest(data = -ObjectID) %>%
+        mutate(mod = map(data, loess_custom, formula = Intensity ~ DistanceToCenter),
+               FittedIntensity = map(mod, `[[`, "fitted")) %>%
+        select(-mod) %>%
+        unnest(cols = c(data, FittedIntensity))
+}
+diff_transection <- function (transection_smooth) {
+    #' This function scales the transection and calculate the derivative
+    # Derivative. f'(x) = (f(x+h)-f(h)) / h
+    transection_smooth %>%
+        group_by(ObjectID) %>%
+        # Scale the Distance
+        mutate(ScaledDistanceToCenter = DistanceToCenter / max(DistanceToCenter)) %>%
+        mutate(Derivative = c(NA, diff(FittedIntensity) / diff(ScaledDistanceToCenter))) %>%
+        mutate(SecondDerivative = c(NA, diff(Derivative) / diff(ScaledDistanceToCenter))) %>%
+        select(ObjectID, x, y, DistanceToCenter, ScaledDistanceToCenter, ends_with("Intensity"), ends_with("Derivative"))
+}
+calculate_transection <- function (transection_smooth) {
+    #' This function calculates three types of transection features
+    #' 1. the onset of the fist bumpt.
+    #' 2. the number of bumps
+    #' 3. the intensity of distance_to_center quantiles
+
+    # Onset of the first bump. DIstance to the center is scaled to [0, 1]
+    transection_onset_bump <- transection_smooth %>%
+        group_by(ObjectID, .drop = F) %>%
+        filter(SecondDerivative < 0) %>%
+        slice(1) %>%
+        select(ObjectID, OnsetBump = ScaledDistanceToCenter)
+
+
+    # Number of bumps
+    transection_n_bump <- transection_smooth %>%
+        group_by(ObjectID, .drop = F) %>%
+        filter(SecondDerivative < 0) %>%
+        count(name = "Count")
+
+    # Transect quantile by distance to center
+    find_quantile <- function (x, q) abs(x - q) == min(abs(x - q))
+    transection_q005 <- transection_smooth %>%
+        select(ObjectID, ScaledDistanceToCenter, Intensity) %>%
+        filter(find_quantile(ScaledDistanceToCenter, 0.05)) %>%
+        slice(1) %>% # If there are two pixels equally close to 0.05, for example 0 and 0.1, then choose the first 1
+        select(ObjectID, b.tran.q005 = Intensity)
+    transection_q05 <- transection_smooth %>%
+        select(ObjectID, ScaledDistanceToCenter, Intensity) %>%
+        filter(find_quantile(ScaledDistanceToCenter, 0.5)) %>%
+        slice(1) %>% # If there are two pixels equally close to 0.05, for example 0 and 0.1, then choose the first 1
+        select(ObjectID, b.tran.q05 = Intensity)
+    transection_q095 <- transection_smooth %>%
+        select(ObjectID, ScaledDistanceToCenter, Intensity) %>%
+        filter(find_quantile(ScaledDistanceToCenter, 0.95)) %>%
+        slice(1) %>% # If there are two pixels equally close to 0.05, for example 0 and 0.1, then choose the first 1
+        select(ObjectID, b.tran.q095 = Intensity)
+
+    #
+    transection_n_bump %>%
+        left_join(transection_onset_bump, by = "ObjectID") %>%
+        left_join(transection_q005, by = "ObjectID") %>%
+        left_join(transection_q05, by = "ObjectID") %>%
+        left_join(transection_q095, by = "ObjectID") %>%
+        return()
+}
+plot_transection <- function (transection_smooth, title_name = NULL, scaled_distance = T) {
+    p <- transection_smooth %>%
+        pivot_longer(cols = c(Intensity, FittedIntensity, Derivative, SecondDerivative), names_to = "Measure", values_to = "Value") %>%
+        mutate(Measure = ordered(Measure, c("Intensity", "FittedIntensity", "Derivative", "SecondDerivative"))) %>%
+        ggplot() +
+        facet_grid(Measure~., scales = "free_y") +
+        theme_classic() +
+        theme(panel.border = element_rect(color = 1, fill = NA)) +
+        ggtitle(title_name)
+
+    if (scaled_distance) {
+        p <- p +
+            geom_line(aes(x = ScaledDistanceToCenter, y = Value, group = ObjectID), lwd = .3) +
+            geom_point(aes(x = ScaledDistanceToCenter, y = Value, group = ObjectID), size = .1)
+    }
+
+    if (scaled_distance == F) {
+        p <- p +
+            geom_line(aes(x = DistanceToCenter, y = Value, group = ObjectID), lwd = .3) +
+            geom_point(aes(x = DistanceToCenter, y = Value, group = ObjectID), size = .1)
+    }
+
+    p <- p +
+        geom_hline(data = tibble(Measure = factor(c("Intensity", "FittedIntensity", "Derivative", "SecondDerivative"), c("Intensity", "FittedIntensity", "Derivative", "SecondDerivative")),
+                                 yintercept = c(NA, NA, 0, 0)),
+                   aes(yintercept = yintercept), color = "red", linetype = 2)
+
+    return(p)
+}
 draw_pixels <- function (img, pixel.x, pixel.y) {
     #' This function takes an image and draw red on the assigned pixels
     stopifnot(length(pixel.x) == length(pixel.y))
@@ -46,65 +144,67 @@ draw_pixels <- function (img, pixel.x, pixel.y) {
 
     return(ans)
 }
-i = which(list_images$image_name == "D_T8_C4R1_50-50_1_3_-4")
-
-#i = which(list_images$image_name %in% c("D_T8_C1R2_5-95_2_1")
-images_tocheck_index = which(list_images$image_name %in% c("D_T8_C1R2_5-95_2_1",
-                                        "D_T8_C1R2_5-95_2_4",
-                                        "D_T8_C1R6_5",
-                                        "D_T8_C1R7_50-50_3_4",
-                                        "D_T8_C11R5_1",
-                                        "D_T8_C11R5_50-50_1_4"))
-
-#for (i in images_tocheck_index) {
+#i = which(list_images$image_name == "D_T8_C1R2_5-95_1_2")
+i = which(list_images$image_name == "D_T8_C1R2_2")
+i=1
 for (i in 1:nrow(list_images)) {
     image_name <- list_images$image_name[i]
     image_rolled <- readImage(paste0(list_images$folder_green_rolled[i], image_name, ".tiff"))
-    load(paste0(list_images$folder_green_watershed_file[i], image_name, ".RData")) # this should contain one R object image_watershed2
+    load(paste0(list_images$folder_green_watershed[i], image_name, ".RData")) # this should contain one R object image_watershed2
 
     # 7.1 Extract transection data
     transection <- extract_transection(image_watershed2, image_rolled) %>%
-        lapply(function(x) mutate(x, DistanceToCenter = 1:length(x))) %>%
+        lapply(function(x) mutate(x, DistanceToCenter = 0:(length(x)-1))) %>%
         bind_rows(.id = "ObjectID")
-    write_csv(transection, file = paste0(list_images$folder_green_transection[i], image_name, ".csv"))
-    cat("\ntransection")
 
-    # Save the transection image
+    # 7.2 Mark the transects and contour
     image_transect <- draw_pixels(image_rolled, transection$x, transection$y)
+    image_transect <- paintObjects(image_watershed2, image_transect)
     writeImage(image_transect, paste0(list_images$folder_green_transection[i], image_name, ".tiff"))
-    cat("\tdraw transection")
+    #display(paintObjects(image_watershed2, image_transect), method = "raster")
+    cat("\ndraw transects")
 
-    # 7.2 Smooth the curves using loess
+    # 7.3 Calculate trasect features
+    ## Smooth the transet intensity
     transection_smooth <- transection %>%
-        nest(data = -ObjectID) %>%
-        mutate(mod = map(data, loess, formula = Intensity ~ DistanceToCenter),
-               fitted = map(mod, `[[`, "fitted")) %>%
-        select(-mod) %>%
-        unnest(cols = c(data, fitted))
-    cat("\tsmooth curve")
+        smooth_transection() %>%
+        diff_transection()
+    write_csv(transection_smooth, file = paste0(list_images$folder_green_transection[i], image_name, ".csv"))
 
-    # 7.3 calculate features using the transection gradient
-    transection_feature <- transection %>%
+    ## Transect features
+    transection_feature <- transection_smooth %>%
         group_by(ObjectID) %>%
-        summarize(b.tran.mean = mean(Intensity), # summary statistics
+        # Summary statistics
+        summarize(b.tran.mean = mean(Intensity),
                   b.tran.sd = sd(Intensity),
                   b.tran.mad = mad(Intensity),
                   b.center = Intensity[1], # center intensity
-                  b.periphery = last(Intensity) ) %>% # periphery intensity
-        mutate(b.diff.cp = b.periphery - b.center)
+                  b.periphery = last(Intensity), # periphery intensity
+        ) %>%
+        mutate(b.diff.cp = b.periphery - b.center) %>%
+        # Transect
+        left_join(calculate_transection(transection_smooth), by = "ObjectID") %>%
+        rename(t.bump.number = Count, # number of transect bumps
+               t.bump.onset = OnsetBump) # onset of the first transect bump
+    cat("\ttransect feature")
 
     # 7.4 Compute feature. The output table is NULL if no object (no colony)
+    #load(paste0(list_images$folder_green_watershed_file, image_name, ".RData")) # this should contain one R object image_watershed2
     object_feature <- computeFeatures(
         image_watershed2, image_rolled,
         methods.noref = c("computeFeatures.shape"),
         methods.ref = c("computeFeatures.basic", "computeFeatures.moment"),
-        basic.quantiles = c(0.01, 0.05, seq(0.1, 0.9, by = .1), 0.95, 0.99)
+        #basic.quantiles = c(0.01, 0.05, seq(0.1, 0.9, by = .1), 0.95, 0.99)
+        basic.quantiles = c(0.01, 0.05, c(0.1, 0.2, 0.5, 0.8, 0.9), 0.95, 0.99)
     )
 
     ## Execute the name cleanup only if there is at least 1 object
     if (is_null(object_feature)) {
-        cat("\tno object\t", i, "/", nrow(list_images), "\t", image_name)
-    } else if (!is_null(object_feature)) {
+        #write_csv(object_feature, paste0(list_images$folder_green_feature[i], image_name, ".csv"))
+        cat("\tno object\t", i, "/", nrow(list_images), "\t", list_images$image_name[i])
+    }
+
+    if (!is_null(object_feature)) {
         object_feature <- object_feature %>%
             as_tibble(rownames = "ObjectID") %>%
             # Remove duplicatedly calculated properties
@@ -113,12 +213,12 @@ for (i in 1:nrow(list_images)) {
             rename_with(function(x) str_replace(x,"x.0.", ""), starts_with("x.0")) %>%
             rename_with(function(x) str_replace(x,"x.Ba.", ""), starts_with("x.Ba")) %>%
             select(ObjectID, starts_with("b."), starts_with("s."), starts_with("m.")) %>%
-            # # Remove the round plate lid crack that has high intensity variability
-            # filter(b.sd < 0.3)
             # Join the transection summary statistic features
             left_join(transection_feature, by = "ObjectID")
 
         write_csv(object_feature, paste0(list_images$folder_green_feature[i], image_name, ".csv"))
-        cat("\tfeature\t", i, "/", nrow(list_images), "\t", image_name)
+        cat("\tfeature\t", i, "/", nrow(list_images), "\t", list_images$image_name[i])
     }
 }
+
+

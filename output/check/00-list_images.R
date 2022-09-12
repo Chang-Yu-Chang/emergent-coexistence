@@ -6,8 +6,8 @@ library(tidyverse)
 folder_main <- "~/Dropbox/lab/emergent-coexistence/data/raw/plate_scan/emergent_coexistence_plate_scan_check/"
 folder_script <- "~/Desktop/Lab/emergent-coexistence/output/check/"
 
-batch_names <- c("D", "C", "C2", "B2", "chromo")
-
+#batch_names <- c("D", "C", "C2", "B2", "chromo")
+batch_names <- c("D")
 j=1
 for (j in 1:length(batch_names)) {
 
@@ -38,27 +38,26 @@ for (j in 1:length(batch_names)) {
 
         folder_green = rep(paste0(folder_main, "check/", batch_names[j], "-01-green_channel/"), n_images),
         folder_green_rolled = rep(paste0(folder_main, "check/", batch_names[j], "-02-green_rolled/"), n_images),
-        folder_green_watershed_file = rep(paste0(folder_main, "check/", batch_names[j], "-05-green_watershed_file/"), n_images),
-        folder_green_watershed = rep(paste0(folder_main, "check/", batch_names[j], "-06-green_watershed/"), n_images),
+        folder_green_threshold = rep(paste0(folder_main, "check/", batch_names[j], "-03-green_threshold/"), n_images),
+        folder_green_round = rep(paste0(folder_main, "check/", batch_names[j], "-04-green_round/"), n_images),
+        folder_green_watershed = rep(paste0(folder_main, "check/", batch_names[j], "-05-green_watershed/"), n_images),
+        folder_green_transection = rep(paste0(folder_main, "check/", batch_names[j], "-06-green_transection/"), n_images),
         folder_green_feature = rep(paste0(folder_main, "check/", batch_names[j], "-07-green_feature/"), n_images),
-        folder_green_transection = rep(paste0(folder_main, "check/", batch_names[j], "-08-green_transection/"), n_images),
-        folder_green_cluster = rep(paste0(folder_main, "check/", batch_names[j], "-09-green_cluster/"), n_images),
-
-        folder_red = rep(paste0(folder_main, "check/", batch_names[j], "-11-red_channel/"), n_images),
-        folder_red_rolled = rep(paste0(folder_main, "check/", batch_names[j], "-12-red_rolled/"), n_images),
-        folder_red_watershed_file = rep(paste0(folder_main, "check/", batch_names[j], "-15-red_watershed_file/"), n_images),
-        folder_red_watershed = rep(paste0(folder_main, "check/", batch_names[j], "-16-red_watershed/"), n_images),
-        folder_red_feature = rep(paste0(folder_main, "check/", batch_names[j], "-17-red_feature/"), n_images),
-        folder_red_transection = rep(paste0(folder_main, "check/", batch_names[j], "-18-red_transection/"), n_images),
-        folder_red_cluster = rep(paste0(folder_main, "check/", batch_names[j], "-19-red_cluster/"), n_images),
-
-        folder_blue = rep(paste0(folder_main, "check/", batch_names[j], "-21-blue_channel/"), n_images),
-        folder_blue_rolled = rep(paste0(folder_main, "check/", batch_names[j], "-22-blue_rolled/"), n_images),
-        folder_blue_watershed_file = rep(paste0(folder_main, "check/", batch_names[j], "-25-blue_watershed_file/"), n_images),
-        folder_blue_watershed = rep(paste0(folder_main, "check/", batch_names[j], "-26-blue_watershed/"), n_images),
-        folder_blue_feature = rep(paste0(folder_main, "check/", batch_names[j], "-27-blue_feature/"), n_images),
-        folder_blue_transection = rep(paste0(folder_main, "check/", batch_names[j], "-28-blue_transection/"), n_images),
-        folder_blue_cluster = rep(paste0(folder_main, "check/", batch_names[j], "-29-blue_cluster/"), n_images)
+        folder_green_cluster = rep(paste0(folder_main, "check/", batch_names[j], "-08-green_cluster/"), n_images),
+#
+#         folder_red = rep(paste0(folder_main, "check/", batch_names[j], "-11-red_channel/"), n_images),
+#         folder_red_rolled = rep(paste0(folder_main, "check/", batch_names[j], "-12-red_rolled/"), n_images),
+#         folder_red_watershed = rep(paste0(folder_main, "check/", batch_names[j], "-16-red_watershed/"), n_images),
+#         folder_red_feature = rep(paste0(folder_main, "check/", batch_names[j], "-17-red_feature/"), n_images),
+#         folder_red_transection = rep(paste0(folder_main, "check/", batch_names[j], "-18-red_transection/"), n_images),
+#         folder_red_cluster = rep(paste0(folder_main, "check/", batch_names[j], "-19-red_cluster/"), n_images),
+#
+#         folder_blue = rep(paste0(folder_main, "check/", batch_names[j], "-21-blue_channel/"), n_images),
+#         folder_blue_rolled = rep(paste0(folder_main, "check/", batch_names[j], "-22-blue_rolled/"), n_images),
+#         folder_blue_watershed = rep(paste0(folder_main, "check/", batch_names[j], "-26-blue_watershed/"), n_images),
+#         folder_blue_feature = rep(paste0(folder_main, "check/", batch_names[j], "-27-blue_feature/"), n_images),
+#         folder_blue_transection = rep(paste0(folder_main, "check/", batch_names[j], "-28-blue_transection/"), n_images),
+#         folder_blue_cluster = rep(paste0(folder_main, "check/", batch_names[j], "-29-blue_cluster/"), n_images)
     )
 
     write_csv(list_images, paste0(folder_script, "00-list_images-", batch_names[j], ".csv"))
@@ -75,7 +74,9 @@ for (j in 1:length(batch_names)) {
     #' For example, D_T8_C1R7_3 has a length of 4 and is an isolate image
     #' whereas D_T8_C1R7_5-95_1_3 has a length of 6 and is a pair image
     name_length <- image_names %>% str_split("_") %>% sapply(length)
-    index_pair <- name_length == 6 | name_length == 7 # To include the plate with addition dilution factor specified
+    # Include the plate image with addition dilution factor specified
+    # ' This will spit out a warning message for additional pieces in 1 row. Ignore it.
+    index_pair <- name_length == 6 | name_length == 7
 
     ## Parse file name
     list_image_pairs <- tibble(image_name_pair = image_names[index_pair]) %>%
