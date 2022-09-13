@@ -6,19 +6,25 @@ library(tidyverse)
 # folder_main <- "~/Dropbox/lab/emergent-coexistence/data/raw/plate_scan/emergent_coexistence_plate_scan_check/"
 # folder_script <- "~/Desktop/Lab/emergent-coexistence/output/check/"
 
-# folder_main <- "/Users/chang-yu/Dropbox/lab/emergent-coexistence/data/raw/plate_scan/emergent_coexistence_plate_scan_check/"
-# folder_script <- "/Users/chang-yu//Desktop/Lab/emergent-coexistence/output/check/"
-folder_main <- "/Users/cychang/Dropbox/lab/emergent-coexistence/data/raw/plate_scan/emergent_coexistence_plate_scan_check/"
-folder_script <- "/Users/cychang/Desktop/Lab/emergent-coexistence/output/check/"
+folder_main <- "/Users/chang-yu/Dropbox/lab/emergent-coexistence/data/raw/plate_scan/emergent_coexistence_plate_scan_check/"
+folder_script <- "/Users/chang-yu//Desktop/Lab/emergent-coexistence/output/check/"
+# folder_main <- "/Users/cychang/Dropbox/lab/emergent-coexistence/data/raw/plate_scan/emergent_coexistence_plate_scan_check/"
+# folder_script <- "/Users/cychang/Desktop/Lab/emergent-coexistence/output/check/"
 
 
 #batch_names <- c("D", "C", "C2", "B2", "chromo")
-batch_names <- c("D")
-j=1
+batch_names <- c("D", "C2", "B2", "C")
+
 for (j in 1:length(batch_names)) {
 
     folder_original <- paste0(folder_main, "check/", batch_names[j], "-00-original/")
-    image_names <- list.files(folder_original) %>%
+    image_names <-
+        list.files(folder_original) %>%
+        # Remove all mixing pairs, for example with suffix 1_1, 2_2, etc
+        #str_subset(paste0("^((?!", paste(paste0("_", 1:13, "_", 1:13), collapse = "|"), ").)*$")) %>%
+        str_subset(paste0("^((?!", paste(paste0("_", 3:13, "_", 3:13), collapse = "|"), ").)*$")) %>%
+        str_subset(paste0("^((?!_1_1\\.).)*$")) %>%
+        str_subset(paste0("^((?!_2_2\\.).)*$")) %>%
         # Remove folders
         str_subset(".tiff") %>%
         #str_subset("T8") %>%
@@ -26,13 +32,13 @@ for (j in 1:length(batch_names)) {
         # Remove all that contain _-, which was a naming convention for the different dilution factors on the same plate
         # 20220902 The chromogenic plates all have it. Come check later
         str_subset("^((?!_-).)*$") %>%
-        # Remove all mixing pairs, for example with suffix 1_1, 2_2, etc
-        str_subset(paste0("^((?!", paste(paste0("_", 1:13, "_", 1:13), collapse = "|"), ").)*$")) %>%
         sort()
 
     # Manual key in plates using different naming convention
     if (batch_names[j] == "D") {
         image_names <- c(image_names, "D_T8_C4R1_50-50_1_3_-4") %>% sort
+    } else if (batch_names[j] == "C2") {
+
     }
 
     n_images <- length(image_names)

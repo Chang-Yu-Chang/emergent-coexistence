@@ -21,7 +21,9 @@ from skimage import data, restoration, util, io, color
 # The input has to be the csv generated from 00-list_images.R
 list_images = pd.read_csv(str(sys.argv[1]))
 #list_images = pd.read_csv('/Users/chang-yu/Desktop/Lab/emergent-coexistence/output/check/00-list_images-D.csv')
-list_images = pd.read_csv('/Users/cychang/Desktop/Lab/emergent-coexistence/output/check/00-list_images-D.csv')
+#list_images = pd.read_csv('/Users/chang-yu/Desktop/Lab/emergent-coexistence/output/check/00-list_images-C2.csv')
+#list_images = pd.read_csv('/Users/chang-yu/Desktop/Lab/emergent-coexistence/output/check/00-list_images-B2.csv')
+#list_images = pd.read_csv('/Users/chang-yu/Desktop/Lab/emergent-coexistence/output/check/00-list_images-C.csv')
 
 def rolling_ball_light(image):
     # invert the image
@@ -35,9 +37,10 @@ def rolling_ball_light(image):
     image_rolled = util.invert(image_rolled_inverted)
     return image_rolled
 
+#for i in range(4):
 
+#for i in [0, 1, 2]:
 for i in range(list_images.shape[0]):
-    i=2
     # File directory
     file_gray = list_images.iloc[i]['folder_green'] + list_images.iloc[i]['image_name'] + '.tiff'
     file_rolled = list_images.iloc[i]['folder_green_rolled'] + list_images.iloc[i]['image_name'] + '.tiff'

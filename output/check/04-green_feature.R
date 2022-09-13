@@ -1,10 +1,11 @@
 library(tidyverse)
 library(EBImage)
 library(EBImageExtra) # for the bresenham algorithm
-library(purrr) # for applying functional programming to transet curve smoothing
+library(purrr) # for applying functional programming to transect curve smoothing
 
 list_images <- read_csv(commandArgs(trailingOnly = T)[1], show_col_types = F)
 #list_images <- read_csv("~/Desktop/Lab/emergent-coexistence/output/check/00-list_images-D.csv", show_col_types = F)
+#list_images <- read_csv("~/Desktop/Lab/emergent-coexistence/output/check/00-list_images-C2.csv", show_col_types = F)
 extract_transection <- function (watershed, ref) {
     #' This function searches for all objects on an image and return the pixel intensity along the transection of each object
     #' Arguments:
@@ -157,10 +158,26 @@ draw_pixels <- function (img, pixel.x, pixel.y) {
     return(ans)
 }
 #i = which(list_images$image_name == "D_T8_C1R2_5-95_1_2")
-i = which(list_images$image_name %in% c("D_T1_C1R7_7"))
-i=1
+# i = which(list_images$image_name %in% c("D_T1_C1R7_7"))
+# i=36
+
+plates_no_colony <- c(
+    "B2_T8_C11R1_5-95_2_8",
+    "B2_T8_C11R1_5-95_2_9",
+    "B2_T8_C11R1_5-95_8_2",
+    "B2_T8_C11R1_5-95_9_8",
+    "B2_T8_C11R1_50-50_2_8",
+    "B2_T8_C11R1_50-50_2_9",
+    "C2_T8_C11R2_50-50_2_10",
+    "C2_T8_C11R2_50-50_9_13"
+)
+
+
 for (i in 1:nrow(list_images)) {
+    #if (i < 185) next
     image_name <- list_images$image_name[i]
+    if (image_name %in% plates_no_colony) {cat("\nno colony, no watershed image\t", image_name); next}
+
     image_rolled <- readImage(paste0(list_images$folder_green_rolled[i], image_name, ".tiff"))
     load(paste0(list_images$folder_green_watershed[i], image_name, ".RData")) # this should contain one R object image_watershed2
 

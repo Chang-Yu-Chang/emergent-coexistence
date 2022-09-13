@@ -11,6 +11,8 @@ list_image_mapping <- read_csv(commandArgs(trailingOnly = T)[2], show_col_types 
 
 # list_images <- read_csv(paste0(folder_script, "00-list_images-D.csv"), show_col_types = F)
 # list_image_mapping <- read_csv(paste0(folder_script, "00-list_image_mapping-D.csv") , show_col_types = F)
+# list_images <- read_csv(paste0(folder_script, "00-list_images-C2.csv"), show_col_types = F)
+# list_image_mapping <- read_csv(paste0(folder_script, "00-list_image_mapping-C2.csv") , show_col_types = F)
 
 list_image_mapping_folder <- list_image_mapping %>%
     left_join(select(list_images, image_name_pair = image_name, folder_feature_pair = folder_green_feature, folder_green_cluster), by = "image_name_pair") %>%
@@ -52,24 +54,34 @@ read_feature_combined <- function () {
 
     return(object_feature_combined)
 }
-#i = which(list_image_mapping_folder$image_name_pair %in% c("D_T8_C4R1_5-95_1_2"))
-#i = which(list_image_mapping_folder$image_name_pair == "D_T8_C4R1_50-50_1_3_-4")
-temp_indices = c(which(str_detect(list_image_mapping_folder$image_name_pair, "C1R7_5-95_\\d_7")),
-      which(str_detect(list_image_mapping_folder$image_name_pair, "C1R7_50-50_\\d_7")),
-      which(str_detect(list_image_mapping_folder$image_name_pair, "C1R7_5-95_7_\\d")))
 
-list_image_mapping_folder$image_name_pair[temp_indices]
-#i=1
-for (i in temp_indices) {
-#for (i in 1:nrow(list_image_mapping_folder)) {
+
+plates_no_colony <- c(
+    "B2_T8_C11R1_5-95_2_8",
+    "B2_T8_C11R1_5-95_2_9",
+    "B2_T8_C11R1_5-95_8_2",
+    "B2_T8_C11R1_5-95_9_8",
+    "B2_T8_C11R1_50-50_2_8",
+    "B2_T8_C11R1_50-50_2_9",
+    "C2_T8_C11R2_50-50_2_10",
+    "C2_T8_C11R2_50-50_9_13"
+)
+
+#i = which(list_image_mapping_folder$image_name_pair == "C2_T8_C11R2_5-95_5_2")
+#for (i in temp_indices) {
+
+for (i in 1:nrow(list_image_mapping_folder)) {
+    if (i < 66) next
     ## 8.1 read the feature files
     list_image_mapping_folder$image_name_pair[i]
+    if (list_image_mapping_folder$image_name_pair[i] %in% plates_no_colony) {cat("\nno colony, no watershed image\t", list_image_mapping_folder$image_name_pair[i]); next}
+
     feature_candidates <- c("b.mean", "b.sd", "b.mad",
                             "b.q005", "b.q05", "b.q095",
                             "s.area", "s.radius.mean", "s.radius.sd",
                             "b.tran.mean", "b.tran.sd", "b.tran.mad",
                             "b.center", "b.periphery", "b.diff.cp",
-                            "b.tran.q005", "b.tran.q01", "b.tran.q05", "b.tran.q09", "b.tran.q095",
+                            "b.tran.q005", "b.tran.q01", "b.tran.q05", "b.tran.q09", "b.tran.q095"
                             # "t.bump.number"
     )
 
@@ -79,7 +91,7 @@ for (i in temp_indices) {
             Group == "isolate2" ~ 1,
         )) %>%
         # Start with these parameters
-        #select(image_name, ObjectID, Group, GroupBinary, all_of(feature_candidates)) %>%
+        select(image_name, ObjectID, Group, GroupBinary, all_of(feature_candidates)) %>%
         {.}
 
     # Remove outlier objects according to the criterion for each pair/isolate iamage. See this R script for more detail

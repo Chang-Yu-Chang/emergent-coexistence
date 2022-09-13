@@ -3,30 +3,53 @@ library(tidyverse)
 library(cowplot)
 folder_script <- "~/Desktop/Lab/emergent-coexistence/output/check/"
 folder_main <- "~/Dropbox/lab/emergent-coexistence/data/raw/plate_scan/emergent_coexistence_plate_scan_check/"
-list_images <- read_csv(paste0(folder_script, "00-list_images-D.csv"), show_col_types = F)
-list_image_mapping <- read_csv(paste0(folder_script, "00-list_image_mapping-D.csv") , show_col_types = F)
+plates_no_colony <- c(
+    "B2_T8_C11R1_5-95_2_8",
+    "B2_T8_C11R1_5-95_2_9",
+    "B2_T8_C11R1_5-95_8_2",
+    "B2_T8_C11R1_5-95_9_8",
+    "B2_T8_C11R1_50-50_2_8",
+    "B2_T8_C11R1_50-50_2_9",
+    "C2_T8_C11R2_50-50_2_10",
+    "C2_T8_C11R2_50-50_9_13"
+)
 
-list_image_mapping_folder <- list_image_mapping %>%
-    left_join(select(list_images, image_name_pair = image_name, folder_feature_pair = folder_green_feature, folder_transection_pair = folder_green_transection, folder_green_cluster), by = "image_name_pair") %>%
-    left_join(select(list_images, image_name_isolate1 = image_name, folder_feature_isolate1 = folder_green_feature, folder_transection_isolate1 = folder_green_transection), by = "image_name_isolate1") %>%
-    left_join(select(list_images, image_name_isolate2 = image_name, folder_feature_isolate2 = folder_green_feature, folder_transection_isolate2 = folder_green_transection), by = "image_name_isolate2")
+batch_names <- c("D", "C2", "B2")
+object_prediction_batch <- NULL
+j=2
+for (j in 1:length(batch_names)) {
+    list_images <- read_csv(paste0(folder_script, "00-list_images-", batch_names[j], ".csv"), show_col_types = F)
+    list_image_mapping <- read_csv(paste0(folder_script, "00-list_image_mapping-", batch_names[j], ".csv") , show_col_types = F)
 
+    list_image_mapping_folder <- list_image_mapping %>%
+        left_join(select(list_images, image_name_pair = image_name, folder_feature_pair = folder_green_feature, folder_transection_pair = folder_green_transection, folder_green_cluster), by = "image_name_pair") %>%
+        left_join(select(list_images, image_name_isolate1 = image_name, folder_feature_isolate1 = folder_green_feature, folder_transection_isolate1 = folder_green_transection), by = "image_name_isolate1") %>%
+        left_join(select(list_images, image_name_isolate2 = image_name, folder_feature_isolate2 = folder_green_feature, folder_transection_isolate2 = folder_green_transection), by = "image_name_isolate2")
 
-# Prediction overview ----
-i = 1
-object_prediction <- NULL
-# Read the prediction
-for (i in 1:nrow(list_image_mapping_folder[i])) {
-    object_prediction[[i]] <- read_csv(paste0(list_image_mapping_folder$folder_green_cluster[i], list_image_mapping_folder$image_name_pair[i], ".csv"), show_col_types = F)
-    cat(" ", i)
+    object_prediction <- NULL
+    # Read the prediction
+    for (i in 1:nrow(list_image_mapping_folder)) {
+        if (list_image_mapping_folder$image_name_pair[i] %in% plates_no_colony) next
+        object_prediction[[i]] <- read_csv(paste0(list_image_mapping_folder$folder_green_cluster[i], list_image_mapping_folder$image_name_pair[i], ".csv"), show_col_types = F)
+        cat(" ", i)
+    }
+
+    # Object prediction results
+    object_prediction_batch[[j]] <- bind_rows(object_prediction) %>%
+        rename(image_name_pair = image_name) %>%
+        left_join(list_image_mapping_folder, by = "image_name_pair") %>%
+        select(-starts_with("folder_"))
+
 }
 
+bind_rows(object_prediction_batch)
 
-# Object prediction results
 object_prediction <- bind_rows(object_prediction) %>%
-    rename(image_name_pair = image_name) %>%
-    left_join(list_image_mapping_folder, by = "image_name_pair") %>%
-    select(-starts_with("folder_"))
+        rename(image_name_pair = image_name) %>%
+        left_join(list_image_mapping_folder, by = "image_name_pair") %>%
+        select(-starts_with("folder_"))
+
+# Prediction overview ----
 
 
 # Object prediction counts
@@ -50,24 +73,6 @@ object_prediction_count_ordered <- object_prediction_count %>%
 
 #
 fill_names <- c("#FF5A5F","#087E8B", "black") %>% setNames(c("predicted isolate1", "predicted isolate2", "undecided"))
-if (FALSE) {
-    p1 <- object_prediction_count %>%
-        ggplot() +
-        geom_col(aes(x = image_name_pair, y = Count, fill = Group), alpha = .5) +
-        scale_fill_manual(values = fill_names) +
-        scale_y_continuous(expand = c(0,0)) +
-        theme_classic() +
-        theme(axis.text.x = element_text(angle = 90, vjust = 0.5))
-
-    p2 <- object_prediction_count %>%
-        ggplot() +
-        geom_col(aes(x = image_name_pair, y = Count, fill = Group), alpha = .5, position = position_fill()) +
-        scale_fill_manual(values = fill_names) +
-        scale_y_continuous(expand = c(0,0)) +
-        theme_classic() +
-        theme(axis.text.x = element_text(angle = 90, vjust = 0.5))
-
-}
 
 p1 <- object_prediction_count_ordered %>%
     ggplot() +
@@ -113,9 +118,12 @@ object_prediction_count_undecided %>%
 
 # Check it the pair is composed of the same bug
 pairs_samebug <- tibble(
-    Community = c("C1R4", rep("C11R5", 4)),
-    Isolate1 = c(4, 1, 1, 3, 2),
-    Isolate2 = c(5, 3, 5, 5, 4),
+    Community = c("C1R4", rep("C11R5", 4),
+                  rep("C11R2", 4)),
+    Isolate1 = c(4, 1, 1, 3, 2,
+                 3, 3, 7, 2),
+    Isolate2 = c(5, 3, 5, 5, 4,
+                 7, 12, 12, 8),
     PairSameBug = T
 )
 pairs_samebug_full <- pairs_samebug %>%
