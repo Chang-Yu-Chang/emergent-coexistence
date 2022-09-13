@@ -6,6 +6,7 @@ library(purrr) # for applying functional programming to transect curve smoothing
 list_images <- read_csv(commandArgs(trailingOnly = T)[1], show_col_types = F)
 #list_images <- read_csv("~/Desktop/Lab/emergent-coexistence/output/check/00-list_images-D.csv", show_col_types = F)
 #list_images <- read_csv("~/Desktop/Lab/emergent-coexistence/output/check/00-list_images-C2.csv", show_col_types = F)
+#list_images <- read_csv("~/Desktop/Lab/emergent-coexistence/output/check/00-list_images-C.csv", show_col_types = F)
 extract_transection <- function (watershed, ref) {
     #' This function searches for all objects on an image and return the pixel intensity along the transection of each object
     #' Arguments:
@@ -172,7 +173,7 @@ plates_no_colony <- c(
     "C2_T8_C11R2_50-50_9_13"
 )
 
-
+i=2
 for (i in 1:nrow(list_images)) {
     #if (i < 185) next
     image_name <- list_images$image_name[i]

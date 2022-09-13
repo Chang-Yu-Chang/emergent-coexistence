@@ -5,6 +5,7 @@ list_images <- read_csv(commandArgs(trailingOnly = T)[1], show_col_types = F)
 #list_images <- read_csv("~/Desktop/Lab/emergent-coexistence/output/check/00-list_images-D.csv", show_col_types = F)
 #list_images <- read_csv("~/Desktop/Lab/emergent-coexistence/output/check/00-list_images-C2.csv", show_col_types = F)
 #list_images <- read_csv("~/Desktop/Lab/emergent-coexistence/output/check/00-list_images-B2.csv", show_col_types = F)
+list_images <- read_csv("~/Desktop/Lab/emergent-coexistence/output/check/00-list_images-C.csv", show_col_types = F)
 compute_feature <- function (image_object, image_intensity) {
     computeFeatures(
         image_object, image_intensity,
@@ -70,8 +71,8 @@ detect_nonround_object <- function (image_object, image_intensity = NULL, waters
     object_ID_nonround <- object_feature$ObjectID[!(object_feature$ObjectID %in% object_shape_round$ObjectID)]
     return(object_ID_nonround)
 }
-i = which(list_images$image_name %in% c("D_T1_C1R7_7"))
-i=37
+#i = which(list_images$image_name %in% c("D_T1_C1R7_7"))
+i=3
 for (i in 1:nrow(list_images)) {
     #if (i < 7) next
     image_name <- list_images$image_name[i]

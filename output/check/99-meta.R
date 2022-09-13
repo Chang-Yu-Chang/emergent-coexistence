@@ -16,38 +16,30 @@ plates_no_colony <- c(
 
 batch_names <- c("D", "C2", "B2")
 object_prediction_batch <- NULL
-j=2
-for (j in 1:length(batch_names)) {
-    list_images <- read_csv(paste0(folder_script, "00-list_images-", batch_names[j], ".csv"), show_col_types = F)
-    list_image_mapping <- read_csv(paste0(folder_script, "00-list_image_mapping-", batch_names[j], ".csv") , show_col_types = F)
 
-    list_image_mapping_folder <- list_image_mapping %>%
-        left_join(select(list_images, image_name_pair = image_name, folder_feature_pair = folder_green_feature, folder_transection_pair = folder_green_transection, folder_green_cluster), by = "image_name_pair") %>%
-        left_join(select(list_images, image_name_isolate1 = image_name, folder_feature_isolate1 = folder_green_feature, folder_transection_isolate1 = folder_green_transection), by = "image_name_isolate1") %>%
-        left_join(select(list_images, image_name_isolate2 = image_name, folder_feature_isolate2 = folder_green_feature, folder_transection_isolate2 = folder_green_transection), by = "image_name_isolate2")
+j=1
+#for (j in 1:length(batch_names)) {
+list_images <- read_csv(paste0(folder_script, "00-list_images-", batch_names[j], ".csv"), show_col_types = F)
+list_image_mapping <- read_csv(paste0(folder_script, "00-list_image_mapping-", batch_names[j], ".csv") , show_col_types = F)
 
-    object_prediction <- NULL
-    # Read the prediction
-    for (i in 1:nrow(list_image_mapping_folder)) {
-        if (list_image_mapping_folder$image_name_pair[i] %in% plates_no_colony) next
-        object_prediction[[i]] <- read_csv(paste0(list_image_mapping_folder$folder_green_cluster[i], list_image_mapping_folder$image_name_pair[i], ".csv"), show_col_types = F)
-        cat(" ", i)
-    }
+list_image_mapping_folder <- list_image_mapping %>%
+    left_join(select(list_images, image_name_pair = image_name, folder_feature_pair = folder_green_feature, folder_transection_pair = folder_green_transection, folder_green_cluster), by = "image_name_pair") %>%
+    left_join(select(list_images, image_name_isolate1 = image_name, folder_feature_isolate1 = folder_green_feature, folder_transection_isolate1 = folder_green_transection), by = "image_name_isolate1") %>%
+    left_join(select(list_images, image_name_isolate2 = image_name, folder_feature_isolate2 = folder_green_feature, folder_transection_isolate2 = folder_green_transection), by = "image_name_isolate2")
 
-    # Object prediction results
-    object_prediction_batch[[j]] <- bind_rows(object_prediction) %>%
-        rename(image_name_pair = image_name) %>%
-        left_join(list_image_mapping_folder, by = "image_name_pair") %>%
-        select(-starts_with("folder_"))
-
+object_prediction <- NULL
+# Read the prediction
+for (i in 1:nrow(list_image_mapping_folder)) {
+    if (list_image_mapping_folder$image_name_pair[i] %in% plates_no_colony) next
+    object_prediction[[i]] <- read_csv(paste0(list_image_mapping_folder$folder_green_cluster[i], list_image_mapping_folder$image_name_pair[i], ".csv"), show_col_types = F)
+    cat(" ", i)
 }
 
-bind_rows(object_prediction_batch)
-
+# Object prediction results
 object_prediction <- bind_rows(object_prediction) %>%
-        rename(image_name_pair = image_name) %>%
-        left_join(list_image_mapping_folder, by = "image_name_pair") %>%
-        select(-starts_with("folder_"))
+    rename(image_name_pair = image_name) %>%
+    left_join(list_image_mapping_folder, by = "image_name_pair") %>%
+    select(-starts_with("folder_"))
 
 # Prediction overview ----
 
@@ -119,7 +111,8 @@ object_prediction_count_undecided %>%
 # Check it the pair is composed of the same bug
 pairs_samebug <- tibble(
     Community = c("C1R4", rep("C11R5", 4),
-                  rep("C11R2", 4)),
+                  rep("C11R2", 4),
+                  ),
     Isolate1 = c(4, 1, 1, 3, 2,
                  3, 3, 7, 2),
     Isolate2 = c(5, 3, 5, 5, 4,
@@ -301,64 +294,54 @@ object_prediction_count_undecided_nonsamebug %>%
 
 
 
-# # Plot the transection of isoaltes and pair ----
-# draw_transection <- function (transection, smooth = F, span = .75) {
-#     color_names <- c("#FF5A5F","#087E8B", "black") %>% setNames(c("isolate1", "isolate2", "pair"))
-#
-#     # Smooth the curve
-#     if (smooth) {
-#         loess_custom <- function (formula, data) loess(formula, data, span = span)
-#         transection <- transection %>%
-#             nest(data = -ObjectID) %>%
-#             mutate(mod = map(data, loess_custom, formula = Intensity ~ DistanceToCenter),
-#                    FittedIntensity = map(mod, `[[`, "fitted")) %>%
-#             select(-mod) %>%
-#             unnest(cols = c(data, FittedIntensity))
-#     }
-#
-#     transection %>%
-#         ggplot() +
-#         geom_line(aes(x = DistanceToCenter, y = FittedIntensity, group = ObjectID)) +
-#         scale_color_manual(values = color_names) +
-#         theme_classic() +
-#         theme(panel.border = element_rect(color = 1, fill = NA))
-# }
-# image_tocheck <- "D_T8_C1R6_5-95_3_5"
-# image_tocheck_index = which(list_image_mapping_folder$image_name_pair %in% image_tocheck)
-# i = image_tocheck_index[1]
-#
-# for (i in image_tocheck_index) {
-#
-#     list_image_mapping_folder$image_name_pair[i]
-#     transection_isolate1 <- read_csv(paste0(list_image_mapping_folder$folder_transection_isolate1[i], list_image_mapping_folder$image_name_isolate1[i], ".csv"), show_col_types = F)
-#     transection_isolate2 <- read_csv(paste0(list_image_mapping_folder$folder_transection_isolate2[i], list_image_mapping_folder$image_name_isolate2[i], ".csv"), show_col_types = F)
-#     transection_pair <- read_csv(paste0(list_image_mapping_folder$folder_transection_pair[i], list_image_mapping_folder$image_name_pair[i], ".csv"), show_col_types = F)
-#
-#
-#
-#
-#     color_names <- c("#FF5A5F","#087E8B", "black") %>% setNames(c("isolate1", "isolate2", "pair"))
-#     p3 <- bind_rows(
-#         mutate(transection_isolate1, Group = "isolate1"),
-#         mutate(transection_isolate2, Group = "isolate2"),
-#         mutate(transection_pair, Group = "pair")
-#     ) %>%
-#         draw_transection()
-#
-#         # #filter(Group != "pair") %>%
-#         # ggplot() +
-#         # geom_line(aes(x = DistanceToCenter, y = fitted, color = Group, group = interaction(Group, ObjectID))) +
-#         # scale_color_manual(values = color_names) +
-#         # facet_wrap(~Group) +
-#         # theme_classic() +
-#         # theme(panel.border = element_rect(color = 1, fill = NA)) +
-#         # ggtitle(list_image_mapping_folder$image_name_pair[i])
-#
-#     ggsave(paste0(folder_main, "examination/transection-", list_image_mapping_folder$image_name_pair[i],".png"), p3, width = 15, height = 6)
-# }
-#
-#
-#
-#
-#
-#
+# Plot the transection of isoaltes and pair ----
+draw_transection <- function (transection, smooth = F, span = .75) {
+    color_names <- c("#FF5A5F","#087E8B", "black") %>% setNames(c("isolate1", "isolate2", "pair"))
+
+    # Smooth the curve
+    if (smooth) {
+        loess_custom <- function (formula, data) loess(formula, data, span = span)
+        transection <- transection %>%
+            nest(data = -ObjectID) %>%
+            mutate(mod = map(data, loess_custom, formula = Intensity ~ DistanceToCenter),
+                   FittedIntensity = map(mod, `[[`, "fitted")) %>%
+            select(-mod) %>%
+            unnest(cols = c(data, FittedIntensity))
+    }
+
+    transection %>%
+        ggplot() +
+        geom_line(aes(x = DistanceToCenter, y = FittedIntensity, group = ObjectID)) +
+        scale_color_manual(values = color_names) +
+        theme_classic() +
+        theme(panel.border = element_rect(color = 1, fill = NA))
+}
+image_tocheck <- "D_T8_C1R2_5-95_2_3"
+#image_tocheck_index = which(list_image_mapping_folder$image_name_pair %in% image_tocheck)
+i = image_tocheck_index[1]
+
+for (i in image_tocheck_index) {
+
+    list_image_mapping_folder$image_name_pair[i]
+    transection_isolate1 <- read_csv(paste0(list_image_mapping_folder$folder_transection_isolate1[i], list_image_mapping_folder$image_name_isolate1[i], ".csv"), show_col_types = F)
+    transection_isolate2 <- read_csv(paste0(list_image_mapping_folder$folder_transection_isolate2[i], list_image_mapping_folder$image_name_isolate2[i], ".csv"), show_col_types = F)
+    transection_pair <- read_csv(paste0(list_image_mapping_folder$folder_transection_pair[i], list_image_mapping_folder$image_name_pair[i], ".csv"), show_col_types = F)
+
+    color_names <- c("#FF5A5F","#087E8B", "black") %>% setNames(c("isolate1", "isolate2", "pair"))
+    p3 <- bind_rows(
+        mutate(transection_isolate1, Group = "isolate1"),
+        mutate(transection_isolate2, Group = "isolate2"),
+        mutate(transection_pair, Group = "pair")
+    ) %>%
+        ggplot() +
+        geom_line(aes(x = ScaledDistanceToCenter, y = Intensity, color = Group, group = interaction(Group, ObjectID)), lwd = .1) +
+        scale_color_manual(values = color_names) +
+        facet_wrap(~Group) +
+        theme_classic() +
+        theme(panel.border = element_rect(color = 1, fill = NA)) +
+        ggtitle(list_image_mapping_folder$image_name_pair[i])
+    p3
+
+    ggsave(paste0(folder_main, "examination/transection-", list_image_mapping_folder$image_name_pair[i],".png"), p3, width = 15, height = 6)
+}
+

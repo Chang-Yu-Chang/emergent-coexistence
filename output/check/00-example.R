@@ -75,7 +75,8 @@ library(reticulate)
 
 
 # 03. segmentation ----
-list_images <- read_csv("~/Desktop/Lab/emergent-coexistence/output/check/00-list_images-D.csv", show_col_types = F)
+#list_images <- read_csv("~/Desktop/Lab/emergent-coexistence/output/check/00-list_images-D.csv", show_col_types = F)
+list_images <- read_csv("~/Desktop/Lab/emergent-coexistence/output/check/00-list_images-B2.csv", show_col_types = F)
 compute_feature <- function (image_object, image_intensity) {
     computeFeatures(
         image_object, image_intensity,
@@ -123,8 +124,8 @@ detect_nonround_object <- function (image_object, image_intensity = NULL, waters
             mutate(Circularity = 4 * pi * s.area / s.perimeter^2) %>%
             filter(Circularity > 0.7) %>%
             # Remove tape and label that has really large variation in radius
-            filter(s.radius.sd/s.radius.mean < 0.2) %>%
-            filter(m.eccentricity < 0.8 & m.eccentricity != 0) # Circle eccentricity=0, straight line eccentricity=1
+            filter(s.radius.sd/s.radius.mean < 0.2)
+            #filter(m.eccentricity < 0.8 & m.eccentricity != 0) # Circle eccentricity=0, straight line eccentricity=1
 
 
         # Remove outliers by b.sd/b.mean ratio

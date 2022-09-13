@@ -13,6 +13,9 @@ list_image_mapping <- read_csv(commandArgs(trailingOnly = T)[2], show_col_types 
 # list_image_mapping <- read_csv(paste0(folder_script, "00-list_image_mapping-D.csv") , show_col_types = F)
 # list_images <- read_csv(paste0(folder_script, "00-list_images-C2.csv"), show_col_types = F)
 # list_image_mapping <- read_csv(paste0(folder_script, "00-list_image_mapping-C2.csv") , show_col_types = F)
+# list_images <- read_csv(paste0(folder_script, "00-list_images-B2.csv"), show_col_types = F)
+# list_image_mapping <- read_csv(paste0(folder_script, "00-list_image_mapping-B2.csv") , show_col_types = F)
+
 
 list_image_mapping_folder <- list_image_mapping %>%
     left_join(select(list_images, image_name_pair = image_name, folder_feature_pair = folder_green_feature, folder_green_cluster), by = "image_name_pair") %>%
@@ -69,9 +72,10 @@ plates_no_colony <- c(
 
 #i = which(list_image_mapping_folder$image_name_pair == "C2_T8_C11R2_5-95_5_2")
 #for (i in temp_indices) {
-
+i=158
 for (i in 1:nrow(list_image_mapping_folder)) {
-    if (i < 66) next
+    cat("\t",i)
+    if (i < 6)  next
     ## 8.1 read the feature files
     list_image_mapping_folder$image_name_pair[i]
     if (list_image_mapping_folder$image_name_pair[i] %in% plates_no_colony) {cat("\nno colony, no watershed image\t", list_image_mapping_folder$image_name_pair[i]); next}
