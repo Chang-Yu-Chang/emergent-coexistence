@@ -70,16 +70,19 @@ plates_no_colony <- c(
     "C2_T8_C11R2_50-50_9_13"
 )
 
-#i = which(list_image_mapping_folder$image_name_pair == "C2_T8_C11R2_5-95_5_2")
+i = which(list_image_mapping_folder$image_name_pair == "B2_T8_C11R1_5-95_1_3")
 #for (i in temp_indices) {
-i=158
+
 for (i in 1:nrow(list_image_mapping_folder)) {
-    cat("\t",i)
-    if (i < 6)  next
-    ## 8.1 read the feature files
+    #if (i < 6)  next
+    # 8.1 read the feature files ----
+
     list_image_mapping_folder$image_name_pair[i]
+
+    ## Skip images with no colony
     if (list_image_mapping_folder$image_name_pair[i] %in% plates_no_colony) {cat("\nno colony, no watershed image\t", list_image_mapping_folder$image_name_pair[i]); next}
 
+    ## Read object features from isolate and co-coculture images
     feature_candidates <- c("b.mean", "b.sd", "b.mad",
                             "b.q005", "b.q05", "b.q095",
                             "s.area", "s.radius.mean", "s.radius.sd",
@@ -98,7 +101,7 @@ for (i in 1:nrow(list_image_mapping_folder)) {
         select(image_name, ObjectID, Group, GroupBinary, all_of(feature_candidates)) %>%
         {.}
 
-    # Remove outlier objects according to the criterion for each pair/isolate iamage. See this R script for more detail
+    ## Remove outlier objects according to the criterion for each pair/isolate iamage. See this R script for more detail
     source("05a-remove_outlier_objects.R")
 
     object_feature_isolates <- object_feature_combined %>%
@@ -108,7 +111,7 @@ for (i in 1:nrow(list_image_mapping_folder)) {
     cat("\nread feature")
 
 
-    # 8.2 exhaustive stepwise selection and cross-validation
+    # 8.2 exhaustive feature selection  ----
     n_models <- glmulti(
         y = "GroupBinary",
         xr = feature_candidates,
@@ -169,27 +172,37 @@ for (i in 1:nrow(list_image_mapping_folder)) {
         mutate(Feature = ordered(Feature, rev(Feature))) %>%
         ggplot() +
         geom_col(aes(x = Feature, y = Importance), color = 1, fill = grey(0.8)) +
-        geom_hline(yintercept = 0.8, color = "red") +
+        geom_hline(yintercept = 0.5, color = "red") +
         coord_flip() +
         theme_classic() +
         ggtitle("model-averaged importance of predictors")
     cat("\timportance")
 
-    # Use the feature to build a logit model
-    selected_features <- model_importance %>% filter(Importance > 0.8) %>% pull(Feature)
-    ## If only 0, 1, or 2 features pass the importance threshold 0.8, choose the top three features regardless of the importance
-    if (length(selected_features) <= 2) {
-        selected_features <- model_importance %>% slice(1:3) %>% pull(Feature)
-    }
-    model_logit <- glm(GroupBinary ~ ., data = select(object_feature_isolates, GroupBinary, all_of(selected_features)),
-        family = binomial, control = list(maxit = 50))
+    # 8.3 Use the selected important features to build a logit model ----
+    selected_features <- model_importance %>% filter(Importance > 0.5) %>% pull(Feature)
+    ## If only 0, 1, or 2 features pass the importance threshold 0.5, choose the top three features regardless of the importance
+    if (length(selected_features) <= 2) selected_features <- model_importance %>% slice(1:3) %>% pull(Feature)
 
-    # Plot the table of coefficient from the logti regression model
-    #model <- best_subset@objects[[1]]
-    model_table <- broom::tidy(model_logit) %>%
+    ## Build model. Include all interaction terms between the selected features
+    model_logit <- glm(GroupBinary ~ .^2,
+                       data = select(object_feature_isolates, GroupBinary, all_of(selected_features)),
+                       family = binomial, control = list(maxit = 50))
+
+    ## Remove the non-significant interaction terms
+    drop_bad_interactions <- function (model_logit) {
+        bad_interactions <- broom::tidy(model_logit) %>%
+            filter(p.value > 0.05 & str_detect(term, ":")) %>%
+            pull(term)
+        if (length(bad_interactions) > 0) for (k in 1:length(bad_interactions)) model_logit <- update(model_logit, as.formula(paste(".~.-", bad_interactions[k])))
+        return(model_logit)
+    }
+    model_logit <- drop_bad_interactions(model_logit)
+    model_table <- model_logit %>%
+        broom::tidy() %>%
         mutate(estimate = round(estimate, 4),
                std.error = round(std.error, 4),
                statistic = round(statistic, 4))
+    ## Plot the model in a table
     p2 <- cowplot::ggdraw() +
         annotation_custom(tableGrob(model_table, theme = ttheme_default(base_size = 8)), xmin = 0, xmax = 1, ymin = 0, ymax = 1) +
         theme_void() +
@@ -197,7 +210,7 @@ for (i in 1:nrow(list_image_mapping_folder)) {
     cat("\tcoefficient")
 
 
-    # Model predict
+    # 8.4 Model prediction ----
     object_feature_predicted <- object_feature_pair %>%
         mutate(PredictedGroupProbability = predict(model_logit, object_feature_pair, type = "response")) %>%
         dplyr::select(image_name, ObjectID, PredictedGroupProbability) %>%
@@ -226,11 +239,10 @@ for (i in 1:nrow(list_image_mapping_folder)) {
         scale_x_continuous(expand = c(0,0.1), breaks = seq(0,1,.2)) +
         scale_y_continuous(expand = c(0,0)) +
         theme_classic()
-    # Output the prediction
     write_csv(object_feature_predicted, paste0(list_image_mapping_folder$folder_green_cluster[i], list_image_mapping_folder$image_name_pair[i], ".csv"))
     cat("\tprediction")
 
-    # Scatterplot for clustering intuition
+    # 8.5 Scatterplot for clustering intuition ----
     set_color_names <- function () {
         c("#FF5A5F","#087E8B","#FF5A5F","#087E8B", "black") %>%
             setNames(c(
@@ -279,7 +291,7 @@ for (i in 1:nrow(list_image_mapping_folder)) {
     shape_names <- set_shape_names()
     alpha_names <- set_alpha_names()
 
-    ## combined the prediction and object label
+    ## Combined the prediction and object label
     object_feature_plot <- object_feature_predicted %>%
         select(image_name, ObjectID, Group) %>%
         left_join(select(object_feature_pair, -GroupBinary, -Group), by = c("image_name", "ObjectID")) %>%
@@ -302,11 +314,13 @@ for (i in 1:nrow(list_image_mapping_folder)) {
         theme_classic()
     cat("\tclusterplot")
 
-    # PCA with the model selected variables
+    # 8.6 PCA with the model selected variables ----
     if (length(coef(model_logit)) >= 3) {
         # When more than two features picked
+        features_to_plot <- names(coef(model_logit))[-1] %>%
+            str_subset("^((?!:).)*$") # Remove interaction terms
         pcobj <- object_feature_plot %>%
-            select(all_of(names(coef(model_logit))[-1])) %>%
+            select(all_of(features_to_plot)) %>%
             prcomp(center = TRUE, scale. = TRUE)
     } else if (length(coef(model_logit)) == 2) {
         # When only one feature picked, use the top two important features
@@ -379,7 +393,7 @@ for (i in 1:nrow(list_image_mapping_folder)) {
         labs(x = u.axis.labs[1], y = u.axis.labs[2])
     cat("\tpcaplot")
 
-    # Plot
+    # 8.7 Combine all plots
     legend <- get_legend(p4 + theme(legend.box.margin = margin(0, 0, 0, 12)))
     p <- plot_grid(
         p1, p2, p3,
