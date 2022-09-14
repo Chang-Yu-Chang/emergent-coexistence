@@ -39,7 +39,7 @@ def rolling_ball_light(image):
     return image_rolled
 
 
-for i in [1, 2]:
+for i in [0]:
 #for i in range(list_images.shape[0]):
     # File directory
     file_gray = list_images.iloc[i]['folder_green'] + list_images.iloc[i]['image_name'] + '.tiff'

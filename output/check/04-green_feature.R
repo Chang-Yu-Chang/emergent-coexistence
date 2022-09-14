@@ -173,7 +173,7 @@ plates_no_colony <- c(
     "C2_T8_C11R2_50-50_9_13"
 )
 
-i=2
+i=1
 for (i in 1:nrow(list_images)) {
     #if (i < 185) next
     image_name <- list_images$image_name[i]
