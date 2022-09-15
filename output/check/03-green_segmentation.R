@@ -11,7 +11,7 @@ compute_feature <- function (image_object, image_intensity) {
         image_object, image_intensity,
         methods.noref = c("computeFeatures.shape"),
         methods.ref = c("computeFeatures.basic", "computeFeatures.moment"),
-        basic.quantiles = c(0.01)) %>%
+        basic.quantiles = c(0.05, 0.5)) %>%
         as_tibble(rownames = "ObjectID") %>%
         # Remove duplicatedly calculated properties
         select(ObjectID, starts_with("x.0"), starts_with("x.Ba")) %>%
@@ -54,7 +54,7 @@ detect_nonround_object <- function (image_object, image_intensity = NULL, waters
             filter(Circularity > 0.7) %>%
             # Remove tape and label that has really large variation in radius
             filter(s.radius.sd/s.radius.mean < 0.2)
-            #filter(m.eccentricity < 0.9) # Circle eccentricity=0, straight line eccentricity=1
+        #filter(m.eccentricity < 0.9) # Circle eccentricity=0, straight line eccentricity=1
 
 
         # Remove outliers by b.sd/b.mean ratio
@@ -71,9 +71,8 @@ detect_nonround_object <- function (image_object, image_intensity = NULL, waters
     object_ID_nonround <- object_feature$ObjectID[!(object_feature$ObjectID %in% object_shape_round$ObjectID)]
     return(object_ID_nonround)
 }
-#i = which(list_images$image_name %in% c("D_T1_C1R7_7"))
-i=9
-i=1
+i = which(list_images$image_name %in% c("D_T8_C1R2_3"))
+
 for (i in 1:nrow(list_images)) {
     #if (i < 7) next
     image_name <- list_images$image_name[i]
@@ -100,18 +99,25 @@ for (i in 1:nrow(list_images)) {
     image_distancemap <- distmap(image_round)
     cat("\tdistance map")
     image_watershed <- watershed(image_distancemap, tolerance = 1)
-    ## After watershed, apply a second filter removing objects that are too small to be colonies
+
+    ## Skip the second watershed step if there is not colony
     if (all(image_watershed == 0)) {
         cat("\tbefore watershed, do not have colony on the plate\t", image_name)
         next
-    } else {
+    }
+
+    ## Execute when there is at least one object
+    if (all(image_watershed != 0)){
+        ## After watershed, apply a second filter removing objects that are too small to be colonies
         object_ID_nonround2 <- detect_nonround_object(image_watershed, image_rolled, watershed = T)
         image_watershed2 <- rmObjects(image_watershed, object_ID_nonround2, reenumerate = T)
 
         if (all(image_watershed2 == 0)) {
             cat("\tafter watershed, do not have colony on the plate \t", image_name)
             next
-        } else {
+        }
+
+        if (all(image_watershed2 != 0)) {
             save(image_watershed2, file = paste0(list_images$folder_green_watershed[i], image_name, ".RData")) # save watersed image object
             writeImage(colorLabels(image_watershed2), paste0(list_images$folder_green_watershed[i], image_name, ".tiff"))
             cat("\twatershed\t", i, "/", nrow(list_images), "\t", list_images$image_name[i])

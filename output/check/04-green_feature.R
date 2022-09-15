@@ -158,7 +158,34 @@ draw_pixels <- function (img, pixel.x, pixel.y) {
 
     return(ans)
 }
-#i = which(list_images$image_name == "D_T8_C1R2_5-95_1_2")
+remove_outliers <- function (object_feature, features = c("b.sd", "b.mad", "b.mean", "b.q05", "b.q005", "b.tran.sd", "b.tran.mad")) {
+    #' This function uses a interquantile rule to find outliers
+    #' for a feature, if the data point falls outside the range of [Q1-1.5*IQR, Q3+1.5*IQR], it's a outlier
+
+    stopifnot(features %in% colnames(object_feature), "The features are not in the list of object")
+
+    for (feature in features) {
+        drop_list <- object_feature %>%
+            filter(!between(
+                get(feature),
+                quantile(get(feature), probs = 0.25, na.rm=TRUE) - (1.5 * IQR(get(feature), na.rm=TRUE)),
+                quantile(get(feature), probs = 0.75, na.rm=TRUE) + (1.5 * IQR(get(feature), na.rm=TRUE))
+            ))
+
+        object_feature <- object_feature %>%
+            filter(between(
+                get(feature),
+                quantile(get(feature), probs = 0.25, na.rm=TRUE) - (1.5 * IQR(get(feature), na.rm=TRUE)),
+                quantile(get(feature), probs = 0.75, na.rm=TRUE) + (1.5 * IQR(get(feature), na.rm=TRUE))
+        ))
+        # Report the number of objects dropped
+        if (nrow(drop_list) != 0) cat("\n", nrow(drop_list), " outlier object(s) dropped from feature", feature)
+    }
+    cat("\n")
+    return(object_feature)
+}
+
+i = which(list_images$image_name == "D_T8_C1R2_3")
 # i = which(list_images$image_name %in% c("D_T1_C1R7_7"))
 # i=36
 
@@ -187,6 +214,10 @@ for (i in 1:nrow(list_images)) {
         lapply(function(x) mutate(x, DistanceToCenter = 0:(length(x)-1))) %>%
         bind_rows(.id = "ObjectID")
 
+    "
+    move this chunk to the end after removing the outliers
+    also mark the outliers
+    "
     # 7.2 Mark the transects and contour
     image_transect <- draw_pixels(image_rolled, transection$x, transection$y)
     image_transect <- paintObjects(image_watershed2, image_transect)
