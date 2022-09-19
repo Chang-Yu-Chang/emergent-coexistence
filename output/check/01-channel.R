@@ -22,11 +22,11 @@ for (i in 1:nrow(list_images)) {
     # 0. original image
     image_original <- readImage(paste0(list_images$folder_original[i], image_name, ".tiff"))
 
-    # 1. Green channel
+    # 1. channel
     temp <- image_original
     colorMode(temp) = Grayscale
-    image_green <- temp[,,2]
-    writeImage(image_green, paste0(paste_folder_name("channel", color_channel), image_name, ".tiff"))
+    image_channel <- temp[,,match(color_channel, c("red", "green", "blue"))]
+    writeImage(image_channel, paste0(paste_folder_name("channel", color_channel), image_name, ".tiff"))
     cat("\n", color_channel, " channel\t", i, "/", nrow(list_images), "\t", list_images$image_name[i])
 }
 

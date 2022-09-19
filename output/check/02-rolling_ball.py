@@ -48,7 +48,7 @@ for i in range(list_images.shape[0]):
     image = io.imread(list_images.iloc[i]['folder_channel'] + color_channel + "/" + image_name + '.tiff')
     image_rolled = rolling_ball_light(image)
     io.imsave(list_images.iloc[i]['folder_rolled'] + color_channel + "/" + image_name + '.tiff', image_rolled)
-    print(color_channel + " channel\t" + str(i) + "/" + str(list_images.shape[0]) + "\t" + image_name)
+    print(color_channel + " channel rolled\t" + str(i) + "/" + str(list_images.shape[0]) + "\t" + image_name)
     
     
 

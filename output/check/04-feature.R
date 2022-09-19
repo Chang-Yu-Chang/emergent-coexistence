@@ -4,9 +4,13 @@ library(EBImageExtra) # for the bresenham algorithm
 library(purrr) # for applying functional programming to transect curve smoothing
 
 list_images <- read_csv(commandArgs(trailingOnly = T)[1], show_col_types = F)
+#list_images <- read_csv("~/Desktop/Lab/emergent-coexistence/output/check/00-list_images-D-red.csv", show_col_types = F)
 #list_images <- read_csv("~/Desktop/Lab/emergent-coexistence/output/check/00-list_images-D.csv", show_col_types = F)
 #list_images <- read_csv("~/Desktop/Lab/emergent-coexistence/output/check/00-list_images-C2.csv", show_col_types = F)
 #list_images <- read_csv("~/Desktop/Lab/emergent-coexistence/output/check/00-list_images-C.csv", show_col_types = F)
+paste_folder_name <- function (image_type = "channel", channel = "green") {
+    paste0(list_images[i,paste0("folder_", image_type)], channel, "/")
+}
 extract_transection <- function (watershed, ref) {
     #' This function searches for all objects on an image and return the pixel intensity along the transection of each object
     #' Arguments:
@@ -198,12 +202,13 @@ plates_no_colony <- c(
     "C2_T8_C11R2_50-50_2_10",
     "C2_T8_C11R2_50-50_9_13"
 )
-i = which(list_images$image_name == "D_T8_C1R2_5-95_1_3")
+#i = which(list_images$image_name == "D_T8_C1R2_1")
 
 #i=1
 for (i in 1:nrow(list_images)) {
     #if (i < 36) next
     image_name <- list_images$image_name[i]
+    color_channel <- list_images$color_channel[i]
 
     # 6.0 gating the no-object images
     ## no watershed image
@@ -212,12 +217,14 @@ for (i in 1:nrow(list_images)) {
         next
     }
 
-    image_rolled <- readImage(paste0(list_images$folder_green_rolled[i], image_name, ".tiff"))
-    load(paste0(list_images$folder_green_watershed[i], image_name, ".RData")) # this should contain one R object image_watershed2
+    ## Image with intensity
+    image_rolled <- readImage(paste0(paste_folder_name("rolled", color_channel), image_name, ".tiff"))
+    ## Read the watershed file only from the GREEN channel. This should contain one R object image_watershed2
+    load(paste0(paste_folder_name("watershed", "green"), image_name, ".RData"))
 
     ## No object on the watershed image
     if (all(image_watershed2 == 0)) {
-        cat("\tno object\t", i, "/", nrow(list_images), "\t", list_images$image_name[i])
+        cat("\tno object\t", i, "/", nrow(list_images), "\t", image_name)
         next
     }
 
@@ -250,7 +257,6 @@ for (i in 1:nrow(list_images)) {
     cat("\n\ntransect features")
 
     # 7.4 Compute feature. The output table is NULL if no object (no colony)
-    #load(paste0(list_images$folder_green_watershed_file, image_name, ".RData")) # this should contain one R object image_watershed2
     object_feature <- computeFeatures(
         image_watershed2, image_rolled,
         methods.noref = c("computeFeatures.shape"),
@@ -275,13 +281,13 @@ for (i in 1:nrow(list_images)) {
     # 7.6 remove outliers, only when its an isolate images
     #' `DO NOT REMOVE THE OUTLIERS in the coculture iamges`
     if (length(str_split(image_name, "_")[[1]]) == 4) object_feature <- object_feature %>% remove_outliers()
-    write_csv(object_feature, paste0(list_images$folder_green_feature[i], image_name, ".csv"))
+    write_csv(object_feature, paste0(paste_folder_name("feature", color_channel), image_name, ".csv"))
 
     # 7.7 Mark the transect and contours
     ## Transects
     transection_smooth_outlier <- transection_smooth %>% filter(!(ObjectID %in% object_feature$ObjectID))
     transection_smooth <- transection_smooth %>% filter(ObjectID %in% object_feature$ObjectID)
-    write_csv(transection_smooth, file = paste0(list_images$folder_green_transection[i], image_name, ".csv"))
+    write_csv(transection_smooth, file = paste0(paste_folder_name("transection", color_channel), image_name, ".csv"))
 
 
     # 7.8 Mark the transects and contour
@@ -289,14 +295,14 @@ for (i in 1:nrow(list_images)) {
     image_transect <- image_rolled %>%
         draw_pixels(transection_smooth$x, transection_smooth$y, color = "red") %>% # Draw transects of normal objects
         draw_pixels(transection_smooth_outlier$x, transection_smooth_outlier$y, color = "blue") # Draw transects of outliers
-    display(image_transect, method = "raster")
+    #display(image_transect, method = "raster")
     ## Contour
     image_watershed3_outliers <- rmObjects(image_watershed2, unique(transection_smooth$ObjectID), reenumerate = F)
     image_watershed3 <- rmObjects(image_watershed2, unique(transection_smooth_outlier$ObjectID), reenumerate = F)
     image_transect <- paintObjects(image_watershed3, image_transect, col = "red") # Draw contours of normal objects
     image_transect <- paintObjects(image_watershed3_outliers, image_transect, col = "blue") # Draw contours of outliers
     #
-    writeImage(image_transect, paste0(list_images$folder_green_transection[i], image_name, ".tiff"))
-    cat("draw contours and transects", i, "/", nrow(list_images), "\t", list_images$image_name[i])
+    writeImage(image_transect, paste0(paste_folder_name("transection", color_channel), image_name, ".tiff"))
+    cat("draw contours and transects", i, "/", nrow(list_images), "\t", image_name)
 
 }
