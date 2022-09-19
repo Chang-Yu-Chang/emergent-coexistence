@@ -6,17 +6,18 @@ library(tidyverse)
 # folder_main <- "~/Dropbox/lab/emergent-coexistence/data/raw/plate_scan/emergent_coexistence_plate_scan_check/"
 # folder_script <- "~/Desktop/Lab/emergent-coexistence/output/check/"
 
-# folder_main <- "/Users/chang-yu/Dropbox/lab/emergent-coexistence/data/raw/plate_scan/emergent_coexistence_plate_scan_check/"
-# folder_script <- "/Users/chang-yu//Desktop/Lab/emergent-coexistence/output/check/"
-folder_main <- "/Users/cychang/Dropbox/lab/emergent-coexistence/data/raw/plate_scan/emergent_coexistence_plate_scan_check/"
-folder_script <- "/Users/cychang/Desktop/Lab/emergent-coexistence/output/check/"
+folder_main <- "/Users/chang-yu/Dropbox/lab/emergent-coexistence/data/raw/plate_scan/emergent_coexistence_plate_scan_check/"
+folder_script <- "/Users/chang-yu//Desktop/Lab/emergent-coexistence/output/check/"
+# folder_main <- "/Users/cychang/Dropbox/lab/emergent-coexistence/data/raw/plate_scan/emergent_coexistence_plate_scan_check/"
+# folder_script <- "/Users/cychang/Desktop/Lab/emergent-coexistence/output/check/"
 
 
 #batch_names <- c("D", "C", "C2", "B2", "chromo")
 batch_names <- c("D", "C2", "B2", "C")
-
+j=1
 for (j in 1:length(batch_names)) {
 
+    # 0.1 list of exisitng original images ----
     folder_original <- paste0(folder_main, "check/", batch_names[j], "-00-original/")
     image_names <-
         list.files(folder_original) %>%
@@ -41,48 +42,45 @@ for (j in 1:length(batch_names)) {
 
     }
 
+    # 0.2 list of image files and the folders to store them ----
     n_images <- length(image_names)
 
     # List of image file names and folders
     list_images <- tibble(
         image_name = image_names,
         folder_original = rep(paste0(folder_main, "check/", batch_names[j], "-00-original/"), n_images),
-        folder_green = rep(paste0(folder_main, "check/", batch_names[j], "-01-green_channel/"), n_images),
-        folder_green_rolled = rep(paste0(folder_main, "check/", batch_names[j], "-02-green_rolled/"), n_images),
-        folder_green_threshold = rep(paste0(folder_main, "check/", batch_names[j], "-03-green_threshold/"), n_images),
-        folder_green_round = rep(paste0(folder_main, "check/", batch_names[j], "-04-green_round/"), n_images),
-        folder_green_watershed = rep(paste0(folder_main, "check/", batch_names[j], "-05-green_watershed/"), n_images),
-        folder_green_transection = rep(paste0(folder_main, "check/", batch_names[j], "-06-green_transection/"), n_images),
-        folder_green_feature = rep(paste0(folder_main, "check/", batch_names[j], "-07-green_feature/"), n_images),
-        folder_green_cluster = rep(paste0(folder_main, "check/", batch_names[j], "-08-green_cluster/"), n_images),
-#
-#         folder_red = rep(paste0(folder_main, "check/", batch_names[j], "-11-red_channel/"), n_images),
-#         folder_red_rolled = rep(paste0(folder_main, "check/", batch_names[j], "-12-red_rolled/"), n_images),
-#         folder_red_watershed = rep(paste0(folder_main, "check/", batch_names[j], "-16-red_watershed/"), n_images),
-#         folder_red_feature = rep(paste0(folder_main, "check/", batch_names[j], "-17-red_feature/"), n_images),
-#         folder_red_transection = rep(paste0(folder_main, "check/", batch_names[j], "-18-red_transection/"), n_images),
-#         folder_red_cluster = rep(paste0(folder_main, "check/", batch_names[j], "-19-red_cluster/"), n_images),
-#
-#         folder_blue = rep(paste0(folder_main, "check/", batch_names[j], "-21-blue_channel/"), n_images),
-#         folder_blue_rolled = rep(paste0(folder_main, "check/", batch_names[j], "-22-blue_rolled/"), n_images),
-#         folder_blue_watershed = rep(paste0(folder_main, "check/", batch_names[j], "-26-blue_watershed/"), n_images),
-#         folder_blue_feature = rep(paste0(folder_main, "check/", batch_names[j], "-27-blue_feature/"), n_images),
-#         folder_blue_transection = rep(paste0(folder_main, "check/", batch_names[j], "-28-blue_transection/"), n_images),
-#         folder_blue_cluster = rep(paste0(folder_main, "check/", batch_names[j], "-29-blue_cluster/"), n_images)
+        folder_channel = rep(paste0(folder_main, "check/", batch_names[j], "-01-channel/"), n_images),
+        folder_rolled = rep(paste0(folder_main, "check/", batch_names[j], "-02-rolled/"), n_images),
+        folder_threshold = rep(paste0(folder_main, "check/", batch_names[j], "-03-threshold/"), n_images),
+        folder_round = rep(paste0(folder_main, "check/", batch_names[j], "-04-round/"), n_images),
+        folder_watershed = rep(paste0(folder_main, "check/", batch_names[j], "-05-watershed/"), n_images),
+        folder_transection = rep(paste0(folder_main, "check/", batch_names[j], "-06-transection/"), n_images),
+        folder_feature = rep(paste0(folder_main, "check/", batch_names[j], "-07-feature/"), n_images),
+        folder_logit = rep(paste0(folder_main, "check/", batch_names[j], "-08-logit/"), n_images),
+        folder_random_forest = rep(paste0(folder_main, "check/", batch_names[j], "-09-random_forest/"), n_images)
     )
 
-    write_csv(list_images, paste0(folder_script, "00-list_images-", batch_names[j], ".csv"))
+    # Repeat the rows 3 times for rgb channels
+    for (color in c("red", "green", "blue")) {
+        list_images %>%
+            mutate(color_channel = color) %>%
+            select(image_name, color_channel, everything()) %>%
+            write_csv(paste0(folder_script, "00-list_images-", batch_names[j], "-", color, ".csv"))
+    }
+
 
     ## if T8 isolate image has no-growth/containmination, use T0 image instead.
     #' Keep populating this list if found new ones
     #' D T0 C1R4 3
     #' D T0 C1R6 3
     #' D T1 C1R7 7
-    list_images %>%
-        filter(str_detect(image_names, "T0") | str_detect(image_names, "T1")) %>%
-        write_csv(paste0(folder_script, "00-list_images-no_growth_isolates.csv"))
+    # list_images %>%
+    #     filter(str_detect(image_names, "T0") | str_detect(image_names, "T1")) %>%
+    #     write_csv(paste0(folder_script, "00-list_images-no_growth_isolates.csv"))
 
-    # Mapping file between isolate and pairs
+    # 0.3 Mapping file between isolate and pairs ----
+    #' This section does not need rgb
+
     #' For example, D_T8_C1R7_3 has a length of 4 and is an isolate image
     #' whereas D_T8_C1R7_5-95_1_3 has a length of 6 and is a pair image
     name_length <- image_names %>% str_split("_") %>% sapply(length)

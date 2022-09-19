@@ -2,10 +2,14 @@ library(tidyverse)
 library(EBImage)
 
 list_images <- read_csv(commandArgs(trailingOnly = T)[1], show_col_types = F)
+#list_images <- read_csv("~/Desktop/Lab/emergent-coexistence/output/check/00-list_images-D-green.csv", show_col_types = F)
 #list_images <- read_csv("~/Desktop/Lab/emergent-coexistence/output/check/00-list_images-D.csv", show_col_types = F)
 #list_images <- read_csv("~/Desktop/Lab/emergent-coexistence/output/check/00-list_images-C2.csv", show_col_types = F)
 #list_images <- read_csv("~/Desktop/Lab/emergent-coexistence/output/check/00-list_images-B2.csv", show_col_types = F)
 #list_images <- read_csv("~/Desktop/Lab/emergent-coexistence/output/check/00-list_images-C.csv", show_col_types = F)
+paste_folder_name <- function (image_type = "channel", channel = "green") {
+    paste0(list_images[i,paste0("folder_", image_type)], channel, "/")
+}
 compute_feature <- function (image_object, image_intensity) {
     computeFeatures(
         image_object, image_intensity,
@@ -71,28 +75,31 @@ detect_nonround_object <- function (image_object, image_intensity = NULL, waters
     object_ID_nonround <- object_feature$ObjectID[!(object_feature$ObjectID %in% object_shape_round$ObjectID)]
     return(object_ID_nonround)
 }
-i = which(list_images$image_name %in% c("D_T8_C1R2_3"))
+i = which(list_images$image_name %in% c("D_T0_C1R4_3"))
 
 for (i in 1:nrow(list_images)) {
+    i = which(list_images$image_name %in% c("D_T0_C1R4_3"))
     #if (i < 7) next
     image_name <- list_images$image_name[i]
+    color_channel <- list_images$color_channel[i]
+    cat("\n", color_channel)
 
     # Rolled image
-    image_rolled <- readImage(paste0(list_images$folder_green_rolled[i], image_name, ".tiff"))
+    image_rolled <- readImage(paste0(paste_folder_name("rolled", color_channel), image_name, ".tiff"))
 
     # 3. Thresholding
     #' thresh() applies a sliding window to calculate the local threshold
     #' opening() brushes the image to remove very tiny objects
     image_threshold <- thresh(-image_rolled, w = 150, h = 150, offset = 0.01) %>%
         opening(makeBrush(11, shape='disc'))
-    writeImage(image_threshold, paste0(list_images$folder_green_threshold[i], image_name, ".tiff"))
-    cat("\nthreshold")
+    writeImage(image_threshold, paste0(paste_folder_name("threshold", color_channel), image_name, ".tiff"))
+    cat("\tthreshold")
 
     # 4. Detect round shaped object and remove super small size
     image_object <- bwlabel(image_threshold)
     object_ID_nonround <- detect_nonround_object(image_object, watershed = F)
     image_round <- rmObjects(image_object, object_ID_nonround, reenumerate = T)
-    writeImage(image_round, paste0(list_images$folder_green_round[i], image_name, ".tiff"))
+    writeImage(image_round, paste0(paste_folder_name("round", color_channel), image_name, ".tiff"))
     cat("\tround object")
 
     # 5. Watershed
@@ -107,7 +114,7 @@ for (i in 1:nrow(list_images)) {
     }
 
     ## Execute when there is at least one object
-    if (all(image_watershed != 0)){
+    if (!all(image_watershed == 0)){
         ## After watershed, apply a second filter removing objects that are too small to be colonies
         object_ID_nonround2 <- detect_nonround_object(image_watershed, image_rolled, watershed = T)
         image_watershed2 <- rmObjects(image_watershed, object_ID_nonround2, reenumerate = T)
@@ -117,10 +124,10 @@ for (i in 1:nrow(list_images)) {
             next
         }
 
-        if (all(image_watershed2 != 0)) {
-            save(image_watershed2, file = paste0(list_images$folder_green_watershed[i], image_name, ".RData")) # save watersed image object
-            writeImage(colorLabels(image_watershed2), paste0(list_images$folder_green_watershed[i], image_name, ".tiff"))
-            cat("\twatershed\t", i, "/", nrow(list_images), "\t", list_images$image_name[i])
+        if (!all(image_watershed2 == 0)) {
+            save(image_watershed2, file = paste0(paste_folder_name("watershed", color_channel), image_name, ".RData")) # save watersed image object
+            writeImage(colorLabels(image_watershed2), paste0(paste_folder_name("watershed", color_channel), image_name, ".tiff"))
+            cat("\twatershed\t", i, "/", nrow(list_images), "\t", image_name)
         }
 
     }

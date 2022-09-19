@@ -140,12 +140,12 @@ plot_transection <- function (transection_smooth, title_name = NULL, scaled_dist
 
     return(p)
 }
-draw_pixels <- function (img, pixel.x, pixel.y) {
+draw_pixels <- function (img, pixel.x, pixel.y, color = "red") {
     #' This function takes an image and draw red on the assigned pixels
     stopifnot(length(pixel.x) == length(pixel.y))
 
-    # Render the gray-scale image back into color mode
-    img <- abind(img, img, img, along = 3) %>% Image(colormode = "Color")
+    # If the image is gray-scale, render it into color mode
+    if (length(dim(img)) == 2) img <- abind(img, img, img, along = 3) %>% Image(colormode = "Color")
 
     # Create a logical mask
     m <- Image(T, dim(img)[1:2])
@@ -153,41 +153,40 @@ draw_pixels <- function (img, pixel.x, pixel.y) {
     M <- abind(m, m, m, along = 3)
 
     # Combine with solid colored image, replace appropriate pixels in image
-    mask <- Image("red", dim = dim(img)[1:2], colormode = "Color")
+    mask <- Image(color, dim = dim(img)[1:2], colormode = "Color")
     ans <- img * M + mask * !M
 
     return(ans)
 }
-remove_outliers <- function (object_feature, features = c("b.sd", "b.mad", "b.mean", "b.q05", "b.q005", "b.tran.sd", "b.tran.mad")) {
+remove_outliers <- function (object_feature, multiplier = 2, features = c("b.sd", "b.mad", "b.mean", "b.q05", "b.q005", "b.tran.sd", "b.tran.mad")) {
     #' This function uses a interquantile rule to find outliers
     #' for a feature, if the data point falls outside the range of [Q1-1.5*IQR, Q3+1.5*IQR], it's a outlier
 
-    stopifnot(features %in% colnames(object_feature), "The features are not in the list of object")
+    stopifnot(features %in% colnames(object_feature))
 
+
+    x <- 0
     for (feature in features) {
         drop_list <- object_feature %>%
             filter(!between(
                 get(feature),
-                quantile(get(feature), probs = 0.25, na.rm=TRUE) - (1.5 * IQR(get(feature), na.rm=TRUE)),
-                quantile(get(feature), probs = 0.75, na.rm=TRUE) + (1.5 * IQR(get(feature), na.rm=TRUE))
+                quantile(get(feature), probs = 0.25, na.rm=TRUE) - (multiplier * IQR(get(feature), na.rm=TRUE)),
+                quantile(get(feature), probs = 0.75, na.rm=TRUE) + (multiplier * IQR(get(feature), na.rm=TRUE))
             ))
 
         object_feature <- object_feature %>%
             filter(between(
                 get(feature),
-                quantile(get(feature), probs = 0.25, na.rm=TRUE) - (1.5 * IQR(get(feature), na.rm=TRUE)),
-                quantile(get(feature), probs = 0.75, na.rm=TRUE) + (1.5 * IQR(get(feature), na.rm=TRUE))
+                quantile(get(feature), probs = 0.25, na.rm=TRUE) - (multiplier * IQR(get(feature), na.rm=TRUE)),
+                quantile(get(feature), probs = 0.75, na.rm=TRUE) + (multiplier * IQR(get(feature), na.rm=TRUE))
         ))
         # Report the number of objects dropped
+        x <- x + nrow(drop_list)
         if (nrow(drop_list) != 0) cat("\n", nrow(drop_list), " outlier object(s) dropped from feature", feature)
     }
-    cat("\n")
+    cat("\ntotal ", x, " outliers object(s) dropped\n")
     return(object_feature)
 }
-
-i = which(list_images$image_name == "D_T8_C1R2_3")
-# i = which(list_images$image_name %in% c("D_T1_C1R7_7"))
-# i=36
 
 plates_no_colony <- c(
     "B2_T8_C11R1_5-95_2_8",
@@ -199,38 +198,39 @@ plates_no_colony <- c(
     "C2_T8_C11R2_50-50_2_10",
     "C2_T8_C11R2_50-50_9_13"
 )
+i = which(list_images$image_name == "D_T8_C1R2_5-95_1_3")
 
-i=1
+#i=1
 for (i in 1:nrow(list_images)) {
-    #if (i < 185) next
+    #if (i < 36) next
     image_name <- list_images$image_name[i]
-    if (image_name %in% plates_no_colony) {cat("\nno colony, no watershed image\t", image_name); next}
+
+    # 6.0 gating the no-object images
+    ## no watershed image
+    if (image_name %in% plates_no_colony) {
+        cat("\nno colony, no watershed image\t", image_name)
+        next
+    }
 
     image_rolled <- readImage(paste0(list_images$folder_green_rolled[i], image_name, ".tiff"))
     load(paste0(list_images$folder_green_watershed[i], image_name, ".RData")) # this should contain one R object image_watershed2
 
-    # 7.1 Extract transection data
+    ## No object on the watershed image
+    if (all(image_watershed2 == 0)) {
+        cat("\tno object\t", i, "/", nrow(list_images), "\t", list_images$image_name[i])
+        next
+    }
+
+    # 6.1 Extract transect data
     transection <- extract_transection(image_watershed2, image_rolled) %>%
         lapply(function(x) mutate(x, DistanceToCenter = 0:(length(x)-1))) %>%
         bind_rows(.id = "ObjectID")
 
-    "
-    move this chunk to the end after removing the outliers
-    also mark the outliers
-    "
-    # 7.2 Mark the transects and contour
-    image_transect <- draw_pixels(image_rolled, transection$x, transection$y)
-    image_transect <- paintObjects(image_watershed2, image_transect)
-    writeImage(image_transect, paste0(list_images$folder_green_transection[i], image_name, ".tiff"))
-    #display(paintObjects(image_watershed2, image_transect), method = "raster")
-    cat("\ndraw transects")
-
-    # 7.3 Calculate trasect features
-    ## Smooth the transet intensity
+    # 6.2 Calculate transect features
+    ## Smooth the transect intensity
     transection_smooth <- transection %>%
         smooth_transection() %>%
         diff_transection()
-    write_csv(transection_smooth, file = paste0(list_images$folder_green_transection[i], image_name, ".csv"))
 
     ## Transect features
     transection_feature <- transection_smooth %>%
@@ -246,8 +246,8 @@ for (i in 1:nrow(list_images)) {
         # Transect
         left_join(calculate_transection(transection_smooth), by = "ObjectID") %>%
         rename(t.bump.number = Count, # number of transect bumps
-               t.bump.onset = OnsetBump) # onset of the first transect bump
-    cat("\ttransect feature")
+               t.bump.onset = OnsetBump) # onset of the first transect bum
+    cat("\n\ntransect features")
 
     # 7.4 Compute feature. The output table is NULL if no object (no colony)
     #load(paste0(list_images$folder_green_watershed_file, image_name, ".RData")) # this should contain one R object image_watershed2
@@ -259,25 +259,44 @@ for (i in 1:nrow(list_images)) {
         basic.quantiles = c(0.01, 0.05, c(0.1, 0.2, 0.5, 0.8, 0.9), 0.95, 0.99)
     )
 
-    ## Execute the name cleanup only if there is at least 1 object
-    if (is_null(object_feature)) {
-        #write_csv(object_feature, paste0(list_images$folder_green_feature[i], image_name, ".csv"))
-        cat("\tno object\t", i, "/", nrow(list_images), "\t", list_images$image_name[i])
-    }
+    # 7.5 Clean up object feature name
+    object_feature <- object_feature %>%
+        as_tibble(rownames = "ObjectID") %>%
+        # Remove duplicatedly calculated properties
+        select(ObjectID, starts_with("x.0"), starts_with("x.Ba")) %>%
+        # Remove the redundant prefix
+        rename_with(function(x) str_replace(x,"x.0.", ""), starts_with("x.0")) %>%
+        rename_with(function(x) str_replace(x,"x.Ba.", ""), starts_with("x.Ba")) %>%
+        # Join the transection  features
+        left_join(transection_feature, by = "ObjectID") %>%
+        select(ObjectID, starts_with("b."), starts_with("t."),  starts_with("s."), starts_with("m."))
 
-    if (!is_null(object_feature)) {
-        object_feature <- object_feature %>%
-            as_tibble(rownames = "ObjectID") %>%
-            # Remove duplicatedly calculated properties
-            select(ObjectID, starts_with("x.0"), starts_with("x.Ba")) %>%
-            # Remove the redundant prefix
-            rename_with(function(x) str_replace(x,"x.0.", ""), starts_with("x.0")) %>%
-            rename_with(function(x) str_replace(x,"x.Ba.", ""), starts_with("x.Ba")) %>%
-            # Join the transection  features
-            left_join(transection_feature, by = "ObjectID") %>%
-            select(ObjectID, starts_with("b."), starts_with("t."),  starts_with("s."), starts_with("m."))
 
-        write_csv(object_feature, paste0(list_images$folder_green_feature[i], image_name, ".csv"))
-        cat("\tfeature\t", i, "/", nrow(list_images), "\t", list_images$image_name[i])
-    }
+    # 7.6 remove outliers, only when its an isolate images
+    #' `DO NOT REMOVE THE OUTLIERS in the coculture iamges`
+    if (length(str_split(image_name, "_")[[1]]) == 4) object_feature <- object_feature %>% remove_outliers()
+    write_csv(object_feature, paste0(list_images$folder_green_feature[i], image_name, ".csv"))
+
+    # 7.7 Mark the transect and contours
+    ## Transects
+    transection_smooth_outlier <- transection_smooth %>% filter(!(ObjectID %in% object_feature$ObjectID))
+    transection_smooth <- transection_smooth %>% filter(ObjectID %in% object_feature$ObjectID)
+    write_csv(transection_smooth, file = paste0(list_images$folder_green_transection[i], image_name, ".csv"))
+
+
+    # 7.8 Mark the transects and contour
+    ## Transect
+    image_transect <- image_rolled %>%
+        draw_pixels(transection_smooth$x, transection_smooth$y, color = "red") %>% # Draw transects of normal objects
+        draw_pixels(transection_smooth_outlier$x, transection_smooth_outlier$y, color = "blue") # Draw transects of outliers
+    display(image_transect, method = "raster")
+    ## Contour
+    image_watershed3_outliers <- rmObjects(image_watershed2, unique(transection_smooth$ObjectID), reenumerate = F)
+    image_watershed3 <- rmObjects(image_watershed2, unique(transection_smooth_outlier$ObjectID), reenumerate = F)
+    image_transect <- paintObjects(image_watershed3, image_transect, col = "red") # Draw contours of normal objects
+    image_transect <- paintObjects(image_watershed3_outliers, image_transect, col = "blue") # Draw contours of outliers
+    #
+    writeImage(image_transect, paste0(list_images$folder_green_transection[i], image_name, ".tiff"))
+    cat("draw contours and transects", i, "/", nrow(list_images), "\t", list_images$image_name[i])
+
 }

@@ -20,6 +20,7 @@ from skimage import data, restoration, util, io, color
 
 # The input has to be the csv generated from 00-list_images.R
 list_images = pd.read_csv(str(sys.argv[1]))
+#list_images = pd.read_csv('/Users/chang-yu/Desktop/Lab/emergent-coexistence/output/check/00-list_images-D-red.csv')
 #list_images = pd.read_csv('/Users/chang-yu/Desktop/Lab/emergent-coexistence/output/check/00-list_images-D.csv')
 #list_images = pd.read_csv('/Users/chang-yu/Desktop/Lab/emergent-coexistence/output/check/00-list_images-C2.csv')
 #list_images = pd.read_csv('/Users/chang-yu/Desktop/Lab/emergent-coexistence/output/check/00-list_images-B2.csv')
@@ -39,17 +40,15 @@ def rolling_ball_light(image):
     return image_rolled
 
 
-for i in [0]:
-#for i in range(list_images.shape[0]):
-    # File directory
-    file_gray = list_images.iloc[i]['folder_green'] + list_images.iloc[i]['image_name'] + '.tiff'
-    file_rolled = list_images.iloc[i]['folder_green_rolled'] + list_images.iloc[i]['image_name'] + '.tiff'
+#for i in [0]:
+for i in range(list_images.shape[0]):
+    image_name = list_images.iloc[i]['image_name']
+    color_channel = list_images.iloc[i]['color_channel']
     
-    # 
-    image = io.imread(file_gray)
+    image = io.imread(list_images.iloc[i]['folder_channel'] + color_channel + "/" + image_name + '.tiff')
     image_rolled = rolling_ball_light(image)
-    io.imsave(file_rolled, image_rolled)
-    print("green channel\t" + str(i) + "/" + str(list_images.shape[0]) + "\t" + list_images.iloc[i]['image_name'])
+    io.imsave(list_images.iloc[i]['folder_rolled'] + color_channel + "/" + image_name + '.tiff', image_rolled)
+    print(color_channel + " channel\t" + str(i) + "/" + str(list_images.shape[0]) + "\t" + image_name)
     
     
 
