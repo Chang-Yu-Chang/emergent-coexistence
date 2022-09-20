@@ -7,7 +7,7 @@ folder_script <- "~/Desktop/Lab/emergent-coexistence/output/check/"
 list_images <- read_csv(commandArgs(trailingOnly = T)[1], show_col_types = F)
 list_image_mapping <- read_csv(commandArgs(trailingOnly = T)[2], show_col_types = F)
 
-# list_images <- read_csv(paste0(folder_script, "00-list_images-D.csv"), show_col_types = F)
+# list_images <- read_csv(paste0(folder_script, "00-list_images-D-green.csv"), show_col_types = F)
 # list_image_mapping <- read_csv(paste0(folder_script, "00-list_image_mapping-D.csv") , show_col_types = F)
 
 list_image_mapping_folder <- list_image_mapping %>%
@@ -21,7 +21,7 @@ read_feature <- function (type) {
 
     if (type == "pair") {
         object_feature_pair <- paste0(
-            list_image_mapping_folder$folder_green_feature[i],
+            paste0(list_images[i,paste0("folder_feature")], color_channel, "/"),
             list_image_mapping_folder$image_name_pair[i], ".csv"
         ) %>%
             read_csv(show_col_types = FALSE) %>%
@@ -33,7 +33,7 @@ read_feature <- function (type) {
 
     if (type == "isolate") {
         object_feature_isolate1 <- paste0(
-            list_image_mapping_folder$folder_green_feature[i],
+            paste0(list_images[i,paste0("folder_feature")], color_channel, "/"),
             list_image_mapping_folder$image_name_isolate1[i], ".csv"
         ) %>%
             read_csv(show_col_types = FALSE) %>%
@@ -41,7 +41,7 @@ read_feature <- function (type) {
                    Group = "isolate1") # Label for supervised learning
 
         object_feature_isolate2 <- paste0(
-            list_image_mapping_folder$folder_green_feature[i],
+            paste0(list_images[i,paste0("folder_feature")], color_channel, "/"),
             list_image_mapping_folder$image_name_isolate2[i], ".csv"
         ) %>%
             read_csv(show_col_types = FALSE) %>%
@@ -176,14 +176,16 @@ feature_candidates <- c(
     "b.q001", "b.q005", "b.q01", "b.q02", "b.q05", "b.q08", "b.q09", "b.q095", "b.q099",
     "b.tran.mean", "b.tran.sd", "b.tran.mad",
     "b.center", "b.periphery", "b.diff.cp",
-    "b.tran.q005", "b.tran.q01", "b.tran.q05", "b.tran.q09", "b.tran.q095",
-    "t.bump.number"
+    "b.tran.q005", "b.tran.q01", "b.tran.q05", "b.tran.q09", "b.tran.q095"
+    #"t.bump.number"
 )
 
 i = which(list_image_mapping_folder$image_name_pair == "D_T8_C1R2_5-95_1_2")
 
 for (i in 1:nrow(list_image_mapping_folder)) {
     cat("\t", i)
+    image_name <- list_images$image_name[i]
+    color_channel <- list_images$color_channel[i]
     #if (i < 174)  next
 
     ## Skip images with no colony

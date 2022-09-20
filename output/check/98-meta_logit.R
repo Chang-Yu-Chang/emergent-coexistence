@@ -1,4 +1,4 @@
-#' Meta analysis for the output generated in 09-cluster
+#' Meta analysis for the output generated in 08-logit
 library(tidyverse)
 library(cowplot)
 folder_script <- "~/Desktop/Lab/emergent-coexistence/output/check/"
