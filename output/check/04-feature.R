@@ -5,6 +5,7 @@ library(purrr) # for applying functional programming to transect curve smoothing
 
 list_images <- read_csv(commandArgs(trailingOnly = T)[1], show_col_types = F)
 #list_images <- read_csv("~/Desktop/Lab/emergent-coexistence/output/check/00-list_images-D-red.csv", show_col_types = F)
+#list_images <- read_csv("~/Desktop/Lab/emergent-coexistence/output/check/00-list_images-C-green.csv", show_col_types = F)
 #list_images <- read_csv("~/Desktop/Lab/emergent-coexistence/output/check/00-list_images-D.csv", show_col_types = F)
 #list_images <- read_csv("~/Desktop/Lab/emergent-coexistence/output/check/00-list_images-C2.csv", show_col_types = F)
 #list_images <- read_csv("~/Desktop/Lab/emergent-coexistence/output/check/00-list_images-C.csv", show_col_types = F)

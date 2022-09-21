@@ -16,7 +16,7 @@ list_image_mapping_folder <- list_image_mapping %>%
     left_join(select(list_images, image_name_isolate2 = image_name), by = "image_name_isolate2")
 
 #
-read_feature <- function (type) {
+read_feature <- function (type, color_channel) {
     stopifnot(type %in% c("pair", "isolate"))
 
     if (type == "pair") {
@@ -58,22 +58,22 @@ read_feature <- function (type) {
     return(object_feature)
 }
 create_customRF <- function (){
-        #' caret package does not take ntree as default for method="rf"
-        #' This function is to customize the rf approach to include argument ntree
-        customRF <- list(type = "Classification", library = "randomForest", loop = NULL)
-        customRF$parameters <- data.frame(parameter = c("mtry", "ntree"), class = rep("numeric", 2), label = c("mtry", "ntree"))
-        customRF$grid <- function(x, y, len = NULL, search = "grid") {}
-        customRF$fit <- function(x, y, wts, param, lev, last, weights, classProbs, ...) {
-            randomForest(x, y, mtry = param$mtry, ntree=param$ntree, ...)
-        }
-        customRF$predict <- function(modelFit, newdata, preProc = NULL, submodels = NULL)
-            predict(modelFit, newdata)
-        customRF$prob <- function(modelFit, newdata, preProc = NULL, submodels = NULL)
-            predict(modelFit, newdata, type = "prob")
-        customRF$sort <- function(x) x[order(x[,1]),]
-        customRF$levels <- function(x) x$classes
-        return(customRF)
+    #' caret package does not take ntree as default for method="rf"
+    #' This function is to customize the rf approach to include argument ntree
+    customRF <- list(type = "Classification", library = "randomForest", loop = NULL)
+    customRF$parameters <- data.frame(parameter = c("mtry", "ntree"), class = rep("numeric", 2), label = c("mtry", "ntree"))
+    customRF$grid <- function(x, y, len = NULL, search = "grid") {}
+    customRF$fit <- function(x, y, wts, param, lev, last, weights, classProbs, ...) {
+        randomForest(x, y, mtry = param$mtry, ntree=param$ntree, ...)
     }
+    customRF$predict <- function(modelFit, newdata, preProc = NULL, submodels = NULL)
+        predict(modelFit, newdata)
+    customRF$prob <- function(modelFit, newdata, preProc = NULL, submodels = NULL)
+        predict(modelFit, newdata, type = "prob")
+    customRF$sort <- function(x) x[order(x[,1]),]
+    customRF$levels <- function(x) x$classes
+    return(customRF)
+}
 set_color_names <- function () {
     c("#FF5A5F","#087E8B","#FF5A5F","#087E8B", "black") %>%
         setNames(c(
@@ -109,53 +109,53 @@ set_shape_names <- function () {
         ))
 }
 set_alpha_names <- function () {
-        c(.3,.3,1,1,1) %>% setNames(c(
-            paste0(list_image_mapping_folder$image_name_isolate1[i], " isolate1"),
-            paste0(list_image_mapping_folder$image_name_isolate2[i], " isolate2"),
-            paste0(list_image_mapping_folder$image_name_pair[i], " predicted isolate1"),
-            paste0(list_image_mapping_folder$image_name_pair[i], " predicted isolate2"),
-            paste0(list_image_mapping_folder$image_name_pair[i], " undecided")
-        ))
-    }
+    c(.3,.3,1,1,1) %>% setNames(c(
+        paste0(list_image_mapping_folder$image_name_isolate1[i], " isolate1"),
+        paste0(list_image_mapping_folder$image_name_isolate2[i], " isolate2"),
+        paste0(list_image_mapping_folder$image_name_pair[i], " predicted isolate1"),
+        paste0(list_image_mapping_folder$image_name_pair[i], " predicted isolate2"),
+        paste0(list_image_mapping_folder$image_name_pair[i], " undecided")
+    ))
+}
 compute_pca_coord <- function (pcobj) {
-        #' The function below comes from the source code of ggbiplot
-        #' to replace the use of ggbiplot
-        choices = 1:2 # which PCs to plot
-        scale = 1
-        obs.scale = 1 - scale
-        var.scale = scale
+    #' The function below comes from the source code of ggbiplot
+    #' to replace the use of ggbiplot
+    choices = 1:2 # which PCs to plot
+    scale = 1
+    obs.scale = 1 - scale
+    var.scale = scale
 
-        # Recover the SVD
-        nobs.factor <- sqrt(nrow(pcobj$x) - 1)
-        d <- pcobj$sdev
-        u <- sweep(pcobj$x, 2, 1 / (d * nobs.factor), FUN = '*')
-        v <- pcobj$rotation
-        # Scores
-        choices <- pmin(choices, ncol(u))
-        df.u <- as.data.frame(sweep(u[,choices], 2, d[choices]^obs.scale, FUN='*'))
-        # Directions
-        v <- sweep(v, 2, d^var.scale, FUN='*')
-        df.v <- as.data.frame(v[, choices])
+    # Recover the SVD
+    nobs.factor <- sqrt(nrow(pcobj$x) - 1)
+    d <- pcobj$sdev
+    u <- sweep(pcobj$x, 2, 1 / (d * nobs.factor), FUN = '*')
+    v <- pcobj$rotation
+    # Scores
+    choices <- pmin(choices, ncol(u))
+    df.u <- as.data.frame(sweep(u[,choices], 2, d[choices]^obs.scale, FUN='*'))
+    # Directions
+    v <- sweep(v, 2, d^var.scale, FUN='*')
+    df.v <- as.data.frame(v[, choices])
 
-        names(df.u) <- c('xvar', 'yvar')
-        names(df.v) <- names(df.u)
-        df.u <- df.u * nobs.factor
+    names(df.u) <- c('xvar', 'yvar')
+    names(df.v) <- names(df.u)
+    df.u <- df.u * nobs.factor
 
-        # Variable Names
-        df.v$varname <- rownames(v)
-        # Variables for text label placement
-        df.v$angle <- with(df.v, (180/pi) * atan(yvar / xvar))
-        df.v$hjust = with(df.v, (1 - 1.5 * sign(xvar)) / 2)
+    # Variable Names
+    df.v$varname <- rownames(v)
+    # Variables for text label placement
+    df.v$angle <- with(df.v, (180/pi) * atan(yvar / xvar))
+    df.v$hjust = with(df.v, (1 - 1.5 * sign(xvar)) / 2)
 
-        # Change the labels for the axes
-        # Append the proportion of explained variance to the axis labels
-        u.axis.labs <- paste('standardized PC', choices, sep='')
-        u.axis.labs <- paste(u.axis.labs, sprintf('(%0.1f%% explained var.)', 100 * pcobj$sdev[choices]^2/sum(pcobj$sdev^2)))
+    # Change the labels for the axes
+    # Append the proportion of explained variance to the axis labels
+    u.axis.labs <- paste('standardized PC', choices, sep='')
+    u.axis.labs <- paste(u.axis.labs, sprintf('(%0.1f%% explained var.)', 100 * pcobj$sdev[choices]^2/sum(pcobj$sdev^2)))
 
-        return(list(df.v = tibble(df.v), # Variables
-                    df.u = tibble(df.u), # Score
-                    u.axis.labs = u.axis.labs))
-    }
+    return(list(df.v = tibble(df.v), # Variables
+                df.u = tibble(df.u), # Score
+                u.axis.labs = u.axis.labs))
+}
 plates_no_colony <- c(
     "B2_T8_C11R1_5-95_2_8",
     "B2_T8_C11R1_5-95_2_9",
@@ -169,6 +169,7 @@ plates_no_colony <- c(
 
 
 feature_candidates <- c(
+    paste0(c(
     "s.area", "s.radius.mean", "s.radius.sd",
     "s.perimeter", "s.radius.mean", "s.radius.sd", "s.radius.min", "s.radius.max",
     "m.cx", "m.cy", "m.majoraxis", "m.eccentricity", "m.theta",
@@ -178,14 +179,16 @@ feature_candidates <- c(
     "b.center", "b.periphery", "b.diff.cp",
     "b.tran.q005", "b.tran.q01", "b.tran.q05", "b.tran.q09", "b.tran.q095"
     #"t.bump.number"
+    ), "_green"),
+    paste0(c("b.mean", "b.sd", "b.mad"), rep(c("_red", "_blue"), each = 3))
 )
 
 i = which(list_image_mapping_folder$image_name_pair == "D_T8_C1R2_5-95_1_2")
 
 for (i in 1:nrow(list_image_mapping_folder)) {
     cat("\t", i)
-    image_name <- list_images$image_name[i]
-    color_channel <- list_images$color_channel[i]
+    image_name <- list_image_mapping_folder$image_name_pair[i]
+    #color_channel <- list_image_mapping_folder$color_channel[i]
     #if (i < 174)  next
 
     ## Skip images with no colony
@@ -193,10 +196,10 @@ for (i in 1:nrow(list_image_mapping_folder)) {
 
 
     # 9.1 Read object features from isolate and co-coculture images ----
-    object_feature_isolates <- read_feature(type = "isolate") %>%
+    object_feature_isolates <- read_feature(type = "isolate", color_channel = "merged") %>%
         select(image_name, ObjectID, Group, all_of(feature_candidates)) %>%
         mutate(Group = factor(Group))
-    object_feature_pair <- read_feature(type = "pair") %>%
+    object_feature_pair <- read_feature(type = "pair", color_channel = "merged") %>%
         select(image_name, ObjectID, Group, all_of(feature_candidates)) %>%
         filter(is.na(Group))
     cat("\nfeature")
@@ -209,7 +212,8 @@ for (i in 1:nrow(list_image_mapping_folder)) {
         number = 10
     )
     ## Test an array of arguments for random forest
-    rfGrid <- expand.grid(.mtry = c(1:10), .ntree = c(500))
+    mtry_range <- seq(2, (length(object_feature_isolates)-3), 5)
+    rfGrid <- expand.grid(.mtry = mtry_range, .ntree = c(500))
     ## Customize RF to include argument ntree
     customRF <- create_customRF()
 
@@ -248,7 +252,7 @@ for (i in 1:nrow(list_image_mapping_folder)) {
         # Train model accuracy
         geom_point(aes(x = model_final$results$mtry, y = model_final$results$Accuracy, color = "training set"), size = 3, shape = 21, fill = "white", stroke = 2) +
         geom_hline(aes(yintercept = model_final$results$Accuracy, color = "training set"), size = 1) +
-        scale_x_continuous(breaks = 1:10) +
+        scale_x_continuous(breaks = mtry_range) +
         scale_color_manual(values = c("validation set" = "black", "training set" = "blue")) +
         theme_cowplot() +
         theme(panel.grid.major = element_line(color = gray(0.8))) +

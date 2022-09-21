@@ -3,6 +3,7 @@ library(EBImage)
 
 list_images <- read_csv(commandArgs(trailingOnly = T)[1], show_col_types = F)
 #list_images <- read_csv("~/Desktop/Lab/emergent-coexistence/output/check/00-list_images-D-green.csv", show_col_types = F)
+#list_images <- read_csv("~/Desktop/Lab/emergent-coexistence/output/check/00-list_images-C-green.csv", show_col_types = F)
 #list_images <- read_csv("~/Desktop/Lab/emergent-coexistence/output/check/00-list_images-D.csv", show_col_types = F)
 #list_images <- read_csv("~/Desktop/Lab/emergent-coexistence/output/check/00-list_images-C2.csv", show_col_types = F)
 #list_images <- read_csv("~/Desktop/Lab/emergent-coexistence/output/check/00-list_images-B2.csv", show_col_types = F)
@@ -78,7 +79,6 @@ detect_nonround_object <- function (image_object, image_intensity = NULL, waters
 i = which(list_images$image_name %in% c("D_T0_C1R4_3"))
 
 for (i in 1:nrow(list_images)) {
-    i = which(list_images$image_name %in% c("D_T0_C1R4_3"))
     #if (i < 7) next
     image_name <- list_images$image_name[i]
     color_channel <- list_images$color_channel[i]

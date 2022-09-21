@@ -283,7 +283,7 @@ fill_names <- c("#FF5A5F","#087E8B", "black") %>% setNames(c("predicted isolate1
 p1 <- object_count_ordered %>%
     mutate(AccuracyPassThreshold = ifelse(image_name_pair %in% temp$image_name_pair, "low accuracy", "high accuracy")) %>%
     ggplot() +
-    geom_col(aes(x = image_name_pair, y = Fraction, fill = Group, color = ), alpha = .5) +
+    geom_col(aes(x = image_name_pair, y = Fraction, fill = Group, color = AccuracyPassThreshold), alpha = .5) +
     geom_hline(yintercept = 0.05, linetype = 3, color = 1) +
     scale_fill_manual(values = fill_names) +
     scale_color_manual(values = c("low accuracy" = "black", "high accuracy" = NA)) +
