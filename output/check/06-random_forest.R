@@ -189,7 +189,7 @@ for (i in 1:nrow(list_image_mapping_folder)) {
     cat("\t", i)
     image_name <- list_image_mapping_folder$image_name_pair[i]
     #color_channel <- list_image_mapping_folder$color_channel[i]
-    #if (i < 174)  next
+    #if (i < 195)  next
 
     ## Skip images with no colony
     if (list_image_mapping_folder$image_name_pair[i] %in% plates_no_colony) {cat("\nno colony, no watershed image\t", list_image_mapping_folder$image_name_pair[i]); next}

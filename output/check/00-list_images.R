@@ -3,11 +3,11 @@
 library(tidyverse)
 
 # This main folder depends on your home directory and user name. Python somehow does not read ~/ instead I have to specify /Users/chang-yu/
-# folder_main <- "~/Dropbox/lab/emergent-coexistence/data/raw/plate_scan/emergent_coexistence_plate_scan_check/"
-# folder_script <- "~/Desktop/Lab/emergent-coexistence/output/check/"
+folder_main <- "~/Dropbox/lab/emergent-coexistence/data/raw/plate_scan/emergent_coexistence_plate_scan_check/"
+folder_script <- "~/Desktop/Lab/emergent-coexistence/output/check/"
 
-folder_main <- "/Users/chang-yu/Dropbox/lab/emergent-coexistence/data/raw/plate_scan/emergent_coexistence_plate_scan_check/"
-folder_script <- "/Users/chang-yu//Desktop/Lab/emergent-coexistence/output/check/"
+# folder_main <- "/Users/chang-yu/Dropbox/lab/emergent-coexistence/data/raw/plate_scan/emergent_coexistence_plate_scan_check/"
+# folder_script <- "/Users/chang-yu//Desktop/Lab/emergent-coexistence/output/check/"
 # folder_main <- "/Users/cychang/Dropbox/lab/emergent-coexistence/data/raw/plate_scan/emergent_coexistence_plate_scan_check/"
 # folder_script <- "/Users/cychang/Desktop/Lab/emergent-coexistence/output/check/"
 
