@@ -57,7 +57,8 @@ for (j in 1:length(batch_names)) {
         folder_transection = rep(paste0(folder_main, "check/", batch_names[j], "-06-transection/"), n_images),
         folder_feature = rep(paste0(folder_main, "check/", batch_names[j], "-07-feature/"), n_images),
         folder_logit = rep(paste0(folder_main, "check/", batch_names[j], "-08-logit/"), n_images),
-        folder_random_forest = rep(paste0(folder_main, "check/", batch_names[j], "-09-random_forest/"), n_images)
+        folder_random_forest = rep(paste0(folder_main, "check/", batch_names[j], "-09-random_forest/"), n_images),
+        folder_bootstrap = rep(paste0(folder_main, "check/", batch_names[j], "-10-bootstrap/"), n_images)
     )
 
     # Repeat the rows 3 times for rgb channels
