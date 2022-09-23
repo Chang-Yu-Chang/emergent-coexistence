@@ -14,15 +14,22 @@ plates_no_colony <- c(
     "C2_T8_C11R2_50-50_9_13"
 )
 
-# 1. Read data ----
-batch_names <- c("D", "C2", "B2")
-#batch_names <- c("D", "C2", "B2", "C")
+# 1. Read accuracy data ----
+#batch_names <- c("D", "C2", "B2")
+batch_names <- c("D", "C2", "B2", "C")
 
 ## Pairs mapping file
 list_image_mapping_master <- rep(list(NA), length(batch_names))
 for (j in 1:length(batch_names)) list_image_mapping_master[[j]] <- read_csv(paste0(folder_script, "00-list_image_mapping-", batch_names[j], ".csv") , show_col_types = F)
 list_image_mapping_master <- bind_rows(list_image_mapping_master)
-list_image_mapping_master %>% left_join(tibble(image_name_pair = plates_no_colony, Undecided = "no colony"))
+list_images_master <- rep(list(NA), length(batch_names))
+for (j in 1:length(batch_names)) list_images_master[[j]] <- read_csv(paste0(folder_script, "00-list_images-", batch_names[j], "-green.csv") , show_col_types = F)
+list_images_master <- bind_rows(list_images_master)
+list_image_mapping_folder_master <- list_image_mapping_master %>%
+    left_join(tibble(image_name_pair = plates_no_colony, Undecided = "no colony"), by = "image_name_pair") %>%
+    left_join(rename(list_images_master, image_name_pair = image_name), by = "image_name_pair") %>%
+    left_join(select(list_images_master, image_name_isolate1 = image_name), by = "image_name_isolate1") %>%
+    left_join(select(list_images_master, image_name_isolate2 = image_name), by = "image_name_isolate2")
 
 
 ## pairs of mismatch
@@ -32,7 +39,7 @@ pairs_mismatch <- read_csv("~/Desktop/Lab/emergent-coexistence/output/check/pair
 pairs_samebug <- pairs_mismatch %>%
     filter(Mismatch == 0) %>%
     mutate(PairSameBug = T)
-isolates_duplicate <- tibble(ID = c(462, 355, 356, 461, 452, 446, 305, 435, 444, 348, 460, 454), Remove = T)
+isolates_duplicate <- tibble(ID = c(462, 355, 356, 461, 452, 446, 305, 435, 444, 348, 460, 454), Duplicated = T)
 pairs_samebug_full <- pairs_samebug %>%
     mutate(revIsolate1 = Isolate2, revIsolate2 = Isolate1) %>%
     pivot_longer(cols = ends_with("Isolate1"), names_to = "temp", values_to = "Isolate1") %>%
@@ -40,7 +47,6 @@ pairs_samebug_full <- pairs_samebug %>%
     pivot_longer(cols = ends_with("Isolate2"), names_to = "temp", values_to = "Isolate2") %>%
     select(-temp) %>%
     filter(Isolate1 != Isolate2)
-
 
 ## Pairs of challenging morphology
 # C1R4	2,4	2,5	4,5
@@ -83,9 +89,6 @@ pairs_similar <- tibble(
 temp <- rep(list(NA), length(batch_names))
 
 for (j in 1:length(batch_names)) {
-    "
-    # Have to edit this to include rgb
-    "
     list_images <- read_csv(paste0(folder_script, "00-list_images-", batch_names[j], "-green.csv"), show_col_types = F)
     list_image_mapping <- read_csv(paste0(folder_script, "00-list_image_mapping-", batch_names[j], ".csv") , show_col_types = F)
 
@@ -137,19 +140,15 @@ for (j in 1:length(batch_names)) {
         left_join(list_image_mapping_folder, by = "image_name_pair") %>%
         select(-starts_with("folder_"))
 }
+
 accuracy_validation_batch <- bind_rows(temp)
 
-# 2. Remove duplicated isolates that have 0 mismatch and remove Staph ----
-
-## Append ID of Duplicated isolates to my internal ID
-isolates_ID_match <- read_csv("~/Dropbox/lab/emergent-coexistence/data/raw/pairwise_competition/isolates1.csv", col_types = cols()) %>%
-    mutate(Assembly = "self_assembly") %>%
-    select(ID, Community, Isolate) %>%
-    left_join(isolates_duplicate, by = "ID") %>%
-    replace_na(list(Remove = F))
+write_csv(object_prediction_batch, paste0(folder_main, "meta/object_prediction_batch.csv"))
+write_csv(accuracy_validation_batch, paste0(folder_main, "meta/accuracy_validation_batch.csv"))
 
 
-## Append the column and remove duplicated isolates in the prediction tibble
+# 2. Clean up pairs of contamination/duplications ----
+## 2.1 Remove contaminant Staph
 object <- object_prediction_batch %>%
     # Remove C11R2 isolate 13, which is a Staph. It's also not included in isolates_ID_match
     filter(!((Community == "C11R2" & Isolate1 == 13) | ((Community == "C11R2" & Isolate2 == 13))))
@@ -158,119 +157,142 @@ object_prediction_batch %>%
     filter(((Community == "C11R2" & Isolate1 == 13) | ((Community == "C11R2" & Isolate2 == 13)))) %>%
      distinct(Community, Isolate1, Isolate2, Freq1) %>% nrow() # Number of coculture images containing C11R2 isolate 13
 
-object_clean <- object %>%
-    left_join(rename(isolates_ID_match, ID1 = ID, Isolate1 = Isolate, Remove1 = Remove), by = c("Community", "Isolate1")) %>%
-    left_join(rename(isolates_ID_match, ID2 = ID, Isolate2 = Isolate, Remove2 = Remove), by = c("Community", "Isolate2")) %>%
-    filter(Remove1 == F & Remove2 == F)
-object_clean %>% distinct(Community, Isolate1, Isolate2, Freq1) %>% nrow() # Number of clean images containing no duplicate isolate
+## 2.2 Replace batch B2 C11R1 all pairs containing isolate 1 (contaminated inoculum) with batch C data
+object <- object %>%
+    # Remove batch B2 C11R1 pairs that contains isolate 1
+    filter(!(Batch == "B2" & Community == "C11R1" & (Isolate1 == 1 | Isolate2 == 1))) %>%
+    # Keep batch C C11R1 pairs that contains isolate 1
+    filter(!(Batch == "C" & Community == "C11R1" & (Isolate1 != 1 & Isolate2 != 1)))
 
-object_duplicate <- object %>%
-    left_join(rename(isolates_ID_match, ID1 = ID, Isolate1 = Isolate, Remove1 = Remove), by = c("Community", "Isolate1")) %>%
-    left_join(rename(isolates_ID_match, ID2 = ID, Isolate2 = Isolate, Remove2 = Remove), by = c("Community", "Isolate2")) %>%
-    filter(Remove1 == T | Remove2 == T)
-object_duplicate %>% distinct(Community, Isolate1, Isolate2, Freq1) %>% nrow() # Number of coculture images containting one or both duplicated isolates
+# object %>%
+#     distinct(Batch, Community, Isolate1, Isolate2) %>%
+#     view
+
+## 2.3 Remove duplicated isolates
+## Append ID of Duplicated isolates to my internal ID
+isolates_ID_match <- read_csv("~/Dropbox/lab/emergent-coexistence/data/raw/pairwise_competition/isolates1.csv", col_types = cols()) %>%
+    mutate(Assembly = "self_assembly") %>%
+    select(ID, Community, Isolate) %>%
+    left_join(isolates_duplicate, by = "ID") %>%
+    replace_na(list(Duplicated = F))
+## Append the column and remove duplicated isolates in the prediction tibble
+object <- object %>%
+    left_join(rename(isolates_ID_match, ID1 = ID, Isolate1 = Isolate, Duplicated1 = Duplicated), by = c("Community", "Isolate1")) %>%
+    left_join(rename(isolates_ID_match, ID2 = ID, Isolate2 = Isolate, Duplicated2 = Duplicated), by = c("Community", "Isolate2")) %>%
+    mutate(PairType = case_when(
+        Duplicated1 == F & Duplicated2 == F ~ "clean",
+        Duplicated1 == T & Duplicated2 == F ~ "one duplicate",
+        Duplicated1 == F & Duplicated2 == T ~ "one duplicate",
+        Duplicated1 == T & Duplicated2 == T ~ "both duplicate"
+    )) %>%
+    mutate(PairType = factor(PairType, c("clean", "one duplicate", "both duplicate")))
+
+
+object %>%
+    distinct(Community, Isolate1, Isolate2, Freq1, .keep_all = T) %>%
+    group_by(PairType) %>%
+    count(name = "Count")
+
+#   PairType       Count
+#   <chr>          <int>
+# 1 clean            357
+# 2 one duplicate    171
+# 3 both duplicate    21
+
 
 ## Append the column and remove duplicated isolates in the accuracy table
 accuracy <- accuracy_validation_batch %>%
+    filter(FinalModel) %>%
     # Remove C11R2 isolate 13, which is a Staph. It's also not included in isolates_ID_match
-    filter(!((Community == "C11R2" & Isolate1 == 13) | ((Community == "C11R2" & Isolate2 == 13))))
+    filter(!((Community == "C11R2" & Isolate1 == 13) | ((Community == "C11R2" & Isolate2 == 13)))) %>%
+    # Remove batch B2 C11R1 pairs that contains isolate 1
+    filter(!(Batch == "B2" & Community == "C11R1" & (Isolate1 == 1 | Isolate2 == 1))) %>%
+    # Keep batch C C11R1 pairs that contains isolate 1
+    filter(!(Batch == "C" & Community == "C11R1" & (Isolate1 != 1 & Isolate2 != 1))) %>%
+    # Label pairs containing duplicates
+    left_join(rename(isolates_ID_match, ID1 = ID, Isolate1 = Isolate, Duplicated1 = Duplicated), by = c("Community", "Isolate1")) %>%
+    left_join(rename(isolates_ID_match, ID2 = ID, Isolate2 = Isolate, Duplicated2 = Duplicated), by = c("Community", "Isolate2")) %>%
+    mutate(PairType = case_when(
+        Duplicated1 == F & Duplicated2 == F ~ "clean",
+        Duplicated1 == T & Duplicated2 == F ~ "one duplicate",
+        Duplicated1 == F & Duplicated2 == T ~ "one duplicate",
+        Duplicated1 == T & Duplicated2 == T ~ "both duplicate"
+    )) %>%
+    mutate(PairType = factor(PairType, c("clean", "one duplicate", "both duplicate"))) %>%
+    mutate(AccuracyPassThreshold = case_when(
+        Accuracy >= 0.9 ~ T,
+        Accuracy < 0.9 ~ F
+    )) %>%
+    select(image_name_pair, Accuracy, AccuracyPassThreshold, PairType, everything())
 
-accuracy_clean <- accuracy %>%
-    left_join(rename(isolates_ID_match, ID1 = ID, Isolate1 = Isolate, Remove1 = Remove), by = c("Community", "Isolate1")) %>%
-    left_join(rename(isolates_ID_match, ID2 = ID, Isolate2 = Isolate, Remove2 = Remove), by = c("Community", "Isolate2")) %>%
-    filter(Remove1 == F & Remove2 == F)
-accuracy_clean %>% distinct(Community, Isolate1, Isolate2, Freq1) %>% nrow() # Number of clean images containing no duplicate isolate
-
-accuracy_duplicate <- accuracy %>%
-    left_join(rename(isolates_ID_match, ID1 = ID, Isolate1 = Isolate, Remove1 = Remove), by = c("Community", "Isolate1")) %>%
-    left_join(rename(isolates_ID_match, ID2 = ID, Isolate2 = Isolate, Remove2 = Remove), by = c("Community", "Isolate2")) %>%
-    filter(Remove1 == T | Remove2 == T)
-accuracy_duplicate %>% distinct(Community, Isolate1, Isolate2, Freq1) %>% nrow() # Number of coculture images containting one or both duplicated isolates
-
-accuracy_train <- bind_rows(
-    accuracy_clean %>% filter(FinalModel) %>% mutate(CleanPair = T),
-    accuracy_duplicate %>% filter(FinalModel) %>% mutate(CleanPair = F)
-)
 
 
-# 3. Model accuracy
-accuracy_train_count <- accuracy_train %>%
-    mutate(CleanPair = factor(CleanPair, c(T, F))) %>%
-    group_by(CleanPair) %>%
+# 3. Model accuracy ----
+accuracy_count <- accuracy %>%
+    group_by(PairType) %>%
     count(name = "Count")
 
-p1a <- accuracy_train %>%
-    mutate(CleanPair = factor(CleanPair, c(T, F))) %>%
+p1a <- accuracy %>%
     ggplot() +
     geom_histogram(aes(x = Accuracy), color = 1, binwidth = 0.01, breaks = seq(0.6,1,.01)) +
-    geom_text(data = accuracy_train_count, x = -Inf, y = Inf, aes(label = paste0("N=",Count)), vjust = 2, hjust = -1) +
+    geom_text(data = accuracy_count, x = -Inf, y = Inf, aes(label = paste0("N=",Count)), vjust = 2, hjust = -1) +
     geom_vline(xintercept = 0.9, color = "red", linetype = 2) +
-    facet_grid(CleanPair~., labeller = labeller(CleanPair = c("TRUE" = "clean pair", "FALSE" = "duplicated isolates"))) +
+    facet_grid(PairType~.) +
     theme_classic() +
     theme(panel.border = element_rect(color = 1, fill = NA)) +
     labs(x = "Accuracy", y = "Count")
 
-p1b <- accuracy_train %>%
-    mutate(CleanPair = factor(CleanPair, c(T, F))) %>%
+p1b <- accuracy %>%
     ggplot() +
     geom_histogram(aes(x = Accuracy), color = 1, binwidth = 0.01, breaks = seq(0.6,1,.01)) +
-    geom_text(data = accuracy_train_count, x = -Inf, y = Inf, aes(label = paste0("N=",Count)), vjust = 2, hjust = -1) +
+    geom_text(data = accuracy_count, x = -Inf, y = Inf, aes(label = paste0("N=",Count)), vjust = 2, hjust = -1) +
     geom_vline(xintercept = 0.9, color = "red", linetype = 2) +
     scale_y_log10() +
-    facet_grid(CleanPair~., labeller = labeller(CleanPair = c("TRUE" = "clean pair", "FALSE" = "duplicated isolates"))) +
+    facet_grid(PairType~.) +
     theme_classic() +
     theme(panel.border = element_rect(color = 1, fill = NA)) +
     labs(x = "Accuracy", y = "Count")
 
 p1 <- plot_grid(p1a, p1b, nrow = 1, axis = "tb", align = "h", scale = 0.9, labels = c("count", "log-scale")) + theme(plot.background = element_rect(fill = "white", color = NA))
-ggsave(paste0(folder_main, "examination/random_forest-accuracy.png"), p1, width = 10, height = 6)
+ggsave(paste0(folder_main, "meta/random_forest-accuracy.png"), p1, width = 6, height = 6)
 
 
 ## How many of the clean pairs have accurracy lower than 0.9?
-accuracy_train %>%
-    #filter(CleanPair) %>%
-    mutate(AccuracyPassThreshold = case_when(
-        Accuracy >= 0.9 ~ T,
-        Accuracy < 0.9 ~ F
-    )) %>%
-    group_by(CleanPair, AccuracyPassThreshold) %>%
+
+accuracy %>%
+    group_by(PairType, AccuracyPassThreshold) %>%
     count(name = "Count") %>%
-    group_by(CleanPair) %>%
+    group_by(PairType) %>%
     mutate(Fraction = Count / sum(Count))
 
-# Groups:   CleanPair [2]
-#   CleanPair AccuracyPassThreshold Count Fraction
-#   <lgl>     <lgl>                 <int>    <dbl>
-# 1 FALSE     FALSE                    28   0.145
-# 2 FALSE     TRUE                    165   0.855
-# 3 TRUE      FALSE                     6   0.0168
-# 4 TRUE      TRUE                    352   0.983
+#   PairType       AccuracyPassThreshold Count Fraction
+#   <fct>          <lgl>                 <int>    <dbl>
+# 1 clean          TRUE                    357    1
+# 2 one duplicate  FALSE                    24    0.140
+# 3 one duplicate  TRUE                    147    0.860
+# 4 both duplicate FALSE                     3    0.143
+# 5 both duplicate TRUE                     18    0.857
 
-
-## Pairs that have accuracy < 0.9
-temp <- accuracy_train %>%
-    filter(CleanPair) %>%
-    filter(Accuracy < 0.9) %>%
-    select(image_name_pair, Batch, Community, Isolate1, Isolate2, Freq1, Freq2, Accuracy)
+write_csv(object, paste0(folder_main, "meta/object.csv"))
+write_csv(accuracy, paste0(folder_main, "meta/accuracy.csv"))
 
 
 # 4. Prediction overview ----
-
-
 # Object prediction counts
-object_count <- object_clean %>%
+object_count <- object %>%
     mutate(Group = factor(Group)) %>%
-    group_by(image_name_pair, Community, Isolate1, Isolate2, Group, .drop = F) %>%
+    group_by(PairType, image_name_pair, Community, Isolate1, Isolate2, Group, .drop = F) %>%
     count(name = "Count") %>%
     ungroup()
 
 
 # Object prediction counts, pairs ordered by the fraction of undecided colonies
 object_count_ordered <- object_count %>%
-    group_by(image_name_pair) %>%
+    filter(PairType == "clean") %>%
+    group_by(PairType, image_name_pair) %>%
     mutate(Fraction = Count / sum(Count)) %>%
-    pivot_wider(id_cols = c(image_name_pair, Community, Isolate1, Isolate2), names_from = Group, values_from = Fraction) %>%
-    arrange(`predicted isolate1`, `predicted isolate2`)  %>%
+    pivot_wider(id_cols = c(PairType, image_name_pair, Community, Isolate1, Isolate2), names_from = Group, values_from = Fraction) %>%
+    arrange(PairType, `predicted isolate1`, `predicted isolate2`)  %>%
     ungroup() %>%
     # Assign sorting ID to the pairs
     mutate(PairOrder = 1:n()) %>%
@@ -280,7 +302,7 @@ object_count_ordered <- object_count %>%
 
 # Plot the result
 fill_names <- c("#FF5A5F","#087E8B", "black") %>% setNames(c("predicted isolate1", "predicted isolate2", "undecided"))
-p1 <- object_count_ordered %>%
+p2 <- object_count_ordered %>%
     mutate(AccuracyPassThreshold = ifelse(image_name_pair %in% temp$image_name_pair, "low accuracy", "high accuracy")) %>%
     ggplot() +
     geom_col(aes(x = image_name_pair, y = Fraction, fill = Group, color = AccuracyPassThreshold), alpha = .5) +
@@ -290,37 +312,7 @@ p1 <- object_count_ordered %>%
     scale_y_continuous(expand = c(0,0)) +
     theme_classic() +
     theme(axis.text.x = element_text(angle = 90, vjust = 0.5))
-ggsave(paste0(folder_main, "examination/random_forest-prediction.png"), p1, width = 40, height = 10)
-
-
-# number of sorted out / low undecided / high undecided
-object_count_undecided <- object_count_ordered %>%
-    pivot_wider(names_from = Group, values_from = Fraction) %>%
-    mutate(Undecided = case_when(
-        undecided == 0 ~ "sorted out",
-        undecided < 0.05 ~ "low undecided",
-        undecided >= 0.05 ~ "high undecided"
-    ))
-
-object_count_undecided %>%
-    group_by(Undecided) %>%
-    count(name = "Count") %>%
-    ungroup() %>%
-    mutate(Fraction = Count / sum(Count))
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+ggsave(paste0(folder_main, "meta/random_forest-prediction.png"), p2, width = 40, height = 10)
 
 
 
