@@ -109,7 +109,7 @@ for (j in 1:length(batch_names)) {
 
 }
 
-# A master mapping csv
+# A master mapping csv ----
 list_image_mapping_master <- rep(list(NA), length(batch_names))
 for (j in 1:length(batch_names)) list_image_mapping_master[[j]] <- read_csv(paste0(folder_script, "00-list_image_mapping-", batch_names[j], ".csv") , show_col_types = F)
 list_image_mapping_master <- bind_rows(list_image_mapping_master)

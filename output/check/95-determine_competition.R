@@ -13,7 +13,6 @@ folder_main <- "~/Dropbox/lab/emergent-coexistence/data/raw/plate_scan/emergent_
 pairs_freq_ID <- read_csv(paste0(folder_main, "meta/pairs_freq_ID.csv"), show_col_types = F)
 pairs_T0_boots <- read_csv(paste0(folder_main, "meta/pairs_T0_boots.csv"), show_col_types = F)
 pairs_T8_boots <- read_csv(paste0(folder_main, "meta/pairs_T8_boots.csv"), show_col_types = F)
-
 pairs_no_colony <- c(
     "C11R1_2_8",
     "C11R1_2_9",
@@ -100,8 +99,162 @@ for (i in 1:nrow(pairs_ID)) {
 #write_csv(pairs_boots_table, paste0(folder_main, "meta/pairs_boots_table.csv"))
 
 
-# 2. Coculture the plates ----
+# 2. Calculate the significance of frequency change ----
+temp <- rep(list(NA), nrow(pairs_ID))
+for (i in 1:nrow(pairs_ID)) {
+    community <- pairs_ID$Community[i]
+    isolate1 <- pairs_ID$Isolate1[i]
+    isolate2 <- pairs_ID$Isolate2[i]
+    pair_name <- paste0(community, "_", isolate1, "_", isolate2)
+    if (pair_name %in% pairs_no_colony) {cat("\nT8 has no colony, skip pair\t", pair_name); next}
 
+    #ggsave(paste0(folder_main, "check/D-11-T0_T8_frequencies/", pair_name, ".png"), p, width = 10, height = 5)
+    temp[[i]] <- read_csv(paste0(folder_main, "check/D-11-T0_T8_frequencies/", pair_name, ".csv"), show_col_types = F)
+}
+pairs_boots_table <- bind_rows(temp[which(!is.na(temp))])
+
+pairs_fitness <- pairs_boots_table %>%
+    group_by(Community) %>%
+    # mutate(FreqChangeSign = factor(FreqChangeSign, c("increase", "decrease", "same"))) %>%
+    # group_by(Community, Isolate1, Isolate2, Isolate1InitialODFreq, FreqChangeSign, .drop = F) %>%
+    # count(name = "Count") %>%
+    mutate(Community = factor(Community, paste0("C", rep(1:12, each = 8), "R", rep(1:8, 12)))) %>%
+    arrange(Community, Isolate1, Isolate2, Isolate1InitialODFreq) %>%
+    group_by(Community, Isolate1, Isolate2, Isolate1InitialODFreq, .drop = F) %>%
+    mutate(Fraction = Count / sum(Count)) %>%
+    # C11R1 isolate 6
+    filter(!is.na(FreqChangeSign)) %>%
+    pivot_wider(id_cols = c(Community, Isolate1, Isolate2, Isolate1InitialODFreq), names_from = FreqChangeSign, values_from = Fraction)
+
+make_interaction_type <- function () {
+
+    interaction_type_three <- tibble(
+        FromRare = rep(c(1, -1, 0), each = 9),
+        FromMedium = rep(rep(c(1, -1, 0), each = 3), 3),
+        FromAbundant = rep(c(1, -1, 0), 9),
+        InteractionType = NA,
+        InteractionTypeFiner = NA
+    )
+    interaction_type_two <- tibble(
+        FromRare = rep(c(1, -1, 0), each = 3),
+        FromMedium = rep(NA, 9),
+        FromAbundant = rep(c(1, -1, 0), 3),
+        InteractionType = NA,
+        InteractionTypeFiner = NA
+    )
+
+    interaction_type <- bind_rows(interaction_type_three, interaction_type_two)
+
+    ## Assign interaction types to combinations of frequency changes signs
+    interaction_type$InteractionType[c(1, 14, 28, 32, 10, 13, 31)] <- "exclusion"
+    interaction_type$InteractionType[c(2, 3, 5, 8, 9, 23, 26, 29, 30, 33, 4, 11, 12, 15, 17, 20, 34, 35)] <- "coexistence"
+    interaction_type$InteractionType[c(27, 36)] <- "coexistence"
+
+    ## Assign finer interaction types to combinations of frequency changes signs
+    interaction_type$InteractionTypeFiner[c(1, 14, 28, 32)] <- "competitive exclusion"
+    interaction_type$InteractionTypeFiner[c(10, 13, 31)] <- "mutual exclusion"
+    interaction_type$InteractionTypeFiner[c(2, 3, 5, 8, 9, 23, 26, 29, 30, 33)] <- "stable coexistence"
+    interaction_type$InteractionTypeFiner[c(4, 11, 12, 15, 17, 20, 34, 35)] <- "frequency-dependent coexistence"
+    interaction_type$InteractionTypeFiner[c(27,36)] <- "neutrality"
+    interaction_type <- interaction_type %>%  mutate(FitnessFunction = paste(FromRare, FromMedium, FromAbundant, sep = "_"))
+}
+interaction_type <- make_interaction_type()
+
+pairs_outcome <- pairs_fitness %>%
+    mutate(FitnessChange = case_when(
+        increase > 0.95 ~ 1,
+        decrease > 0.95 ~ -1,
+        increase < 0.95 & decrease < 0.95 ~ 0
+    )) %>%
+    pivot_wider(id_cols = c(Community, Isolate1, Isolate2), names_from = Isolate1InitialODFreq, values_from = FitnessChange) %>%
+    rename(FromRare = `5`, FromMedium = `50`, FromAbundant = `95`) %>%
+    left_join(interaction_type) %>%
+    select(Community, Isolate1, Isolate2, InteractionType, InteractionTypeFiner, FitnessFunction)
+
+# 3. Plot the competition outcomes ----
+
+assign_interaction_color <- function (level = "simple") {
+    if (level == "simple") {
+        interaction_type <- c("exclusion", "coexistence")
+        interaction_color <- c("#DB7469", "#557BAA")
+        names(interaction_color) <- interaction_type
+        return(interaction_color)
+    }
+    if (level == "matrix") {
+        interaction_type <- c("exclusion", "coexistence", "exclusion violating rank", "bistability", "neutrality", "self", "undefined")
+        interaction_color <- c("#DB7469", "#557BAA", "#8CB369", "#EECF6D", "#8650C4", "black", "grey80")
+        names(interaction_color) <- interaction_type
+        return(interaction_color)
+    }
+    if (level == "finer") {
+        interaction_type <- c("competitive exclusion", "stable coexistence", "mutual exclusion", "frequency-dependent coexistence", "neutrality", "exclusion violating rank")
+        interaction_color <- c("#DB7469", "#557BAA", "#FFBC42", "#B9FAF8", "#8650C4", "#8CB369")
+        names(interaction_color) <- interaction_type
+        return(interaction_color)
+    }
+}
+fill_names <- assign_interaction_color()
+
+pairs_outcome %>%
+    ungroup() %>%
+    #unite(col = "FitnessFunction", FromRare, FromMedium, FromAbundant, sep = "_") %>%
+    group_by(FitnessFunction, InteractionType) %>%
+    count(name = "Count")
+
+
+# Exclusion vs. coexistence
+pairs_outcome %>%
+    ggplot() +
+    geom_bar(aes(x = Community, fill = InteractionType), position = "fill") +
+    scale_fill_manual(values = fill_names) +
+    theme_classic()
+
+# Finer scale
+pairs_outcome %>%
+    ggplot() +
+    geom_bar(aes(x = Community, fill = InteractionTypeFiner), position = "fill") +
+    scale_fill_manual(values = assign_interaction_color(level = "finer")) +
+    theme_classic()
+
+
+# 4. Compare the pairs_T0_boots result to randomforest classified result
+
+# 10.3 aggregate the predicted result ----
+
+for (i in 1:nrow(list_image_mapping_folder)) {
+    i=1
+    ## Skip images with no colony
+    if (list_image_mapping_folder$image_name_pair[i] %in% plates_no_colony) {cat("\nno colony, no watershed image\t", list_image_mapping_folder$image_name_pair[i]); next}
+    # 10.0 Read the random forest object probabilities ----
+    image_name <- list_image_mapping_folder$image_name_pair[i]
+    object_feature_predicted <- read_csv(paste0(list_image_mapping_folder$folder_random_forest[i], image_name, ".csv"), show_col_types = F)
+    cat("\n", nrow(object_feature_predicted), "objects")
+
+
+    # 10.1 boostrapping ----
+    cat("\t bootstrap", n_bootstraps, " times")
+    object_bootstrapped <- rep(list(NA), n_bootstraps)
+    for (j in 1:n_bootstraps) {
+        object_bootstrapped[[j]] <- object_feature_predicted %>%
+            rowwise() %>%
+            mutate(BootstrapID = j) %>%
+            mutate(Group = sample(c("isolate1", "isolate2"), size = 1, replace = F, prob = c(PredictedProbabilityIsolate1, PredictedProbabilityIsolate2))) %>%
+            select(image_name, BootstrapID, ObjectID, Group)
+        if (j %% 100 == 0) cat(" ", j)
+    }
+
+    # 10.2 output the result ----
+
+    object_bootstrapped <- bind_rows(object_bootstrapped) %>%
+        pivot_wider(id_cols = ObjectID, names_from = BootstrapID, values_from = Group, names_prefix = "bootstrap_")
+    write_csv(object_bootstrapped, paste0(list_image_mapping_folder$folder_bootstrap[i], image_name, ".csv"))
+
+    cat("\t", i, "/", nrow(list_image_mapping_folder), "\t", list_image_mapping_folder$image_name_pair[i])
+
+
+
+"
+determine compettion using defiend "
 
 #     ggplot() +
 #     geom_histogram(aes(x = Isolate1CFUFreq, fill = Time), color = 1) +
@@ -176,70 +329,6 @@ No colony on T8 for C11R1 8 9 5 95
 No colony on T8 for C11R2 2 10 50 50
 that should have colonies
 "
-
-# 5. Calculate significance of frequency change ----
-make_interaction_type <- function () {
-
-    interaction_type_three <- tibble(
-        FromRare = rep(c(1, -1, 0), each = 9),
-        FromMedium = rep(rep(c(1, -1, 0), each = 3), 3),
-        FromAbundant = rep(c(1, -1, 0), 9),
-        InteractionType = NA,
-        InteractionTypeFiner = NA
-    )
-    interaction_type_two <- tibble(
-        FromRare = rep(c(1, -1, 0), each = 3),
-        FromMedium = rep(NA, 9),
-        FromAbundant = rep(c(1, -1, 0), 3),
-        InteractionType = NA,
-        InteractionTypeFiner = NA
-    )
-
-    interaction_type <- bind_rows(interaction_type_three, interaction_type_two)
-
-    ## Assign interaction types to combinations of frequency changes signs
-    interaction_type$InteractionType[c(1, 14, 28, 32, 10, 13, 31)] <- "exclusion"
-    interaction_type$InteractionType[c(2, 3, 5, 8, 9, 23, 26, 29, 30, 33, 4, 11, 12, 15, 17, 20, 34, 35)] <- "coexistence"
-    interaction_type$InteractionType[c(27, 36)] <- "neutrality"
-
-    ## Assign finer interaction types to combinations of frequency changes signs
-    interaction_type$InteractionTypeFiner[c(1, 14, 28, 32)] <- "competitive exclusion"
-    interaction_type$InteractionTypeFiner[c(10, 13, 31)] <- "mutual exclusion"
-    interaction_type$InteractionTypeFiner[c(2, 3, 5, 8, 9, 23, 26, 29, 30, 33)] <- "stable coexistence"
-    interaction_type$InteractionTypeFiner[c(4, 11, 12, 15, 17, 20, 34, 35)] <- "frequency-dependent coexistence"
-    interaction_type$InteractionTypeFiner[c(27,36)] <- "neutrality"
-    interaction_type <- interaction_type %>%  mutate(FitnessFunction = paste(FromRare, FromMedium, FromAbundant, sep = "_"))
-}
-interaction_type <- make_interaction_type()
-
-pairs_outcome <- pairs_fitness %>%
-    mutate(FreqChangeSign = factor(FreqChangeSign, c("increase", "decrease", "same"))) %>%
-    group_by(Community, Isolate1, Isolate2, Isolate1InitialODFreq, FreqChangeSign, .drop = F) %>%
-    count(name = "Count") %>%
-    mutate(Community = factor(Community, paste0("C", rep(1:12, each = 8), "R", rep(1:8, 12)))) %>%
-    arrange(Community, Isolate1, Isolate2, Isolate1InitialODFreq) %>%
-    group_by(Community, Isolate1, Isolate2, Isolate1InitialODFreq, .drop = F) %>%
-    mutate(Fraction = Count / sum(Count)) %>%
-    pivot_wider(id_cols = c(Community, Isolate1, Isolate2, Isolate1InitialODFreq), names_from = FreqChangeSign, values_from = Fraction) %>%
-    #select(Community, Isolate1, Isolate2, Isolate1InitialODFreq, )
-    #filter(increase > 0.95 | increase < 0.05) %>%
-    mutate(FitnessChange = case_when(
-        increase > 0.95 ~ 1,
-        decrease > 0.95 ~ -1,
-        increase < 0.95 & decrease < 0.95 ~ 0
-    )) %>%
-    pivot_wider(id_cols = c(Community, Isolate1, Isolate2), names_from = Isolate1InitialODFreq, values_from = FitnessChange) %>%
-    rename(FromRare = `5`, FromMedium = `50`, FromAbundant = `95`) %>%
-    left_join(interaction_type)
-
-pairs_outcome %>% view()
-
-
-
-pairs_outcome %>%
-    unite(col = "FitnessFunction", FromRare, FromMedium, FromAbundant, sep = "_") %>%
-    group_by(FitnessFunction) %>%
-    count(name = "Count")
 
 
 

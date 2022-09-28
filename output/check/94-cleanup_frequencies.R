@@ -10,6 +10,16 @@ folder_script <- "~/Desktop/Lab/emergent-coexistence/output/check/"
 folder_main <- "~/Dropbox/lab/emergent-coexistence/data/raw/plate_scan/emergent_coexistence_plate_scan_check/"
 boots <- read_csv(paste0(folder_main, "meta/bootstraps.csv"), show_col_types = F) # Bootstrapped results using the object probability
 pairs_freq_ID <- read_csv(paste0(folder_main, "meta/pairs_freq_ID.csv"), show_col_types = F)
+plates_no_colony <- c(
+    "B2_T8_C11R1_5-95_2_8",
+    "B2_T8_C11R1_5-95_2_9",
+    "B2_T8_C11R1_5-95_8_2",
+    "B2_T8_C11R1_5-95_9_8",
+    "B2_T8_C11R1_50-50_2_8",
+    "B2_T8_C11R1_50-50_2_9",
+    "C2_T8_C11R2_50-50_2_10",
+    "C2_T8_C11R2_50-50_9_13"
+)
 
 # 1. Compute epsilon to convert T0 OD to CFU frequencies ----
 ## 1.1 Read CFU data
@@ -246,6 +256,47 @@ pairs_T8_boots <- pairs_image_ID %>%
     ungroup()
 
 write_csv(pairs_T8_boots, paste0(folder_main, "meta/pairs_T8_boots.csv"))
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# 4. Aggregate the classified result from random forest
+
+temp <- rep(list(NA), nrow(pairs_freq_ID))
+for (i in 1:nrow(pairs_freq_ID)) {
+    # Skip images with no colony
+    if (pairs_freq_ID$image_name_pair[i] %in% plates_no_colony) {cat("\nno colony\t", pairs_freq_ID$image_name_pair[i]); next}
+    # Skip cocultures with no plate images
+    if (is.na(pairs_freq_ID$image_name_pair[i])) {cat("\nno colony\t", pairs_freq_ID$image_name_pair[i]); next}
+    temp[[i]] <- read_csv(paste0(folder_main, "check/", pairs_freq_ID$Batch[i],"-09-random_forest/", pairs_freq_ID$image_name_pair[i], ".csv"), show_col_types = F)
+    cat("\n", pairs_freq_ID$image_name_pair[i], i, "/", nrow(pairs_freq_ID))
+}
+
+object_predicted <- bind_rows(temp[which(!is.na(temp))])
+
+# Extract the result
+pairs_freq_ID
+object_predicted %>%
+    rename(image_name_pair = image_name) %>%
+    left_join(pairs_freq_ID) %>%
+    select()
+    distinct(image_name)
+
+
+
 
 
 
