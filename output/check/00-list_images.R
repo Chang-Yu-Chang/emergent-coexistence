@@ -109,25 +109,52 @@ for (j in 1:length(batch_names)) {
 
 }
 
+# A master mapping csv
+list_image_mapping_master <- rep(list(NA), length(batch_names))
+for (j in 1:length(batch_names)) list_image_mapping_master[[j]] <- read_csv(paste0(folder_script, "00-list_image_mapping-", batch_names[j], ".csv") , show_col_types = F)
+list_image_mapping_master <- bind_rows(list_image_mapping_master)
 
 
+pairs_freq_ID <- list_image_mapping_master %>%
+    rename(Isolate1InitialODFreq = Freq1, Isolate2InitialODFreq = Freq2) %>%
+    # Correct the isolate order
+    rowwise() %>%
+    mutate(Isolate1InitialODFreq = ifelse(Isolate1 > Isolate2, 5, Isolate1InitialODFreq),
+           Isolate2InitialODFreq = ifelse(Isolate1 > Isolate2, 95, Isolate2InitialODFreq),
+           FlipOrder = ifelse(Isolate1 > Isolate2, T, F)
+    ) %>%
+    mutate(temp = min(Isolate1,Isolate2), Isolate2 = max(Isolate1, Isolate2), Isolate1 = temp) %>%
+    select(-temp) %>%
+    mutate(Community = factor(Community, paste0("C", rep(1:12, each = 8), "R", rep(1:8, 12)))) %>%
+    arrange(Community, Isolate1, Isolate2, Isolate1InitialODFreq) %>%
+    ungroup() %>%
+    select(-FlipOrder) %>%
+    # Remove staph contamination
+    filter(!(Community == "C11R2" & Isolate1 == 13)) %>%
+    filter(!(Community == "C11R2" & Isolate2 == 13)) %>%
+    filter(!(Batch == "B2" & Community == "C11R1" & Isolate1 == 1)) %>%
+    filter(!(Batch == "C" & Community == "C11R1" & Isolate1 == 5))
 
 
+## Two species pairs miss the 50-50 data
+pairs_freq_ID %>%
+    group_by(Batch, Community, Isolate1, Isolate2) %>%
+    count() %>%
+    filter(n != 3)
+#   Batch Community Isolate1 Isolate2     n
+#   <chr> <fct>        <dbl>    <dbl> <int>
+# 1 C     C11R1            1        2     2
+# 2 C     C11R1            1        3     2
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+## Append these two freqeuncies bck
+pairs_freq_ID <- tibble(Batch = c("C", "C"), Community = c("C11R1", "C11R1"),
+       Isolate1 = c(1,1), Isolate2 = c(2,3),
+       Isolate1InitialODFreq = c(50, 50), Isolate2InitialODFreq = c(50, 50)) %>%
+    bind_rows(pairs_freq_ID) %>%
+    mutate(Community = factor(Community, paste0("C", rep(1:12, each = 8), "R", rep(1:8, 12)))) %>%
+    mutate(Isolate1 = factor(Isolate1, 1:13), Isolate2 = factor(Isolate2, 1:13)) %>%
+    arrange(Community, Isolate1, Isolate2, Isolate1InitialODFreq)
+write_csv(pairs_freq_ID, paste0(folder_main, "meta/pairs_freq_ID.csv"))
 
 
 

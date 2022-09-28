@@ -1,5 +1,5 @@
 #' Convert T0 OD frequencies into CFU frequencies
-#' This script calculates the uncertainty in OD-converted CFU frequenceis into each component variable
+#' This script calculates the uncertainty in OD-converted CFU frequencies into each component variable
 #' This script has two steps, first calculating mean of measurement, second estimating the uncertainty
 
 library(tidyverse)

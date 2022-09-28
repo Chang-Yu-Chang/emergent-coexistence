@@ -1,4 +1,4 @@
-#' This script calculates the uncertainty in epslion from the uncertainties of OD, CFU, and V
+#' This script calculates the uncertainty in epsilon from the uncertainties of OD, CFU, and V
 
 library(tidyverse)
 
