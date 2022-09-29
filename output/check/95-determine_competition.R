@@ -19,6 +19,18 @@ pairs_no_colony <- c(
     "C11R1_8_9",
     "C11R2_2_10"
 )
+plates_no_colony <- c(
+    "B2_T8_C11R1_5-95_2_8",
+    "B2_T8_C11R1_5-95_2_9",
+    "B2_T8_C11R1_5-95_8_2",
+    "B2_T8_C11R1_5-95_9_8",
+    "B2_T8_C11R1_50-50_2_8",
+    "B2_T8_C11R1_50-50_2_9",
+    "C2_T8_C11R2_50-50_2_10",
+    "C2_T8_C11R2_50-50_9_13",
+    "C_T8_C11R1_50-50_1_2", # no plate
+    "C_T8_C11R1_50-50_1_3" # no plate
+)
 
 
 # 1. Plot the frequency change for each bootstrap for each coculture----
@@ -217,44 +229,49 @@ pairs_outcome %>%
     theme_classic()
 
 
-# 4. Compare the pairs_T0_boots result to randomforest classified result
+# 4. Compare the pairs_T0_boots result to random forest classified result
 
-# 10.3 aggregate the predicted result ----
-
-for (i in 1:nrow(list_image_mapping_folder)) {
-    i=1
-    ## Skip images with no colony
-    if (list_image_mapping_folder$image_name_pair[i] %in% plates_no_colony) {cat("\nno colony, no watershed image\t", list_image_mapping_folder$image_name_pair[i]); next}
-    # 10.0 Read the random forest object probabilities ----
-    image_name <- list_image_mapping_folder$image_name_pair[i]
-    object_feature_predicted <- read_csv(paste0(list_image_mapping_folder$folder_random_forest[i], image_name, ".csv"), show_col_types = F)
+# 4 aggregate the predicted result ----
+temp <- rep(list(NA), nrow(pairs_freq_ID))
+#for (i in 1:nrow(pairs_freq_ID)) {
+for (i in 220:nrow(pairs_freq_ID)) {
+    # Skip images with no colony
+    if (pairs_freq_ID$image_name_pair[i] %in% plates_no_colony) {cat("\nno colony\t", pairs_freq_ID$image_name_pair[i]); next}
+    # Skip no-plate coculture
+    if (is.na(pairs_freq_ID$image_name_pair[i])) {cat("\nno plate\t", pairs_freq_ID$image_name_pair[i]); next}
+    # Read the random forest predicted object
+    image_name <- pairs_freq_ID$image_name_pair[i]
+    object_feature_predicted <- read_csv(paste0(folder_main, "check/", pairs_freq_ID$Batch[i], "-09-random_forest/", pairs_freq_ID$image_name_pair[i], ".csv"), show_col_types = F)
     cat("\n", nrow(object_feature_predicted), "objects")
+    #
+    temp[[i]] <- object_feature_predicted %>%
+        select(image_name_pair = image_name, ObjectID, Group)
+    cat("\t", i, "/", nrow(pairs_freq_ID), "\t", pairs_freq_ID$image_name_pair[i])
+}
+
+object_predicted <- bind_rows(temp[which(!is.na(temp))])
 
 
-    # 10.1 boostrapping ----
-    cat("\t bootstrap", n_bootstraps, " times")
-    object_bootstrapped <- rep(list(NA), n_bootstraps)
-    for (j in 1:n_bootstraps) {
-        object_bootstrapped[[j]] <- object_feature_predicted %>%
-            rowwise() %>%
-            mutate(BootstrapID = j) %>%
-            mutate(Group = sample(c("isolate1", "isolate2"), size = 1, replace = F, prob = c(PredictedProbabilityIsolate1, PredictedProbabilityIsolate2))) %>%
-            select(image_name, BootstrapID, ObjectID, Group)
-        if (j %% 100 == 0) cat(" ", j)
-    }
-
-    # 10.2 output the result ----
-
-    object_bootstrapped <- bind_rows(object_bootstrapped) %>%
-        pivot_wider(id_cols = ObjectID, names_from = BootstrapID, values_from = Group, names_prefix = "bootstrap_")
-    write_csv(object_bootstrapped, paste0(list_image_mapping_folder$folder_bootstrap[i], image_name, ".csv"))
-
-    cat("\t", i, "/", nrow(list_image_mapping_folder), "\t", list_image_mapping_folder$image_name_pair[i])
-
-
+pairs_T8 <- object_predicted %>%
+    mutate(Group = factor(Group, c("predicted isolate1", "predicted isolate2"))) %>%
+    group_by(image_name_pair, Group, .drop = F) %>%
+    count(name = "Count") %>%
+    group_by(image_name_pair) %>%
+    mutate(TotalCount = sum(Count), Frequency = Count/TotalCount) %>%
+    filter(Group == "predicted isolate1") %>%
+    pivot_wider(names_from = Group, values_from = Count) %>%
+    rename(Isolate1Count = `predicted isolate1`, Isolate1CFUFreq = Frequency) %>%
+    # Append jrow information
+    left_join(pairs_freq_ID, by = "image_name_pair") %>%
+    select(image_name = image_name_pair, Batch, Community, Isolate1, Isolate2, Isolate1InitialODFreq, Isolate1Count, TotalCount, Isolate1CFUFreq) %>%
+    ungroup()
 
 "
-determine compettion using defiend "
+append T0 boots to T8
+"
+
+
+
 
 #     ggplot() +
 #     geom_histogram(aes(x = Isolate1CFUFreq, fill = Time), color = 1) +
