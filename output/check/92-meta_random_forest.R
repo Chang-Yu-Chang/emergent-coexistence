@@ -143,11 +143,11 @@ for (j in 1:length(batch_names)) {
 
 accuracy_validation_batch <- bind_rows(temp)
 
-write_csv(object_prediction_batch, paste0(folder_main, "meta/object_prediction_batch.csv"))
-write_csv(accuracy_validation_batch, paste0(folder_main, "meta/accuracy_validation_batch.csv"))
+write_csv(object_prediction_batch, paste0(folder_main, "meta/92-object_prediction_batch.csv"))
+write_csv(accuracy_validation_batch, paste0(folder_main, "meta/92-accuracy_validation_batch.csv"))
 
 
-# 2. Clean up pairs of contamination/duplications ----
+# 2. Clean up pairs of contamination/ duplications ----
 ## 2.1 Remove contaminant Staph
 object <- object_prediction_batch %>%
     # Remove C11R2 isolate 13, which is a Staph. It's also not included in isolates_ID_match
@@ -164,9 +164,6 @@ object <- object %>%
     # Keep batch C C11R1 pairs that contains isolate 1
     filter(!(Batch == "C" & Community == "C11R1" & (Isolate1 != 1 & Isolate2 != 1)))
 
-# object %>%
-#     distinct(Batch, Community, Isolate1, Isolate2) %>%
-#     view
 
 ## 2.3 Remove duplicated isolates
 ## Append ID of Duplicated isolates to my internal ID
@@ -254,7 +251,7 @@ p1b <- accuracy %>%
     labs(x = "Accuracy", y = "Count")
 
 p1 <- plot_grid(p1a, p1b, nrow = 1, axis = "tb", align = "h", scale = 0.9, labels = c("count", "log-scale")) + theme(plot.background = element_rect(fill = "white", color = NA))
-ggsave(paste0(folder_main, "meta/random_forest-accuracy.png"), p1, width = 6, height = 6)
+ggsave(paste0(folder_main, "meta/92-random_forest-accuracy.png"), p1, width = 6, height = 6)
 
 
 ## How many of the clean pairs have accurracy lower than 0.9?
@@ -273,8 +270,8 @@ accuracy %>%
 # 4 both duplicate FALSE                     3    0.143
 # 5 both duplicate TRUE                     18    0.857
 
-write_csv(object, paste0(folder_main, "meta/object.csv"))
-write_csv(accuracy, paste0(folder_main, "meta/accuracy.csv"))
+write_csv(object, paste0(folder_main, "meta/92-object.csv"))
+write_csv(accuracy, paste0(folder_main, "meta/92-accuracy.csv"))
 
 
 # 4. Prediction overview ----
@@ -312,7 +309,7 @@ p2 <- object_count_ordered %>%
     scale_y_continuous(expand = c(0,0)) +
     theme_classic() +
     theme(axis.text.x = element_text(angle = 90, vjust = 0.5))
-ggsave(paste0(folder_main, "meta/random_forest-prediction.png"), p2, width = 40, height = 10)
+ggsave(paste0(folder_main, "meta/92-random_forest-prediction.png"), p2, width = 40, height = 10)
 
 
 

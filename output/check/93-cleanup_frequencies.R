@@ -1,15 +1,17 @@
 #' This script generates an output csv with T0 vs.T8 frequencies for each competing pairs
 #' 1. calculate epsilon for T0
-#' 2. convert T0 OD frequency to CFU frequency. Include bootstrapping
-#' 3. clean up T8 column names. Include bootstrapping
+#' 2. convert T0 OD frequency to CFU frequency, and bootstrap the CFU frequency. Output 93-pairs_T0_boots.csv
+#' 3. aggregate T8 bootstraps and clean column names
+#' 4. aggregate T8 random-forest-predicted names
+#'
+#' It takes ~ 7 mins to run this scrip
 
 library(tidyverse)
 library(cowplot)
 
 folder_script <- "~/Desktop/Lab/emergent-coexistence/output/check/"
 folder_main <- "~/Dropbox/lab/emergent-coexistence/data/raw/plate_scan/emergent_coexistence_plate_scan_check/"
-boots <- read_csv(paste0(folder_main, "meta/bootstraps.csv"), show_col_types = F) # Bootstrapped results using the object probability
-pairs_freq_ID <- read_csv(paste0(folder_main, "meta/pairs_freq_ID.csv"), show_col_types = F)
+pairs_freq_ID <- read_csv(paste0(folder_main, "meta/00-pairs_freq_ID.csv"), show_col_types = F)
 plates_no_colony <- c(
     "B2_T8_C11R1_5-95_2_8",
     "B2_T8_C11R1_5-95_2_9",
@@ -22,7 +24,7 @@ plates_no_colony <- c(
 )
 
 # 1. Compute epsilon to convert T0 OD to CFU frequencies ----
-## 1.1 Read CFU data
+# 1.1 Read CFU data ----
 #' The CFU data is from the machine counted images. Then match them to the OD data
 #' For T0 monoculture plates, there is no OD measurement data. Instead the OD should be standardized to OD=0.1
 batch_names <- c("D", "C2", "B2", "C")
@@ -49,7 +51,13 @@ for (j in 1:length(batch_names)) {
 isolates_CFU <- bind_rows(temp) %>%
     separate(image_name, into = c("Batch", "Time", "Community", "Isolate"), sep = "_", remove = F)
 
-## 1.2 Read OD data
+# Manually C2 C11R1 isolate 1
+isolates_CFU <- isolates_CFU %>%
+    filter(image_name != "C_stock_C11R1_1") %>%
+    bind_rows(tibble(image_name = "C_T0_C11R1_1", Batch = "C", Time = "T0", Community = "C11R1", Isolate = "1", ColonyCount = 8))
+
+
+# 1.2 Read OD data ----
 # Remove the contaminated data: B2 community C11R1 isolate1 and C2 C11R2 isolate 13 (streplococcus contamination)
 OD_B2 <- read_csv("~/Dropbox/lab/emergent-coexistence/data/raw/OD/OD_B2.csv", col_types = cols()) %>%
     mutate(Batch = "B2", Layout = as.character(Layout), Isolate1Freq = as.character(Isolate1Freq), Isolate2Freq = as.character(Isolate2Freq)) %>%
@@ -79,7 +87,6 @@ OD <- bind_rows(OD_B2, OD_C, OD_C2, OD_D) %>%
 # Subset single culture that are not mixed
 isolates_OD <- OD %>%
     filter(Isolate1 == Isolate2, MixIsolate == F) %>%
-    #filter(Batch != "C") %>%
     select(Batch, Time, Community, Isolate = Isolate1, OD620) %>%
     group_by(Batch, Time, Community, Isolate) %>%
     summarize(OD620 = mean(OD620)) %>%
@@ -90,12 +97,13 @@ isolates_OD <- OD %>%
     # Set negative OD values to 0 or it causes issues in division
     mutate(OD620 = ifelse(OD620 < 0, 0, OD620))
 
-## 1.2 Match the monoculture OD and CFU data
+# 1.3 Match the monoculture OD and CFU data ----
 # Manually key in dilution factors
 isolates_OD_CFU <- isolates_CFU %>%
     left_join(isolates_OD, by = "image_name") %>%
     #' I do not have the T8 OD data for batch C. Remove them
-    filter(!(Batch == "C" & Community == "C11R1")) %>%
+    filter(!(Batch == "C" & Community == "C11R1" & Isolate != 1)) %>%
+    filter(!(Batch == "B2" & Community == "C11R1" & Isolate == 1)) %>%
     # Remove staph contamination
     filter(!(Community == "C11R2" & Isolate == 13)) %>%
     mutate(Community = factor(Community, paste0("C", rep(1:12, each = 8), "R", rep(1:8, 12)))) %>%
@@ -106,7 +114,7 @@ isolates_OD_CFU <- isolates_CFU %>%
     # Dilution factor for these plates are 5
     mutate(DilutionFactor = 5)
 
-## 1.3 Calculate the OD-CFU conversion coefficient epsilon for each isolate
+# 1.4 Calculate the OD-CFU conversion coefficient epsilon for each isolate ----
 #' $\epsilon_A = \frac{OD_A DF_A v_A}{CFU_A}$, where
 #' D is the dilution factor for plating (for instance, $10^{5}$),
 #' CFU is the colony count under given dilution factor,
@@ -143,16 +151,17 @@ isolates_epsilon <- isolates_OD_CFU %>%
            ErrorEpsilon = ifelse((Batch == "B2" & Community == "C11R1" & Isolate == 1), NA, ErrorEpsilon)) %>%
     # Set epsilon to NA if OD <= 0 or CFU <= 10
     rowwise() %>%
-    mutate(Epsilon = ifelse(OD <= 0 | CFU <= 10, NA, Epsilon),
-           ErrorEpsilon = ifelse(OD <= 0 | CFU <= 10, NA, ErrorEpsilon)) %>%
+    mutate(Epsilon = ifelse(OD <= 0 | CFU <= 0, NA, Epsilon),
+           ErrorEpsilon = ifelse(OD <= 0 | CFU <= 0, NA, ErrorEpsilon)) %>%
     # Set epsilon to NA if colony counts <= 10
-    mutate(Epsilon = ifelse(OD <= 0 | CFU <= 10, NA, Epsilon),
-           ErrorEpsilon = ifelse(OD <= 0 | CFU <= 10, NA, ErrorEpsilon)) %>%
+    mutate(Epsilon = ifelse(OD <= 0 | CFU <= 0, NA, Epsilon),
+           ErrorEpsilon = ifelse(OD <= 0 | CFU <= 0, NA, ErrorEpsilon)) %>%
     select(image_name, Batch, Time, Community, Isolate, ColonyCount, Epsilon, ErrorEpsilon) %>%
     mutate(Isolate = as.numeric(Isolate))
 
 
 # 2. Convert T0 OD to CFU ----
+# 2.1 T0 OD to CFU frequencies ----
 pairs_epsilon <- pairs_freq_ID %>%
     left_join(rename(isolates_epsilon, Isolate1 = Isolate, Epsilon1 = Epsilon, ErrorEpsilon1 = ErrorEpsilon), by = c("Community", "Isolate1")) %>%
     left_join(rename(isolates_epsilon, Isolate2 = Isolate, Epsilon2 = Epsilon, ErrorEpsilon2 = ErrorEpsilon), by = c("Community", "Isolate2"))
@@ -192,7 +201,7 @@ pairs_T0 %>%
     filter(is.na(ErrorIsolate1CFUFreq))
 
 
-## Generate T0 bootstraps
+# 2.2 Generate T0 bootstraps ----
 n_bootstraps = 1000
 temp <- rep(list(NA), nrow(pairs_freq_ID))
 set.seed(1)
@@ -219,10 +228,60 @@ for (i in 1:nrow(pairs_T0)) {
 }
 
 pairs_T0_boots <- bind_rows(temp)
-write_csv(pairs_T0_boots, paste0(folder_main, "meta/pairs_T0_boots.csv"))
+write_csv(pairs_T0_boots, paste0(folder_main, "meta/93-pairs_T0_boots.csv"))
 
 
-# 3. Clean up the T8 names ----
+# 3. Aggregate and clean up T8 CFU frequencies  ----
+# 3.1 Aggregate bootstrap results from 07-bootstrap ----
+
+batch_names <- c("D", "C2", "B2", "C")
+make_list_image_mapping_folder_master <- function (batch_names = c("D", "C2", "B2", "C")) {
+    # list_images
+    list_images_master <- rep(list(NA), length(batch_names))
+    for (j in 1:length(batch_names)) list_images_master[[j]] <- read_csv(paste0(folder_script, "00-list_images-", batch_names[j], "-green.csv") , show_col_types = F)
+    list_images_master <- bind_rows(list_images_master)
+    # list_image_mapping
+    list_image_mapping_master <- rep(list(NA), length(batch_names))
+    for (j in 1:length(batch_names)) list_image_mapping_master[[j]] <- read_csv(paste0(folder_script, "00-list_image_mapping-", batch_names[j], ".csv") , show_col_types = F)
+    list_image_mapping_master <- bind_rows(list_image_mapping_master)
+    # Append
+    list_image_mapping_folder_master <- list_image_mapping_master %>%
+        left_join(tibble(image_name_pair = plates_no_colony, Undecided = "no colony"), by = "image_name_pair") %>%
+        left_join(rename(list_images_master, image_name_pair = image_name), by = "image_name_pair") %>%
+        left_join(select(list_images_master, image_name_isolate1 = image_name), by = "image_name_isolate1") %>%
+        left_join(select(list_images_master, image_name_isolate2 = image_name), by = "image_name_isolate2")
+    return(list_image_mapping_folder_master)
+}
+list_image_mapping_folder_master <- make_list_image_mapping_folder_master()
+boots <- rep(list(NA), nrow(list_image_mapping_folder_master))
+cat("\nAggregate T8 bootstraps")
+for (i in 1:nrow(list_image_mapping_folder_master)) {
+    # Skip images with no colony
+    if (list_image_mapping_folder_master$image_name_pair[i] %in% plates_no_colony) {cat("\nno colony, no watershed image\t", list_image_mapping_folder_master$image_name_pair[i]); next}
+
+    boots[[i]] <- paste0(list_image_mapping_folder_master$folder_bootstrap[i], list_image_mapping_folder_master$image_name_pair[i], ".csv") %>%
+        read_csv(show_col_types = F) %>%
+        pivot_longer(cols = -ObjectID, names_to = "BootstrapID", values_to = "Isolate", names_prefix = "bootstrap_") %>%
+        mutate(Isolate = factor(Isolate, c("isolate1", "isolate2"))) %>%
+        mutate(BootstrapID = factor(BootstrapID, 1:1000)) %>%
+        group_by(BootstrapID, Isolate, .drop = F) %>%
+        count(name = "Count") %>%
+        group_by(BootstrapID) %>%
+        mutate(TotalCount = sum(Count)) %>%
+        # Only measure isolate1
+        filter(Isolate == "isolate1") %>%
+        ungroup() %>%
+        mutate(image_name_pair = list_image_mapping_folder_master$image_name_pair[i]) %>%
+        select(image_name_pair, BootstrapID, Isolate1Count = Count, TotalCount)
+    cat("\n", i, "/", nrow(list_image_mapping_folder_master))
+}
+
+bind_rows(boots[which(!is.na(boots))]) %>%
+    write_csv(paste0(folder_main, "meta/93-T8_bootstraps.csv"))
+
+
+# 3.2 Clean the T8 bootstrap column names ----
+boots <- read_csv(paste0(folder_main, "meta/93-T8_bootstraps.csv"), show_col_types = F)
 pairs_image_ID <- boots %>%
     distinct(image_name_pair, .keep_all = T) %>%
     separate(image_name_pair, into = c("Batch", "Time", "Community", "Isolate2Freq", "Isolate1Freq", "Isolate1", "Isolate2"), convert = T, remove = F) %>%
@@ -255,26 +314,10 @@ pairs_T8_boots <- pairs_image_ID %>%
     #select(all_of(colnames(pairs_T0_boots))) %>%
     ungroup()
 
-write_csv(pairs_T8_boots, paste0(folder_main, "meta/pairs_T8_boots.csv"))
+write_csv(pairs_T8_boots, paste0(folder_main, "meta/93-pairs_T8_boots.csv"))
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-# 4. Aggregate the classified result from random forest
-
+# 4. Aggregate the classified result from random forest ----
+# 4.1 Aggregate T8 predicted results
 temp <- rep(list(NA), nrow(pairs_freq_ID))
 for (i in 1:nrow(pairs_freq_ID)) {
     # Skip images with no colony
@@ -285,29 +328,36 @@ for (i in 1:nrow(pairs_freq_ID)) {
     cat("\n", pairs_freq_ID$image_name_pair[i], i, "/", nrow(pairs_freq_ID))
 }
 
-object_predicted <- bind_rows(temp[which(!is.na(temp))])
-
-# Extract the result
-pairs_freq_ID
-object_predicted %>%
+pairs_T8 <- bind_rows(temp[which(!is.na(temp))]) %>%
+    mutate(Group = factor(Group, c("predicted isolate1", "predicted isolate2"))) %>%
+    group_by(image_name, Group, .drop = F) %>%
+    count(name = "Count") %>%
+    group_by(image_name) %>%
+    pivot_wider(names_from = Group, values_from = Count) %>%
+    rename(Isolate1Count = `predicted isolate1`, Isolate2Count = `predicted isolate2`) %>%
+    mutate(TotalCount = Isolate1Count + Isolate2Count,
+           Isolate1CFUFreq = Isolate1Count/TotalCount) %>%
     rename(image_name_pair = image_name) %>%
-    left_join(pairs_freq_ID) %>%
-    select()
-    distinct(image_name)
+    ungroup() %>%
+    # Correct the isolate order
+    separate(col = image_name_pair, into = c("Batch", "Time", "Community", "Isolate2InitialODFreq", "Isolate1InitialODFreq", "Isolate1", "Isolate2"), remove = F, convert = T) %>%
+    #separate(col = Freqs, sep = "-", into = c("Isolate2InitialODFreq", "Isolate1InitialODFreq"), convert = T) %>%
+    rowwise() %>%
+    mutate(Isolate1InitialODFreq = ifelse(Isolate1 > Isolate2, 5, Isolate1InitialODFreq),
+           Isolate2InitialODFreq = ifelse(Isolate1 > Isolate2, 95, Isolate2InitialODFreq),
+           Isolate1Count = ifelse(Isolate1 > Isolate2, TotalCount-Isolate1Count, Isolate1Count),
+           Isolate1CFUFreq = ifelse(Isolate1 > Isolate2, 1-Isolate1CFUFreq, Isolate1CFUFreq),
+           FlipOrder = ifelse(Isolate1 > Isolate2, T, F)
+    ) %>%
+    mutate(temp = min(Isolate1,Isolate2), Isolate2 = max(Isolate1, Isolate2), Isolate1 = temp) %>%
+    select(-temp) %>%
+    mutate(Community = factor(Community, paste0("C", rep(1:12, each = 8), "R", rep(1:8, 12)))) %>%
+    select(image_name_pair, Batch, Community, Isolate1, Isolate2,
+           Isolate1InitialODFreq, Isolate2InitialODFreq, Time,
+           Isolate1Count, TotalCount, Isolate1CFUFreq) %>%
+    arrange(Community, Isolate1, Isolate2, Isolate1InitialODFreq)
 
-
-
-
-
-
-
-
-
-
-
-
-
-
+write_csv(pairs_T8, paste0(folder_main, "meta/93-pairs_T8.csv"))
 
 
 

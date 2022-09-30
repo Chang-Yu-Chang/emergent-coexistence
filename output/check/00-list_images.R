@@ -154,7 +154,7 @@ pairs_freq_ID <- tibble(Batch = c("C", "C"), Community = c("C11R1", "C11R1"),
     mutate(Community = factor(Community, paste0("C", rep(1:12, each = 8), "R", rep(1:8, 12)))) %>%
     mutate(Isolate1 = factor(Isolate1, 1:13), Isolate2 = factor(Isolate2, 1:13)) %>%
     arrange(Community, Isolate1, Isolate2, Isolate1InitialODFreq)
-write_csv(pairs_freq_ID, paste0(folder_main, "meta/pairs_freq_ID.csv"))
+write_csv(pairs_freq_ID, paste0(folder_main, "meta/00-pairs_freq_ID.csv"))
 
 
 

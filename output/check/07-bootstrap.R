@@ -1,5 +1,6 @@
 #' This script reads the object probability from the random forest and bootstraps
 #' the colony frequencies
+#' Rscript 07-bootstrap.R 00-list_images-D-green.csv 00-list_image_mapping-D.csv
 library(tidyverse)
 library(cowplot)
 
@@ -29,7 +30,6 @@ plates_no_colony <- c(
 
 set.seed(1)
 n_bootstraps = 1000 # Number of bootstraps
-i=1
 
 for (i in 1:nrow(list_image_mapping_folder)) {
     ## Skip images with no colony
@@ -40,7 +40,7 @@ for (i in 1:nrow(list_image_mapping_folder)) {
     cat("\n", nrow(object_feature_predicted), "objects")
 
 
-    # 10.1 boostrapping ----
+    # 10.1 bootstrapping ----
     cat("\t bootstrap", n_bootstraps, " times")
     object_bootstrapped <- rep(list(NA), n_bootstraps)
     for (j in 1:n_bootstraps) {
