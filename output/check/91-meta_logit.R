@@ -1,7 +1,7 @@
 #' Meta analysis for the output generated in 08-logit
 library(tidyverse)
 library(cowplot)
-folder_script <- "~/Desktop/Lab/emergent-coexistence/output/check/"
+folder_script <- "~/Desktop/lab/emergent-coexistence/output/check/"
 folder_main <- "~/Dropbox/lab/emergent-coexistence/data/raw/plate_scan/emergent_coexistence_plate_scan_check/"
 plates_no_colony <- c(
     "B2_T8_C11R1_5-95_2_8",

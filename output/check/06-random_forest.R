@@ -3,7 +3,7 @@ library(cowplot)
 library(caret) # for streamlining the model training process for complex classification and regression
 library(randomForest) # For implementing random forest algorithm
 
-folder_script <- "~/Desktop/Lab/emergent-coexistence/output/check/"
+folder_script <- "~/Desktop/lab/emergent-coexistence/output/check/"
 list_images <- read_csv(commandArgs(trailingOnly = T)[1], show_col_types = F)
 list_image_mapping <- read_csv(commandArgs(trailingOnly = T)[2], show_col_types = F)
 

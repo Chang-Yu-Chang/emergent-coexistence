@@ -2,7 +2,7 @@
 library(tidyverse)
 library(cowplot)
 
-folder_script <- "~/Desktop/Lab/emergent-coexistence/output/check/"
+folder_script <- "~/Desktop/lab/emergent-coexistence/output/check/"
 folder_main <- "~/Dropbox/lab/emergent-coexistence/data/raw/plate_scan/emergent_coexistence_plate_scan_check/"
 pairs_freq_ID <- read_csv(paste0(folder_main, "meta/00-pairs_freq_ID.csv"), show_col_types = F)
 pairs_T0_boots <- read_csv(paste0(folder_main, "meta/93-pairs_T0_boots.csv"), show_col_types = F)

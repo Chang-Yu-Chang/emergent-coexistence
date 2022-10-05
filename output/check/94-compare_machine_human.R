@@ -1,7 +1,7 @@
 #' This script compare the random forest prediction to the human eye counts
 library(tidyverse)
 library(cowplot)
-folder_script <- "~/Desktop/Lab/emergent-coexistence/output/check/"
+folder_script <- "~/Desktop/lab/emergent-coexistence/output/check/"
 folder_main <- "~/Dropbox/lab/emergent-coexistence/data/raw/plate_scan/emergent_coexistence_plate_scan_check/"
 
 # object_prediction_batch <- write_csv(paste0(folder_main, "meta/object_prediction_batch.csv")) # Object probability for all pairs
