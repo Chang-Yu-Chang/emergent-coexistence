@@ -20,12 +20,13 @@ from skimage import data, restoration, util, io, color
 
 # The input has to be the csv generated from 00-list_images.R
 list_images = pd.read_csv(str(sys.argv[1]))
-#list_images = pd.read_csv('/Users/chang-yu/Desktop/Lab/emergent-coexistence/output/check/00-list_images-D-red.csv')
-#list_images = pd.read_csv('/Users/chang-yu/Desktop/Lab/emergent-coexistence/output/check/00-list_images-D.csv')
-#list_images = pd.read_csv('/Users/chang-yu/Desktop/Lab/emergent-coexistence/output/check/00-list_images-C2.csv')
-#list_images = pd.read_csv('/Users/chang-yu/Desktop/Lab/emergent-coexistence/output/check/00-list_images-B2.csv')
-#list_images = pd.read_csv('/Users/chang-yu/Desktop/Lab/emergent-coexistence/output/check/00-list_images-C.csv')
-#list_images = pd.read_csv('/Users/cychang/Desktop/Lab/emergent-coexistence/output/check/00-list_images-C.csv')
+#list_images = pd.read_csv('/Users/chang-yu/Desktop/lab/emergent-coexistence/output/check/00-list_images-D-red.csv')
+#list_images = pd.read_csv('/Users/chang-yu/Desktop/lab/emergent-coexistence/output/check/00-list_images-D.csv')
+#list_images = pd.read_csv('/Users/chang-yu/Desktop/lab/emergent-coexistence/output/check/00-list_images-C2.csv')
+#list_images = pd.read_csv('/Users/chang-yu/Desktop/lab/emergent-coexistence/output/check/00-list_images-B2-blue.csv')
+#list_images = pd.read_csv('/Users/chang-yu/Desktop/lab/emergent-coexistence/output/check/00-list_images-C.csv')
+#list_images = pd.read_csv('/Users/cychang/Desktop/lab/emergent-coexistence/output/check/00-list_images-C.csv')
+#list_images = pd.read_csv('/Users/chang-yu/Desktop/lab/emergent-coexistence/output/check/00-list_images-B2-blue.csv')
 
 def rolling_ball_light(image):
     # invert the image
@@ -40,7 +41,7 @@ def rolling_ball_light(image):
     return image_rolled
 
 
-#for i in [0]:
+#for i in [5,7]:
 for i in range(list_images.shape[0]):
     image_name = list_images.iloc[i]['image_name']
     color_channel = list_images.iloc[i]['color_channel']

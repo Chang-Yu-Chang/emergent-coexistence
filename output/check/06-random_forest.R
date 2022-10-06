@@ -10,6 +10,9 @@ list_image_mapping <- read_csv(commandArgs(trailingOnly = T)[2], show_col_types 
 # list_images <- read_csv(paste0(folder_script, "00-list_images-D-green.csv"), show_col_types = F)
 # list_image_mapping <- read_csv(paste0(folder_script, "00-list_image_mapping-D.csv") , show_col_types = F)
 
+# list_images <- read_csv(paste0(folder_script, "00-list_images-B2-green.csv"), show_col_types = F)
+# list_image_mapping <- read_csv(paste0(folder_script, "00-list_image_mapping-B2.csv") , show_col_types = F)
+
 list_image_mapping_folder <- list_image_mapping %>%
     left_join(rename(list_images, image_name_pair = image_name), by = "image_name_pair") %>%
     left_join(select(list_images, image_name_isolate1 = image_name), by = "image_name_isolate1") %>%
@@ -183,9 +186,14 @@ feature_candidates <- c(
     paste0(c("b.mean", "b.sd", "b.mad"), rep(c("_red", "_blue"), each = 3))
 )
 
-i = which(list_image_mapping_folder$image_name_pair == "D_T8_C1R2_5-95_1_2")
+#i = which(list_image_mapping_folder$image_name_pair == "B2_T8_C1R2_5-95_1_2")
+i = which(list_image_mapping_folder$image_name_pair %in% "B2_T8_C11R1_5-95_3_8")
 
-for (i in 1:nrow(list_image_mapping_folder)) {
+temp_index = which(str_detect(list_image_mapping_folder$image_name_pair, "C11R1"))
+
+
+for (i in temp_index) {
+#for (i in 1:nrow(list_image_mapping_folder)) {
     cat("\t", i)
     image_name <- list_image_mapping_folder$image_name_pair[i]
     #color_channel <- list_image_mapping_folder$color_channel[i]

@@ -3,17 +3,17 @@ library(EBImage)
 
 list_images <- read_csv(commandArgs(trailingOnly = T)[1], show_col_types = F) # 00-list_images-D.csv
 
-#list_images <- read_csv("~/Desktop/Lab/emergent-coexistence/output/check/00-list_images-D-green.csv", show_col_types = F)
-#list_images <- read_csv("~/Desktop/Lab/emergent-coexistence/output/check/00-list_images-C2.csv", show_col_types = F)
-#list_images <- read_csv("~/Desktop/Lab/emergent-coexistence/output/check/00-list_images-B2.csv", show_col_types = F)
-#list_images <- read_csv("~/Desktop/Lab/emergent-coexistence/output/check/00-list_images-C.csv", show_col_types = F)
-
+#list_images <- read_csv("~/Desktop/lab/emergent-coexistence/output/check/00-list_images-D-green.csv", show_col_types = F)
+#list_images <- read_csv("~/Desktop/lab/emergent-coexistence/output/check/00-list_images-C2.csv", show_col_types = F)
+#list_images <- read_csv("~/Desktop/lab/emergent-coexistence/output/check/00-list_images-B2-green.csv", show_col_types = F)
+#list_images <- read_csv("~/Desktop/lab/emergent-coexistence/output/check/00-list_images-C.csv", show_col_types = F)
+#list_images <- read_csv("~/Desktop/lab/emergent-coexistence/output/check/00-list_images-B2-blue.csv", show_col_types = F)
 
 paste_folder_name <- function (image_type = "channel", channel = "green") {
     paste0(list_images[i,paste0("folder_", image_type)], channel, "/")
 }
 
-#i = which(list_images$image_name == "D_T8_C1R2_1")
+# i = which(list_images$image_name == "B2_T1_C11R1_3")
 
 for (i in 1:nrow(list_images)) {
     image_name <- list_images$image_name[i]

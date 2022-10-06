@@ -41,12 +41,10 @@ pairs_T8_boots_renamed <- pairs_T8_boots %>%
     group_by(Batch, Community, Isolate1, Isolate2, Isolate1InitialODFreq) %>%
     # Mean and sd over 1000 bootstraps
     summarize(Isolate1CFUFreqMean = mean(Isolate1CFUFreq),
-              Isolate1CFUFreqSd = sd(Isolate1CFUFreq),
-              TotalCount = unique(TotalCount)) %>%
+              Isolate1CFUFreqSd = sd(Isolate1CFUFreq)) %>%
     #mutate(Type = "machine-bootstrap") %>%
     ungroup() %>%
-    rename(Isolate1CFUFreqMean_machine = Isolate1CFUFreqMean, Isolate1CFUFreqSd_machine = Isolate1CFUFreqSd) %>%
-    select(-TotalCount)
+    rename(Isolate1CFUFreqMean_machine = Isolate1CFUFreqMean, Isolate1CFUFreqSd_machine = Isolate1CFUFreqSd)
 
 pairs_T8_boots_combined <- pairs_freq_renamed %>%
     select(-Type, -Isolate1Count, -TotalCount) %>%
@@ -148,14 +146,6 @@ p2b <- pairs_T8_boots_combined %>%
 p2 <- plot_grid(p2a, p2b, nrow = 2, axis = "tblr", align = "v", scale = .9) +
     theme(plot.background = element_rect(fill = "white", color = NA))
 ggsave(paste0(folder_main, "meta/94-comparison-coculture_frequency.png"), p2, width = 10, height = 8)
-
-
-
-
-
-pairs_T8_boots_combined %>%
-    filter(Isolate1CFUFreq_human == 1, Isolate1CFUFreqMean_machine < 0.5) %>%
-    view
 
 
 

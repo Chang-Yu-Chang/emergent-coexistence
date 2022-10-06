@@ -30,7 +30,6 @@ pairs_no_colony <- c(
 pairs_ID <- distinct(pairs_freq_ID, Batch, Community, Isolate1, Isolate2)
 
 i=1
-if (FALSE) {
 # 1. T8 bootstraps ----
 for (i in 1:nrow(pairs_ID)) {
     community <- pairs_ID$Community[i]
@@ -101,7 +100,8 @@ for (i in 1:nrow(pairs_ID)) {
 }
 
 
-}
+
+if (FALSE) {
 # 2. T8 random forest prediction -----
 i=75
 for (i in 1:nrow(pairs_ID)) {
@@ -176,4 +176,6 @@ for (i in 1:nrow(pairs_ID)) {
     ggsave(paste0(folder_main, "check/meta-93-T0_T8_frequencies/classified/", pair_name, ".png"), p, width = 10, height = 5)
     write_csv(pair_boots_table, paste0(folder_main, "check/meta-93-T0_T8_frequencies/classified/", pair_name, ".csv"))
     cat("\n", pair_name, "\t", i, "/", nrow(pairs_ID))
+}
+
 }

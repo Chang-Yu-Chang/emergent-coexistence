@@ -1,8 +1,8 @@
 #' This scripts reads the T0 vs. T8 frequencies and determine the competition outcomes
 #' for each unique species pair by computing the fitness functions
-#' 1. Combine T0 and T8 results
-#' 2. Map the frequency changes to the fitness function
-#' 3. Determine the competition outcomes
+#' 1. Determine the competition outcomes: match the significance of frequency changes to the fitness function table
+#' 2. Combine T0 and T8 results into a pairs_freq table
+#' 3. Calculate isolate tournament
 
 library(tidyverse)
 library(cowplot)
@@ -35,8 +35,9 @@ plates_no_colony <- c(
 )
 
 
-# 1. Calculate the significance of frequency change
+# 1. Determine pairwise competition ----
 read_pairs_boots_table <- function (T8_freq_type = "bootstrapped") {
+    #' This function batchly reads the table of boostrapped frequency change per pair
     temp <- rep(list(NA), nrow(pairs_ID))
     for (i in 1:nrow(pairs_ID)) {
         pair_name <- paste0(pairs_ID$Community[i], "_", pairs_ID$Isolate1[i], "_", pairs_ID$Isolate2[i])
@@ -47,6 +48,7 @@ read_pairs_boots_table <- function (T8_freq_type = "bootstrapped") {
     pairs_boots_table <- bind_rows(temp[which(!is.na(temp))])
 }
 compute_pairs_fitness <- function (pairs_boots_table) {
+    #' This script takes the bootstrap samples and compute the significance of frequency changes
     pairs_boots_table %>%
         group_by(Community) %>%
         mutate(Community = factor(Community, paste0("C", rep(1:12, each = 8), "R", rep(1:8, 12)))) %>%
@@ -63,6 +65,8 @@ compute_pairs_fitness <- function (pairs_boots_table) {
         ))
 }
 make_interaction_type <- function () {
+    #' This function generates the fitness function table.
+    #' There are a total of 27 possibilities
     interaction_type_three <- tibble(
         FromRare = rep(c(1, -1, 0), each = 9),
         FromMedium = rep(rep(c(1, -1, 0), each = 3), 3),
@@ -94,25 +98,41 @@ make_interaction_type <- function () {
     interaction_type <- interaction_type %>%  mutate(FitnessFunction = paste(FromRare, FromMedium, FromAbundant, sep = "_"))
 }
 append_pairs_outocme <- function (pairs_fitness) {
+    # This function appends the bootstrap result to the fitness function table
     pairs_fitness %>%
-    pivot_wider(id_cols = c(Community, Isolate1, Isolate2), names_from = Isolate1InitialODFreq, values_from = FitnessChange) %>%
-    rename(FromRare = `5`, FromMedium = `50`, FromAbundant = `95`) %>%
-    left_join(interaction_type) %>%
-    select(Community, Isolate1, Isolate2, InteractionType, InteractionTypeFiner, FitnessFunction)
+        pivot_wider(id_cols = c(Community, Isolate1, Isolate2), names_from = Isolate1InitialODFreq, values_from = FitnessChange) %>%
+        rename(FromRare = `5`, FromMedium = `50`, FromAbundant = `95`) %>%
+        left_join(interaction_type) %>%
+        select(Community, Isolate1, Isolate2, InteractionType, InteractionTypeFiner, FitnessFunction)
 
 }
 interaction_type <- make_interaction_type()
 
-pairs_outcome_classifiedT8 <- read_pairs_boots_table("classified") %>%
-    compute_pairs_fitness() %>%
-    append_pairs_outocme()
+# pairs_outcome_classifiedT8 <- read_pairs_boots_table("classified") %>%
+#     compute_pairs_fitness() %>%
+#     append_pairs_outocme()
 
-pairs_outcome_bootstrappedT8 <- read_pairs_boots_table("bootstrapped") %>%
+pairs_interaction <- read_pairs_boots_table("bootstrapped") %>%
     compute_pairs_fitness() %>%
-    append_pairs_outocme()
+    append_pairs_outocme() %>%
+    mutate(From = case_when(
+        FitnessFunction %in% c("1_1_1") ~ Isolate1, # Isolate1 wins
+        FitnessFunction %in% c("-1_-1_-1") ~ Isolate2, # Isolate2 wins
+        TRUE ~ Isolate1
+    )) %>%
+    mutate(To = case_when(
+        FitnessFunction %in% c("1_1_1") ~ Isolate2,
+        FitnessFunction %in% c("-1_-1_-1") ~ Isolate1,
+        TRUE ~ Isolate2
+    )) %>%
+    ungroup()
 
-write_csv(pairs_outcome_classifiedT8, paste0(folder_main, "meta/95-pairs_outcome_classifiedT8.csv"))
-write_csv(pairs_outcome_bootstrappedT8, paste0(folder_main, "meta/95-pairs_outcome_bootstrappedT8.csv"))
+# pairs_interaction %>%
+#     group_by(InteractionType, FitnessFunction) %>%
+#     count()
+
+#write_csv(pairs_outcome_classifiedT8, paste0(folder_main, "meta/95-pairs_outcome_classifiedT8.csv"))
+write_csv(pairs_interaction, paste0(folder_main, "meta/95-pairs_interaction.csv"))
 
 # 2. Combine T0 and T8 frequencies ----
 pairs_freq_T0_boots <- pairs_T0_boots %>%
@@ -123,20 +143,76 @@ pairs_freq_T8_boots <- pairs_T8_boots %>%
     group_by(Community, Isolate1, Isolate2, Isolate1InitialODFreq, Time) %>%
     summarize(Isolate1CFUFreqMean = mean(Isolate1CFUFreq),
               Isolate1CFUFreqSd = sd(Isolate1CFUFreq))
-pairs_freq_T8 <- pairs_T8 %>%
-    select(Community, Isolate1, Isolate2, Isolate1InitialODFreq, Time,
-           Isolate1CFUFreqMean = Isolate1CFUFreq) %>%
-    mutate(Isolate1CFUFreqSd = NA)
+# pairs_freq_T8 <- pairs_T8 %>%
+#     select(Community, Isolate1, Isolate2, Isolate1InitialODFreq, Time,
+#            Isolate1CFUFreqMean = Isolate1CFUFreq) %>%
+#     mutate(Isolate1CFUFreqSd = NA)
 
 
 # T8 frequency bootstrapping so there is SD at T8
-pairs_freq_boots <- bind_rows(pairs_freq_T0_boots, pairs_freq_T8_boots)
+pairs_freq <- bind_rows(pairs_freq_T0_boots, pairs_freq_T8_boots)
 
 # No bootstrapping, the random forest predicted classification, so there is no SD at T8
-pairs_freq <- bind_rows(pairs_freq_T0_boots, pairs_freq_T8)
+#pairs_freq <- bind_rows(pairs_freq_T0_boots, pairs_freq_T8)
 
-write_csv(pairs_freq_boots, paste0(folder_main, "meta/95-pairs_freq_boots.csv"))
 write_csv(pairs_freq, paste0(folder_main, "meta/95-pairs_freq.csv"))
+#write_csv(pairs_freq, paste0(folder_main, "meta/95-pairs_freq.csv"))
+
+
+# 3. isolate tournament ----
+tournament_rank <- function(pairs) {
+    #' Compute the rank of an isolate based on its number of wins and lose in pairwise competition
+    if (igraph::is.igraph(pairs)) {
+        net <- pairs
+        pairs <- as_tibble(get.edgelist(net)) %>%
+            setNames(c("From", "To")) %>%
+            mutate(InteractionType = get.edge.attribute(net)$InteractionType) %>%
+            rowwise() %>%
+            mutate(Isolate1 = min(From, To), Isolate2 = max(From, To))
+    }
+    isolate_name <- pairs %>% select(Isolate1, Isolate2) %>% unlist %>% unique %>% sort()
+    # Isolates' ranks in the tournament
+    tour_rank <- data.frame(
+        Isolate = isolate_name,
+        # Win
+        Win = filter(pairs, InteractionType == "exclusion") %>%
+            select(From) %>% unlist() %>% factor(isolate_name) %>% table() %>% as.vector(),
+        # Lose
+        Lose = filter(pairs, InteractionType == "exclusion") %>%
+            select(To) %>% unlist() %>% factor(isolate_name) %>% table() %>% as.vector(),
+        # Draw; Note that I consider neturality and bistability as draw in the tournament
+        Draw = filter(pairs, InteractionType %in% c("coexistence", "neutrality", "bistability")) %>%
+            select(From, To) %>% unlist() %>% factor(isolate_name) %>% table() %>% as.vector())
+
+    # Arrange the df by score
+    tour_rank <- tour_rank %>%
+        mutate(Score = Win - Lose + 0 * Draw, Game = Win + Lose + Draw) %>%
+        arrange(desc(Score))
+
+    # Calculate rank by score; same scores means the same ranks
+    temp_score <- ordered(tour_rank$Score, levels = sort(unique(tour_rank$Score), decreasing = T))
+    temp_score_table <- table(temp_score)
+    temp <- NULL; temp_counter = 1
+    for (i in 1:length(temp_score_table)) {
+        temp <- c(temp, rep(temp_counter, temp_score_table[i]))
+        temp_counter <- temp_counter + temp_score_table[i]
+    }
+
+    tour_rank$Rank <- temp
+    tour_rank$PlotRank <- 1:nrow(tour_rank)
+    return(tour_rank)
+}
+communities <- read_csv("~/Dropbox/lab/emergent-coexistence/data/output/communities.csv", show_col_types = F)
+pairs_interaction <- read_csv(paste0(folder_main, "meta/95-pairs_interaction.csv"), show_col_types = F)
+
+isolates_tournament <- communities %>%
+    select(comm = Community, everything()) %>%
+    rowwise() %>%
+    mutate(pairs_comm = pairs_interaction %>% filter(Community == comm) %>% list()) %>%
+    mutate(tournaments_comm = pairs_comm %>% tournament_rank() %>% list()) %>%
+    select(Community = comm, tournaments_comm) %>%
+    unnest(cols = tournaments_comm)
+write_csv(isolates_tournament, paste0(folder_main, "meta/95-isolates_tournament.csv"))
 
 
 

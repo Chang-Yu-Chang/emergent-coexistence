@@ -4,11 +4,11 @@ library(EBImageExtra) # for the bresenham algorithm
 library(purrr) # for applying functional programming to transect curve smoothing
 
 list_images <- read_csv(commandArgs(trailingOnly = T)[1], show_col_types = F)
-#list_images <- read_csv("~/Desktop/Lab/emergent-coexistence/output/check/00-list_images-D-red.csv", show_col_types = F)
-#list_images <- read_csv("~/Desktop/Lab/emergent-coexistence/output/check/00-list_images-C-green.csv", show_col_types = F)
-#list_images <- read_csv("~/Desktop/Lab/emergent-coexistence/output/check/00-list_images-D.csv", show_col_types = F)
-#list_images <- read_csv("~/Desktop/Lab/emergent-coexistence/output/check/00-list_images-C2.csv", show_col_types = F)
-#list_images <- read_csv("~/Desktop/Lab/emergent-coexistence/output/check/00-list_images-C.csv", show_col_types = F)
+#list_images <- read_csv("~/Desktop/lab/emergent-coexistence/output/check/00-list_images-D-green.csv", show_col_types = F)
+#list_images <- read_csv("~/Desktop/lab/emergent-coexistence/output/check/00-list_images-C-green.csv", show_col_types = F)
+#list_images <- read_csv("~/Desktop/lab/emergent-coexistence/output/check/00-list_images-C2-green.csv", show_col_types = F)
+#list_images <- read_csv("~/Desktop/lab/emergent-coexistence/output/check/00-list_images-B2-green.csv", show_col_types = F)
+
 paste_folder_name <- function (image_type = "channel", channel = "green") {
     paste0(list_images[i,paste0("folder_", image_type)], channel, "/")
 }
@@ -203,10 +203,11 @@ plates_no_colony <- c(
     "C2_T8_C11R2_50-50_2_10",
     "C2_T8_C11R2_50-50_9_13"
 )
-#i = which(list_images$image_name == "D_T8_C1R2_1")
+i = which(list_images$image_name == "B2_T1_C11R1_3")
 
 #i=1
-for (i in 1:nrow(list_images)) {
+for (i in c(6,8)) {
+#for (i in 1:nrow(list_images)) {
     #if (i < 36) next
     image_name <- list_images$image_name[i]
     color_channel <- list_images$color_channel[i]
