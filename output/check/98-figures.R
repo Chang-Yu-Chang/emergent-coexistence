@@ -22,6 +22,14 @@ communities <- read_csv("~/Dropbox/lab/emergent-coexistence/data/output/communit
 communities_hierarchy <- read_csv(paste0(folder_main, "meta/96-communities_hierarchy.csv"), show_col_types = F)
 load(paste0(folder_main, "meta/96-communities_network.Rdata")) # communities_network
 
+
+#
+pairs %>%
+    group_by(InteractionType, FitnessFunction) %>%
+    count(name = "Count")
+
+
+
 # Rearrange
 pairs_ID <- pairs %>% select(PairID, Community, Isolate1, Isolate2)
 pairs_freq <- pairs_freq %>%
@@ -45,8 +53,15 @@ assign_interaction_color <- function (level = "simple") {
         return(interaction_color)
     }
     if (level == "finer") {
-        interaction_type <- c("competitive exclusion", "stable coexistence", "mutual exclusion", "frequency-dependent coexistence", "neutrality", "exclusion violating rank")
-        interaction_color <- c("#DB7469", "#557BAA", "#FFBC42", "#B9FAF8", "#8650C4", "#8CB369")
+        interaction_type <- c("competitive exclusion", "stable coexistence",
+                              "mutual exclusion", "frequency-dependent coexistence",
+                              "coexistence at 5%", "coexistence at 95%",
+                              "2-freq neutrality", "3-freq neutrality")
+        #interaction_type <- c("competitive exclusion", "stable coexistence", "mutual exclusion", "frequency-dependent coexistence", "neutrality", "exclusion violating rank")
+        interaction_color <- c("#DB7469", "#557BAA",
+                               "#FFBC42", "#B9FAF8",
+                               "lightblue", "cyan",
+                               "#8650C4", "purple")
         names(interaction_color) <- interaction_type
         return(interaction_color)
     }
@@ -274,16 +289,19 @@ p1 <- plot_grid(plotlist = p_net_list, nrow = 1, scale = 1.3) + paint_white_back
 
 ## pairwise outcomes per community
 p2 <- pairs %>%
+    filter(!is.na(FitnessFunction)) %>%
     group_by(Community, InteractionType) %>%
     count(name = "Count") %>%
-    group_by(Community) %>% mutate(Fraction = Count / sum(Count)) %>% ungroup() %>%
+    group_by(Community) %>% mutate(Fraction = Count / sum(Count), TotalCount = sum(Count)) %>%
+    ungroup() %>%
     mutate(Community = factor(Community, communities$Community)) %>%
     arrange(Community) %>%
     left_join(communities, by = "Community") %>%
     mutate(CommunityLabel = factor(CommunityLabel)) %>%
     ggplot() +
     geom_col(aes(x = CommunityLabel, fill = InteractionType, y = Fraction), color = 1, width = .8, size = .5) +
-    geom_text(data = communities, aes(x = CommunityLabel, y = .1, label = paste0("n=", CommunityPairSize)), vjust = -.5, size = 3) +
+    #geom_text(aes(x = CommunityLabel, y = .9, label = paste0("n=", CommunityPairSize)), vjust = -.5, size = 3) +
+    geom_text(aes(x = CommunityLabel, y = .9, label = paste0("n=", TotalCount))) +
     scale_fill_manual(values = assign_interaction_color()) +
     scale_y_continuous(breaks = c(0,.5,1), limit = c(0, 1), expand = c(0,0)) +
     theme_classic() +
@@ -306,9 +324,16 @@ ggsave(here::here("plots/Fig2.png"), p, width = 12, height = 4)
 
 
 # Figure 3 ----
+interaction_type_finer <- c("competitive exclusion", "stable coexistence",
+                            "mutual exclusion", "frequency-dependent coexistence",
+                            "coexistence at 5%", "coexistence at 95%",
+                            "2-freq neutrality", "3-freq neutrality")
 pairs_interaction_finer <- pairs %>%
-    mutate(InteractionType = factor(InteractionType, c("exclusion", "coexistence"))) %>%
-    mutate(InteractionTypeFiner = factor(InteractionTypeFiner, c("competitive exclusion", "mutual exclusion", "stable coexistence", "frequency-dependent coexistence", "neutrality"))) %>%
+    mutate(InteractionType = ifelse(is.na(FitnessFunction), "no fitness function", InteractionType)) %>%
+    mutate(InteractionType = factor(InteractionType, c("exclusion", "coexistence", "no fitness function"))) %>%
+    mutate(InteractionTypeFiner = factor(InteractionTypeFiner, interaction_type_finer)) %>%
+    # Remove no fitness pairs
+    filter(is.na(InteractionType) | InteractionType %in% c("exclusion", "coexistence")) %>%
     group_by(InteractionType, InteractionTypeFiner) %>%
     count(name = "Count") %>% ungroup() %>%
     mutate(Fraction = Count / sum(Count)) %>%
@@ -318,9 +343,11 @@ pairs_interaction_finer <- pairs %>%
 temp <- pairs %>%
     ggplot() +
     geom_tile(aes(x = Isolate1, y = Isolate2, fill = InteractionTypeFiner), height = .8, width = .8, alpha = .9) +
-    scale_fill_manual(values = assign_interaction_color(level = "finer"),
-                      breaks = c("competitive exclusion", "mutual exclusion", "stable coexistence", "frequency-dependent coexistence", "neutrality"),
-                      labels = paste0(pairs_interaction_finer$InteractionTypeFiner, " (", round(pairs_interaction_finer$Fraction, 3) * 100,"%)")) +
+    scale_fill_manual(
+        values = assign_interaction_color(level = "finer"),
+        breaks = interaction_type_finer,
+        labels = paste0(pairs_interaction_finer$InteractionTypeFiner, " (", round(pairs_interaction_finer$Fraction, 3) * 100,"%)")
+    ) +
     theme(legend.title = element_blank(),
           legend.position = "right",
           legend.spacing.y = unit("2", "mm"),
@@ -333,14 +360,17 @@ p_legend_fill <- get_legend(temp)
 ## Plot the waffle
 pairs_example_freq <- pairs %>%
     mutate(InteractionType = factor(InteractionType, c("exclusion", "coexistence"))) %>%
-    mutate(InteractionTypeFiner = ordered(InteractionTypeFiner, c("competitive exclusion", "mutual exclusion", "stable coexistence", "frequency-dependent coexistence", "neutrality"))) %>%
+    mutate(InteractionTypeFiner = factor(InteractionTypeFiner, interaction_type_finer)) %>%
     arrange(InteractionType, InteractionTypeFiner) %>%
     # Add the coordinate in the grid
     bind_rows(tibble(InteractionType = rep(NA, 4), InteractionTypeFiner = rep(NA, 4))) %>%
     filter(!is.na(tibble(InteractionType))) %>%
     # Join the frequency data
     select(PairID, InteractionType, InteractionTypeFiner) %>%
-    left_join(filter(pairs_freq), by = "PairID") %>%
+    left_join(pairs_freq, by = "PairID") %>%
+    "
+    check the frequnec fepdent coexistnece
+"
     select(PairID, InteractionType, InteractionTypeFiner, Isolate1InitialODFreq, Time, Isolate1CFUFreqMean) %>%
     mutate(Isolate1InitialODFreq = factor(Isolate1InitialODFreq),
            Time = factor(Time, c("T0", "T8")))
@@ -370,6 +400,11 @@ plot_example_freq <- function(pairs_freq) {
         labs(x = "Time", y = "Frequency") +
         ggtitle(unique(pairs_freq$PairID))
 }
+
+pairs_example_freq %>%
+    filter(InteractionTypeFiner == "competitive exclusion", PairID == 1) %>%
+    plot_example_freq
+
 temp_list <- pairs_example_freq %>%
     arrange(InteractionTypeFiner, PairID) %>%
     group_split(InteractionTypeFiner, PairID) %>%
@@ -391,6 +426,9 @@ p <- ggdraw(p_waffle) +
 
 ggsave(here::here("plots/Fig3.png"), p, width = 12, height = 4)
 
+pairs %>%
+    group_by(InteractionType, InteractionTypeFiner, FitnessFunction) %>%
+    count(name = "Count")
 
 
 
@@ -591,7 +629,7 @@ p1 <- ggdraw() + draw_image(here::here("plots/cartoons/FigS1.png")) + theme(plot
 color_sets <- tibble(Color = c("yellow", "deepskyblue3", "blue", "darkorchid2", "firebrick", "orange2", "grey"),
                      Family = c("Aeromonadaceae", "Enterobacteriaceae", "Moraxellaceae", "Pseudomonadaceae","Comamonadaceae","Alcaligenaceae", "Sphingobacteriaceae"))
 p2 <- isolates %>%
-    mutate(Community = factor(Community, community_factor)) %>%
+    mutate(Community = factor(Community, communities$Community)) %>%
     arrange(Community) %>%
     ggplot() +
     geom_bar(aes(x = Community, y = RelativeAbundance, fill = Family), size = .3, color = "grey30", position = "stack", stat = "identity") +

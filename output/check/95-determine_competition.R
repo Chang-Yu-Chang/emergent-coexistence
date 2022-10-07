@@ -36,6 +36,11 @@ plates_no_colony <- c(
 
 
 # 1. Determine pairwise competition ----
+interaction_type_finer <- c("competitive exclusion", "stable coexistence",
+                            "mutual exclusion", "frequency-dependent coexistence",
+                            "coexistence at 5%", "coexistence at 95%",
+                            "2-freq neutrality", "3-freq neutrality")
+
 read_pairs_boots_table <- function (T8_freq_type = "bootstrapped") {
     #' This function batchly reads the table of boostrapped frequency change per pair
     temp <- rep(list(NA), nrow(pairs_ID))
@@ -67,34 +72,27 @@ compute_pairs_fitness <- function (pairs_boots_table) {
 make_interaction_type <- function () {
     #' This function generates the fitness function table.
     #' There are a total of 27 possibilities
-    interaction_type_three <- tibble(
+    interaction_type <- tibble(
         FromRare = rep(c(1, -1, 0), each = 9),
         FromMedium = rep(rep(c(1, -1, 0), each = 3), 3),
         FromAbundant = rep(c(1, -1, 0), 9),
         InteractionType = NA,
         InteractionTypeFiner = NA
     )
-    interaction_type_two <- tibble(
-        FromRare = rep(c(1, -1, 0), each = 3),
-        FromMedium = rep(NA, 9),
-        FromAbundant = rep(c(1, -1, 0), 3),
-        InteractionType = NA,
-        InteractionTypeFiner = NA
-    )
-
-    interaction_type <- bind_rows(interaction_type_three, interaction_type_two)
-
     ## Assign interaction types to combinations of frequency changes signs
-    interaction_type$InteractionType[c(1, 14, 28, 32, 10, 13, 31)] <- "exclusion"
-    interaction_type$InteractionType[c(2, 3, 5, 8, 9, 23, 26, 29, 30, 33, 4, 11, 12, 15, 17, 20, 34, 35)] <- "coexistence"
-    interaction_type$InteractionType[c(27, 36)] <- "coexistence"
+    interaction_type$InteractionType[c(1,10,13,14)] <- "exclusion"
+    interaction_type$InteractionType[c(2:6,8,11,20,23, 9,18,21,24,25,26,27)] <- "coexistence"
 
     ## Assign finer interaction types to combinations of frequency changes signs
-    interaction_type$InteractionTypeFiner[c(1, 14, 28, 32)] <- "competitive exclusion"
-    interaction_type$InteractionTypeFiner[c(10, 13, 31)] <- "mutual exclusion"
-    interaction_type$InteractionTypeFiner[c(2, 3, 5, 8, 9, 23, 26, 29, 30, 33)] <- "stable coexistence"
-    interaction_type$InteractionTypeFiner[c(4, 11, 12, 15, 17, 20, 34, 35)] <- "frequency-dependent coexistence"
-    interaction_type$InteractionTypeFiner[c(27,36)] <- "neutrality"
+    interaction_type$InteractionTypeFiner[c(1,14)] <- "competitive exclusion"
+    interaction_type$InteractionTypeFiner[c(10,13)] <- "mutual exclusion"
+    interaction_type$InteractionTypeFiner[c(2,5,8)] <- "stable coexistence"
+    interaction_type$InteractionTypeFiner[c(4,6,11,20)] <- "frequency-dependent coexistence"
+    interaction_type$InteractionTypeFiner[c(3)] <- "coexistence at 95%"
+    interaction_type$InteractionTypeFiner[c(23)] <- "coexistence at 5%"
+    interaction_type$InteractionTypeFiner[c(9,18,21,24:26)] <- "neutrality"
+    interaction_type$InteractionTypeFiner[c(9,18,21,24:26)] <- "2-freq neutrality"
+    interaction_type$InteractionTypeFiner[c(27)] <- "3-freq neutrality"
     interaction_type <- interaction_type %>%  mutate(FitnessFunction = paste(FromRare, FromMedium, FromAbundant, sep = "_"))
 }
 append_pairs_outocme <- function (pairs_fitness) {
@@ -107,10 +105,6 @@ append_pairs_outocme <- function (pairs_fitness) {
 
 }
 interaction_type <- make_interaction_type()
-
-# pairs_outcome_classifiedT8 <- read_pairs_boots_table("classified") %>%
-#     compute_pairs_fitness() %>%
-#     append_pairs_outocme()
 
 pairs_interaction <- read_pairs_boots_table("bootstrapped") %>%
     compute_pairs_fitness() %>%
@@ -127,12 +121,16 @@ pairs_interaction <- read_pairs_boots_table("bootstrapped") %>%
     )) %>%
     ungroup()
 
-# pairs_interaction %>%
-#     group_by(InteractionType, FitnessFunction) %>%
-#     count()
-
 #write_csv(pairs_outcome_classifiedT8, paste0(folder_main, "meta/95-pairs_outcome_classifiedT8.csv"))
 write_csv(pairs_interaction, paste0(folder_main, "meta/95-pairs_interaction.csv"))
+
+pairs_ID %>%
+    left_join(pairs_interaction) %>%
+    mutate(InteractionTypeFiner = factor(InteractionTypeFiner, interaction_type_finer)) %>%
+    group_by(InteractionType, InteractionTypeFiner, FitnessFunction) %>%
+    count(name = "Count") %>%
+    arrange(InteractionTypeFiner)
+
 
 # 2. Combine T0 and T8 frequencies ----
 pairs_freq_T0_boots <- pairs_T0_boots %>%

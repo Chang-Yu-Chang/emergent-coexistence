@@ -109,8 +109,8 @@ ggsave(paste0(folder_main, "meta/94-comparison-total_count.png"), p1, width = 8,
 
 
 # 2.2 Frequency
-## random forest classification
-p2a <- pairs_T8_combined %>%
+## bootstraps combined
+p2 <- pairs_T8_combined %>%
     ggplot() +
     geom_abline(slope = 1, intercept = 0, color = "red", linetype = 2) +
     geom_hline(yintercept = c(0,1), color = gray(.8), linetype = 2) +
@@ -118,15 +118,11 @@ p2a <- pairs_T8_combined %>%
     geom_point(aes(x = Isolate1CFUFreq_human, y = Isolate1CFUFreq_machine),
                shape = 21, size = 2, stroke = .4) +
     scale_shape_manual(values = c("TRUE" = 16, "FALSE" = 21)) +
-    facet_grid(.~PairType) +
     theme_classic() +
-    ggtitle("Random forest classified objects")
+    ggtitle("")
 
-lm(Isolate1CFUFreq_machine ~ Isolate1CFUFreq_human, data = pairs_T8_combined) %>%
-    summary()
-
-## bootstraps
-p2b <- pairs_T8_boots_combined %>%
+## bootstraps facets by duplicate pairs
+p3 <- pairs_T8_boots_combined %>%
     ggplot() +
     geom_abline(slope = 1, intercept = 0, color = "red", linetype = 2) +
     geom_hline(yintercept = c(0,1), color = gray(.8), linetype = 2) +
@@ -141,11 +137,16 @@ p2b <- pairs_T8_boots_combined %>%
     scale_shape_manual(values = c("TRUE" = 16, "FALSE" = 21)) +
     facet_grid(.~PairType) +
     theme_classic() +
-    ggtitle("1000 bootstraps based on random-forest-predicted object probabilities")
+    ggtitle("")
 
-p2 <- plot_grid(p2a, p2b, nrow = 2, axis = "tblr", align = "v", scale = .9) +
-    theme(plot.background = element_rect(fill = "white", color = NA))
-ggsave(paste0(folder_main, "meta/94-comparison-coculture_frequency.png"), p2, width = 10, height = 8)
+lm(Isolate1CFUFreqMean_machine ~ Isolate1CFUFreq_human, data = pairs_T8_boots_combined) %>%
+    summary()
+
+
+# p2 <- plot_grid(p2a, p2b, nrow = 2, axis = "tblr", align = "v", scale = .9) +
+#     theme(plot.background = element_rect(fill = "white", color = NA))
+ggsave(paste0(folder_main, "meta/94-comparison-coculture_frequency.png"), p2, width = 4, height = 4)
+ggsave(paste0(folder_main, "meta/94-comparison-coculture_frequency_facet.png"), p3, width = 10, height = 4)
 
 
 

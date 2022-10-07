@@ -49,7 +49,7 @@ communities_network <- communities %>%
     select(Community, CommunityLabel, CommunitySize, CommunityPairSize, Network)
 
 save(communities_network, file = paste0(folder_main, "meta/96-communities_network.Rdata"))
-cat("haha")
+
 
 # 2. Make a R list of randomized  networks ----
 randomize_network <- function(graph){
