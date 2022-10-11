@@ -5,8 +5,8 @@ library(cowplot)
 library(tidygraph)
 library(ggraph)
 library(gridExtra)
-# library(officer)
-# library(flextable)
+library(officer)
+library(flextable)
 #source(here::here("plotting_scripts/misc.R")
 
 folder_script <- "~/Desktop/lab/emergent-coexistence/output/check/"
@@ -16,26 +16,36 @@ communities <- read_csv("~/Dropbox/lab/emergent-coexistence/data/output/communit
 isolates <- read_csv(paste0(folder_main, "meta/97-isolates.csv"), show_col_types = F)
 pairs <- read_csv(paste0(folder_main, "meta/97-pairs.csv"), show_col_types = F)
 pairs_freq <- read_csv(paste0(folder_main, "meta/95-pairs_freq.csv"), show_col_types = F)
+pairs_freq_ID <- read_csv(paste0(folder_main, "meta/00-pairs_freq_ID.csv"), show_col_types = F)
 pairs_example_outcomes_finer <- read_csv(paste0(folder_main, "meta/97-pairs_example_outcomes_finer.csv"), show_col_types = F)
 pairs_example_outcomes <- read_csv(paste0(folder_main, "meta/97-pairs_example_outcomes.csv"), show_col_types = F)
+accuracy <- read_csv(paste0(folder_main, "meta/92-accuracy.csv"), show_col_types = F)
 communities <- read_csv("~/Dropbox/lab/emergent-coexistence/data/output/communities.csv", col_types = cols())
 communities_hierarchy <- read_csv(paste0(folder_main, "meta/96-communities_hierarchy.csv"), show_col_types = F)
-load(paste0(folder_main, "meta/96-communities_network.Rdata")) # communities_network
+load(paste0(folder_main, "meta/96-communities_network.Rdata"))
 
+# 1. Configure the column types ----
+# 1.1 Sort the communities by size
+pairs <- pairs %>% mutate(Community = factor(Community, communities$Community))
+pairs_freq <- pairs_freq %>% mutate(Community = factor(Community, communities$Community))
+pairs_freq_ID <- pairs_freq_ID %>% mutate(Community = factor(Community, communities$Community))
 
-#
+# 1.2 append random forest model accuracy values
+pairs_accuracy <- accuracy %>%
+    select(image_name_pair, Accuracy) %>%
+    left_join(pairs_freq_ID) %>%
+    group_by(Community, Isolate1, Isolate2) %>%
+    arrange(Community, Isolate1, Isolate2) %>%
+    summarize(Accuracy = mean(Accuracy), Count = n())
 pairs %>%
-    group_by(InteractionType, FitnessFunction) %>%
-    count(name = "Count")
+    left_join(pairs_accuracy) %>%
+    filter(Accuracy < 0.9)
 
+## Remove low accuracy pairs
+pairs <- pairs %>%
+    left_join(pairs_accuracy) %>%
+    filter(Accuracy > 0.9)
 
-
-# Rearrange
-pairs_ID <- pairs %>% select(PairID, Community, Isolate1, Isolate2)
-pairs_freq <- pairs_freq %>%
-    left_join(pairs_ID) %>%
-    select(PairID, everything()) %>%
-    arrange(PairID)
 
 # Plotting functions and color palettes ----
 paint_white_background <- function(x) theme(plot.background = element_rect(color = NA, fill = "white"))
@@ -328,6 +338,137 @@ interaction_type_finer <- c("competitive exclusion", "stable coexistence",
                             "mutual exclusion", "frequency-dependent coexistence",
                             "coexistence at 5%", "coexistence at 95%",
                             "2-freq neutrality", "3-freq neutrality")
+
+make_interaction_type <- function () {
+    #' This function generates the fitness function table.
+    #' There are a total of 27 possibilities
+    interaction_type <- tibble(
+        FromRare = rep(c(1, -1, 0), each = 9),
+        FromMedium = rep(rep(c(1, -1, 0), each = 3), 3),
+        FromAbundant = rep(c(1, -1, 0), 9),
+        InteractionType = NA,
+        InteractionTypeFiner = NA
+    )
+    ## Assign interaction types to combinations of frequency changes signs
+    interaction_type$InteractionType[c(1,10,13,14)] <- "exclusion"
+    interaction_type$InteractionType[c(2:6,8,11,20,23, 9,18,21,24,25,26,27)] <- "coexistence"
+
+    ## Assign finer interaction types to combinations of frequency changes signs
+    interaction_type$InteractionTypeFiner[c(1,14)] <- "competitive exclusion"
+    interaction_type$InteractionTypeFiner[c(10,13)] <- "mutual exclusion"
+    interaction_type$InteractionTypeFiner[c(2,5,8)] <- "stable coexistence"
+    interaction_type$InteractionTypeFiner[c(4,6,11,20)] <- "frequency-dependent coexistence"
+    interaction_type$InteractionTypeFiner[c(3)] <- "coexistence at 95%"
+    interaction_type$InteractionTypeFiner[c(23)] <- "coexistence at 5%"
+    interaction_type$InteractionTypeFiner[c(9,18,21,24:26)] <- "neutrality"
+    interaction_type$InteractionTypeFiner[c(9,18,21,24:26)] <- "2-freq neutrality"
+    interaction_type$InteractionTypeFiner[c(27)] <- "3-freq neutrality"
+    interaction_type <- interaction_type %>%  mutate(FitnessFunction = paste(FromRare, FromMedium, FromAbundant, sep = "_"))
+}
+interaction_type_table <- make_interaction_type() %>%
+    filter(!is.na(InteractionType)) %>%
+    distinct(InteractionType, InteractionTypeFiner) %>%
+    mutate(InteractionTypeFiner = factor(InteractionTypeFiner, interaction_type_finer)) %>%
+    arrange(InteractionTypeFiner)
+count_interaction_finer <- function(pairs_interaction) {
+    pairs_interaction %>%
+        mutate(InteractionType = factor(InteractionType, c("exclusion", "coexistence"))) %>%
+        mutate(InteractionTypeFiner = factor(InteractionTypeFiner, interaction_type_finer)) %>%
+        group_by(InteractionType, InteractionTypeFiner, .drop = 0) %>%
+        count(name = "Count") %>% ungroup() %>%
+        mutate(Fraction = Count / sum(Count)) %>%
+        mutate(Label = str_replace(InteractionTypeFiner, " ", "\n")) %>%
+        right_join(interaction_type_table) %>%
+        arrange(InteractionTypeFiner)
+}
+get_interaction_legend <- function (pairs) {
+    temp <- pairs %>%
+        ggplot() +
+        geom_tile(aes(x = Isolate1, y = Isolate2, fill = InteractionTypeFiner), height = .8, width = .8, alpha = .9) +
+        scale_fill_manual(values = assign_interaction_color(level = "finer"),
+                          breaks = names(assign_interaction_color(level = "finer")),
+                          labels = paste0(pairs_interaction_finer$InteractionTypeFiner, " (", round(pairs_interaction_finer$Fraction, 3) * 100,"%)")) +
+        theme(legend.title = element_blank(),
+              legend.position = "right",
+              legend.spacing.y = unit("2", "mm"),
+              legend.text = element_text(size = 12)) +
+        guides(fill = guide_legend(byrow = T)) +
+        paint_white_background()
+
+    return(get_legend(temp))
+
+}
+plot_example_freq <- function(pairs_freq) {
+    pairs_freq %>%
+        mutate(Isolate1InitialODFreq = factor(Isolate1InitialODFreq, c(95,50,5))) %>%
+        ggplot() +
+        geom_rect(xmin = -Inf, xmax = Inf, ymin = -Inf, ymax = Inf, aes(fill = InteractionTypeFiner), alpha = .1) +
+        geom_hline(size = .2, yintercept = c(0,1), linetype = 1, color = "grey90") +
+        geom_line(size = .4, aes(x = Time, y = Isolate1CFUFreqMean, color = Isolate1InitialODFreq, group = Isolate1InitialODFreq)) +
+        geom_point(size = .2, aes(x = Time, y = Isolate1CFUFreqMean, color = Isolate1InitialODFreq, group = Isolate1InitialODFreq)) +
+        geom_segment(size = .4, aes(x = Time, xend = Time,
+                                    y = Isolate1CFUFreqMean + 2*Isolate1CFUFreqSd,
+                                    yend = Isolate1CFUFreqMean - 2*Isolate1CFUFreqSd,
+                                    color = Isolate1InitialODFreq)) +
+        scale_y_continuous(breaks = c(0, .5, 1), limits = c(-.1, 1.1)) +
+        scale_color_manual(values = frequency_color, label = c("95%", "50%", "5%")) +
+        scale_fill_manual(values = assign_interaction_color(level = "finer")) +
+        theme_bw() +
+        theme(panel.spacing = unit(2, "mm"),
+              panel.border = element_rect(color = 1, fill = NA, size = .5),
+              panel.grid = element_blank(),
+              panel.grid.minor.y = element_blank(),
+              axis.title = element_blank(), axis.text = element_blank(),
+              axis.ticks = element_blank(),
+              plot.background = element_blank(),
+              plot.title = element_text(size = 5, margin = margin(0,0,0,0)),
+              plot.margin = margin(0,0,0,0, "mm")) +
+        guides(color = "none", fill = "none") +
+        labs(x = "Time", y = "Frequency") +
+        ggtitle(unique(pairs_freq$PairID))
+}
+
+#
+pairs_interaction_finer <- count_interaction_finer(pairs_interaction)
+p_legend_fill <- get_interaction_legend(pairs_interaction)
+
+# Append competition outcome to frequencies
+pairs_example_freq <- pairs_interaction %>%
+    mutate(InteractionType = factor(InteractionType, c("exclusion", "coexistence"))) %>%
+    mutate(InteractionTypeFiner = factor(InteractionTypeFiner, interaction_type_finer)) %>%
+    arrange(InteractionType, InteractionTypeFiner) %>%
+    left_join(pairs_freq) %>%
+    select(PairID, InteractionType, InteractionTypeFiner, Isolate1InitialODFreq, Time, Isolate1CFUFreqMean, Isolate1CFUFreqSd) %>%
+    mutate(Isolate1InitialODFreq = factor(Isolate1InitialODFreq), Time = factor(Time, c("T0", "T8")))
+
+frequency_color <- c( "95"="#292F36", "50"="#9F87AF", "5"="#7D7C7C")
+
+temp_list <- pairs_example_freq %>%
+    arrange(InteractionTypeFiner, PairID) %>%
+    group_split(InteractionTypeFiner, PairID) %>%
+    lapply(plot_example_freq)
+
+## Grid layout
+m <- matrix(c(1:186, rep(NA, 4)), nrow = 10)
+p_waffle <- arrangeGrob(grobs = temp_list, layout_matrix = m)
+p_waffle <- plot_grid(p_waffle, NULL, rel_widths = c(3, 1), scale = c(.9, 1)) + paint_white_background()
+
+ss = .3
+p <- ggdraw(p_waffle) +
+    draw_plot(p_legend_fill, x = .86, y = .7, width = ss/2, height = ss/2, hjust = 0.5, vjust = .5) +
+    draw_plot(p_legend_color, x = .77, y = .2, width = ss/2, height = ss/2, hjust = 0.5, vjust = .5) +
+    theme(panel.background = element_blank(), plot.background = element_rect(color = NA, fill = "white"),
+          plot.margin = unit(c(0,0,0,0), "mm"))
+
+ggsave(here::here("plots/Fig3.png"), p, width = 10, height = 5)
+
+
+if (FALSE) {
+
+interaction_type_finer <- c("competitive exclusion", "stable coexistence",
+                            "mutual exclusion", "frequency-dependent coexistence",
+                            "coexistence at 5%", "coexistence at 95%",
+                            "2-freq neutrality", "3-freq neutrality")
 pairs_interaction_finer <- pairs %>%
     mutate(InteractionType = ifelse(is.na(FitnessFunction), "no fitness function", InteractionType)) %>%
     mutate(InteractionType = factor(InteractionType, c("exclusion", "coexistence", "no fitness function"))) %>%
@@ -362,18 +503,9 @@ pairs_example_freq <- pairs %>%
     mutate(InteractionType = factor(InteractionType, c("exclusion", "coexistence"))) %>%
     mutate(InteractionTypeFiner = factor(InteractionTypeFiner, interaction_type_finer)) %>%
     arrange(InteractionType, InteractionTypeFiner) %>%
-    # Add the coordinate in the grid
-    bind_rows(tibble(InteractionType = rep(NA, 4), InteractionTypeFiner = rep(NA, 4))) %>%
-    filter(!is.na(tibble(InteractionType))) %>%
-    # Join the frequency data
-    select(PairID, InteractionType, InteractionTypeFiner) %>%
-    left_join(pairs_freq, by = "PairID") %>%
-    "
-    check the frequnec fepdent coexistnece
-"
-    select(PairID, InteractionType, InteractionTypeFiner, Isolate1InitialODFreq, Time, Isolate1CFUFreqMean) %>%
-    mutate(Isolate1InitialODFreq = factor(Isolate1InitialODFreq),
-           Time = factor(Time, c("T0", "T8")))
+    left_join(pairs_freq) %>%
+    select(PairID, InteractionType, InteractionTypeFiner, Isolate1InitialODFreq, Time, Isolate1CFUFreqMean, Isolate1CFUFreqSd) %>%
+    mutate(Isolate1InitialODFreq = factor(Isolate1InitialODFreq), Time = factor(Time, c("T0", "T8")))
 
 plot_example_freq <- function(pairs_freq) {
     pairs_freq %>%
@@ -400,23 +532,15 @@ plot_example_freq <- function(pairs_freq) {
         labs(x = "Time", y = "Frequency") +
         ggtitle(unique(pairs_freq$PairID))
 }
-
-pairs_example_freq %>%
-    filter(InteractionTypeFiner == "competitive exclusion", PairID == 1) %>%
-    plot_example_freq
-
 temp_list <- pairs_example_freq %>%
     arrange(InteractionTypeFiner, PairID) %>%
     group_split(InteractionTypeFiner, PairID) %>%
     lapply(plot_example_freq)
 
-
 ## Grid layout
 m <- matrix(c(1:186, rep(NA, 4)), nrow = 10)
 p_waffle <- arrangeGrob(grobs = temp_list, layout_matrix = m)
 p_waffle <- plot_grid(p_waffle, NULL, rel_widths = c(3, 1), scale = c(.9, 1)) + paint_white_background()
-
-#p_right <- plot_grid(p_legend_fill, p_legend_color, nrow = 2)
 ss = .3
 p <- ggdraw(p_waffle) +
     draw_plot(p_legend_fill, x = .86, y = .7, width = ss/2, height = ss/2, hjust = 0.5, vjust = .5) +
@@ -424,12 +548,8 @@ p <- ggdraw(p_waffle) +
     theme(panel.background = element_blank(), plot.background = element_rect(color = NA, fill = "white"),
           plot.margin = unit(c(0,0,0,0), "mm"))
 
-ggsave(here::here("plots/Fig3.png"), p, width = 12, height = 4)
-
-pairs %>%
-    group_by(InteractionType, InteractionTypeFiner, FitnessFunction) %>%
-    count(name = "Count")
-
+ggsave(here::here("plots/Fig3.png"), p, width = 10, height = 5)
+}
 
 
 
@@ -581,10 +701,6 @@ temp <- p_net_hierarchy_list[[13]] +
 p_legend <- get_legend(temp)
 pB <- ggdraw(pB) + draw_plot(p_legend,.2,.3,.1,.1)
 
-#ggsave(here::here("plots/Fig4B-network_hierarchy_experiment.png"), pB, width = 10, height = 3)
-
-
-
 # Figure 4C: Hierarchy
 pC <- mutate(communities_hierarchy, Treatment = "experiment") %>%
     ggplot(aes(x = Treatment, y = HierarchyScore)) +
@@ -604,8 +720,6 @@ pC <- mutate(communities_hierarchy, Treatment = "experiment") %>%
     labs(x = "", y = "Score") +
     guides(color = "none") +
     ggtitle("Hierarchy")
-
-#ggsave(here::here("plots/Fig4C-hierarchy.png"), pC, width = 4, height = 4)
 
 #
 p_left <- plot_grid(pA, pC, ncol = 1, rel_heights = c(1,1), scale = c(.8, .9), labels = c("A", "C"), axis = "lr", align = "v")
@@ -630,6 +744,7 @@ color_sets <- tibble(Color = c("yellow", "deepskyblue3", "blue", "darkorchid2", 
                      Family = c("Aeromonadaceae", "Enterobacteriaceae", "Moraxellaceae", "Pseudomonadaceae","Comamonadaceae","Alcaligenaceae", "Sphingobacteriaceae"))
 p2 <- isolates %>%
     mutate(Community = factor(Community, communities$Community)) %>%
+    filter(!is.na(RelativeAbundance)) %>%
     arrange(Community) %>%
     ggplot() +
     geom_bar(aes(x = Community, y = RelativeAbundance, fill = Family), size = .3, color = "grey30", position = "stack", stat = "identity") +
@@ -653,227 +768,27 @@ p <- plot_grid(p1, p2, nrow = 1, scale = c(.8, .9), rel_widths = c(1, 1.5), labe
 ggsave(here::here("plots/FigS1.png"), p, width = 10, height = 3)
 
 
-
-# Figure S3 ----
-# Pairwise interaction outcome using each of the three sets of data
-# Set 1: CFU only
-# Set 2: CASEU only
-# Set 3: CFU mainly, and filled by CASEU
-
-pairs_interaction <- read_csv("~/Dropbox/lab/emergent-coexistence/data/output/pairs_interaction.csv", col_types = cols()) %>%
-    mutate(InteractionType = ifelse(InteractionType == "neutrality", "coexistence", InteractionType))
-pairs_ID <- read_csv("~/Dropbox/lab/emergent-coexistence/data/temp/pairs_ID.csv", col_types = cols())
-
-# Fraction of outcomes overview
-p <- pairs_interaction %>%
-    mutate(Set = factor(Set, c("CFUonly", "CASEUonly", "CFUandCASEU"))) %>%
-    group_by(Set, InteractionType) %>%
-    summarize(Count = n(), .groups = "drop_last") %>%
-    replace_na(list(InteractionType = "NA")) %>%
-    mutate(InteractionType = factor(InteractionType, c("NA", "exclusion", "coexistence"))) %>%
-    mutate(Fraction = Count / sum(Count)) %>%
-    ggplot() +
-    geom_col(aes(x = Set, y = Fraction, fill = InteractionType)) +
-    scale_fill_manual(values = c("NA" = "grey80", interaction_color)) +
-    scale_y_continuous(expand = c(0,0), breaks = c(0, .5, 1)) +
-    theme_classic() +
-    theme(legend.title = element_blank(),
-          panel.border = element_rect(color = 1, fill = NA, size = 1)) +
-    guides()
-
-ggsave(here::here("plots/FigS3.png"), p, width = 5, height = 3)
-
-
-# Figure S4 ----
-# Pair by pair comparison
-pairs_example_freq <- pairs_interaction %>%
-    left_join(pairs_ID) %>%
-    select(Set, InteractionType, PairID) %>%
-    mutate(InteractionType = factor(InteractionType, c("exclusion", "coexistence"))) %>%
-    arrange(Set, InteractionType) %>%
-    right_join(pairs_freq) %>%
-    select(Set, PairID, InteractionType, Isolate1InitialODFreq, Time, Isolate1CFUFreqMean) %>%
-    mutate(Set = factor(Set, c("CFUonly", "CASEUonly", "CFUandCASEU"))) %>%
-    arrange(PairID, Set)
-
-pairs_ID_grid <- pairs %>%
-    mutate(InteractionType = factor(InteractionType, c("exclusion", "coexistence"))) %>%
-    mutate(InteractionTypeFiner = ordered(InteractionTypeFiner, c("competitive exclusion", "mutual exclusion", "stable coexistence", "frequency-dependent coexistence", "neutrality"))) %>%
-    arrange(InteractionType, InteractionTypeFiner) %>%
-    # Add the coordinate in the grid
-    bind_rows(tibble(InteractionType = rep(NA, 4), InteractionTypeFiner = rep(NA, 4))) %>%
-    filter(!is.na(tibble(InteractionType))) %>%
-    # Join the frequency data
-    select(Set, PairID, InteractionType, InteractionTypeFiner) %>%
-    left_join(filter(pairs_freq, Set == "CFUandCASEU"), by = c("Set", "PairID")) %>%
-    select(PairID, InteractionType, InteractionTypeFiner, Isolate1InitialODFreq, Time, Isolate1CFUFreqMean) %>%
-    mutate(Isolate1InitialODFreq = factor(Isolate1InitialODFreq),
-           Time = factor(Time, c("Tini", "Tend"))) %>%
-    arrange(InteractionTypeFiner, PairID) %>%
-    distinct(PairID)
-
-plot_sidebyside_freq <- function(tb) {
-
-    temp <- distinct(tb, Set, InteractionType)
-    if (nrow(temp) != 3) cat("The outcome of one data type is not unique")
-
-    tb %>%
-        mutate(Isolate1InitialODFreq = factor(Isolate1InitialODFreq)) %>%
-        mutate(Time = factor(Time, c("Tini", "Tend"))) %>%
-        mutate(Set = factor(Set, c("CFUonly", "CASEUonly", "CFUandCASEU"))) %>%
-        ggplot() +
-        geom_rect(data = temp, size = .5, xmin = -Inf, xmax = Inf, ymin = -Inf, ymax = Inf, aes(fill = InteractionType, linetype = Set), color = 1, alpha = .4) +
-        geom_hline(size = .2, yintercept = c(0,1), linetype = 1, color = "grey90") +
-        geom_point(size = .4, aes(x = Time, y = Isolate1CFUFreqMean, color = Isolate1InitialODFreq, group = Isolate1InitialODFreq)) +
-        geom_line(size = .4, aes(x = Time, y = Isolate1CFUFreqMean, color = Isolate1InitialODFreq, group = Isolate1InitialODFreq)) +
-        scale_y_continuous(breaks = c(0, .5, 1), limits = c(-.1, 1.1)) +
-        scale_color_manual(values = frequency_color, label = c("95%", "50%", "5%")) +
-        scale_fill_manual(values = c(assign_interaction_color(), "NA" = "grey90")) +
-        scale_linetype_manual(values = c("CFUonly" = 1, "CASEUonly" = 2, "CFUandCASEU" = 3), name = "") +
-        facet_grid(.~Set) +
-        theme_bw() +
-        theme(panel.spacing = unit(0, "mm"),
-              strip.background = element_blank(),
-              strip.text = element_blank(),
-              #panel.border = element_rect(color = 1, fill = NA, size = 1),
-              panel.border = element_blank(),
-              panel.grid = element_blank(),
-              panel.grid.minor.y = element_blank(),
-              axis.title = element_blank(), axis.text = element_blank(),
-              axis.ticks = element_blank(),
-              plot.background = element_blank(),
-              plot.title = element_text(size = 6, margin = margin(0,0,0,0)),
-              plot.margin = margin(0,0,0,0, "mm")) +
-        guides(color = "none", fill = "none", linetype = "none") +
-        labs(x = "Time", y = "Frequency") +
-        ggtitle(unique(tb$PairID))
-}
-temp_list <- pairs_example_freq %>%
-    #filter(PairID %in% 1:4) %>%
-    mutate(PairID = factor(PairID, pairs_ID_grid$PairID)) %>%
-    arrange(Set, PairID) %>%
-    group_split(PairID) %>%
-    lapply(plot_sidebyside_freq)
-
-## Grid layout
-m <- matrix(c(1:186, rep(NA, 4)), nrow = 10)
-p_waffle <- arrangeGrob(grobs = temp_list, layout_matrix = m)
-p_waffle <- plot_grid(p_waffle, NULL, rel_widths = c(5, 1), scale = c(.9, 1)) + paint_white_background()
-
-
-make_legend_fill_simple <- function() {
-    temp1 <- pairs_interaction %>%
-        group_by(InteractionType) %>%
-        count() %>%
-        ungroup() %>%
-        mutate(Fraction = n/sum(n)) %>%
-        mutate(InteractionType = factor(InteractionType, c("exclusion", "coexistence"))) %>%
-        arrange(InteractionType)
-
-    temp <- pairs_interaction %>%
-        ggplot() +
-        geom_tile(aes(x = Isolate1, y = Isolate2, fill = InteractionTypeFiner), height = .8, width = .8, alpha = .9) +
-        scale_fill_manual(values = c(assign_interaction_color(), "NA" = "grey80"),
-                          breaks = c("exclusion", "coexistence", "NA"),
-                          labels = c("exclusion", "coexistence", "NA")) +
-        theme(legend.title = element_blank(),
-              legend.position = "right",
-              legend.spacing.y = unit("2", "mm"),
-              legend.text = element_text(size = 12)
-        ) +
-        guides(fill = guide_legend(byrow = T)) +
-        paint_white_background()
-    return(get_legend(temp))
-
-}
-p_legend_fill <- make_legend_fill_simple()
-make_legend_linetype <- function() {
-    tb <- pairs_example_freq %>%
-        filter(PairID %in% 53)
-
-    temp <- distinct(tb, Set, InteractionType)
-    if (nrow(temp) != 3) cat("The outcome of one data type is not unique")
-
-    temp1 <- tb %>%
-        mutate(Isolate1InitialODFreq = factor(Isolate1InitialODFreq)) %>%
-        mutate(Time = factor(Time, c("Tini", "Tend"))) %>%
-        mutate(Set = factor(Set, c("CFUonly", "CASEUonly", "CFUandCASEU"))) %>%
-        ggplot() +
-        geom_rect(data = temp, xmin = -Inf, xmax = Inf, ymin = -Inf, ymax = Inf, aes(fill = InteractionType, linetype = Set), color = 1, alpha = .4, size = 1) +
-        geom_point(size = 2, aes(x = Time, y = Isolate1CFUFreqMean, color = Isolate1InitialODFreq, group = Isolate1InitialODFreq)) +
-        geom_line(size = 1, aes(x = Time, y = Isolate1CFUFreqMean, color = Isolate1InitialODFreq, group = Isolate1InitialODFreq)) +
-        scale_y_continuous(breaks = c(0, .5, 1), limits = c(0,1)) +
-        scale_color_manual(values = frequency_color, label = c("95%", "50%", "5%")) +
-        scale_fill_manual(values = c(assign_interaction_color(), "NA" = "grey90")) +
-        scale_linetype_manual(values = c("CFUonly" = 1, "CASEUonly" = 2, "CFUandCASEU" = 3), name = "") +
-        facet_grid(.~Set) +
-        theme_bw() +
-        theme(panel.spacing = unit(0, "mm"),
-              strip.background = element_blank(),
-              strip.text = element_blank(),
-              legend.title = element_blank(),
-              #panel.border = element_rect(color = 1, fill = NA, size = 1),
-              panel.border = element_blank(),
-              panel.grid = element_blank(),
-              panel.grid.minor.y = element_blank(),
-              axis.title = element_blank(), axis.text = element_blank(),
-              axis.ticks = element_blank(),
-              plot.background = element_blank(),
-              plot.margin = margin(0,0,0,0, "mm")) +
-        guides(fill = "none") +
-        labs(x = "Time", y = "Frequency") +
-        ggtitle(unique(tb$PairID))
-
-    return(get_legend(temp1))
-
-}
-p_legend_linetype <- make_legend_linetype()
-
-
-ss = .3
-p <- ggdraw(p_waffle) +
-    draw_plot(p_legend_fill, x = .86, y = .7, width = ss/2, height = ss/2, hjust = 0.5, vjust = .5) +
-    draw_plot(p_legend_linetype, x = .86, y = .2, width = ss/2, height = ss/2, hjust = 0.5, vjust = .5) +
-    #draw_plot(p_legend_color, x = .77, y = .2, width = ss/2, height = ss/2, hjust = 0.5, vjust = .5) +
-    theme(panel.background = element_blank(), plot.background = element_rect(color = NA, fill = "white"),
-          plot.margin = unit(c(0,0,0,0), "mm"))
-
-ggsave(here::here("plots/FigS4.png"), p, width = 20, height = 6)
-ggsave(here::here("plots/FigS4.pdf"), p, width = 20, height = 6)
-
-
-
-
-
-
 # Table S1. Pairwise interaction tables ----
-t1 <- read_csv("~/Dropbox/lab/emergent-coexistence/data/output/pairs_interaction_table.csv", col_types = cols()) %>%
-    mutate(InteractionType = ifelse(InteractionType == "neutrality", "coexistence", InteractionType)) %>%
-    arrange(Set, InteractionType, InteractionTypeFiner, FromRare, FromMedium, FromAbundant) %>%
-    setNames(c("Data type", "From 5%", "From 50%", "From 95%", "Outcome", "Finer outcome", "Count"))
+reformat <- function(x) {
+    x <- ifelse(x == "1", "+", x)
+    x <- ifelse(x == "-1", "-", x)
+    x <- factor(x, c("+", "-", "0"))
+    return(x)
+}
+t1 <- pairs %>%
+    group_by(InteractionType, InteractionTypeFiner, FitnessFunction) %>%
+    count(name = "Count") %>%
+    separate(col = FitnessFunction, into = c("From 5%", "From 50%", "From 95%"), sep = "_") %>%
+    mutate(across(starts_with("From"), reformat)) %>%
+    arrange(`From 5%`, `From 50%`, `From 95%`) %>%
+    select(`From 5%`, `From 50%`, `From 95%`, Outcome = InteractionType, `Finer outcome` = InteractionTypeFiner, Count)
 
-
-ft1_1 <- t1 %>%
-    filter(`Data type` == "CFUonly") %>%
+ft1 <- t1 %>%
     flextable() %>%
     width(j = 1:4, width = 1) %>%
-    width(j = 6, width = 2.5)
-ft1_2 <- t1 %>%
-    filter(`Data type` == "CASEUonly") %>%
-    flextable() %>%
-    width(j = 1:4, width = 1) %>%
-    width(j = 6, width = 2.5)
-ft1_3 <- t1 %>%
-    filter(`Data type` == "CFUandCASEU") %>%
-    flextable() %>%
-    width(j = 1:4, width = 1) %>%
-    width(j = 6, width = 2.5)
+    width(j = 5, width = 2.5)
 
-
-save_as_image(ft1_1, here::here("plots/TableS1_1.png"), webshot = "webshot2")
-save_as_image(ft1_2, here::here("plots/TableS1_2.png"), webshot = "webshot2")
-save_as_image(ft1_3, here::here("plots/TableS1_3.png"), webshot = "webshot2")
-
+save_as_image(ft1, here::here("plots/TableS1.png"), webshot = "webshot2")
 
 # Table S2. Isolates ----
 t2 <- isolates %>%
@@ -926,6 +841,10 @@ ft2_2 <- t2_2 %>%
 
 save_as_image(ft2_1, here::here("plots/TableS2_1.png"), webshot = "webshot2")
 save_as_image(ft2_2, here::here("plots/TableS2_2.png"), webshot = "webshot2")
+
+
+
+
 
 
 

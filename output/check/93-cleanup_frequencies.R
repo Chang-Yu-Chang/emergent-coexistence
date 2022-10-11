@@ -1,10 +1,9 @@
 #' This script generates an output csv with T0 vs.T8 frequencies for each competing pairs
 #' 1. calculate epsilon for T0
-#' 2. convert T0 OD frequency to CFU frequency, and bootstrap the CFU frequency. Output 93-pairs_T0_boots.csv
+#' 2. convert T0 OD to CFU, and bootstrap the CFU drawn from poisson then calculate T0 CFU frequency. Output 93-pairs_T0_boots.csv
 #' 3. aggregate T8 bootstraps and clean column names
 #' 4. aggregate T8 random-forest-predicted names and bootstrap the frequencies
-#'
-#' It takes ~ 7 mins to run this script
+
 
 library(tidyverse)
 library(cowplot)
@@ -171,12 +170,14 @@ pairs_epsilon <- pairs_freq_ID %>%
 #' The idea is to convert OD (0.1*Isolate1InitialODFreq) of type A to CFU (cfu_A),
 #' and use cfu_A as the mean the parameterize poisson. Draw n_A ~ Pois(cfu_A).
 #' Repeat it for type B and obtain n_B. The bootstrapped freq_A = n_A / (n_A + n_B)
+#' here I am using dilution factor 10^-4 such that the CFU count is no smaller than 10
 
 pairs_epsilon <- pairs_epsilon %>%
-    mutate(cfu_A = 0.1 * (Isolate1InitialODFreq / 100) * 10^(-5) * 20 * Epsilon1,
-           cfu_B = 0.1 * (Isolate2InitialODFreq / 100) * 10^(-5) * 20 * Epsilon2)
+    mutate(cfu_A = 0.1 * (Isolate1InitialODFreq / 100) * 10^(-4) * 20 * Epsilon1,
+           cfu_B = 0.1 * (Isolate2InitialODFreq / 100) * 10^(-4) * 20 * Epsilon2)
 
 n_bootstraps = 1000
+set.seed(1)
 pairs_T0_boots <- pairs_epsilon %>%
     mutate(Time = "T0", RawDataType = "ODtoCFU") %>%
     rowwise() %>%
@@ -187,8 +188,6 @@ pairs_T0_boots <- pairs_epsilon %>%
                Isolate1CFUFreq = n_A / (n_A + n_B))
     )) %>%
     unnest(cols = c(bootstrap))
-
-    #select(Batch, Community, Isolate1, Isolate2, Isolate1InitialODFreq, Isolate2InitialODFreq, Time, RawDataType, BootstrapID, Isolate1CFUFreq)
 
 write_csv(pairs_T0_boots, paste0(folder_main, "meta/93-pairs_T0_boots.csv"))
 

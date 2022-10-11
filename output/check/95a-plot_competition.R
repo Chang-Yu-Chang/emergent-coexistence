@@ -35,9 +35,6 @@ pairs_accuracy <- accuracy %>%
     group_by(Community, Isolate1, Isolate2) %>%
     arrange(Community, Isolate1, Isolate2) %>%
     summarize(Accuracy = mean(Accuracy), Count = n())
-pairs_ID %>%
-    left_join(pairs_accuracy) %>%
-    view
 pairs_interaction %>%
     left_join(pairs_accuracy) %>%
     filter(Accuracy < 0.9)
@@ -213,7 +210,8 @@ plot_example_freq <- function(pairs_freq) {
         labs(x = "Time", y = "Frequency") +
         ggtitle(unique(pairs_freq$PairID))
 }
-# 3.1 bootstrapped T8 ----
+
+#
 pairs_interaction_finer <- count_interaction_finer(pairs_interaction)
 p_legend_fill <- get_interaction_legend(pairs_interaction)
 
@@ -227,9 +225,6 @@ pairs_example_freq <- pairs_interaction %>%
     mutate(Isolate1InitialODFreq = factor(Isolate1InitialODFreq), Time = factor(Time, c("T0", "T8")))
 
 frequency_color <- c( "95"="#292F36", "50"="#9F87AF", "5"="#7D7C7C")
-# pairs_example_freq %>%
-#     filter(PairID == 1) %>%
-#     plot_example_freq()
 
 temp_list <- pairs_example_freq %>%
     arrange(InteractionTypeFiner, PairID) %>%

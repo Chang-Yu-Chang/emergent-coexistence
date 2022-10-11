@@ -77,7 +77,7 @@ for (j in 1:length(batch_names)) {
     #' D T1 C1R7 7
     # list_images %>%
     #     filter(str_detect(image_names, "T0") | str_detect(image_names, "T1")) %>%
-    #     write_csv(paste0(folder_script, "00-list_images-no_growth_isolates.csv"))
+    #     write_csv(paste0(folder_script, "00--no_growth_isolates.csv"))
 
     # 0.3 Mapping file between isolate and pairs ----
     #' This section does not need rgb
