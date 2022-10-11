@@ -162,11 +162,37 @@ write_csv(isolates_epsilon, paste0(folder_main, "meta/93-isolates_epsilon.csv"))
 
 
 # 2. Convert T0 OD to CFU ----
-# 2.1 T0 OD to CFU frequencies ----
+# 2.1 T0 OD to CFU ----
 pairs_epsilon <- pairs_freq_ID %>%
-    left_join(rename(isolates_epsilon, Isolate1 = Isolate, Epsilon1 = Epsilon, ErrorEpsilon1 = ErrorEpsilon), by = c("Batch", "Community", "Isolate1")) %>%
-    left_join(rename(isolates_epsilon, Isolate2 = Isolate, Epsilon2 = Epsilon, ErrorEpsilon2 = ErrorEpsilon), by = c("Batch", "Community", "Isolate2"))
+    left_join(select(isolates_epsilon, Community, Isolate1 = Isolate, Epsilon1 = Epsilon, ErrorEpsilon1 = ErrorEpsilon), by = c("Community", "Isolate1")) %>%
+    left_join(select(isolates_epsilon, Community, Isolate2 = Isolate, Epsilon2 = Epsilon, ErrorEpsilon2 = ErrorEpsilon), by = c("Community", "Isolate2"))
 
+# 2.2 Bootstrapping T0 freq_A from poisson ----
+#' The idea is to convert OD (0.1*Isolate1InitialODFreq) of type A to CFU (cfu_A),
+#' and use cfu_A as the mean the parameterize poisson. Draw n_A ~ Pois(cfu_A).
+#' Repeat it for type B and obtain n_B. The bootstrapped freq_A = n_A / (n_A + n_B)
+
+pairs_epsilon <- pairs_epsilon %>%
+    mutate(cfu_A = 0.1 * (Isolate1InitialODFreq / 100) * 10^(-5) * 20 * Epsilon1,
+           cfu_B = 0.1 * (Isolate2InitialODFreq / 100) * 10^(-5) * 20 * Epsilon2)
+
+n_bootstraps = 1000
+pairs_T0_boots <- pairs_epsilon %>%
+    mutate(Time = "T0", RawDataType = "ODtoCFU") %>%
+    rowwise() %>%
+    mutate(bootstrap = list(
+        tibble(BootstrapID = 1:n_bootstraps,
+               n_A = rpois(n_bootstraps, cfu_A),
+               n_B = rpois(n_bootstraps, cfu_B),
+               Isolate1CFUFreq = n_A / (n_A + n_B))
+    )) %>%
+    unnest(cols = c(bootstrap))
+
+    #select(Batch, Community, Isolate1, Isolate2, Isolate1InitialODFreq, Isolate2InitialODFreq, Time, RawDataType, BootstrapID, Isolate1CFUFreq)
+
+write_csv(pairs_T0_boots, paste0(folder_main, "meta/93-pairs_T0_boots.csv"))
+
+if (FALSE) {
 # Uncertainty in T0 OD-converted CFU frequencies
 pairs_T0 <- pairs_epsilon %>%
     # Initial OD frequencies
@@ -228,9 +254,10 @@ for (i in 1:nrow(pairs_T0)) {
                                 sd = error_isolate1_cfu_freq)
     )
 }
-
 pairs_T0_boots <- bind_rows(temp)
-write_csv(pairs_T0_boots, paste0(folder_main, "meta/93-pairs_T0_boots.csv"))
+
+}
+
 
 
 # 4. Aggregate the classified result from random forest ----
