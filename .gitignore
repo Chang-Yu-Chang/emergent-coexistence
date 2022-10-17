@@ -35,3 +35,6 @@ vignettes/*.pdf
 # R Environment Variables
 .Renviron
 .Rproj.user
+
+#
+deprecated/
