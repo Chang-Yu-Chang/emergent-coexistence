@@ -79,7 +79,7 @@ pairs_T8_combined <- pairs_T8_renamed %>%
     select(-ID1, -ID2) %>%
     select(image_name_pair, everything())
 
-
+write_csv(pairs_T8_combined, paste0(folder_main, "meta/94-pairs_T8_combined.csv"))
 
 # 2. Plots ----
 # 2.1 Total count

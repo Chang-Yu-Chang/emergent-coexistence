@@ -2,6 +2,7 @@
 
 library(tidyverse)
 library(cowplot)
+library(ggsci)
 library(tidygraph)
 library(ggraph)
 library(gridExtra)
@@ -22,6 +23,7 @@ accuracy <- read_csv(paste0(folder_main, "meta/92-accuracy.csv"), show_col_types
 communities <- read_csv("~/Dropbox/lab/emergent-coexistence/data/output/communities.csv", col_types = cols())
 communities_hierarchy <- read_csv(paste0(folder_main, "meta/96-communities_hierarchy.csv"), show_col_types = F)
 load(paste0(folder_main, "meta/96-communities_network.Rdata"))
+pairs_mismatch <- read_csv(paste0(folder_main, "meta/00c-pairs_mismatch.csv"), show_col_types = F)
 
 
 
@@ -796,6 +798,63 @@ save_as_image(ft2_2, here::here("plots/TableS2_2.png"), webshot = "webshot2")
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# Exploratory ----
+## mismatch in differnce groups
+pairs %>%
+    left_join(pairs_mismatch) %>%
+    filter(!is.na(InteractionType)) %>%
+    ggplot(aes(x = PairFermenter, y = Mismatch, color = PairFermenter)) +
+    geom_boxplot(shape = 21, size = 1, position = position_dodge(width = 0.8)) +
+    geom_point(shape = 21, size = 1, stroke = 1, width = .01, position = position_jitterdodge(dodge.width = 0.8, jitter.width = .2)) +
+    scale_color_npg() +
+    theme_classic()
+
+
+pairs %>%
+    left_join(pairs_mismatch) %>%
+    filter(!is.na(InteractionType)) %>%
+    ggplot(aes(x = InteractionType, y = Mismatch, color = PairFermenter)) +
+    geom_boxplot(shape = 21, size = 1, position = position_dodge(width = 0.8)) +
+    geom_point(shape = 21, size = 1, stroke = 1, width = .01, position = position_jitterdodge(dodge.width = 0.8, jitter.width = .2)) +
+    scale_color_npg() +
+    theme_classic()
+
+
+## Mismatch vs. coexistence
+pairs %>%
+    left_join(pairs_mismatch) %>%
+    filter(!is.na(InteractionType)) %>%
+    mutate(InteractionType = ifelse(InteractionType == "coexistence", 1, 0)) %>%
+    glm(InteractionType ~ Mismatch, family = "binomial", data = .) %>%
+    broom::tidy()
+
+
+pairs %>%
+    left_join(pairs_mismatch) %>%
+    group_by(PairFermenter, InteractionType) %>%
+    count(name = "Count") %>%
+    group_by(PairFermenter) %>%
+    mutate(Fraction = Count / sum(Count))
 
 
 
