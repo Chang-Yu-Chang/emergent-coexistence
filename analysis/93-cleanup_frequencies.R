@@ -154,7 +154,7 @@ isolates_epsilon <- isolates_OD_CFU %>%
     # Set epsilon to NA if colony counts <= 10
     mutate(Epsilon = ifelse(OD <= 0 | CFU <= 0, NA, Epsilon),
            ErrorEpsilon = ifelse(OD <= 0 | CFU <= 0, NA, ErrorEpsilon)) %>%
-    select(image_name, Batch, Time, Community, Isolate, ColonyCount, Epsilon, ErrorEpsilon) %>%
+    #select(image_name, Batch, Time, Community, Isolate, ColonyCount, Epsilon, ErrorEpsilon) %>%
     mutate(Isolate = as.numeric(Isolate))
 write_csv(isolates_epsilon, paste0(folder_main, "meta/93-isolates_epsilon.csv"))
 

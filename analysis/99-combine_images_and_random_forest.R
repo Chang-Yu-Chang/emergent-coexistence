@@ -25,8 +25,10 @@ list_image_mapping_master <- bind_rows(temp)
 
 
 # 2. Combine image pngs with random forest results -----
-i <- which(list_image_mapping_master$image_name_pair == "D_T8_C1R2_5-95_1_2")
+#i <- which(list_image_mapping_master$image_name_pair == "D_T8_C1R2_5-95_1_2")
+#temp_index <- which(list_image_mapping_master$Batch == "D")
 for (i in 1:nrow(list_image_mapping_master)) {
+#for (i in temp_index) {
     folder_original <- list_image_mapping_master$folder_original[i]
     folder_transect <- paste0(list_image_mapping_master$folder_transect[i], list_image_mapping_master$color_channel[i], "/")
     #folder_image_type <- paste0(list_image_mapping_master$folder_original[i], list_image_mapping_master$color_channel[i], "/")
@@ -46,7 +48,7 @@ for (i in 1:nrow(list_image_mapping_master)) {
         draw_image(paste0(folder_transect, list_image_mapping_master$image_name_isolate1[i], ".tiff"),
                    x = -.33, y = .07, hjust = 0, vjust = 0, scale = .3) +
         # Isolate2 transect
-        draw_image(paste0(folder_transect, list_image_mapping_master$image_name_isolate1[i], ".tiff"),
+        draw_image(paste0(folder_transect, list_image_mapping_master$image_name_isolate2[i], ".tiff"),
                    x = 0, y = .07, hjust = 0, vjust = 0, scale = .3) +
         # Coculture transect
         draw_image(paste0(folder_transect, list_image_mapping_master$image_name_pair[i], ".tiff"),
@@ -58,7 +60,8 @@ for (i in 1:nrow(list_image_mapping_master)) {
         annotate("text", x = .02, y = .98, label = list_image_mapping_master$image_name_pair[i], size = 5, hjust = 0, fontface = "bold") +
         annotate("text", x = .17, y = .95, label = "Isolate1", size = 5, hjust = .5, fontface = "bold") +
         annotate("text", x = .5, y = .95, label = "Isolate2", size = 5, hjust = .5, fontface = "bold") +
-        annotate("text", x = .83, y = .95, label = "Coculture", size = 5, hjust = .5, fontface = "bold")
+        annotate("text", x = .83, y = .95, label = "Coculture", size = 5, hjust = .5, fontface = "bold") +
+        theme(plot.background = element_rect(color = NA, fill = "white"))
         #annotate("text", x = .5, y = .45, label = "Random Forest Result", size = 5, hjust = .5, fontface = "bold")
 
     ggsave(paste0(folder_main, "images/", list_image_mapping_master$Batch[i], "-11-images_and_random_forest/", image_name, ".png"),

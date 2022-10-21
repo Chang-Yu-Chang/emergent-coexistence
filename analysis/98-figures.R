@@ -184,7 +184,7 @@ pairs %>%
     ungroup() %>%
     mutate(Fraction = Count / sum(Count))
 pairs %>%
-    filter(!is.na(FitnessFunction)) %>%
+    filter(!is.na(FitnessFunction), !is.na(InteractionType)) %>%
     group_by(InteractionType, InteractionTypeFiner) %>%
     count(name = "Count") %>%
     ungroup() %>%
@@ -815,46 +815,6 @@ save_as_image(ft2_2, here::here("plots/TableS2_2.png"), webshot = "webshot2")
 
 
 
-
-
-
-# Exploratory ----
-## mismatch in differnce groups
-pairs %>%
-    left_join(pairs_mismatch) %>%
-    filter(!is.na(InteractionType)) %>%
-    ggplot(aes(x = PairFermenter, y = Mismatch, color = PairFermenter)) +
-    geom_boxplot(shape = 21, size = 1, position = position_dodge(width = 0.8)) +
-    geom_point(shape = 21, size = 1, stroke = 1, width = .01, position = position_jitterdodge(dodge.width = 0.8, jitter.width = .2)) +
-    scale_color_npg() +
-    theme_classic()
-
-
-pairs %>%
-    left_join(pairs_mismatch) %>%
-    filter(!is.na(InteractionType)) %>%
-    ggplot(aes(x = InteractionType, y = Mismatch, color = PairFermenter)) +
-    geom_boxplot(shape = 21, size = 1, position = position_dodge(width = 0.8)) +
-    geom_point(shape = 21, size = 1, stroke = 1, width = .01, position = position_jitterdodge(dodge.width = 0.8, jitter.width = .2)) +
-    scale_color_npg() +
-    theme_classic()
-
-
-## Mismatch vs. coexistence
-pairs %>%
-    left_join(pairs_mismatch) %>%
-    filter(!is.na(InteractionType)) %>%
-    mutate(InteractionType = ifelse(InteractionType == "coexistence", 1, 0)) %>%
-    glm(InteractionType ~ Mismatch, family = "binomial", data = .) %>%
-    broom::tidy()
-
-
-pairs %>%
-    left_join(pairs_mismatch) %>%
-    group_by(PairFermenter, InteractionType) %>%
-    count(name = "Count") %>%
-    group_by(PairFermenter) %>%
-    mutate(Fraction = Count / sum(Count))
 
 
 

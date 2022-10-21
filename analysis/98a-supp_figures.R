@@ -3,7 +3,7 @@
 library(tidyverse)
 library(cowplot)
 library(RColorBrewer)
-#library(ggsci)
+library(ggsci)
 #library(tidygraph)
 #library(ggraph)
 #library(gridExtra)
@@ -24,8 +24,7 @@ pairs <- read_csv(paste0(folder_main, "meta/97-pairs.csv"), show_col_types = F)
 # communities <- read_csv("~/Dropbox/lab/emergent-coexistence/data/output/communities.csv", col_types = cols())
 # communities_hierarchy <- read_csv(paste0(folder_main, "meta/96-communities_hierarchy.csv"), show_col_types = F)
 # load(paste0(folder_main, "meta/96-communities_network.Rdata"))
-# pairs_mismatch <- read_csv(paste0(folder_main, "meta/00c-pairs_mismatch.csv"), show_col_types = F)
-
+pairs_mismatch <- read_csv(paste0(folder_main, "meta/00c-pairs_mismatch.csv"), show_col_types = F)
 
 # Figure SXX 96-well plate layout ----
 plates <- read_csv("~/Dropbox/lab/emergent-coexistence/data/output/plates.csv", show_col_types = F)
@@ -274,6 +273,93 @@ save_as_image(ft, here::here("plots/TableS-fitness_function.png"), webshot = "we
 
 
 
+
+
+
+
+
+
+# Exploratory ----
+
+## mismatch in different groups
+pairs_mismatch <- pairs %>%
+    left_join(pairs_mismatch) %>%
+    filter(!is.na(InteractionType))
+
+p1 <- pairs_mismatch %>%
+    ggplot(aes(x = PairFermenter, y = Mismatch, color = PairFermenter)) +
+    geom_boxplot(shape = 21, size = .5, position = position_dodge(width = 0.8)) +
+    geom_point(shape = 21, size = 1, stroke = .5, width = .01, position = position_jitterdodge(dodge.width = 0.8, jitter.width = .2)) +
+    scale_color_npg() +
+    theme_classic()
+
+
+p2 <- pairs_mismatch %>%
+    ggplot(aes(x = InteractionType, y = Mismatch, color = PairFermenter)) +
+    geom_boxplot(shape = 21, size = .5, position = position_dodge(width = 0.8)) +
+    geom_point(shape = 21, size = 1, stroke = .5, width = .01, position = position_jitterdodge(dodge.width = 0.8, jitter.width = .2)) +
+    scale_color_npg() +
+    theme_classic()
+
+assign_interaction_color <- function (level = "simple") {
+    if (level == "simple") {
+        interaction_type <- c("exclusion", "coexistence")
+        interaction_color <- c("#DB7469", "#557BAA")
+        names(interaction_color) <- interaction_type
+        return(interaction_color)
+    }
+    if (level == "matrix") {
+        interaction_type <- c("exclusion", "coexistence", "exclusion violating rank", "bistability", "neutrality", "self", "undefined")
+        interaction_color <- c("#DB7469", "#557BAA", "#8CB369", "#EECF6D", "#8650C4", "black", "grey80")
+        names(interaction_color) <- interaction_type
+        return(interaction_color)
+    }
+    if (level == "finer") {
+        interaction_type <- c("competitive exclusion", "stable coexistence",
+                              "mutual exclusion", "frequency-dependent coexistence",
+                              "coexistence at 5%", "coexistence at 95%",
+                              "2-freq neutrality", "3-freq neutrality")
+        #interaction_type <- c("competitive exclusion", "stable coexistence", "mutual exclusion", "frequency-dependent coexistence", "neutrality", "exclusion violating rank")
+        interaction_color <- c("#DB7469", "#557BAA",
+                               "#FFBC42", "#B9FAF8",
+                               "lightblue", "cyan",
+                               "#8650C4", "purple")
+        names(interaction_color) <- interaction_type
+        return(interaction_color)
+    }
+}
+interaction_color <- assign_interaction_color()
+p3 <- pairs_mismatch %>%
+    group_by(PairFermenter, InteractionType) %>%
+    count(name = "Count") %>%
+    group_by(PairFermenter) %>%
+    mutate(Fraction = Count / sum(Count), TotalCount = sum(Count)) %>%
+    ggplot() +
+    geom_col(aes(x = PairFermenter, y = Fraction, fill = InteractionType), color = 1) +
+    geom_text(aes(x = PairFermenter, label = paste0("n=", TotalCount)), y = 0.9) +
+    scale_fill_manual(values = interaction_color) +
+    theme_classic() +
+    theme(legend.title = element_blank()) +
+    guides()
+
+p1
+p2
+p3
+
+## Mismatch vs. coexistence
+p4 <- pairs_mismatch %>%
+    mutate(InteractionType = ifelse(InteractionType == "coexistence", 1, 0)) %>%
+    ggplot() +
+    geom_point(aes(x = Mismatch, y = InteractionType), shape = 21, size = 2) +
+    geom_smooth(aes(x = Mismatch, y = InteractionType), method = "glm", method.args = list(family = binomial)) +
+    theme_classic()
+
+p4
+
+model_logit <- pairs_mismatch %>%
+    mutate(InteractionType = ifelse(InteractionType == "exclusion", 1, 0)) %>%
+    glm(InteractionType ~ Mismatch, family = "binomial", data = .)
+summary(model_logit)
 
 
 

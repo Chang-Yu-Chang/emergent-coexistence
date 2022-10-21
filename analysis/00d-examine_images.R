@@ -24,12 +24,20 @@ for (i in images_tocheck_index) {
     # 00. original
     image_original <- readImage(paste0(list_images$folder_original[i], image_name, ".tiff"))
     writeImage(image_original, paste0(folder_examples, image_name, "-00-original.tiff"))
-    # 01. green channel
+    # 01. color channels
     image_green <- readImage(paste0(list_images$folder_channel[i], list_images$color_channel[i], "/", image_name, ".tiff"))
     writeImage(image_green, paste0(folder_examples, image_name, "-01-green_channel.tiff"))
+    image_red <- readImage(paste0(list_images$folder_channel[i], "red", "/", image_name, ".tiff"))
+    writeImage(image_red, paste0(folder_examples, image_name, "-01a-red_channel.tiff"))
+    image_blue <- readImage(paste0(list_images$folder_channel[i], "blue", "/", image_name, ".tiff"))
+    writeImage(image_blue, paste0(folder_examples, image_name, "-01b-blue_channel.tiff"))
     # 02. background subtraction
     image_green_rolled <- readImage(paste0(list_images$folder_rolled[i], list_images$color_channel[i], "/", image_name, ".tiff"))
     writeImage(image_green_rolled, paste0(folder_examples, image_name, "-02-green_rolled.tiff"))
+    image_red_rolled <- readImage(paste0(list_images$folder_rolled[i], "red", "/", image_name, ".tiff"))
+    writeImage(image_red_rolled, paste0(folder_examples, image_name, "-02a-red_rolled.tiff"))
+    image_blue_rolled <- readImage(paste0(list_images$folder_rolled[i], "blue", "/", image_name, ".tiff"))
+    writeImage(image_blue_rolled, paste0(folder_examples, image_name, "-02b-blue_rolled.tiff"))
     # 03. threshold
     image_green_threshold <- readImage(paste0(list_images$folder_threshold[i], list_images$color_channel[i], "/", image_name, ".tiff"))
     writeImage(image_green_threshold, paste0(folder_examples, image_name, "-03-green_threshold.tiff"))
@@ -42,6 +50,10 @@ for (i in images_tocheck_index) {
     # 06. transect
     image_green_transect <- readImage(paste0(list_images$folder_transect[i], list_images$color_channel[i], "/", image_name, ".tiff"))
     writeImage(image_green_transect, paste0(folder_examples, image_name, "-06-green_transect.tiff"))
+    image_red_transect <- readImage(paste0(list_images$folder_transect[i], "red", "/", image_name, ".tiff"))
+    writeImage(image_red_transect, paste0(folder_examples, image_name, "-06a-red_transect.tiff"))
+    image_blue_transect <- readImage(paste0(list_images$folder_transect[i], "blue", "/", image_name, ".tiff"))
+    writeImage(image_blue_transect, paste0(folder_examples, image_name, "-06b-blue_transect.tiff"))
     # 07. features
     table_feature <- read_csv(paste0(list_images$folder_feature[i], "merged/", image_name, ".csv"), show_col_types = F)
     write_csv(table_feature, paste0(folder_examples, image_name, "-07-green_feature.csv"))
