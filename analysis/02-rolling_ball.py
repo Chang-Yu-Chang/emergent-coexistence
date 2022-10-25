@@ -8,7 +8,13 @@ The rolling ball algorithm only works on grey-scale images
 2. rolling ball
 3. invert the result
 
-To use this script, in terminal `python 02-rooling_ball.py LIST_IMAGES.csv`
+Prerequisite: in terminal, install the 
+$ pip install pandas
+$ pip install scikit-image
+
+To use this script, in terminal 
+$ python 02-rooling_ball.py `mapping_file.csv`
+
 """
 
 import os
@@ -18,10 +24,8 @@ import imageio
 import skimage
 from skimage import data, restoration, util, io, color
 
-# The input has to be the csv generated from 00-list_images.R
 list_images = pd.read_csv(str(sys.argv[1]))
 #list_images = pd.read_csv('/Users/chang-yu/Desktop/lab/emergent-coexistence/analysis/00-list_images-D-red.csv')
-#list_images = pd.read_csv('/Users/chang-yu/Desktop/lab/emergent-coexistence/analysis/00-list_images-B2-blue.csv')
 
 def rolling_ball_light(image):
     # invert the image
@@ -35,8 +39,6 @@ def rolling_ball_light(image):
     image_rolled = util.invert(image_rolled_inverted)
     return image_rolled
 
-
-#for i in [5,7]:
 for i in range(list_images.shape[0]):
     image_name = list_images.iloc[i]['image_name']
     color_channel = list_images.iloc[i]['color_channel']
@@ -44,7 +46,7 @@ for i in range(list_images.shape[0]):
     image = io.imread(list_images.iloc[i]['folder_channel'] + color_channel + "/" + image_name + '.tiff')
     image_rolled = rolling_ball_light(image)
     io.imsave(list_images.iloc[i]['folder_rolled'] + color_channel + "/" + image_name + '.tiff', image_rolled)
-    print(color_channel + " channel rolled\t" + str(i) + "/" + str(list_images.shape[0]) + "\t" + image_name)
+    print(color_channel + " channel rolled\t" + str(i+1) + "/" + str(list_images.shape[0]) + "\t" + image_name)
     
     
 

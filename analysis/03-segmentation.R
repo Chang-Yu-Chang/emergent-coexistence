@@ -71,7 +71,7 @@ detect_nonround_object <- function (image_object, image_intensity = NULL, waters
     object_ID_nonround <- object_feature$ObjectID[!(object_feature$ObjectID %in% object_shape_round$ObjectID)]
     return(object_ID_nonround)
 }
-i = which(list_images$image_name %in% c("B2_T1_C11R1_3"))
+#i = which(list_images$image_name %in% c("B2_T1_C11R1_3"))
 
 for (i in 1:nrow(list_images)) {
     #if (i < 7) next

@@ -2,9 +2,7 @@
 #' with 0 mismatch and remove them from the list of pairs
 
 library(tidyverse)
-
-folder_main <- "~/Dropbox/lab/emergent-coexistence/plate_scan_pipeline/"
-folder_script <- "~/Desktop/lab/emergent-coexistence/analysis/"
+source(here::here("analysis/00-metadata.R"))
 
 # 1. Create a folder such that Jean's script can work ----
 ## Sanger ID of isolates. There are 66 of them
@@ -60,5 +58,5 @@ pairs_mismatch <- mismatch_matrix %>%
     mutate(Community = factor(Community, paste0("C", rep(1:12, each = 8), "R", 1:8))) %>%
     arrange(Community, Isolate1, Isolate2)
 
-write_csv(pairs_mismatch, paste0(folder_main, "meta/00c-pairs_mismatch.csv"))
-
+write_csv(pairs_mismatch, paste0(folder_main, "meta/00d-pairs_mismatch.csv"))
+cat("\n", paste0(folder_main, "meta/00d-pairs_mismatch.csv"), "\tcreated")

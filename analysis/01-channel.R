@@ -1,15 +1,16 @@
+#' This script extract the three color channels from the orginal color images
+#'
+#' To use this Rscript, in bash environment
+#' Rscript 01-channel.R `mapping_files.csv`
 library(tidyverse)
 library(EBImage)
 
 list_images <- read_csv(commandArgs(trailingOnly = T)[1], show_col_types = F) # 00-list_images-D.csv
-
 #list_images <- read_csv("~/Desktop/lab/emergent-coexistence/analysis/00-list_images-D-green.csv", show_col_types = F)
 
 paste_folder_name <- function (image_type = "channel", channel = "green") {
     paste0(list_images[i,paste0("folder_", image_type)], channel, "/")
 }
-
-# i = which(list_images$image_name == "B2_T1_C11R1_3")
 
 for (i in 1:nrow(list_images)) {
     image_name <- list_images$image_name[i]

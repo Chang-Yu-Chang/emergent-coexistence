@@ -1,23 +1,9 @@
 #' Meta analysis for the output generated in 09-random_forest
 library(tidyverse)
 library(cowplot)
-folder_script <- "~/Desktop/lab/emergent-coexistence/analysis/"
-folder_main <- "~/Dropbox/lab/emergent-coexistence/plate_scan_pipeline/"
-plates_no_colony <- c(
-    "B2_T8_C11R1_5-95_2_8",
-    "B2_T8_C11R1_5-95_2_9",
-    "B2_T8_C11R1_5-95_8_2",
-    "B2_T8_C11R1_5-95_9_8",
-    "B2_T8_C11R1_50-50_2_8",
-    "B2_T8_C11R1_50-50_2_9",
-    "C2_T8_C11R2_50-50_2_10",
-    "C2_T8_C11R2_50-50_9_13"
-)
+source(here::here("analysis/00-metadata.R"))
 
 # 1. Read accuracy data ----
-#batch_names <- c("D", "C2", "B2")
-batch_names <- c("D", "C2", "B2", "C")
-
 ## Pairs mapping file
 list_image_mapping_master <- rep(list(NA), length(batch_names))
 for (j in 1:length(batch_names)) list_image_mapping_master[[j]] <- read_csv(paste0(folder_script, "00-list_image_mapping-", batch_names[j], ".csv") , show_col_types = F)
