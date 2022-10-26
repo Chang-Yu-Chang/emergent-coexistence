@@ -8,12 +8,15 @@ The rolling ball algorithm only works on grey-scale images
 2. rolling ball
 3. invert the result
 
-Prerequisite: in terminal, install the 
+Prerequisite: 
 $ pip install pandas
 $ pip install scikit-image
 
 To use this script, in terminal 
-$ python 02-rooling_ball.py `mapping_file.csv`
+$ python 02-rooling_ball.py list_images.csv
+
+For example
+$ python 02-rolling_ball.py mapping_files/00-list_images-B2-green.csv
 
 """
 

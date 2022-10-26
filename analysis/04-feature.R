@@ -1,7 +1,16 @@
+#' This script computes the object features using 1) a roadmap image and 2) a reference image
+#'
+#' To use this Rscript, in bash environment:
+#' Rscript 04-feature.R list_images.csv
+#'
+#' For example:
+#' Rscript 04-feature.R mapping_files/00-list_images-B2-green.csv
+
 library(tidyverse)
 library(EBImage)
 library(EBImageExtra) # for the bresenham algorithm. `devtools::install_github("ornelles/EBImageExtra")`
 library(purrr) # for applying functional programming to transect curve smoothing
+source(here::here("analysis/00-metadata.R"))
 
 list_images <- read_csv(commandArgs(trailingOnly = T)[1], show_col_types = F)
 #list_images <- read_csv("~/Desktop/lab/emergent-coexistence/analysis/00-list_images-D-green.csv", show_col_types = F)
@@ -162,7 +171,7 @@ draw_pixels <- function (img, pixel.x, pixel.y, color = "red") {
 }
 remove_outliers <- function (object_feature, multiplier = 2, features = c("b.sd", "b.mad", "b.mean", "b.q05", "b.q005", "b.tran.sd", "b.tran.mad")) {
     #' This function uses a interquantile rule to find outliers
-    #' for a feature, if the data point falls outside the range of [Q1-1.5*IQR, Q3+1.5*IQR], it's a outlier
+    #' for a feature, if the data point falls outside the range of [Q1-2*IQR, Q3+2*IQR], it's a outlier
 
     stopifnot(features %in% colnames(object_feature))
 
@@ -190,20 +199,7 @@ remove_outliers <- function (object_feature, multiplier = 2, features = c("b.sd"
     return(object_feature)
 }
 
-plates_no_colony <- c(
-    "B2_T8_C11R1_5-95_2_8",
-    "B2_T8_C11R1_5-95_2_9",
-    "B2_T8_C11R1_5-95_8_2",
-    "B2_T8_C11R1_5-95_9_8",
-    "B2_T8_C11R1_50-50_2_8",
-    "B2_T8_C11R1_50-50_2_9",
-    "C2_T8_C11R2_50-50_2_10",
-    "C2_T8_C11R2_50-50_9_13"
-)
-i = which(list_images$image_name == "B2_T1_C11R1_3")
-
 for (i in 1:nrow(list_images)) {
-    #if (i < 36) next
     image_name <- list_images$image_name[i]
     color_channel <- list_images$color_channel[i]
 
@@ -300,6 +296,6 @@ for (i in 1:nrow(list_images)) {
     image_transect <- paintObjects(image_watershed3_outliers, image_transect, col = "blue") # Draw contours of outliers
     #
     writeImage(image_transect, paste0(paste_folder_name("transect", color_channel), image_name, ".tiff"))
-    cat("draw contours and transects", i, "/", nrow(list_images), "\t", image_name)
+    cat("\tdraw contours and transects", i, "/", nrow(list_images), "\t", image_name)
 
 }

@@ -1,0 +1,71 @@
+#' This script append the competition outcome with other isolate features to
+#' generate the meta table
+#'
+#' 0. communities
+#' 1. isolates
+#' 2. pairs
+#' 3. example pairs for plotting the frequencies
+
+library(tidyverse)
+source(here::here("analysis/00-metadata.R"))
+
+# 0. Communities ----
+communities <- read_csv(paste0(folder_data, "temp/00c-communities.csv"), show_col_types = F)
+
+# 1. Isolate metadata ----
+isolates_ID <- read_csv(paste0(folder_data, "temp/00c-isolates_ID.csv"), show_col_types = F)
+isolates_RDP <- read_csv(paste0(folder_data, "temp/12-isolates_RDP.csv"), show_col_types = F)
+isolates_epsilon <- read_csv(paste0(folder_data, "temp/06-isolates_epsilon.csv"), show_col_types = F)
+isolates_abundance <- read_csv(paste0(folder_data, "temp/13-isolates_abundance.csv"), show_col_types = F)
+isolates_tournament <- read_csv(paste0(folder_data, "temp/93-isolates_tournament.csv"), show_col_types = F)
+
+isolates <- isolates_ID %>%
+    left_join(isolates_RDP, by = c("ExpID", "ID", "Community", "Isolate")) %>%
+    left_join(isolates_epsilon, by = c("Community", "Isolate")) %>%
+    left_join(isolates_tournament, by = c("Community", "Isolate")) %>%
+    left_join(isolates_abundance, by = c("ExpID", "Community", "Isolate")) %>%
+    mutate(Community = ordered(Community, levels = communities$Community))
+
+write_csv(isolates, paste0(folder_data, "output/isolates.csv"))
+
+# 2. pairs metadata ----
+pairs_ID <- read_csv(paste0(folder_data, "temp/00c-pairs_ID.csv"), show_col_types = F)
+pairs_interaction <- read_csv(paste0(folder_data, "temp/93-pairs_interaction.csv"), show_col_types = F)
+pairs_freq <- read_csv(paste0(folder_data, "temp/93-pairs_freq.csv"), show_col_types = F)
+pairs_mismatch <- read_csv(paste0(folder_data, "temp/15-pairs_mismatch.csv"), show_col_types = F)
+pairs_RDP <- read_csv(paste0(folder_data, "temp/16-pairs_RDP.csv"), show_col_types = F)
+
+pairs <- pairs_ID %>%
+    left_join(pairs_RDP, by = c("Batch", "Community", "Isolate1", "Isolate2")) %>%
+    left_join(pairs_interaction, by = c("Community", "Isolate1", "Isolate2")) %>%
+    left_join(pairs_mismatch, by = c("Community", "Isolate1", "Isolate2", "ID1", "ID2")) %>%
+    select(PairID, Community, Isolate1, Isolate2, From, To,
+           ExpID1, ID1, Fermenter1, GramPositive1, Family1, Genus1, GenusScore1, Sequence1,
+           ExpID2, ID2, Fermenter2, GramPositive2, Family2, Genus2, GenusScore2, Sequence2,
+           PairFermenter, PairFamily, Mismatch,
+           InteractionType, InteractionTypeFiner, FitnessFunction, Isolate1Dominant)
+
+write_csv(pairs, paste0(folder_data, "output/pairs.csv"))
+
+
+# 3. example pairs ----
+# Example for plotting interaction types ----
+## Stable coexistence and coexistence ain examples
+pairs_example_outcomes <- pairs %>%
+    filter((Community == "C1R2" & Isolate1 == 1 & Isolate2 == 2) |
+               (Community == "C1R7" & Isolate1 == 3 & Isolate2 == 6) |
+               (Community == "C2R8" & Isolate1 == 1 & Isolate2 == 2))
+
+
+## Examples of outcomes in a finer scale
+pairs_example_outcomes_finer <- pairs %>%
+    filter((Community == "C1R2" & Isolate1 == 1 & Isolate2 == 2) |
+               (Community == "C1R7" & Isolate1 == 3 & Isolate2 == 6) |
+               (Community == "C2R8" & Isolate1 == 1 & Isolate2 == 2) |
+               (Community == "C11R1" & Isolate1 == 1 & Isolate2 == 5) |
+               (Community == "C2R6" & Isolate1 == 1 & Isolate2 == 4))
+
+write_csv(pairs_example_outcomes, paste0(folder_data, "output/pairs_example_outcomes.csv"))
+write_csv(pairs_example_outcomes_finer, paste0(folder_data, "output/pairs_example_outcomes_finer.csv"))
+
+

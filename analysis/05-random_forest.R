@@ -1,13 +1,19 @@
+#' This scripts run the random forest
+#'
+#' To use this Rscript, in bash environment:
+#' Rscript 05-random_forest.R list_images.csv list_image_mapping.csv
+#'
+#' For example:
+#' Rscript 05-random_forest.R mapping_files/00-list_images-B2-green.csv mapping_files/00-list_image_mapping-B2.csv
+
 library(tidyverse)
 library(cowplot)
 library(caret) # for streamlining the model training process for complex classification and regression
 library(randomForest) # For implementing random forest algorithm
+source(here::here("analysis/00-metadata.R"))
 
 list_images <- read_csv(commandArgs(trailingOnly = T)[1], show_col_types = F)
 list_image_mapping <- read_csv(commandArgs(trailingOnly = T)[2], show_col_types = F)
-
-# list_images <- read_csv("~/Desktop/lab/emergent-coexistence/analysis/00-list_images-D-green.csv", show_col_types = F)
-# list_image_mapping <- read_csv("~/Desktop/lab/emergent-coexistence/analysis/00-list_image_mapping-D.csv", show_col_types = F)
 
 list_image_mapping_folder <- list_image_mapping %>%
     left_join(rename(list_images, image_name_pair = image_name), by = "image_name_pair") %>%
@@ -155,38 +161,10 @@ compute_pca_coord <- function (pcobj) {
                 df.u = tibble(df.u), # Score
                 u.axis.labs = u.axis.labs))
 }
-plates_no_colony <- c(
-    "B2_T8_C11R1_5-95_2_8",
-    "B2_T8_C11R1_5-95_2_9",
-    "B2_T8_C11R1_5-95_8_2",
-    "B2_T8_C11R1_5-95_9_8",
-    "B2_T8_C11R1_50-50_2_8",
-    "B2_T8_C11R1_50-50_2_9",
-    "C2_T8_C11R2_50-50_2_10",
-    "C2_T8_C11R2_50-50_9_13"
-)
-
-
-feature_candidates <- c(
-    paste0(c(
-    "s.area", "s.radius.mean", "s.radius.sd",
-    "s.perimeter", "s.radius.mean", "s.radius.sd", "s.radius.min", "s.radius.max",
-    "m.cx", "m.cy", "m.majoraxis", "m.eccentricity", "m.theta",
-    "b.mean", "b.sd", "b.mad",
-    "b.q001", "b.q005", "b.q01", "b.q02", "b.q05", "b.q08", "b.q09", "b.q095", "b.q099",
-    "b.tran.mean", "b.tran.sd", "b.tran.mad",
-    "b.center", "b.periphery", "b.diff.cp",
-    "b.tran.q005", "b.tran.q01", "b.tran.q05", "b.tran.q09", "b.tran.q095"
-    #"t.bump.number"
-    ), "_green"),
-    paste0(c("b.mean", "b.sd", "b.mad"), rep(c("_red", "_blue"), each = 3))
-)
 
 for (i in 1:nrow(list_image_mapping_folder)) {
     cat("\t", i)
     image_name <- list_image_mapping_folder$image_name_pair[i]
-    #color_channel <- list_image_mapping_folder$color_channel[i]
-    #if (i < 195)  next
 
     ## Skip images with no colony
     if (list_image_mapping_folder$image_name_pair[i] %in% plates_no_colony) {cat("\nno colony, no watershed image\t", list_image_mapping_folder$image_name_pair[i]); next}

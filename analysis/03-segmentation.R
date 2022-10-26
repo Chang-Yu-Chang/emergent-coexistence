@@ -1,3 +1,11 @@
+#' This script extracts segment using one channel (default input should be the green channel)
+#'
+#' To use this Rscript, in bash environment:
+#' Rscript 03-segmentation.R list_images.csv
+#'
+#' For example:
+#' Rscript 03-segmentation.R mapping_files/00-list_images-B2-green.csv
+
 library(tidyverse)
 library(EBImage)
 
@@ -74,7 +82,6 @@ detect_nonround_object <- function (image_object, image_intensity = NULL, waters
 #i = which(list_images$image_name %in% c("B2_T1_C11R1_3"))
 
 for (i in 1:nrow(list_images)) {
-    #if (i < 7) next
     image_name <- list_images$image_name[i]
     color_channel <- list_images$color_channel[i]
     cat("\n", color_channel)

@@ -2,21 +2,28 @@
 
 library(tidyverse)
 
-# This main folder depends on your home directory and user name. Python somehow does not read ~/ instead I have to specify /Users/chang-yu/
-
+# This main folder depends on your home directory and user name
 folder_script <- "~/Desktop/lab/emergent-coexistence/analysis/" # Enter the directory of analysis scripts
-folder_main <- "~/Dropbox/lab/emergent-coexistence/plate_scan_pipeline/" # Enter the directory of data
-# folder_main <- "/Users/chang-yu/Dropbox/lab/emergent-coexistence/plate_scan_pipeline/"
-# folder_script <- "/Users/chang-yu//Desktop/lab/emergent-coexistence/analysis/"
-folder_main <- "/Users/cychang/Dropbox/lab/emergent-coexistence/plate_scan_pipeline/"
-folder_script <- "/Users/cychang/Desktop/lab/emergent-coexistence/analysis/"
+folder_pipeline <- "~/Dropbox/lab/emergent-coexistence/plate_scan_pipeline/" # Enter the directory of image processing pipeline
+folder_data <- "~/Dropbox/lab/emergent-coexistence/data/" # Enter the directory of data
+folder_mapping_files <- "mapping_files/"
+# Python somehow does not read ~/ instead I have to specify /Users/cychang/
+# folder_main <- "/Users/cychang/Dropbox/lab/emergent-coexistence/plate_scan_pipeline/"
+# folder_script <- "/Users/cychang/Desktop/lab/emergent-coexistence/analysis/"
 
-# Metadata for shared by the analysis scripts
-list_folders <- c("01-channel", "02-rolled", "03-threshold", "04-round", "05-watershed", "06-transet", "07-feature", "08-random_forest", "09-bootstrap", "10-images_and_random_forest")
+# For image processing pipeling
+list_folders <- c("01-channel", "02-rolled", "03-threshold", "04-round", "05-watershed", "06-transect", "07-feature", "08-random_forest", "09-bootstrap", "10-images_and_random_forest")
 list_channels <- c("red", "green", "blue")
-list_pipeline_scipts <- c("01-channel.R", "02-rolling_ball.py", "03-segmentation.R", "04-feature.R", "04a-merge_features.R", "05-random_forest.R")
+list_pipeline_scripts <- c("01-channel.R", "02-rolling_ball.py", "03-segmentation.R", "04-feature.R", "04a-merge_features.R", "05-random_forest.R")
 batch_names <- c("B2", "C", "C2", "D")
 
+#
+pairs_no_colony <- c(
+    "C11R1_2_8",
+    "C11R1_2_9",
+    "C11R1_8_9",
+    "C11R2_2_10"
+)
 plates_no_colony <- c(
     "B2_T8_C11R1_5-95_2_8",
     "B2_T8_C11R1_5-95_2_9",
@@ -25,5 +32,77 @@ plates_no_colony <- c(
     "B2_T8_C11R1_50-50_2_8",
     "B2_T8_C11R1_50-50_2_9",
     "C2_T8_C11R2_50-50_2_10",
-    "C2_T8_C11R2_50-50_9_13"
+    "C2_T8_C11R2_50-50_9_13",
+    "C_T8_C11R1_50-50_1_2", # no plate
+    "C_T8_C11R1_50-50_1_3" # no plate
 )
+
+# Random forest
+feature_candidates <- c(
+    paste0(c(
+        "s.area", "s.radius.mean", "s.radius.sd",
+        "s.perimeter", "s.radius.mean", "s.radius.sd", "s.radius.min", "s.radius.max",
+        "m.cx", "m.cy", "m.majoraxis", "m.eccentricity", "m.theta",
+        "b.mean", "b.sd", "b.mad",
+        "b.q001", "b.q005", "b.q01", "b.q02", "b.q05", "b.q08", "b.q09", "b.q095", "b.q099",
+        "b.tran.mean", "b.tran.sd", "b.tran.mad",
+        "b.center", "b.periphery", "b.diff.cp",
+        "b.tran.q005", "b.tran.q01", "b.tran.q05", "b.tran.q09", "b.tran.q095"
+        #"t.bump.number"
+    ), "_green"),
+    paste0(c("b.mean", "b.sd", "b.mad"), rep(c("_red", "_blue"), each = 3))
+)
+
+
+# For determining the competition outcomes
+interaction_type_finer <- c(
+    "competitive exclusion", "stable coexistence",
+    "mutual exclusion", "frequency-dependent coexistence",
+    "coexistence at 5%", "coexistence at 95%",
+    "2-freq neutrality", "3-freq neutrality"
+)
+
+
+# For plotting
+assign_interaction_color <- function (level = "simple") {
+    if (level == "simple") {
+        interaction_type <- c("exclusion", "coexistence")
+        interaction_color <- c("#DB7469", "#557BAA")
+        names(interaction_color) <- interaction_type
+        return(interaction_color)
+    }
+    if (level == "matrix") {
+        interaction_type <- c("exclusion", "coexistence", "exclusion violating rank", "bistability", "neutrality", "self", "undefined")
+        interaction_color <- c("#DB7469", "#557BAA", "#8CB369", "#EECF6D", "#8650C4", "black", "grey80")
+        names(interaction_color) <- interaction_type
+        return(interaction_color)
+    }
+    if (level == "finer") {
+        interaction_type <- c("competitive exclusion", "stable coexistence",
+                              "mutual exclusion", "frequency-dependent coexistence",
+                              "coexistence at 5%", "coexistence at 95%",
+                              "2-freq neutrality", "3-freq neutrality")
+        #interaction_type <- c("competitive exclusion", "stable coexistence", "mutual exclusion", "frequency-dependent coexistence", "neutrality", "exclusion violating rank")
+        interaction_color <- c("#DB7469", "#557BAA",
+                               "#FFBC42", "#B9FAF8",
+                               "lightblue", "cyan",
+                               "#8650C4", "purple")
+        names(interaction_color) <- interaction_type
+        return(interaction_color)
+    }
+}
+interaction_color <- assign_interaction_color()
+frequency_color <- c( "95"="#292F36", "50"="#9F87AF", "5"="#7D7C7C")
+paint_white_background <- function () theme(plot.background = element_rect(fill = "white", color = NA))
+
+
+
+
+
+
+
+
+
+
+
+

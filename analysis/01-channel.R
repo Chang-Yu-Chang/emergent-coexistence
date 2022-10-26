@@ -1,7 +1,11 @@
-#' This script extract the three color channels from the orginal color images
+#' This script extracts the three color channels from the oroginal color images
 #'
-#' To use this Rscript, in bash environment
-#' Rscript 01-channel.R `mapping_files.csv`
+#' To use this Rscript, in bash environment:
+#' Rscript 01-channel.R list_images.csv
+#'
+#' For example:
+#' Rscript 01-channel.R mapping_files/00-list_images-B2-green.csv
+
 library(tidyverse)
 library(EBImage)
 
