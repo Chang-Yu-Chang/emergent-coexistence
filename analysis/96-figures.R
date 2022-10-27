@@ -29,6 +29,10 @@ pairs_freq_ID <- pairs_freq %>%
     filter(Time == "T0") %>%
     select(PairFreqID, Community, Isolate1, Isolate2, Isolate1InitialODFreq)
 
+communities <- communities %>%
+    arrange(CommunitySize) %>%
+    mutate(Community = factor(Community, Community))
+
 # 1.2 append random forest model accuracy values
 pairs_accuracy <- accuracy %>%
     select(Community, Isolate1, Isolate2, Isolate1InitialODFreq, Accuracy) %>%
@@ -41,10 +45,13 @@ pairs %>%
     left_join(pairs_accuracy) %>%
     filter(Accuracy < 0.9)
 
-## Remove low accuracy pairs. 176 pairs now
+## Remove low accuracy pairs and no colony pairs
 pairs <- pairs %>%
+    unite(col = "Pair", Community, Isolate1, Isolate2, sep = "_", remove = F) %>%
+    filter(!(Pair %in% pairs_no_colony)) %>%
     left_join(pairs_accuracy) %>%
     filter(Accuracy > 0.9)
+
 
 
 # Plotting functions and color palettes ----
@@ -138,13 +145,13 @@ plot_competitive_network <- function(g, node_size = 10, edge_width = 1, g_layout
 
 # 0.1 Stats----
 pairs %>%
-    filter(!is.na(FitnessFunction)) %>%
+    # filter(!is.na(FitnessFunction)) %>%
     group_by(InteractionType) %>%
     count(name = "Count") %>%
     ungroup() %>%
     mutate(Fraction = Count / sum(Count))
 pairs %>%
-    filter(!is.na(FitnessFunction), !is.na(InteractionType)) %>%
+    #filter(!is.na(FitnessFunction), !is.na(InteractionType)) %>%
     group_by(InteractionType, InteractionTypeFiner) %>%
     count(name = "Count") %>%
     ungroup() %>%
@@ -291,26 +298,26 @@ p2 <- pairs %>%
     ungroup() %>%
     mutate(Community = factor(Community, communities$Community)) %>%
     arrange(Community) %>%
-    left_join(communities, by = "Community") %>%
-    mutate(CommunityLabel = factor(CommunityLabel)) %>%
+    # left_join(communities, by = "Community") %>%
+    # mutate(CommunityLabel = factor(CommunityLabel)) %>%
+    replace_na(list(InteractionType = "unknown")) %>%
     ggplot() +
-    geom_col(aes(x = CommunityLabel, fill = InteractionType, y = Fraction), color = 1, width = .8, size = .5) +
+    geom_col(aes(x = Community, fill = InteractionType, y = Fraction), color = 1, width = .8, size = .5) +
     #geom_text(aes(x = CommunityLabel, y = .9, label = paste0("n=", CommunityPairSize)), vjust = -.5, size = 3) +
-    geom_text(aes(x = CommunityLabel, y = .9, label = paste0("n=", TotalCount))) +
-    scale_fill_manual(values = assign_interaction_color()) +
+    geom_text(aes(x = Community, y = .9, label = paste0("n=", TotalCount))) +
+    scale_fill_manual(values = c(assign_interaction_color(), unknown = grey(0.5)), breaks = c("coexistence", "exclusion", "unknown")) +
     scale_y_continuous(breaks = c(0,.5,1), limit = c(0, 1), expand = c(0,0)) +
     theme_classic() +
     theme(legend.text = element_text(size = 12),
           axis.text = element_text(color = 1, size = 12),
+          axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1),
           axis.title = element_text(color = 1, size = 12),
           legend.title = element_blank(),
           legend.position = "top") +
-    guides(fill = guide_legend(reverse = T)) +
     labs(x = "Community", y = "Fraction")
 
 
 pB <- plot_grid(p1, p2, ncol = 1, scale = .9, rel_heights = c(1, 5), axis = "lr", align = "v") + paint_white_background()
-#ggsave(here::here("plots/Fig2B-all_networks.png"), pB, width = 8, height = 3)
 
 #
 p <- plot_grid(pA, pB, nrow = 1, labels = c("A", "B"), rel_widths = c(1, 2), axis = "tr", align = "h") + paint_white_background()
@@ -624,14 +631,6 @@ p <- plot_grid(p_left, pB, nrow = 1, rel_widths = c(1,4), scale = c(1, .9), labe
 ggsave(here::here("plots/Fig4.png"), p, width = 10, height = 5)
 
 
-
-
-
-
-
-
-
-# Supplement
 
 
 
