@@ -4,16 +4,19 @@
 #' 3. community network hierarchy
 library(tidyverse)
 library(tidygraph)
-library(ggraph)
 source(here::here("analysis/00-metadata.R"))
 
+isolates <- read_csv(paste0(folder_data, "output/isolates.csv"), show_col_types = F)
+pairs <- read_csv(paste0(folder_data, "output/pairs.csv"), show_col_types = F)
 communities <- read_csv(paste0(folder_data, "temp/00c-communities.csv"), show_col_types = F)
-pairs_interaction <- read_csv(paste0(folder_data, "temp/93-pairs_interaction.csv"), show_col_types = F)
-isolates_tournament <- read_csv(paste0(folder_data, "temp/93-isolates_tournament.csv"), show_col_types = F)
-pairs_freq <- read_csv(paste0(folder_data, "temp/93-pairs_freq.csv"), show_col_types = F)
 
+pairs <- pairs %>%
+    # Remove no-colony pairs
+    filter(!is.na(AccuracyMean)) %>%
+    # Remove low-accuracy pairs
+    filter(AccuracyMean > 0.9)
 
-#paint_white_background <- function(x) theme(plot.background = element_rect(color = NA, fill = "white"))
+#
 make_network <- function(isolates, pairs) {
     # Nodes
     nodes <- isolates %>% select(Isolate, Rank, PlotRank)
@@ -21,7 +24,7 @@ make_network <- function(isolates, pairs) {
     # Edges
     ## Remove no-growth
     edges <- pairs %>%
-        filter(InteractionType %in% c("coexistence", "exclusion")) %>%
+        filter(InteractionType %in% c("coexistence", "exclusion", "unknown")) %>%
         mutate(from=From, to=To) %>% select(from, to, InteractionType)
     edges_coext <- edges[edges$InteractionType == "coexistence",]
     edges_coext[,c("from", "to")] <- edges_coext[,c("to", "from")] # Add the mutual edges for coexistence links
@@ -37,16 +40,18 @@ make_network <- function(isolates, pairs) {
 communities_network <- communities %>%
     rename(comm = Community) %>%
     rowwise() %>%
-    mutate(Isolates = filter(isolates_tournament, Community == comm) %>% list) %>%
-    mutate(Pairs = filter(pairs_interaction, Community == comm) %>% list) %>%
+    mutate(Isolates = isolates %>% filter(Community == comm) %>% list) %>%
+    mutate(Pairs = pairs %>% filter(Community == comm) %>% list) %>%
     mutate(Network = make_network(Isolates, Pairs) %>% list) %>%
     rename(Community = comm) %>%
-    select(Community, CommunityLabel, CommunitySize, CommunityPairSize, Network)
+    select(Community, CommunityLabel, CommunitySize, CommunityPairSize, Network) %>%
+    ungroup
 
-save(communities_network, file = paste0(folder_data, "temp/94-communities_network.Rdata"))
+save(communities_network, file = paste0(folder_data, "temp/95-communities_network.Rdata"))
 
 
 # 2. Make a R list of randomized  networks ----
+if (FALSE) {
 randomize_network <- function(graph){
     # Step1: remove the bidirection of coexistence
     graph1 <- graph %>%
@@ -111,16 +116,10 @@ communities_network_randomized <- communities_network %>%
 
 # Save the data file
 save(communities_network_randomized, file = paste0(folder_data, "temp/94-communities_network_randomized.Rdata"))
-
-
-
-
-
-
+}
 
 
 # 3. Calculate network hierarchy ----
-
 #' Violation of ranks ----
 ## Compute fraction of pairs that follow the ranks (computed by the number of wins)
 tournament_rank <- function(pairs) {
@@ -199,12 +198,12 @@ randomize_pairs2 <- function(x) {
 communities_hierarchy <- communities %>%
     select(comm = Community) %>%
     rowwise() %>%
-    mutate(pairs_comm = pairs_interaction %>% filter(Community == comm) %>% list()) %>%
+    mutate(pairs_comm = pairs %>% filter(Community == comm) %>% list()) %>%
     mutate(HierarchyScore = compute_hierarchy2(pairs_comm)) %>%
     select(-pairs_comm) %>%
     select(Community = comm, HierarchyScore)
 
-write_csv(communities_hierarchy, paste0(folder_data, "temp/94-communities_hierarchy.csv"))
+write_csv(communities_hierarchy, paste0(folder_data, "temp/95-communities_hierarchy.csv"))
 
 
 

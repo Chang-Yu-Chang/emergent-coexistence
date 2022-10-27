@@ -61,40 +61,39 @@ interaction_type_finer <- c(
     "competitive exclusion", "stable coexistence",
     "mutual exclusion", "frequency-dependent coexistence",
     "coexistence at 5%", "coexistence at 95%",
-    "2-freq neutrality", "3-freq neutrality"
+    "2-freq neutrality", "3-freq neutrality",
+    "unknown"
 )
 
 
 # For plotting
 assign_interaction_color <- function (level = "simple") {
     if (level == "simple") {
-        interaction_type <- c("exclusion", "coexistence")
-        interaction_color <- c("#DB7469", "#557BAA")
+        interaction_type <- c("exclusion", "coexistence", "unknown")
+        interaction_color <- c("#DB7469", "#557BAA", grey(0.5))
         names(interaction_color) <- interaction_type
         return(interaction_color)
     }
-    if (level == "matrix") {
-        interaction_type <- c("exclusion", "coexistence", "exclusion violating rank", "bistability", "neutrality", "self", "undefined")
-        interaction_color <- c("#DB7469", "#557BAA", "#8CB369", "#EECF6D", "#8650C4", "black", "grey80")
+    if (level == "hierarchy") {
+        interaction_type <- c("exclusion", "coexistence", "exclusion violating rank", "bistability", "neutrality", "self", "unknown")
+        interaction_color <- c("#DB7469", "#557BAA", "#8CB369", "#EECF6D", "#8650C4", "black", "grey50")
         names(interaction_color) <- interaction_type
         return(interaction_color)
     }
     if (level == "finer") {
-        interaction_type <- c("competitive exclusion", "stable coexistence",
-                              "mutual exclusion", "frequency-dependent coexistence",
-                              "coexistence at 5%", "coexistence at 95%",
-                              "2-freq neutrality", "3-freq neutrality")
+        interaction_type <- interaction_type_finer
         #interaction_type <- c("competitive exclusion", "stable coexistence", "mutual exclusion", "frequency-dependent coexistence", "neutrality", "exclusion violating rank")
         interaction_color <- c("#DB7469", "#557BAA",
                                "#FFBC42", "#B9FAF8",
                                "lightblue", "cyan",
-                               "#8650C4", "purple")
+                               "#8650C4", "purple",
+                               grey(0.5))
         names(interaction_color) <- interaction_type
         return(interaction_color)
     }
 }
 interaction_color <- assign_interaction_color()
-frequency_color <- c( "95"="#292F36", "50"="#9F87AF", "5"="#7D7C7C")
+frequency_color <- c("95"="#292F36", "50"="#9F87AF", "5"="#7D7C7C")
 paint_white_background <- function () theme(plot.background = element_rect(fill = "white", color = NA))
 
 

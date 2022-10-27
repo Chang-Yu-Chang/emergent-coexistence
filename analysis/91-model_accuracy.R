@@ -147,8 +147,15 @@ accuracy %>%
 # 5 both duplicate TRUE                     18    0.857
 
 
-write_csv(accuracy, paste0(folder_data, "temp/91-accuracy.csv"))
+pairs_accuracy <- accuracy %>%
+    # Remove pairs that have cocultures with no colony
+    unite(col = "Pair", Community, Isolate1, Isolate2, sep = "_", remove = F) %>%
+    filter(!(Pair %in% pairs_no_colony)) %>%
+    group_by(Community, Isolate1, Isolate2) %>%
+    summarize(AccuracyMean = mean(Accuracy), AccuracySd = sd(Accuracy))
 
+write_csv(accuracy, paste0(folder_data, "temp/91-accuracy.csv"))
+write_csv(pairs_accuracy, paste0(folder_data, "temp/91-pairs_accuracy.csv"))
 
 
 

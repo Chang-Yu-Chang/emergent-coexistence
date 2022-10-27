@@ -77,6 +77,7 @@ make_interaction_type <- function () {
     ## Assign interaction types to combinations of frequency changes signs
     interaction_type$InteractionType[c(1,10,13,14)] <- "exclusion"
     interaction_type$InteractionType[c(2:6,8,11,20,23, 9,18,21,24,25,26,27)] <- "coexistence"
+    interaction_type$InteractionType[c(7,12,15:17,19,22)] <- "unknown"
 
     ## Assign finer interaction types to combinations of frequency changes signs
     interaction_type$InteractionTypeFiner[c(1,14)] <- "competitive exclusion"
@@ -88,6 +89,8 @@ make_interaction_type <- function () {
     interaction_type$InteractionTypeFiner[c(9,18,21,24:26)] <- "neutrality"
     interaction_type$InteractionTypeFiner[c(9,18,21,24:26)] <- "2-freq neutrality"
     interaction_type$InteractionTypeFiner[c(27)] <- "3-freq neutrality"
+    interaction_type$InteractionTypeFiner[c(7,12,15:17,19,22)] <- "unknown"
+
     interaction_type <- interaction_type %>%  mutate(FitnessFunction = paste(FromRare, FromMedium, FromAbundant, sep = "_"))
 }
 append_pairs_outocme <- function (pairs_fitness) {
@@ -148,21 +151,23 @@ tournament_rank <- function(pairs) {
     }
     isolate_name <- pairs %>% select(Isolate1, Isolate2) %>% unlist %>% unique %>% sort()
     # Isolates' ranks in the tournament
-    tour_rank <- data.frame(
+    tour_rank <- tibble(
         Isolate = isolate_name,
         # Win
         Win = filter(pairs, InteractionType == "exclusion") %>%
             select(From) %>% unlist() %>% factor(isolate_name) %>% table() %>% as.vector(),
-        # Lose
-        Lose = filter(pairs, InteractionType == "exclusion") %>%
-            select(To) %>% unlist() %>% factor(isolate_name) %>% table() %>% as.vector(),
         # Draw; Note that I consider neturality and bistability as draw in the tournament
         Draw = filter(pairs, InteractionType %in% c("coexistence", "neutrality", "bistability")) %>%
-            select(From, To) %>% unlist() %>% factor(isolate_name) %>% table() %>% as.vector())
+            select(From, To) %>% unlist() %>% factor(isolate_name) %>% table() %>% as.vector(),
+        # Lose
+        Lose = filter(pairs, InteractionType == "exclusion") %>%
+            select(To) %>% unlist() %>% factor(isolate_name) %>% table() %>% as.vector()
+    )
 
-    # Arrange the df by score
+    # Competition score
     tour_rank <- tour_rank %>%
-        mutate(Score = Win - Lose + 0 * Draw, Game = Win + Lose + Draw) %>%
+        mutate(Game = Win + Lose + Draw,
+               Score = (Win - Lose + 0 * Draw)/Game) %>%
         arrange(desc(Score))
 
     # Calculate rank by score; same scores means the same ranks
