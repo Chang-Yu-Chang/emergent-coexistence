@@ -10,11 +10,13 @@ isolates <- read_csv(paste0(folder_data, "output/isolates.csv"), show_col_types 
 pairs <- read_csv(paste0(folder_data, "output/pairs.csv"), show_col_types = F)
 communities <- read_csv(paste0(folder_data, "temp/00c-communities.csv"), show_col_types = F)
 
-pairs <- pairs %>%
-    # Remove no-colony pairs
-    filter(!is.na(AccuracyMean)) %>%
-    # Remove low-accuracy pairs
-    filter(AccuracyMean > 0.9)
+# pairs <- pairs %>%
+#     #  no-colony pairs or low-accuracy pairs
+#     mutate(InteractionType = ifelse(AccuracyMean < 0.9, "no colony or low accuracy", InteractionType)) %>%
+#     mutate(InteractionTypeFiner = ifelse(AccuracyMean < 0.9, "no colony or low accuracy", InteractionTypeFiner)) %>%
+#     # low accuracy
+#     mutate(InteractionType = ifelse(AccuracyMean < 0.9, "no colony or low accuracy", InteractionType)) %>%
+#     mutate(InteractionTypeFiner = ifelse(AccuracyMean < 0.9, "no colony or low accuracy", InteractionTypeFiner))
 
 #
 make_network <- function(isolates, pairs) {
@@ -24,7 +26,7 @@ make_network <- function(isolates, pairs) {
     # Edges
     ## Remove no-growth
     edges <- pairs %>%
-        filter(InteractionType %in% c("coexistence", "exclusion", "unknown")) %>%
+        filter(InteractionType %in% c("coexistence", "exclusion", "unknown", "no colony or low accuracy")) %>%
         mutate(from=From, to=To) %>% select(from, to, InteractionType)
     edges_coext <- edges[edges$InteractionType == "coexistence",]
     edges_coext[,c("from", "to")] <- edges_coext[,c("to", "from")] # Add the mutual edges for coexistence links

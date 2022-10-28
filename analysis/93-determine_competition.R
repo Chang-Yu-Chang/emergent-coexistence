@@ -15,7 +15,7 @@ pairs_T8_boots <- read_csv(paste0(folder_data, "temp/06-pairs_T8_boots.csv"), sh
 
 # 1. Combine T0 and T8 frequencies ----
 pairs_freq_T0_boots <- pairs_T0_boots %>%
-    group_by(Community, Isolate1, Isolate2, Isolate1InitialODFreq, Time) %>%
+    group_by(Batch, Community, Isolate1, Isolate2, Isolate1InitialODFreq, Time) %>%
     summarize(Isolate1CFUFreqMean = mean(Isolate1CFUFreq),
               Isolate1CFUFreqSd = sd(Isolate1CFUFreq)) %>%
     mutate(Community = factor(Community, communities$Community)) %>%
@@ -24,7 +24,7 @@ pairs_freq_T0_boots <- pairs_T0_boots %>%
     # PairFreqID
     mutate(PairFreqID = 1:n())
 pairs_freq_T8_boots <- pairs_T8_boots %>%
-    group_by(Community, Isolate1, Isolate2, Isolate1InitialODFreq, Time) %>%
+    group_by(Batch, Community, Isolate1, Isolate2, Isolate1InitialODFreq, Time) %>%
     summarize(Isolate1CFUFreqMean = mean(Isolate1CFUFreq),
               Isolate1CFUFreqSd = sd(Isolate1CFUFreq)) %>%
     mutate(Community = factor(Community, communities$Community)) %>%

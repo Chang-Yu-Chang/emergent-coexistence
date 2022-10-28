@@ -16,6 +16,13 @@ pairs_freq <- read_csv(paste0(folder_data, "temp/93-pairs_freq.csv"), show_col_t
 load(paste0(folder_data, "temp/95-communities_network.Rdata"))
 communities_hierarchy <- read_csv(paste0(folder_data, "temp/95-communities_hierarchy.csv"), show_col_types = F)
 
+# Clean up the pairs data
+pairs <- pairs %>%
+    # Remove no-colony pairs
+    unite(col = "Pair", Community, Isolate1, Isolate2, sep = "_", remove = F) %>%
+    filter(!(Pair %in% pairs_no_colony)) %>%
+    # Remove low-accuracy model pairs
+    filter(AccuracyMean > 0.9)
 
 # Figure SXX isolate abundance in community ----
 ## Panel A. cartoon of self-assembly experiment and isolate abundance
@@ -109,7 +116,7 @@ accuracy_to_plot_count <- accuracy_to_plot %>%
     count(name = "Count")
 p2 <- accuracy_to_plot_count %>%
     ggplot() +
-    geom_col(aes(x = AccuracyPassThreshold, y = Count), color = 1, fill = grey(.9), width = .8) +
+    geom_col(aes(x = AccuracyPassThreshold, y = Count), color = 1, fill = NA, width = .8) +
     geom_text(aes(x = AccuracyPassThreshold, y = Count, label = paste0("n=", Count)), vjust = -1) +
     geom_text(x = -Inf, y = Inf, label = paste0("N=", nrow(accuracy_to_plot)), vjust = 2, hjust = -1) +
     scale_x_discrete(labels = c("FALSE" = "Accuracy<0.9", "TRUE" = "Accuracy>0.9")) +
@@ -121,13 +128,108 @@ ggsave(here::here("plots/FigS-random_forest_accuracy.png"), p, width = 8, height
 
 
 
+# Figure SXX pairwise 16S mismatch ----
+p1 <- pairs %>%
+    filter(!is.na(Mismatch)) %>%
+    ggplot() +
+    geom_histogram(aes(x = Mismatch), color = 1, fill = NA, bins = 30) +
+    geom_text(x = -Inf, y = Inf, label = paste0("n=", nrow(filter(pairs, !is.na(Mismatch)))), vjust = 2, hjust = -1) +
+    theme_classic()
+
+p2 <- pairs %>%
+    filter(!is.na(Mismatch)) %>%
+    mutate(ZeroMismatch = case_when(
+        Mismatch == 0 ~ "mismatch = 0",
+        Mismatch > 0 ~ "mismatch > 0")) %>%
+    group_by(ZeroMismatch) %>%
+    count(name = "Count") %>%
+    ungroup() %>%
+    mutate(Fraction = Count / sum(Count), TotalCount = sum(Count)) %>%
+    ggplot() +
+    geom_col(aes(x = ZeroMismatch, y = Fraction), color = 1, fill = NA) +
+    geom_text(aes(x = ZeroMismatch, y = Fraction + 0.05, label = paste0("n=", Count))) +
+    scale_y_continuous(limits = c(0,1)) +
+    theme_classic() +
+    labs(x = "")
+
+p <- plot_grid(p1, p2, nrow = 1, labels = LETTERS[1:2], scale = 0.9, rel_widths = c(1,1)) + paint_white_background()
+ggsave(here::here("plots/FigS-mismatch.png"), p, width = 8, height = 4)
+
+# Figure SXX pairwise coexistence vs. mismatch ----
+## Mismatch in different groups
+p1 <- pairs %>%
+    filter(!is.na(PairFermenter)) %>%
+    ggplot(aes(x = PairFermenter, y = Mismatch, color = PairFermenter)) +
+    geom_boxplot(shape = 21, size = .5, position = position_dodge(width = 0.8)) +
+    geom_point(shape = 21, size = 1, stroke = .5, position = position_jitterdodge(dodge.width = 0.8, jitter.width = .2)) +
+    scale_color_npg() +
+    theme_classic() +
+    guides(color = "none") +
+    labs()
+
+p2 <- pairs %>%
+    filter(!is.na(PairFermenter)) %>%
+    group_by(PairFermenter, InteractionType) %>%
+    count(name = "Count") %>%
+    group_by(PairFermenter) %>%
+    mutate(Fraction = Count / sum(Count), TotalCount = sum(Count)) %>%
+    ggplot() +
+    geom_col(aes(x = PairFermenter, y = Fraction, fill = InteractionType), color = 1) +
+    geom_text(aes(x = PairFermenter, label = paste0("n=", TotalCount)), y = 0.9) +
+    scale_fill_manual(values = assign_interaction_color()) +
+    theme_classic() +
+    theme(legend.title = element_blank()) +
+    guides(fill = "none")
+
+p3 <- pairs %>%
+    filter(!is.na(PairFermenter)) %>%
+    ggplot(aes(x = PairFermenter, y = Mismatch, color = InteractionType)) +
+    geom_boxplot(shape = 21, size = .5, position = position_dodge(width = 0.8)) +
+    geom_point(shape = 21, size = 1, stroke = .5, position = position_jitterdodge(dodge.width = 0.8, jitter.width = .2)) +
+    scale_color_manual(values = interaction_color) +
+    theme_classic() +
+    guides(color = guide_legend(title = "")) +
+    labs()
+
+## Mismatch vs. coexistence
+p4 <- pairs %>%
+    filter(!is.na(PairFermenter)) %>%
+    mutate(InteractionType = ifelse(InteractionType == "coexistence", 1, 0)) %>%
+    ggplot() +
+    geom_point(aes(x = Mismatch, y = InteractionType), shape = 21, size = 2) +
+    geom_smooth(aes(x = Mismatch, y = InteractionType), method = "glm", method.args = list(family = binomial)) +
+    theme_classic()
+
+p5 <- pairs %>%
+    filter(!is.na(PairFermenter)) %>%
+    mutate(InteractionType = ifelse(InteractionType == "coexistence", 1, 0)) %>%
+    ggplot() +
+    geom_point(aes(x = Mismatch, y = InteractionType, color = PairFermenter), shape = 21, size = 2) +
+    geom_smooth(aes(x = Mismatch, y = InteractionType, color = PairFermenter), method = "glm", method.args = list(family = binomial)) +
+    scale_color_npg() +
+    facet_grid(PairFermenter ~ .) +
+    theme_classic() +
+    guides(color = "none")
+
+model_logit <- pairs %>%
+    filter(!is.na(InteractionType)) %>%
+    mutate(InteractionType = ifelse(InteractionType == "exclusion", 1, 0)) %>%
+    glm(InteractionType ~ Mismatch, family = "binomial", data = .)
+broom::tidy(model_logit)
+summary(model_logit)
+
+
+
+p_upper <- plot_grid(p1, p2, p4, nrow = 1, scale = 0.9, labels = LETTERS[1:3])
+p_inter <- plot_grid(p_upper, p3, ncol = 1, labels = c("", "D"))
+p <- plot_grid(p_inter, p5, ncol = 2, rel_widths = c(3,1), labels = c("", "E")) + paint_white_background()
+ggsave(here::here("plots/FigS-coexistence_mismatch.png"), p, width = 10, height = 6)
 
 
 
 
 # Table SXX image object features ----
 features_example <- read_csv(paste0(folder_pipeline, "images/D-07-feature/merged/D_T8_C1R2_1.csv"), show_col_types = F)
-
 
 features <- tibble(Feature = names(features_example)) %>%
     filter(!Feature == "ObjectID") %>%
@@ -178,12 +280,16 @@ features <- tibble(Feature = names(features_example)) %>%
                  "blue channel mean intensity",
                  "blue channel standard deviation intensity",
                  "blue channel mad intensity"
-               ))
+               )) %>%
+    mutate(` ` = 1:n()) %>%
+    select(` `, everything())
 
 ft <- features %>%
     flextable() %>%
-    width(j = 1:2, width = 2) %>%
-    width(j = 3, width = 5)
+    width(j = 1, width = 1) %>%
+    width(j = 2:3, width = 2) %>%
+    width(j = 4, width = 5) %>%
+    vline(j = 1, border = NULL, part = "all")
 
 save_as_image(ft, here::here("plots/TableS-features.png"), webshot = "webshot2")
 
@@ -281,63 +387,6 @@ save_as_image(ft, here::here("plots/TableS-fitness_function.png"), webshot = "we
 
 
 
-
-
-
-
-
-
-# Exploratory ----
-
-## mismatch in different groups
-
-p1 <- pairs %>%
-    filter(!is.na(InteractionType)) %>%
-    ggplot(aes(x = PairFermenter, y = Mismatch, color = PairFermenter)) +
-    geom_boxplot(shape = 21, size = .5, position = position_dodge(width = 0.8)) +
-    geom_point(shape = 21, size = 1, stroke = .5, position = position_jitterdodge(dodge.width = 0.8, jitter.width = .2)) +
-    scale_color_npg() +
-    theme_classic()
-
-
-p2 <- pairs %>%
-    filter(!is.na(InteractionType)) %>%
-    ggplot(aes(x = InteractionType, y = Mismatch, color = PairFermenter)) +
-    geom_boxplot(shape = 21, size = .5, position = position_dodge(width = 0.8)) +
-    geom_point(shape = 21, size = 1, stroke = .5, position = position_jitterdodge(dodge.width = 0.8, jitter.width = .2)) +
-    scale_color_npg() +
-    theme_classic()
-
-
-p3 <- pairs %>%
-    filter(!is.na(InteractionType)) %>%
-    group_by(PairFermenter, InteractionType) %>%
-    count(name = "Count") %>%
-    group_by(PairFermenter) %>%
-    mutate(Fraction = Count / sum(Count), TotalCount = sum(Count)) %>%
-    ggplot() +
-    geom_col(aes(x = PairFermenter, y = Fraction, fill = InteractionType), color = 1) +
-    geom_text(aes(x = PairFermenter, label = paste0("n=", TotalCount)), y = 0.9) +
-    scale_fill_manual(values = assign_interaction_color()) +
-    theme_classic() +
-    theme(legend.title = element_blank()) +
-    guides()
-
-## Mismatch vs. coexistence
-p4 <- pairs %>%
-    filter(!is.na(InteractionType)) %>%
-    mutate(InteractionType = ifelse(InteractionType == "coexistence", 1, 0)) %>%
-    ggplot() +
-    geom_point(aes(x = Mismatch, y = InteractionType), shape = 21, size = 2) +
-    geom_smooth(aes(x = Mismatch, y = InteractionType), method = "glm", method.args = list(family = binomial)) +
-    theme_classic()
-
-
-model_logit <- pairs %>%
-    filter(!is.na(InteractionType)) %>%
-    mutate(InteractionType = ifelse(InteractionType == "exclusion", 1, 0)) %>%
-    glm(InteractionType ~ Mismatch, family = "binomial", data = .)
-summary(model_logit)
 
 
 

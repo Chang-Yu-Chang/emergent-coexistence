@@ -74,6 +74,15 @@ assign_interaction_color <- function (level = "simple") {
         names(interaction_color) <- interaction_type
         return(interaction_color)
     }
+
+    if (level == "NA data") {
+        interaction_type <- c("exclusion", "coexistence", "unknown", "no colony or low accuracy")
+        interaction_color <- c("#DB7469", "#557BAA", grey(0.5), grey(0.8))
+        names(interaction_color) <- interaction_type
+        return(interaction_color)
+
+    }
+
     if (level == "hierarchy") {
         interaction_type <- c("exclusion", "coexistence", "exclusion violating rank", "bistability", "neutrality", "self", "unknown")
         interaction_color <- c("#DB7469", "#557BAA", "#8CB369", "#EECF6D", "#8650C4", "black", "grey50")

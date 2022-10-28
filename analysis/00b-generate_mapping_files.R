@@ -104,7 +104,7 @@ list_image_mapping_folder_master <- list_image_mapping_master %>%
     left_join(tibble(image_name_pair = plates_no_colony, Undecided = "no colony"), by = "image_name_pair") %>%
     left_join(rename(list_images_master, image_name_pair = image_name), by = "image_name_pair") %>%
     left_join(select(list_images_master, image_name_isolate1 = image_name), by = "image_name_isolate1") %>%
-    left_join(select(list_images_master, image_name_isolate2 = image_name), by = "image_name_isolate2")
+    left_join(select(list_images_master, image_name_isolate2 = image_name), by = "image_name_isolate2") %>%
 
 write_csv(list_image_mapping_folder_master, paste0(folder_script, folder_mapping_files, "00-list_image_mapping_folder_master.csv"))
 cat("\n", paste0(folder_script, folder_mapping_files, "00-list_image_mapping_folder_master.csv"), "\tcreated")

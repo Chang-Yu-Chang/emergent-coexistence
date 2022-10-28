@@ -25,6 +25,11 @@ pairs <- pairs %>%
     filter(!(Pair %in% pairs_no_colony)) %>%
     # Remove low-accuracy model pairs
     filter(AccuracyMean > 0.9)
+# pairs <- pairs %>%
+#     #  no-colony pairs or low-accuracy pairs
+#     mutate(InteractionType = ifelse(AccuracyMean < 0.9, "no colony or low accuracy", InteractionType)) %>%
+#     mutate(InteractionTypeFiner = ifelse(AccuracyMean < 0.9, "no colony or low accuracy", InteractionTypeFiner))
+
 
 # Count pairwise comeptition outcomes
 pairs %>%
