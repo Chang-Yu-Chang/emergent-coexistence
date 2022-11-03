@@ -31,7 +31,7 @@ pairs <- pairs %>%
 #     mutate(InteractionTypeFiner = ifelse(AccuracyMean < 0.9, "no colony or low accuracy", InteractionTypeFiner))
 
 
-# Count pairwise comeptition outcomes
+# Count pairwise competition outcomes
 pairs %>%
     group_by(InteractionType) %>%
     count(name = "Count") %>%
@@ -51,6 +51,8 @@ p <- ggdraw() + draw_image(here::here("plots/cartoons/Fig1.png")) + paint_white_
 ggsave(here::here("plots/Fig1.png"), p, width = 27, height = 15)
 
 # Figure 2 ----
+# Figure 2A: cartoon
+pA <- ggdraw() + draw_image(here::here("plots/cartoons/Fig2A.png")) + paint_white_background()
 # Figure 2A: example network C7R1
 ## Main network
 net <- communities_network %>%
@@ -78,10 +80,10 @@ p1 <- net %>%
           plot.margin = unit(c(3,3,3,3), "mm"),
           plot.background = element_rect(fill = NA, color = NA)) +
     labs() +
-    draw_image(here::here("plots/cartoons/Fig1B_1.png"), x = -0.5, y = 0.75, vjust = 0.25, hjust = 0, clip = "on", scale = .3) +
-    draw_image(here::here("plots/cartoons/Fig1B_2.png"), x = -0.5, y = -0.25, vjust = 0.25, hjust = 0, clip = "on", scale = .3) +
-    draw_image(here::here("plots/cartoons/Fig1B_3.png"), x = 0.5, y = 0.75, vjust = 0.25, hjust = 0, clip = "on", scale = .3) +
-    draw_image(here::here("plots/cartoons/Fig1B_4.png"), x = 0.5, y = -0.25, vjust = 0.25, hjust = 0, clip = "on", scale = .3)
+    draw_image(here::here("plots/cartoons/Fig2B_1.png"), x = -0.5, y = 0.75, vjust = 0.25, hjust = 0, clip = "on", scale = .3) +
+    draw_image(here::here("plots/cartoons/Fig2B_2.png"), x = -0.5, y = -0.25, vjust = 0.25, hjust = 0, clip = "on", scale = .3) +
+    draw_image(here::here("plots/cartoons/Fig2B_3.png"), x = 0.5, y = 0.75, vjust = 0.25, hjust = 0, clip = "on", scale = .3) +
+    draw_image(here::here("plots/cartoons/Fig2B_4.png"), x = 0.5, y = -0.25, vjust = 0.25, hjust = 0, clip = "on", scale = .3)
 
 ## frequency plots
 pairs_example_freq <- pairs %>%
@@ -120,7 +122,7 @@ p_legend_color <- get_legend({p_pairs_example_freq_list[[1]] +
         theme(legend.background = element_blank(), legend.text = element_text(size = 12), legend.title = element_text(size = 12)) +
         guides(color = guide_legend(title = "Initial frequency"))})
 ss <- .2
-pA <- ggdraw(p1) +
+pB <- ggdraw(p1) +
     draw_plot(p_pairs_example_freq_list[[1]], x = .05, y = .5, width = ss*1.5, height = ss*1.5, hjust = .5, vjust = .5) +
     draw_plot(p_pairs_example_freq_list[[2]], x = .5, y = .85, width = ss, height = ss, hjust = .5, vjust = .5) +
     draw_plot(p_pairs_example_freq_list[[3]], x = .4, y = .6, width = ss, height = ss, hjust = .5, vjust = .5) +
@@ -132,7 +134,7 @@ pA <- ggdraw(p1) +
     theme(panel.background = element_blank(), plot.background = element_rect(color = NA, fill = "white"),
           plot.margin = unit(c(10,0,0,10), "mm"))
 
-# Figure 2B: All 13 self-assembled community graphs
+# Figure 2C: All 13 self-assembled community graphs
 plot_competitive_network_grey <- function(g, node_size = 10, edge_width = 1){
     # Layout
     graph_layout <- create_layout(g, "circle")
@@ -199,10 +201,12 @@ p2 <- pairs %>%
     labs(x = "Community", y = "Fraction")
 
 
-pB <- plot_grid(p1, p2, ncol = 1, scale = .9, rel_heights = c(1, 5), axis = "lr", align = "v") + paint_white_background()
+pC <- plot_grid(p1, p2, ncol = 1, scale = .9, rel_heights = c(1, 5), axis = "lr", align = "v") + paint_white_background()
 
 #
-p <- plot_grid(pA, pB, nrow = 1, labels = c("A", "B"), rel_widths = c(1, 2), axis = "tr", align = "h") + paint_white_background()
+
+p_bottom <- plot_grid(pA, pB, nrow = 1, labels = c("B", "C"), rel_widths = c(1, 2), axis = "tr", align = "h")
+p <- plot_grid(pA, p_bottom, nrow = 2, labels = c("A", ""), rel_heights = c(1, 1)) + paint_white_background()
 ggsave(here::here("plots/Fig2.png"), p, width = 12, height = 4)
 
 

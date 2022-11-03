@@ -10,6 +10,14 @@ isolates <- read_csv(paste0(folder_data, "output/isolates.csv"), show_col_types 
 pairs <- read_csv(paste0(folder_data, "output/pairs.csv"), show_col_types = F)
 communities <- read_csv(paste0(folder_data, "temp/00c-communities.csv"), show_col_types = F)
 
+pairs <- pairs %>%
+    # Remove no-colony pairs
+    unite(col = "Pair", Community, Isolate1, Isolate2, sep = "_", remove = F) %>%
+    filter(!(Pair %in% pairs_no_colony)) %>%
+    # Remove low-accuracy model pairs
+    filter(AccuracyMean > 0.9)
+
+
 # pairs <- pairs %>%
 #     #  no-colony pairs or low-accuracy pairs
 #     mutate(InteractionType = ifelse(AccuracyMean < 0.9, "no colony or low accuracy", InteractionType)) %>%
