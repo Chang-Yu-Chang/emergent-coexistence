@@ -14,24 +14,21 @@ pairs_freq <- read_csv(paste0(folder_data, "temp/93-pairs_freq.csv"), show_col_t
 load(paste0(folder_data, "temp/95-communities_network.Rdata"))
 communities_hierarchy <- read_csv(paste0(folder_data, "temp/95-communities_hierarchy.csv"), show_col_types = F)
 
+# 0. Clean up column factors ----
+# Arrange communities by size
 communities <- communities %>%
     arrange(CommunitySize) %>%
     mutate(Community = factor(Community, Community))
 
-# Clean up the pairs data
+# Clean up the pairs data ----
 pairs <- pairs %>%
     # Remove no-colony pairs
     unite(col = "Pair", Community, Isolate1, Isolate2, sep = "_", remove = F) %>%
     filter(!(Pair %in% pairs_no_colony)) %>%
     # Remove low-accuracy model pairs
     filter(AccuracyMean > 0.9)
-# pairs <- pairs %>%
-#     #  no-colony pairs or low-accuracy pairs
-#     mutate(InteractionType = ifelse(AccuracyMean < 0.9, "no colony or low accuracy", InteractionType)) %>%
-#     mutate(InteractionTypeFiner = ifelse(AccuracyMean < 0.9, "no colony or low accuracy", InteractionTypeFiner))
 
-
-# Count pairwise competition outcomes
+# Count pairwise competition outcomes ----
 pairs %>%
     group_by(InteractionType) %>%
     count(name = "Count") %>%
@@ -49,6 +46,7 @@ pairs %>%
 # Figure 1 ----
 p <- ggdraw() + draw_image(here::here("plots/cartoons/Fig1.png")) + paint_white_background()
 ggsave(here::here("plots/Fig1.png"), p, width = 27, height = 15)
+
 
 # Figure 2 ----
 # Figure 2A: cartoon
@@ -205,13 +203,13 @@ pC <- plot_grid(p1, p2, ncol = 1, scale = .9, rel_heights = c(1, 5), axis = "lr"
 
 #
 
-p_bottom <- plot_grid(pA, pB, nrow = 1, labels = c("B", "C"), rel_widths = c(1, 2), axis = "tr", align = "h")
-p <- plot_grid(pA, p_bottom, nrow = 2, labels = c("A", ""), rel_heights = c(1, 1)) + paint_white_background()
-ggsave(here::here("plots/Fig2.png"), p, width = 12, height = 4)
+p_bottom <- plot_grid(pB, pC, nrow = 1, labels = c("B", "C"), scale = c(0.9, 1), rel_widths = c(1, 2), axis = "tr", align = "h")
+p <- plot_grid(pA, p_bottom, nrow = 2, labels = c("A", ""), scale = c(0.9, 1), rel_heights = c(1, 1)) + paint_white_background()
+ggsave(here::here("plots/Fig2.png"), p, width = 12, height = 8)
 
 
 
-# Figure 3 ----
+ # Figure 3 ----
 get_interaction_legend <- function (pairs) {
     panel_colors <- c(interaction_color[1], rep(interaction_color[2], 6), interaction_color[3]) %>% setNames(pairs_interaction_finer$InteractionTypeFiner)
     panel_fills <- assign_interaction_color(level = "finer")[-3]

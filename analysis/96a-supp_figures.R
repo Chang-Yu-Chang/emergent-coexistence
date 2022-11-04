@@ -16,46 +16,19 @@ pairs_freq <- read_csv(paste0(folder_data, "temp/93-pairs_freq.csv"), show_col_t
 load(paste0(folder_data, "temp/95-communities_network.Rdata"))
 communities_hierarchy <- read_csv(paste0(folder_data, "temp/95-communities_hierarchy.csv"), show_col_types = F)
 
-# Clean up the pairs data
+# 0. Clean up column factors ----
+# Arrange communities by size
+communities <- communities %>%
+    arrange(CommunitySize) %>%
+    mutate(Community = factor(Community, Community))
+
+# Clean up the pairs data ----
 pairs <- pairs %>%
     # Remove no-colony pairs
     unite(col = "Pair", Community, Isolate1, Isolate2, sep = "_", remove = F) %>%
     filter(!(Pair %in% pairs_no_colony)) %>%
     # Remove low-accuracy model pairs
     filter(AccuracyMean > 0.9)
-
-# Figure SXX isolate abundance in community ----
-## Panel A. cartoon of self-assembly experiment and isolate abundance
-p1 <- ggdraw() + draw_image(here::here("plots/cartoons/FigS1.png")) + paint_white_background()
-
-## Panel B. isolate abundance
-color_sets <- tibble(Color = c("yellow", "deepskyblue3", "blue", "darkorchid2", "firebrick", "orange2", "grey"),
-                     Family = c("Aeromonadaceae", "Enterobacteriaceae", "Moraxellaceae", "Pseudomonadaceae","Comamonadaceae","Alcaligenaceae", "Sphingobacteriaceae"))
-p2 <- isolates %>%
-    mutate(Community = factor(Community, communities$Community)) %>%
-    filter(!is.na(RelativeAbundance)) %>%
-    arrange(Community) %>%
-    ggplot() +
-    geom_bar(aes(x = Community, y = RelativeAbundance, fill = Family), size = .3, color = "grey30", position = "stack", stat = "identity") +
-    theme_bw() +
-    scale_fill_manual(values = setNames(color_sets$Color, color_sets$Family)) +
-    scale_x_discrete(labels = 1:13) +
-    scale_y_continuous(breaks = c(0, .5, 1), expand = c(0,0), limits = c(0, 1)) +
-    theme(
-        panel.grid = element_blank(),
-        axis.title = element_text(size = 12),
-        panel.border = element_rect(color = 1, size = 1)) +
-    labs(y = "Relative abundance")
-
-## Stats
-isolates %>%
-    group_by(Community) %>%
-    summarize(Total = sum(RelativeAbundance, na.rm = T)) %>%
-    summarize(Mean = mean(Total))
-
-p <- plot_grid(p1, p2, nrow = 1, scale = c(.8, .9), rel_widths = c(1, 1.5), labels = c("A", "B")) + theme(plot.background = element_rect(color = NA, fill = "white"))
-ggsave(here::here("plots/FigS-isolate_abundance.png"), p, width = 10, height = 3)
-
 
 # Figure SXX machine vs. human ----
 pairs_T8_combined <- read_csv(paste0(folder_data, "temp/92-pairs_T8_combined.csv"), show_col_types = F)
@@ -155,6 +128,56 @@ p2 <- pairs %>%
 p <- plot_grid(p1, p2, nrow = 1, labels = LETTERS[1:2], scale = 0.9, rel_widths = c(1,1)) + paint_white_background()
 ggsave(here::here("plots/FigS-mismatch.png"), p, width = 8, height = 4)
 
+# Figure SXX pairwise competition between dominant species ----
+## This csv keeps all Sangers that match to one ESV with up to 0-2 mismatch
+isolates_abundance_loose <- read_csv(paste0(folder_data, "temp/13-isolates_abundance_loose.csv"), show_col_types = F)
+
+## Dominant isolate species have >0.05 relative ESV abundance
+isolates_dominant <- isolates_abundance_loose %>%
+    select(Community, Isolate, RelativeAbundance) %>%
+    filter(RelativeAbundance > 0.05)
+
+##
+pairs_dominant <- pairs %>%
+    select(PairID, Community, Isolate1, Isolate2, InteractionType) %>%
+    left_join(rename(isolates_dominant, Isolate1 = Isolate, RelativeAbundance1 = RelativeAbundance)) %>%
+    left_join(rename(isolates_dominant, Isolate2 = Isolate, RelativeAbundance2 = RelativeAbundance)) %>%
+    filter(!is.na(RelativeAbundance1), !is.na(RelativeAbundance2)) %>%
+    left_join(pairs)
+
+##
+p <- pairs_dominant %>%
+    filter(!is.na(FitnessFunction)) %>%
+    group_by(Community, InteractionType) %>%
+    count(name = "Count") %>%
+    group_by(Community) %>% mutate(Fraction = Count / sum(Count), TotalCount = sum(Count)) %>%
+    ungroup() %>%
+    mutate(Community = factor(Community, communities$Community)) %>%
+    arrange(Community) %>%
+    left_join(communities, by = "Community") %>%
+    mutate(CommunityLabel = factor(CommunityLabel)) %>%
+    replace_na(list(InteractionType = "unknown")) %>%
+    ggplot() +
+    geom_col(aes(x = Community, fill = InteractionType, y = Fraction), color = 1, width = .8, size = .5) +
+    #geom_text(aes(x = CommunityLabel, y = .9, label = paste0("n=", CommunityPairSize)), vjust = -.5, size = 3) +
+    geom_text(aes(x = Community, y = .9, label = paste0("n=", TotalCount))) +
+    scale_fill_manual(values = assign_interaction_color(), breaks = c("coexistence", "exclusion", "unknown")) +
+    scale_y_continuous(breaks = c(0,.5,1), limit = c(0, 1), expand = c(0,0)) +
+    theme_classic() +
+    theme(legend.text = element_text(size = 12),
+          axis.text = element_text(color = 1, size = 12),
+          axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1),
+          axis.title = element_text(color = 1, size = 12),
+          legend.title = element_blank(),
+          legend.position = "top") +
+    labs(x = "Community", y = "Fraction")
+
+ggsave(here::here("plots/FigS-pairwise_competition_dominant.png"), p, width = 8, height = 4)
+
+
+
+if (FALSE) {
+
 # Figure SXX pairwise coexistence vs. mismatch ----
 ## Mismatch in different groups
 p1 <- pairs %>%
@@ -225,8 +248,7 @@ p_inter <- plot_grid(p_upper, p3, ncol = 1, labels = c("", "D"))
 p <- plot_grid(p_inter, p5, ncol = 2, rel_widths = c(3,1), labels = c("", "E")) + paint_white_background()
 ggsave(here::here("plots/FigS-coexistence_mismatch.png"), p, width = 10, height = 6)
 
-
-
+}
 
 # Table SXX image object features ----
 features_example <- read_csv(paste0(folder_pipeline, "images/D-07-feature/merged/D_T8_C1R2_1.csv"), show_col_types = F)

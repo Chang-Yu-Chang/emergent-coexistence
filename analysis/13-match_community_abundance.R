@@ -1,6 +1,4 @@
 #' This script reads community OTU table from the curated community files from Sylvie
-#'
-#' 1.
 
 library(tidyverse)
 source(here::here("analysis/00-metadata.R"))
@@ -130,7 +128,7 @@ sequences_alignment <- bind_rows(sequences_alignment_list) %>% as_tibble
 write_csv(sequences_alignment, paste0(folder_data, "temp/13-sequences_alignment.csv"))
 
 
-# 3. Pick the best-matched ESV-isolate pairs and plot the relative abundances ----
+# 3. Pick the best-matched ESV-isolate pairs with up to  0-2 mismatch ----
 
 # Find the match with highest alignment score; 68 rows
 sequences_abundance_list <- rep(list(NA), 3)
@@ -170,6 +168,61 @@ isolates_abundance <- bind_rows(sequences_abundance_list) %>%
 
 
 write_csv(isolates_abundance, paste0(folder_data, "temp/13-isolates_abundance.csv"))
+
+# 4. Keep all Sangers that match to any ESV with up to  0-2 mismatch ----
+sequences_alignment <- read_csv(paste0(folder_data, "temp/13-sequences_alignment.csv"), show_col_types = F)
+
+# Find the match with highest alignment score; 68 rows
+sequences_abundance_list <- rep(list(NA), 3)
+allow_mismatch <- c(0:2, Inf)
+
+for (i in 1:4) {
+    sequences_abundance_list[[i]] <- sequences_alignment %>%
+        filter(AlignmentType == "local") %>%
+        # Filter for BasePairMatch
+        filter(BasePairMismatch <= allow_mismatch[i]) %>%
+        # For each Sanger, find the Sanger-ESV match with highest alignment score
+        group_by(AlignmentType, ExpID) %>%
+        arrange(desc(AlignmentScore)) %>%
+        slice(1) %>%
+        ungroup() %>%
+        arrange(Community) %>%
+        # Specify mismatch allowed
+        mutate(AllowMismatch = allow_mismatch[i])
+}
+
+isolates_abundance_loose <- bind_rows(sequences_abundance_list) %>%
+    mutate(AlignmentType = factor(AlignmentType, levels = c("global", "local", "overlap", "global-local", "local-global"))) %>%
+    arrange(AlignmentType, AllowMismatch, Community) %>%
+    filter(AlignmentType == "local", AllowMismatch == "Inf") %>%
+    # Select only necessary variables
+    select(Community, ExpID, RelativeAbundance, CommunityESVID) %>%
+    # Match it to isolate
+    right_join(isolates_ID, by = c("Community", "ExpID")) %>%
+    select(Community, Isolate, ExpID, RelativeAbundance)
+
+write_csv(isolates_abundance_loose, paste0(folder_data, "temp/13-isolates_abundance_loose.csv"))
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
