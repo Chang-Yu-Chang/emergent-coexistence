@@ -20,7 +20,7 @@ communities <- communities %>%
 
 # Figure SXX isolate abundance in community ----
 family_colors <- c(
-    Rest = grey(0.5),
+    Others = grey(0.5),
     Enterobacteriaceae = "#397eb8",
     Pseudomonadaceae = "#e21e26",
     Aeromonadaceae = "#4fb148",
@@ -31,7 +31,7 @@ family_colors <- c(
 )
 
 genus_colors <- c(
-    Rest = grey(0.5),
+    Others = grey(0.5),
     Enterobactor1 = "#225ea8",
     Klebsiella1 = "#3eb6c5",
     Raoultella1 = "#a3d6b2",
@@ -61,7 +61,7 @@ isolates_abundance <- isolates_abundance %>%
     split.data.frame(.$Community) %>%
     map(function (x) {
         MatchedRelativeAbundance = sum(x$RelativeAbundance)
-        bind_rows(x, tibble(Community = unique(x$Community), Family = "Rest", Genus = "Rest", RelativeAbundance = 1-MatchedRelativeAbundance))
+        bind_rows(x, tibble(Community = unique(x$Community), Family = "Others", Genus = "Others", RelativeAbundance = 1-MatchedRelativeAbundance))
     }) %>%
     bind_rows()
 
@@ -71,8 +71,7 @@ p <- isolates_abundance %>%
     ggplot() +
     geom_bar(aes(x = Community, y = RelativeAbundance, fill = Family), size = .3, position = "stack", stat = "identity") +
     theme_bw() +
-    scale_fill_manual(values = family_colors, breaks = names(family_colors)[names(family_colors) != "Rest"]) +
-    #scale_x_discrete(labels = 1:13) +
+    scale_fill_manual(values = family_colors, breaks = names(family_colors)[names(family_colors) != "Others"]) +
     scale_y_continuous(breaks = c(0, .5, 1), expand = c(0,0), limits = c(0, 1)) +
     theme(panel.grid = element_blank(),
           axis.title = element_text(size = 12),
@@ -92,12 +91,30 @@ ggsave(here::here("plots/FigS-isolate_abundance.pdf"), p, width = 5, height = 3)
 
 
 
-# Figure SXX ESC abundance in community ----
-#community_abundance <- read_csv(paste0(folder_data, "raw/community_ESV/Emergent_Simplicity_Equilibrium_Data.csv"), show_col_types = F)
-community_abundance <- read_csv(paste0(folder_data, "raw/community_ESV/Estrela_2021_16S_data_table_RelAbund_ALL.txt"), show_col_types = F)
-community_abundance %>%
-    filter(Inoculum == 2)
+# Figure SXX ESC abundance over time ----
+community_abundance <- read_csv(paste0(folder_data, "raw/community_ESV/CSS_Emergent_Simplicity_Timeseries.csv"), show_col_types = F)
+p <- community_abundance %>%
+    filter(Inoculum == 8, Replicate == 4) %>%
+    mutate(Family = ifelse(Relative_Abundance < 0.001 | !(Family %in% names(family_colors)), "Others", Family)) %>%
+    mutate(Family = factor(Family, names(family_colors))) %>%
+    arrange(Transfer, Family) %>%
+    ggplot() +
+    geom_col(aes(x = Transfer, y = Relative_Abundance, fill = Family, alpha = ESV), size = .3) +
+    scale_fill_manual(values = family_colors) +
+    scale_alpha_discrete(range = c(0.5, 1)) +
+    scale_x_continuous(breaks = 0:12, expand = c(0,.3)) +
+    scale_y_continuous(expand = c(0, 0), breaks = c(0, .5, 1)) +
+    theme_classic() +
+    theme(panel.grid = element_blank(),
+          axis.title = element_text(size = 12),
+          axis.text = element_text(color = 1, size = 12),
+          panel.border = element_rect(color = 1, size = 1, fill = NA)) +
+    guides(alpha = "none") +
+    labs(x = "Dilution", y = "Relative abundance")
 
+
+ggsave(here::here("plots/FigS-temporal_abundance.png"), p, width = 5, height = 3)
+ggsave(here::here("plots/FigS-temporal_abundance.pdf"), p, width = 5, height = 3)
 
 
 

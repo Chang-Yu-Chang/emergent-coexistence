@@ -44,7 +44,7 @@ pairs %>%
 
 
 # Figure 1 ----
-p <- ggdraw() + draw_image(here::here("plots/cartoons/Fig1.png")) + paint_white_background()
+p <- ggdraw() + draw_image(here::here("plots/cartoons/Fig1.pdf")) + paint_white_background()
 ggsave(here::here("plots/Fig1.png"), p, width = 27, height = 15)
 
 
