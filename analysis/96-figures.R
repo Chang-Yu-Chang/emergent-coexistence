@@ -95,6 +95,10 @@ plot_example_freq <- function(pairs_freq) {
         ggplot(aes(x = Time, y = Isolate1CFUFreqMean, color = Isolate1InitialODFreq, group = Isolate1InitialODFreq)) +
         geom_line(size = 1) +
         geom_point(size = 1.5) +
+        geom_segment(size = 1, aes(x = Time, xend = Time,
+                                    y = Isolate1CFUFreqMean + 2*Isolate1CFUFreqSd,
+                                    yend = Isolate1CFUFreqMean - 2*Isolate1CFUFreqSd,
+                                    color = Isolate1InitialODFreq)) +
         scale_y_continuous(breaks = c(0, .5, 1), limits = c(-0.2, 1.2)) +
         scale_x_discrete(labels = c("start", "end")) +
         scale_color_manual(values = frequency_color, label = c("95%", "50%", "5%")) +
@@ -127,7 +131,7 @@ pB <- ggdraw(p1) +
     #draw_plot(p_legend_color, x = .05, y = .9, width = ss/2, height = ss/2, hjust = 0.5, vjust = .5) +
     theme(panel.background = element_blank(), plot.background = element_rect(color = NA, fill = "white"),
           plot.margin = unit(c(0,3,3,5), "mm"))
-pB
+
 # Figure 2C: All 13 self-assembled community graphs
 plot_competitive_network_grey <- function(g, node_size = 10, edge_width = 1){
     # Layout
