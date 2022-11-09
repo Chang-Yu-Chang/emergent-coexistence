@@ -7,7 +7,7 @@
 library(tidyverse)
 source(here::here("analysis/00-metadata.R"))
 
-list_image_mapping_folder_master <- read_csv(paste0(folder_script, folder_mapping_files, "00-list_image_mapping_folder_master.csv"), show_col_types = F)
+list_image_mapping_folder_master <- read_csv(paste0(folder_script, "mapping_files/", "00-list_image_mapping_folder_master.csv"), show_col_types = F)
 
 # 1. Isolates ----
 isolates_ID <- read_csv(paste0(folder_data, "/raw/pairwise_competition/isolates1.csv"), col_types = cols()) %>%
@@ -36,7 +36,7 @@ cat("\n", paste0(folder_data, "temp/00c-isolates_ID.csv"), "\tcreated")
 
 
 
-# 1. A mapping file for pairs and frequencies ----
+# 3. A mapping file for pairs and frequencies ----
 pairs_freq_ID <- list_image_mapping_folder_master %>%
     rename(Isolate1InitialODFreq = Freq1, Isolate2InitialODFreq = Freq2) %>%
     # Correct the isolate order
@@ -86,27 +86,5 @@ cat("\n", paste0(folder_data, "temp/00c-pairs_freq_ID.csv"), "\tcreated")
 
 write_csv(pairs_ID, paste0(folder_data, "temp/00c-pairs_ID.csv"))
 cat("\n", paste0(folder_data, "temp/00c-pairs_ID.csv"), "\tcreated")
-
-
-if (FALSE) {
-    ## The number of all coculture images, including
-    nrow(list_image_mapping_folder_master)
-
-    ## The number of coculture images of the final unique species pair. 558
-    nrow(pairs_freq_ID)
-
-    ## The actual number of unique species pairs, after removing contaminants. 186
-    pairs_freq_ID %>%
-        distinct(Batch, Community, Isolate1, Isolate2) %>%
-        nrow()
-
-}
-
-
-
-
-
-
-
 
 

@@ -113,7 +113,7 @@ isolates %>%
 
 p <- plot_grid(p1, p2 + guides(fill = "none"), nrow = 1,
                align = "vh", axis = "lrtb")
-ggsave(here::here("plots/FigS-isolate_abundance.pdf"), p, width = 10, height = 3)
+ggsave(here::here("plots/cartoons/FigS-isolate_abundance.pdf"), p, width = 10, height = 3)
 
 
 

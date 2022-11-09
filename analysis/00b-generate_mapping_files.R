@@ -95,8 +95,8 @@ for (j in 1:length(batch_names)) {
 list_images_master <- rep(list(NA), length(batch_names))
 list_image_mapping_master <- rep(list(NA), length(batch_names))
 for (j in 1:length(batch_names)) {
-    list_images_master[[j]] <- read_csv(paste0(folder_script, folder_mapping_files, "00-list_images-", batch_names[j], "-green.csv") , show_col_types = F)
-    list_image_mapping_master[[j]] <- read_csv(paste0(folder_script, folder_mapping_files, "00-list_image_mapping-", batch_names[j], ".csv") , show_col_types = F)
+    list_images_master[[j]] <- read_csv(paste0(folder_script, "mapping_files/", "00-list_images-", batch_names[j], "-green.csv") , show_col_types = F)
+    list_image_mapping_master[[j]] <- read_csv(paste0(folder_script, "mapping_files/", "00-list_image_mapping-", batch_names[j], ".csv") , show_col_types = F)
 }
 list_images_master <- bind_rows(list_images_master)
 list_image_mapping_master <- bind_rows(list_image_mapping_master)
@@ -104,9 +104,9 @@ list_image_mapping_folder_master <- list_image_mapping_master %>%
     left_join(tibble(image_name_pair = plates_no_colony, Undecided = "no colony"), by = "image_name_pair") %>%
     left_join(rename(list_images_master, image_name_pair = image_name), by = "image_name_pair") %>%
     left_join(select(list_images_master, image_name_isolate1 = image_name), by = "image_name_isolate1") %>%
-    left_join(select(list_images_master, image_name_isolate2 = image_name), by = "image_name_isolate2") %>%
+    left_join(select(list_images_master, image_name_isolate2 = image_name), by = "image_name_isolate2")
 
-write_csv(list_image_mapping_folder_master, paste0(folder_script, folder_mapping_files, "00-list_image_mapping_folder_master.csv"))
-cat("\n", paste0(folder_script, folder_mapping_files, "00-list_image_mapping_folder_master.csv"), "\tcreated")
+write_csv(list_image_mapping_folder_master, paste0(folder_script, "mapping_files/", "00-list_image_mapping_folder_master.csv"))
+cat("\n", paste0(folder_script, "mapping_files/", "00-list_image_mapping_folder_master.csv"), "\tcreated")
 
 

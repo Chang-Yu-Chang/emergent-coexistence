@@ -30,8 +30,7 @@ pairs <- pairs %>%
     # Remove low-accuracy model pairs
     filter(AccuracyMean > 0.9)
 
-
-# Figure SXX model accuracy----
+# Figure S4 model accuracy----
 accuracy_to_plot <- accuracy %>%
     # Remove pairs that have cocultures with no colony
     unite(col = "Pair", Community, Isolate1, Isolate2, sep = "_", remove = F) %>%
@@ -165,114 +164,11 @@ p <- pairs_dominant %>%
           legend.position = "top") +
     labs(x = "Community", y = "Fraction")
 
-ggsave(here::here("plots/FigS-pairwise_competition_dominant.png"), p, width = 8, height = 4)
+ggsave(here::here("plots/FigS6-pairwise_competition_dominant.png"), p, width = 8, height = 4)
 
 
 
-if (FALSE) {
-
-
-
-    # Figure SXX pairwise 16S mismatch ----
-    p1 <- pairs %>%
-        filter(!is.na(Mismatch)) %>%
-        ggplot() +
-        geom_histogram(aes(x = Mismatch), color = 1, fill = NA, bins = 30) +
-        geom_text(x = -Inf, y = Inf, label = paste0("n=", nrow(filter(pairs, !is.na(Mismatch)))), vjust = 2, hjust = -1) +
-        theme_classic()
-
-    p2 <- pairs %>%
-        filter(!is.na(Mismatch)) %>%
-        mutate(ZeroMismatch = case_when(
-            Mismatch == 0 ~ "mismatch = 0",
-            Mismatch > 0 ~ "mismatch > 0")) %>%
-        group_by(ZeroMismatch) %>%
-        count(name = "Count") %>%
-        ungroup() %>%
-        mutate(Fraction = Count / sum(Count), TotalCount = sum(Count)) %>%
-        ggplot() +
-        geom_col(aes(x = ZeroMismatch, y = Fraction), color = 1, fill = NA) +
-        geom_text(aes(x = ZeroMismatch, y = Fraction + 0.05, label = paste0("n=", Count))) +
-        scale_y_continuous(limits = c(0,1)) +
-        theme_classic() +
-        labs(x = "")
-
-    p <- plot_grid(p1, p2, nrow = 1, labels = LETTERS[1:2], scale = 0.9, rel_widths = c(1,1)) + paint_white_background()
-    ggsave(here::here("plots/FigS-mismatch.png"), p, width = 8, height = 4)
-
-# Figure SXX pairwise coexistence vs. mismatch ----
-## Mismatch in different groups
-p1 <- pairs %>%
-    filter(!is.na(PairFermenter)) %>%
-    ggplot(aes(x = PairFermenter, y = Mismatch, color = PairFermenter)) +
-    geom_boxplot(shape = 21, size = .5, position = position_dodge(width = 0.8)) +
-    geom_point(shape = 21, size = 1, stroke = .5, position = position_jitterdodge(dodge.width = 0.8, jitter.width = .2)) +
-    scale_color_npg() +
-    theme_classic() +
-    guides(color = "none") +
-    labs()
-
-p2 <- pairs %>%
-    filter(!is.na(PairFermenter)) %>%
-    group_by(PairFermenter, InteractionType) %>%
-    count(name = "Count") %>%
-    group_by(PairFermenter) %>%
-    mutate(Fraction = Count / sum(Count), TotalCount = sum(Count)) %>%
-    ggplot() +
-    geom_col(aes(x = PairFermenter, y = Fraction, fill = InteractionType), color = 1) +
-    geom_text(aes(x = PairFermenter, label = paste0("n=", TotalCount)), y = 0.9) +
-    scale_fill_manual(values = assign_interaction_color()) +
-    theme_classic() +
-    theme(legend.title = element_blank()) +
-    guides(fill = "none")
-
-p3 <- pairs %>%
-    filter(!is.na(PairFermenter)) %>%
-    ggplot(aes(x = PairFermenter, y = Mismatch, color = InteractionType)) +
-    geom_boxplot(shape = 21, size = .5, position = position_dodge(width = 0.8)) +
-    geom_point(shape = 21, size = 1, stroke = .5, position = position_jitterdodge(dodge.width = 0.8, jitter.width = .2)) +
-    scale_color_manual(values = interaction_color) +
-    theme_classic() +
-    guides(color = guide_legend(title = "")) +
-    labs()
-
-## Mismatch vs. coexistence
-p4 <- pairs %>%
-    filter(!is.na(PairFermenter)) %>%
-    mutate(InteractionType = ifelse(InteractionType == "coexistence", 1, 0)) %>%
-    ggplot() +
-    geom_point(aes(x = Mismatch, y = InteractionType), shape = 21, size = 2) +
-    geom_smooth(aes(x = Mismatch, y = InteractionType), method = "glm", method.args = list(family = binomial)) +
-    theme_classic()
-
-p5 <- pairs %>%
-    filter(!is.na(PairFermenter)) %>%
-    mutate(InteractionType = ifelse(InteractionType == "coexistence", 1, 0)) %>%
-    ggplot() +
-    geom_point(aes(x = Mismatch, y = InteractionType, color = PairFermenter), shape = 21, size = 2) +
-    geom_smooth(aes(x = Mismatch, y = InteractionType, color = PairFermenter), method = "glm", method.args = list(family = binomial)) +
-    scale_color_npg() +
-    facet_grid(PairFermenter ~ .) +
-    theme_classic() +
-    guides(color = "none")
-
-model_logit <- pairs %>%
-    filter(!is.na(InteractionType)) %>%
-    mutate(InteractionType = ifelse(InteractionType == "exclusion", 1, 0)) %>%
-    glm(InteractionType ~ Mismatch, family = "binomial", data = .)
-broom::tidy(model_logit)
-summary(model_logit)
-
-
-
-p_upper <- plot_grid(p1, p2, p4, nrow = 1, scale = 0.9, labels = LETTERS[1:3])
-p_inter <- plot_grid(p_upper, p3, ncol = 1, labels = c("", "D"))
-p <- plot_grid(p_inter, p5, ncol = 2, rel_widths = c(3,1), labels = c("", "E")) + paint_white_background()
-ggsave(here::here("plots/FigS-coexistence_mismatch.png"), p, width = 10, height = 6)
-
-}
-
-# Table SXX image object features ----
+# Table S1 image object features ----
 features_example <- read_csv(paste0(folder_pipeline, "images/D-07-feature/merged/D_T8_C1R2_1.csv"), show_col_types = F)
 
 features <- tibble(Feature = names(features_example)) %>%
@@ -335,10 +231,10 @@ ft <- features %>%
     width(j = 4, width = 5) %>%
     vline(j = 1, border = NULL, part = "all")
 
-save_as_image(ft, here::here("plots/TableS-features.png"), webshot = "webshot2")
+save_as_image(ft, here::here("plots/TableS1-features.png"), webshot = "webshot2")
 
 
-# Table SXX List of isolates and images used for monocultures ----
+# Table S2 List of isolates and images used for monocultures ----
 isolates_epsilon <- read_csv(paste0(folder_data, "temp/06-isolates_epsilon.csv"), show_col_types = F) %>%
     select(Batch, Community, Isolate, Time, image_name, ColonyCount) %>%
     mutate(Community = factor(Community, communities$Community)) %>%
@@ -361,12 +257,12 @@ ft2 <- t2 %>%
     width(j = 6, width = 1.5) %>%
     highlight(i = which(t2$Time %in% c("T0", "T1")), j = 4, color = "yellow")
 
-save_as_image(ft1, here::here("plots/TableS-monoculture_1.png"), webshot = "webshot2")
-save_as_image(ft2, here::here("plots/TableS-monoculture_2.png"), webshot = "webshot2")
+save_as_image(ft1, here::here("plots/TableS2-monoculture_1.png"), webshot = "webshot2")
+save_as_image(ft2, here::here("plots/TableS2-monoculture_2.png"), webshot = "webshot2")
 
 
 
-# Table SXX fitness function ----
+# Table S3 fitness function ----
 make_interaction_type <- function () {
     #' This function generates the fitness function table.
     #' There are a total of 27 possibilities
@@ -420,7 +316,7 @@ ft <- interaction_type %>%
     width(j = 6, width = 3) %>%
     vline(j = 1, border = NULL, part = "all")
 
-save_as_image(ft, here::here("plots/TableS-fitness_function.png"), webshot = "webshot2")
+save_as_image(ft, here::here("plots/TableS3-fitness_function.png"), webshot = "webshot2")
 
 
 
