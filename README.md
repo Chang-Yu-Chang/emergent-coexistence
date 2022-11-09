@@ -20,11 +20,8 @@ $ git clone https://github.com/Chang-Yu-Chang/emergent-coexistence
 
 # Downloading the raw data to Dropbox
 
-Link to the raw data 
-
-https://www.dropbox.com/sh/60rw7xmerown3vk/AACMzcZMR-DzF_5vG3KF0CG-a?dl=0
-
-The data are currently stored in the directory `~/Dropbox/lab/emergent-coexistence/data/`, with three subdirectories `raw/`, `temp/`, and `output/` where the all scripts are written to read these absolute directories. For the following scripts to work, this directory has to be set up.
+- `pipeline/` stores both the raw and temporary images. For this project, a minimum space of 200 GB is required. [Dropbox link](https://www.dropbox.com/sh/he4ekndjew60kot/AAAUCWZp3GeUOgOPQKc6MT1Ma?dl=0)
+- `data/` stores the raw data from sequencing and OD, as well as the processed image data. These data are csv or Rdata formats. [Dropbox link](https://www.dropbox.com/sh/oec7rz4wvmlitrp/AADFUvMF9Xzj4LLmzUmjPMJTa?dl=0)
 
 
 # Setup to reproduce the analysis
@@ -36,14 +33,14 @@ The data are currently stored in the directory `~/Dropbox/lab/emergent-coexisten
 Edit this script to specify three folders for the scripts to work:
 
 - `folder_script` is the directory of analysis scripts
-- `folder_pipeline` is the directory for saving both the raw and temporary images. For this project, a minimum space of 200 GB is required.
-- `folder_data` stores the raw data from sequencing and OD, as well as the processed image data. These data are csv or Rdata formats. 
+- `folder_pipeline` is the full path directory of `pipeline/` described above.
+- `folder_data` is the full path directory of `aata/` described above. 
 
 For this project on my local end, I specified the directory as followed. I will abbreviate the directory `"~/Desktop/lab/emergent-coexistence/analysis/"` into `"analysis/`, otherwise the full path is specified if I refer to another directory.
 
 ```
 > folder_script <- "~/Desktop/lab/emergent-coexistence/analysis/" 
-> folder_pipeline <- "~/Dropbox/lab/emergent-coexistence/plate_scan_pipeline/" 
+> folder_pipeline <- "~/Dropbox/lab/emergent-coexistence/pipeline/" 
 > folder_data <- "~/Dropbox/lab/emergent-coexistence/data/"
 ```
 
@@ -53,6 +50,7 @@ For this project on my local end, I specified the directory as followed. I will 
 Once the directories are specified, navigate to `analysis/` and execute the following scripts to set up the subfolders in `folder_pipeline` for image processing pipeline, mapping files, and ID for pairs and cocultures.
 
 ```
+$ cd analysis/
 $ Rscript 00a-folder_structure.R
 $ Rscript 00b-generate_mapping_files.R
 $ Rscript 00c-generate_pairs_ID.R
@@ -60,8 +58,8 @@ $ Rscript 00c-generate_pairs_ID.R
 
 Two groups of mapping files are generated:
 
-- `00-list_images-BATCH-CHANNEL.csv`: is used for image processing. Each row represents one image file, and the columns specify the directory where temporary image files are stored.
-- `00-list_image_mapping-BATCH.csv`: is used for matching coculture to monocultures. Each row is one coculture pair and the columns specify the batch, community, isolates, mixing frequencies, and the image file name of both isolates.
+- `00-list_images-BATCH-CHANNEL.csv`: is used for image processing. Each row represents one image file, and the columns specify the directory where temporary image files are stored. For example `00-list_images-B2-blue.csv` is for blue channel of images from batch B2.
+- `00-list_image_mapping-BATCH.csv`: is used for matching coculture to monocultures. Each row is one coculture pair and the columns specify the batch, community, isolates, mixing frequencies, and the image file name of both isolates. For example `00-list_image_mapping-B2.csv` matches the cocultures to monocultures in batch B2.
 
 
 ## Step 1. Command-line tools
@@ -93,7 +91,7 @@ Below is the overview for the image processing pipeline
 
 ## Step 2. Data wrangling and analysis
 
-These scripts take data from either the 16S sequences, or those data generated from the command-line as described above. These data are clean up and outputed into the folder `~/labdata/temp/`
+These scripts take data from either the 16S sequences, or those data generated from the command-line as described above. These data are clean up and saved in the folder `~/Dropbox/lab/emergent-coexistence/data/temp` with the file name prefix matched to the numbered script that generates it.
 
 The output data files are
 
@@ -111,7 +109,7 @@ $ Rscript 16-match_pair_RDP.R
 ## Step 3. Generating the figures and supplementary pdfs
 
 
-The main figures Fig.1-4 and supplementary figures Fig.S4-6 are genearting using the following scripts.
+The main figures Fig.1-4 and supplementary figures Fig.S4-6 are generated using the following scripts.
 
 ```
 $ cd analysis/
@@ -142,75 +140,6 @@ To execute all steps decribed above, from the raw data to ready-for-paper figure
 ```
 $ zsh analysis/00e-commands.sh
 ```
-
-
-
-## Installing Python and R package dependency
-
-The scripts are based in Mac environment
-
-### Python
-
-We use `pipenv` to keep track the python package dependency
-
-```sh
-$ pip install pipenv
-$ brew install pipenv # Alternative for Mac users
-```
-
-Browse to the local directory and install dependency from Pipfile. Make sure that the Pipfile is in the current directory.
-
-```sh
-$ cd <your_local_directory>
-$ pipenv install
-```
-
-Check dependency. ecoprospector should depend on community-selection and all other dependent packages.
-
-```sh
-$ pipenv graph
-```
-
-To activate the Pipenv shell:
-
-```sh
-$ pipenv shell
-$ exit
-```
-
-### R
-
-We use `renv` to keep track the R package dependency. This project is operated under the latest R `4.2.0`
-
-```
-> sessionInfo()
-R version 4.2.0 (2022-04-22)
-Platform: x86_64-apple-darwin17.0 (64-bit)
-Running under: macOS Big Sur 11.5.2
-
-Matrix products: default
-LAPACK: /Library/Frameworks/R.framework/Versions/4.2/Resources/lib/libRlapack.dylib
-
-locale:
-[1] en_US.UTF-8/en_US.UTF-8/en_US.UTF-8/C/en_US.UTF-8/en_US.UTF-8
-
-attached base packages:
-[1] stats     graphics  grDevices datasets  utils     methods   base     
-
-loaded via a namespace (and not attached):
-[1] compiler_4.2.0      BiocManager_1.30.18 tools_4.2.0         renv_0.15.5    
-```
-
-To install the package dependency, we use `renv` to record the packages used in this project. After cloning this repository into the local directory, open your code editor (e.g., Rstudio) and run the following two lines in R console. 
-
-```
-> install.packages("renv")
-> renv::restore()
-```
-
-You will be prompt to confirm the installation. This will automatically install all packages on which this project depends. It may takes a few minutes. The installed packages will not be stored in your global environment but instead remain project-specific (saved in the subdirectory `renv/library/`). When you open a new R session under the R project structure (the folder that contains `emergent-coexistence.Rproj`, the directory you decided in step 1), for instance in R studio, these project-specific packages will be already installed. 
-
-
 
 
 

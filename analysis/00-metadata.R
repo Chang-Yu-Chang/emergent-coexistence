@@ -4,7 +4,7 @@ library(tidyverse)
 
 # This main folder depends on your home directory and user name
 folder_script <- "~/Desktop/lab/emergent-coexistence/analysis/" # Enter the directory of analysis scripts
-folder_pipeline <- "~/Dropbox/lab/emergent-coexistence/plate_scan_pipeline/" # Enter the directory of image processing pipeline
+folder_pipeline <- "~/Dropbox/lab/emergent-coexistence/pipeline/" # Enter the directory of image processing pipeline
 folder_data <- "~/Dropbox/lab/emergent-coexistence/data/" # Enter the directory of data
 # Python somehow does not read ~/ instead I have to specify /Users/cychang/
 # folder_main <- "/Users/cychang/Dropbox/lab/emergent-coexistence/plate_scan_pipeline/"
