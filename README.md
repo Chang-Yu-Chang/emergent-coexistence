@@ -93,8 +93,6 @@ Below is the overview for the image processing pipeline
 
 These scripts take data from either the 16S sequences, or those data generated from the command-line as described above. These data are clean up and saved in the folder `~/Dropbox/lab/emergent-coexistence/data/temp` with the file name prefix matched to the numbered script that generates it.
 
-The output data files are
-
 ```
 $ cd analysis/
 $ Rscript 11-align_isolate_sequences.R
@@ -107,7 +105,6 @@ $ Rscript 16-match_pair_RDP.R
 
 
 ## Step 3. Generating the figures and supplementary pdfs
-
 
 The main figures Fig.1-4 and supplementary figures Fig.S4-6 are generated using the following scripts.
 
