@@ -2,6 +2,7 @@
 
 library(tidyverse)
 
+# 1. Directories
 # This main folder depends on your home directory and user name
 folder_script <- "~/Desktop/lab/emergent-coexistence/analysis/" # Enter the directory of analysis scripts
 folder_pipeline <- "~/Dropbox/lab/emergent-coexistence/pipeline/" # Enter the directory of image processing pipeline
@@ -10,13 +11,13 @@ folder_data <- "~/Dropbox/lab/emergent-coexistence/data/" # Enter the directory 
 # folder_main <- "/Users/cychang/Dropbox/lab/emergent-coexistence/plate_scan_pipeline/"
 # folder_script <- "/Users/cychang/Desktop/lab/emergent-coexistence/analysis/"
 
-# For image processing pipeline
+# 2. For image processing pipeline ----
 list_folders <- c("01-channel", "02-rolled", "03-threshold", "04-round", "05-watershed", "06-transect", "07-feature", "08-random_forest", "09-bootstrap", "10-images_and_random_forest")
 list_channels <- c("red", "green", "blue")
 list_pipeline_scripts <- c("01-channel.R", "02-rolling_ball.py", "03-segmentation.R", "04-feature.R", "04a-merge_features.R", "05-random_forest.R")
 batch_names <- c("B2", "C", "C2", "D")
 
-#
+# List of no colony cocultures. They are excluded from the loop in image processing pipeline to avoid error
 pairs_no_colony <- c(
     "C11R1_2_8",
     "C11R1_2_9",
@@ -65,7 +66,7 @@ interaction_type_finer <- c(
 )
 
 
-# For plotting
+# 3. For plotting ----
 assign_interaction_color <- function (level = "simple") {
     if (level == "simple") {
         interaction_type <- c("exclusion", "coexistence", "unknown")

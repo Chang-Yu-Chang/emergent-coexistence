@@ -6,7 +6,7 @@ This repository includes three types of scripts for:
 
 1. Command-line tools for image segmentation and random forest classification
 2. Implementing analyses including 16S sequences, bootstrapping, and networks
-3. Generating the figures for main text and supplements, as well as the supplementary pdfs
+3. Generating the figures for main text and supplements, as well as the supplementary PDFs
 
 
 # Cloning this repository
@@ -34,7 +34,7 @@ Edit this script to specify three folders for the scripts to work:
 
 - `folder_script` is the directory of analysis scripts
 - `folder_pipeline` is the full path directory of `pipeline/` described above.
-- `folder_data` is the full path directory of `aata/` described above. 
+- `folder_data` is the full path directory of `data/` described above. 
 
 For this project on my local end, I specified the directory as followed. I will abbreviate the directory `"~/Desktop/lab/emergent-coexistence/analysis/"` into `"analysis/`, otherwise the full path is specified if I refer to another directory.
 
@@ -91,7 +91,9 @@ Below is the overview for the image processing pipeline
 
 ## Step 2. Data wrangling and analysis
 
-These scripts take data from either the 16S sequences, or those data generated from the command-line as described above. These data are clean up and saved in the folder `~/Dropbox/lab/emergent-coexistence/data/temp` with the file name prefix matched to the numbered script that generates it.
+In this step, we take data from either the 16S sequences or those data generated from the command-line as described above. These data are cleaned up and stored in the folder `~/Dropbox/lab/emergent-coexistence/data/temp/` with the file name prefix matched to the numbered script that generates it.
+
+From the raw `.ab1` of 16S Sanger sequences, we aligned the raw reads, identified isolate taxonomy, and matched the community amplicon sequences (ESVs). See the Methods section for details. The following scripts do what has described.
 
 ```
 $ cd analysis/
@@ -103,10 +105,26 @@ $ Rscript 15-samebug_pairs.R
 $ Rscript 16-match_pair_RDP.R
 ```
 
+Once the image processing and sequence analysis are done, we extracted the Random Forest model accuracy, compared the machine results to human results, as well as determined the pairwise competition outcome through bootstrapping. These results are appended to one two processed tables: `isolates` with 68 row representing isolates and `pairs` with 186 row representing species pairs.
 
-## Step 3. Generating the figures and supplementary pdfs
 
-The main figures Fig.1-4 and supplementary figures Fig.S4-6 are generated using the following scripts.
+```
+$ Rscript 91-model_accuracy.R
+$ Rscript 92-compare_machine_human.R
+$ Rscript 93-determine_competition.R
+$ Rscript 94-append_data.R
+```
+
+We generated network objects for plotting the competitive networks as well as calculating the network hierarchy.
+
+```
+$ Rscript 95-randomize_networks.R
+```
+
+
+## Step 3. Generating the figures and supplementary PDFs
+
+Finally, with the processed tabular data and networks, we made Figure 1-4, Supplementary Figures S4-6, and Supplementary Tables S1-4 using the following scripts.
 
 ```
 $ cd analysis/
@@ -116,13 +134,13 @@ $ Rscript 96a-supp_figures.R
 
 Cartoons and Fig.S1-2 are generated using Adobe Illustrator.
 
-The four supplementary pdfs that contain the images and random forest results are generated using the script. The command-line function `convert` is from `imagemagick`.
+The four supplementary PDFs that contain the images and random forest results are generated using the script. The command-line function `convert` is from `imagemagick`. An example of one page in these PDFs is shown in Figure S3.
 
 ```
 $ cd analysis/
 $ Rscript 97-combine_images_and_random_forest.R
 
-# Once the individual pngs are generated, merge them into multi-page pdfs
+# Once the individual pngs are generated, merge them into multi-page PDFs
 $ cd ~/Dropbox/lab/emergent-coexistence/plate_scan_pipeline/random_forest/
 $ convert -quality 60 B2_*.png random_forest-B2.pdf
 $ convert -quality 60 C_*.png random_forest-C.pdf

@@ -17,7 +17,6 @@ communities_hierarchy <- read_csv(paste0(folder_data, "temp/95-communities_hiera
 # 0. Clean up column factors ----
 # Arrange communities by size
 communities <- communities %>%
-    arrange(CommunitySize) %>%
     mutate(Community = factor(Community, Community))
 
 # Clean up the pairs data ----
@@ -46,7 +45,6 @@ pairs %>%
 # Figure 1 ----
 #p <- ggdraw() + draw_image(here::here("plots/cartoons/Fig1.pdf")) + paint_white_background()
 #ggsave(here::here("plots/Fig1.png"), p, width = 27, height = 15)
-
 
 # Figure 2 ----
 # Figure 2A: cartoon
@@ -150,8 +148,8 @@ plot_competitive_network_grey <- function(g, node_size = 10, edge_width = 1){
         geom_node_point(fill = "grey", size = node_size, shape = 21, colour = "black", stroke = node_size/5) +
         geom_edge_link(aes(color = InteractionType), width = edge_width) +
         scale_edge_color_manual(values = interaction_color) +
-        scale_x_continuous(limits = nodes_axis_x*1.3) +
-        scale_y_continuous(limits = nodes_axis_y*1.3) +
+        scale_x_continuous(limits = nodes_axis_x*1) +
+        scale_y_continuous(limits = nodes_axis_y*1) +
         theme_graph() +
         theme(
             legend.position = "none",
@@ -165,7 +163,7 @@ plot_competitive_network_grey <- function(g, node_size = 10, edge_width = 1){
 p_net_list <- communities_network %>%
     mutate(Community = factor(Community, Community)) %>%
     arrange(CommunitySize) %>%
-    mutate(NetworkPlotSize = max(CommunitySize) / CommunitySize / 4) %>%
+    mutate(NetworkPlotSize = max(CommunitySize) / CommunitySize / 5) %>%
     rowwise() %>%
     mutate(NetworkPlot = plot_competitive_network_grey(Network, 0, NetworkPlotSize) %>% list()) %>%
     pull(NetworkPlot)
@@ -177,30 +175,29 @@ p2 <- pairs %>%
     group_by(Community, InteractionType) %>%
     count(name = "Count") %>%
     group_by(Community) %>% mutate(Fraction = Count / sum(Count), TotalCount = sum(Count)) %>%
-    ungroup() %>%
-    mutate(Community = factor(Community, communities$Community)) %>%
-    arrange(Community) %>%
+    left_join(communities, by = "Community") %>%
     replace_na(list(InteractionType = "unknown")) %>%
+    ungroup() %>%
     ggplot() +
-    geom_col(aes(x = Community, fill = InteractionType, y = Fraction), color = 1, width = .8, size = .5) +
-    geom_text(aes(x = Community, y = .9, label = paste0("n=", TotalCount))) +
+    geom_col(aes(x = CommunityLabel, fill = InteractionType, y = Fraction), color = 1, width = .9, size = .5) +
+    geom_text(aes(x = CommunityLabel, y = .9, label = paste0("n=", TotalCount)), size = 3) +
     scale_fill_manual(values = assign_interaction_color(), breaks = c("coexistence", "exclusion", "unknown")) +
+    scale_x_continuous(breaks = 1:13, expand = c(0.01, 0)) +
     scale_y_continuous(breaks = c(0,.5,1), limit = c(0, 1), expand = c(0,0)) +
     theme_classic() +
-    theme(legend.text = element_text(size = 12),
+    theme(legend.text = element_text(size = 10),
           axis.text = element_text(color = 1, size = 12),
-          axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1),
           axis.title = element_text(color = 1, size = 12),
           legend.title = element_blank(),
           legend.position = "top") +
     labs(x = "Community", y = "Fraction")
 
-pC <- plot_grid(NULL, p1, p2, ncol = 1, scale = .9, rel_heights = c(0.3, 1, 5), axis = "lr", align = "v") + paint_white_background()
+pC <- plot_grid(NULL, p1, p2, ncol = 1, scale = c(1, .9, .9), rel_heights = c(0.2, 0.8, 5), axis = "lr", align = "v") + paint_white_background()
 
 #
 p_bottom <- plot_grid(pB, pC, nrow = 1, labels = c("B", "C"), scale = c(0.9, 1), rel_widths = c(1, 1.8), axis = "t", align = "h")
 p <- plot_grid(pA, p_bottom, nrow = 2, labels = c("A", ""), scale = c(.95, .95), rel_heights = c(.8, 1)) + paint_white_background()
-ggsave(here::here("plots/Fig2.png"), p, width = 12, height = 7)
+ggsave(here::here("plots/Fig2.png"), p, width = 10, height = 6)
 
 
 

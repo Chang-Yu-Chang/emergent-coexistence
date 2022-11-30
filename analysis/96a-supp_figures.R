@@ -234,7 +234,35 @@ ft <- features %>%
 save_as_image(ft, here::here("plots/TableS1-features.png"), webshot = "webshot2")
 
 
-# Table S2 List of isolates and images used for monocultures ----
+# Table S2 community overview and labels ----
+
+temp1 <- isolates %>%
+    distinct(Community, Batch) %>%
+    filter(!(Community == "C11R1" & Batch == "B2")) %>%
+    rows_update(tibble(Community = "C11R1", Batch = "B2 and C"), by = "Community")
+temp2 <- pairs %>%
+    group_by(Community) %>%
+    filter(!is.na(InteractionType)) %>%
+    filter(AccuracyMean > 0.9) %>%
+    count(name = "ActualPairs") %>%
+    ungroup()
+ft <- communities %>%
+    left_join(temp1, by = "Community") %>%
+    left_join(temp2, by = "Community") %>%
+    select(CommunityLabel, Community, Batch, CommunitySize, CommunityPairSize, ActualPairs) %>%
+    mutate(CommunityLabel = as.character(CommunityLabel)) %>%
+    rename(`Community` = CommunityLabel, `Internal label` = Community, `Number of isolates` = CommunitySize,
+           `Number of tested pairs` = CommunityPairSize, `Number of applicable pairs` = ActualPairs) %>%
+    janitor::adorn_totals() %>%
+    flextable() %>%
+    width(j = 1:2, width = 1.1) %>%
+    width(j = 3, width = 0.8) %>%
+    width(j = 4:6, width = 1.3) %>%
+    hline(i = 13, border = fp_border(color = "black", style = "solid", width = 2))
+
+save_as_image(ft, here::here("plots/TableS2-communities.png"), webshot = "webshot2")
+
+# Table S3 list of isolates and images used for monocultures ----
 isolates_epsilon <- read_csv(paste0(folder_data, "temp/06-isolates_epsilon.csv"), show_col_types = F) %>%
     select(Batch, Community, Isolate, Time, image_name, ColonyCount) %>%
     mutate(Community = factor(Community, communities$Community)) %>%
@@ -257,12 +285,12 @@ ft2 <- t2 %>%
     width(j = 6, width = 1.5) %>%
     highlight(i = which(t2$Time %in% c("T0", "T1")), j = 4, color = "yellow")
 
-save_as_image(ft1, here::here("plots/TableS2-monoculture_1.png"), webshot = "webshot2")
-save_as_image(ft2, here::here("plots/TableS2-monoculture_2.png"), webshot = "webshot2")
+save_as_image(ft1, here::here("plots/TableS3-monoculture_1.png"), webshot = "webshot2")
+save_as_image(ft2, here::here("plots/TableS3-monoculture_2.png"), webshot = "webshot2")
 
 
 
-# Table S3 fitness function ----
+# Table S4 fitness function ----
 make_interaction_type <- function () {
     #' This function generates the fitness function table.
     #' There are a total of 27 possibilities
@@ -273,11 +301,11 @@ make_interaction_type <- function () {
         InteractionType = NA,
         InteractionTypeFiner = NA
     )
-    ## Assign interaction types to combinations of frequency changes signs
+    # Assign interaction types to combinations of frequency changes signs
     interaction_type$InteractionType[c(1,10,13,14)] <- "exclusion"
     interaction_type$InteractionType[c(2:6,8,11,20,23, 9,18,21,24,25,26,27)] <- "coexistence"
 
-    ## Assign finer interaction types to combinations of frequency changes signs
+    # Assign finer interaction types to combinations of frequency changes signs
     interaction_type$InteractionTypeFiner[c(1,14)] <- "competitive exclusion"
     interaction_type$InteractionTypeFiner[c(10,13)] <- "mutual exclusion"
     interaction_type$InteractionTypeFiner[c(2,5,8)] <- "stable coexistence"
@@ -288,6 +316,10 @@ make_interaction_type <- function () {
     interaction_type$InteractionTypeFiner[c(9,18,21,24:26)] <- "2-freq neutrality"
     interaction_type$InteractionTypeFiner[c(27)] <- "3-freq neutrality"
     interaction_type <- interaction_type %>%  mutate(FitnessFunction = paste(FromRare, FromMedium, FromAbundant, sep = "_"))
+
+    # Fill in unknown
+    interaction_type %>%
+        replace_na(list(InteractionType = "unknown", InteractionTypeFiner = "unknown"))
 }
 reformat <- function(x) {
     x <- ifelse(x == "1", "+", x)
@@ -298,25 +330,28 @@ reformat <- function(x) {
 interaction_type <- make_interaction_type()
 
 pairs_interaction <- pairs %>%
+    filter(!is.na(InteractionType)) %>%
+    filter(AccuracyMean > 0.9) %>%
     group_by(InteractionType, InteractionTypeFiner, FitnessFunction) %>%
     count(name = "Count")
 
 ft <- interaction_type %>%
-    left_join(pairs_interaction) %>%
+    left_join(pairs_interaction, by = c("InteractionType", "InteractionTypeFiner", "FitnessFunction")) %>%
     replace_na(list(Count = 0)) %>%
     mutate(across(starts_with("From"), reformat)) %>%
     select(-FitnessFunction) %>%
     rename(`Outcome` = InteractionType, `Finer outcome` = InteractionTypeFiner, `From rare` = FromRare, `From medium` = FromMedium, `From abundant` = FromAbundant) %>%
-    replace_na(list(Outcome = "unknown")) %>%
     mutate(` ` = 1:n()) %>%
     select(` `, everything()) %>%
+    janitor::adorn_totals() %>%
     flextable() %>%
     width(j = 1, width = .5) %>%
     width(j = 2:5, width = 1.3) %>%
     width(j = 6, width = 3) %>%
-    vline(j = 1, border = NULL, part = "all")
+    vline(j = 1, border = NULL, part = "all") %>%
+    hline(i = 27, border = fp_border(color = "black", style = "solid", width = 2))
 
-save_as_image(ft, here::here("plots/TableS3-fitness_function.png"), webshot = "webshot2")
+save_as_image(ft, here::here("plots/TableS4-fitness_function.png"), webshot = "webshot2")
 
 
 

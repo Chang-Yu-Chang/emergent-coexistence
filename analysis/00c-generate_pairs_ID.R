@@ -10,8 +10,8 @@ source(here::here("analysis/00-metadata.R"))
 list_image_mapping_folder_master <- read_csv(paste0(folder_script, "mapping_files/", "00-list_image_mapping_folder_master.csv"), show_col_types = F)
 
 # 1. Isolates ----
-isolates_ID <- read_csv(paste0(folder_data, "/raw/pairwise_competition/isolates1.csv"), col_types = cols()) %>%
-    select(ExpID, ID, Community, Isolate)
+# This one reads the old, hand-curated csv to generate ID
+isolates_ID <- read_csv(paste0(folder_data, "/raw/isolates1.csv"), col_types = cols())
 
 # 2. Communities ----
 communities_name <- c("C1R2", "C1R4", "C1R6", "C1R7", "C2R6", "C2R8", "C4R1", "C7R1", "C8R4", "C10R2", "C11R1", "C11R2", "C11R5")
@@ -24,7 +24,7 @@ communities <- data.frame(
     CommunityPairSize = pp(communities_size)
 ) %>%
     mutate(Community = factor(Community, communities_name))  %>%
-    #arrange(CommunitySize) %>%
+    arrange(CommunitySize) %>%
     mutate(CommunityLabel = 1:13) %>%
     select(Community, CommunityLabel, everything())
 
