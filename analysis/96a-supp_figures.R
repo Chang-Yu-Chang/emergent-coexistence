@@ -2,6 +2,9 @@
 
 library(tidyverse)
 library(cowplot)
+library(broom)
+library(infer) # For tidyverse statistics
+library(ggsignif) # For adding asterisks to boxplots
 library(RColorBrewer)
 library(ggsci)
 library(officer)
@@ -168,6 +171,148 @@ ggsave(here::here("plots/FigS6-pairwise_competition_dominant.png"), p, width = 8
 
 
 
+# Figure S7 16S mismatch versus rank difference ----
+pairs_mismatch <- pairs %>%
+    left_join(rename_with(select(isolates, ExpID, Rank), ~paste0(.x, "1")), by = "ExpID1") %>%
+    left_join(rename_with(select(isolates, ExpID, Rank), ~paste0(.x, "2")), by = "ExpID2") %>%
+    left_join(select(communities, Community, CommunitySize), by = "Community") %>%
+    mutate(RankDifference = abs(Rank1 - Rank2)) %>%
+    mutate(RankDifferenceStandardized = RankDifference / CommunitySize) %>%
+    filter(!is.na(Mismatch)) %>%
+    mutate(MismatchGroup = case_when(
+        Mismatch < 90 ~ "<90",
+        Mismatch >= 90 ~ ">=90"
+    ))
+
+## Rank difference raw
+p1 <- pairs_mismatch %>%
+    ggplot() +
+    geom_point(aes(x = Mismatch, y = RankDifference), shape = 21, size = 2, stroke = 1) +
+    geom_smooth(formula = y~x, aes(x = Mismatch, y = RankDifference), method = "lm") +
+    scale_y_continuous(limits = c(0,12), breaks = 1:12) +
+    theme_classic() +
+    labs(x = "# of nucleotide difference in 16S", y = expression(paste("|", R[x] - R[y], "|")))
+
+## Rank difference, standardized
+p2 <- pairs_mismatch %>%
+    ggplot() +
+    geom_point(aes(x = Mismatch, y = RankDifferenceStandardized), shape = 21, size = 2, stroke = 1) +
+    geom_smooth(formula = y~x, aes(x = Mismatch, y = RankDifferenceStandardized), method = "lm") +
+    scale_y_continuous(limits = c(0,1), breaks = c(0, 0.5, 1)) +
+    theme_classic() +
+    labs(x = "# of nucleotide difference in 16S", y = expression(paste("|", R[x] - R[y], "|", "/", N[c])))
+
+## Discrete data
+p3 <- pairs_mismatch %>%
+    ggplot(aes(x = MismatchGroup, y = RankDifference)) +
+    geom_boxplot(width = .5) +
+    geom_signif(comparisons = list(c("<90", ">=90")), map_signif_level = TRUE) +
+    geom_jitter(shape = 21, height = 0, width = .2) +
+    scale_y_continuous(limits = c(0,12), breaks = 1:12) +
+    theme_classic() +
+    labs(x = "# of nucleotide difference in 16S", y = expression(paste("|", R[x] - R[y], "|")))
+
+p4 <- pairs_mismatch %>%
+    ggplot(aes(x = MismatchGroup, y = RankDifferenceStandardized)) +
+    geom_boxplot(width = .5) +
+    geom_signif(comparisons = list(c("<90", ">=90")), map_signif_level = TRUE) +
+    geom_jitter(shape = 21, height = 0, width = .2) +
+    scale_y_continuous(limits = c(0,1), breaks = c(0, 0.5, 1)) +
+    theme_classic() +
+    labs(x = "# of nucleotide difference in 16S", y = expression(paste("|", R[x] - R[y], "|", "/", N[c])))
+
+
+p <- plot_grid(p1, p2, p3, p4, nrow = 2, labels = LETTERS[1:4], scale = 0.9, align = "hv") + paint_white_background()
+ggsave(here::here("plots/FigS7-mismatch_vs_rank.png"), p, width = 9, height = 8)
+
+
+
+
+## Linear regression
+model1 <- lm(RankDifference ~ Mismatch, data = pairs_mismatch)
+summary(model1)
+tidy(model1)
+model2 <- lm(RankDifferenceStandardized ~ Mismatch, data = pairs_mismatch)
+summary(model2)
+tidy(model2)
+
+## t test
+pairs_mismatch %>%
+    t_test(formula = RankDifference ~ MismatchGroup, order = c("<90", ">=90"), alternative = "two-sided")
+pairs_mismatch %>%
+    t_test(formula = RankDifferenceStandardized ~ MismatchGroup, order = c("<90", ">=90"), alternative = "two-sided")
+
+# Figure S8 ESV abundance vs. strain ranks ----
+
+##
+isolates_rank <- isolates %>%
+    left_join(select(communities, Community, CommunitySize), by = "Community") %>%
+    mutate(RankStandardized = Rank / CommunitySize) %>%
+    mutate(RankRelativeAbundanceStandardized = RankRelativeAbundance / CommunitySize) %>%
+    filter(!is.na(RelativeAbundance))
+
+p1 <- isolates_rank %>%
+    ggplot(aes(x = RankRelativeAbundance, y = Rank)) +
+    geom_point(shape = 21, size = 2, stroke = 1, position = position_jitter(width = 0.15, height = 0.15)) +
+    geom_smooth(formula = y~x, method = "lm") +
+    scale_x_continuous(breaks = 1:12) +
+    scale_y_continuous(breaks = 1:12) +
+    theme_classic() +
+    labs(x = "Ranked ESV abundance", y = "Competitive rank")
+
+
+p2 <- isolates_rank %>%
+    ggplot(aes(x = RankRelativeAbundanceStandardized, y = RankStandardized)) +
+    geom_point(shape = 21, size = 2, stroke = 1, position = position_jitter(width = 0.05, height = 0.05)) +
+    geom_smooth(formula = y~x, method = "lm") +
+    theme_classic() +
+    labs(x = "Ranked ESV abundance (standardized)", y = "Competitive rank (standardized)")
+
+p <- plot_grid(p1, p2, nrow = 1, labels = LETTERS[1:2], scale = 0.9, align = "hv") + paint_white_background()
+ggsave(here::here("plots/FigS8-abundance_vs_rank.png"), p, width = 8, height = 4)
+
+## Analysis
+lm(Rank ~ RankRelativeAbundance, data = isolates_rank) %>% summary()
+lm(RankStandardized ~ RankRelativeAbundanceStandardized, data = isolates_rank) %>% summary()
+
+
+# Figure S9 ESV abundance vs. relative frequencies in pairwise coexistence ---
+pairs_freq_ESV <- pairs_freq %>%
+    left_join(pairs, by = join_by(Community, Isolate1, Isolate2)) %>%
+    filter(InteractionType == "coexistence") %>%
+    left_join(rename_with(select(isolates, ExpID, RelativeAbundance), ~paste0(.x, "1")), by = "ExpID1") %>%
+    left_join(rename_with(select(isolates, ExpID, RelativeAbundance), ~paste0(.x, "2")), by = "ExpID2") %>%
+    mutate(RelativeRelativeAbundance1 = RelativeAbundance1 / (RelativeAbundance1 + RelativeAbundance2)) %>%
+    mutate(RelativeRelativeAbundance2 = RelativeAbundance2 / (RelativeAbundance1 + RelativeAbundance2)) %>%
+    filter(!is.na(RelativeAbundance1))
+
+p <- pairs_freq_ESV %>%
+    ggplot(aes(x = RelativeAbundance1, y = Isolate1CFUFreqMean)) +
+    geom_point(shape = 21, size = 2, stroke = .5) +
+    geom_smooth(formula = y~x, method = "lm") +
+    scale_x_continuous(limits = c(0,1)) +
+    scale_y_continuous(limits = c(0,1)) +
+    theme_classic() +
+    labs(x = "ESV abundance", y = "relative CFU frequency")
+
+#p <- plot_grid(p1, p2, nrow = 1, labels = LETTERS[1:2], scale = 0.9, align = "hv") + paint_white_background()
+ggsave(here::here("plots/FigS9-abundance_vs_pair_frequency.png"), p, width = 4, height = 3)
+
+## Analysis
+lm(Isolate1CFUFreqMean ~ RelativeAbundance1, data = pairs_freq_ESV) %>% summary()
+
+
+
+# Figure SXX h score robustness ----
+# library(igraph)
+# g <- make_ring(10)
+# transitivity(g)
+# plot(g)
+# g2 <- sample_gnp(100, 10/100)
+# plot(g2)
+# transitivity(g2)   # this is about 10/1000
+
+
 # Table S1 image object features ----
 features_example <- read_csv(paste0(folder_pipeline, "images/D-07-feature/merged/D_T8_C1R2_1.csv"), show_col_types = F)
 
@@ -262,12 +407,17 @@ ft <- communities %>%
 
 save_as_image(ft, here::here("plots/TableS2-communities.png"), webshot = "webshot2")
 
-# Table S3 list of isolates and images used for monocultures ----
+# Table S3 list of isolates, images used for monocultures, CFU, OD ----
+isolates$OD620
 isolates_epsilon <- read_csv(paste0(folder_data, "temp/06-isolates_epsilon.csv"), show_col_types = F) %>%
-    select(Batch, Community, Isolate, Time, image_name, ColonyCount) %>%
+    select(Batch, Community, Isolate, Time, image_name, ColonyCount, OD620, Epsilon) %>%
     mutate(Community = factor(Community, communities$Community)) %>%
+    mutate(OD620 = round(OD620, 3)) %>%
+    mutate(Epsilon = format(Epsilon, scientific = T, digits = 2)) %>%
     arrange(Batch, Community) %>%
     rename(`Image name` = image_name, `Colony count` = ColonyCount)
+
+
 t1 <- isolates_epsilon %>% slice(1:35)
 t2 <- isolates_epsilon %>% slice(36:n())
 
@@ -352,6 +502,19 @@ ft <- interaction_type %>%
     hline(i = 27, border = fp_border(color = "black", style = "solid", width = 2))
 
 save_as_image(ft, here::here("plots/TableS4-fitness_function.png"), webshot = "webshot2")
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
