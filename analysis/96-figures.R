@@ -43,8 +43,114 @@ pairs %>%
 
 
 # Figure 1 ----
-#p <- ggdraw() + draw_image(here::here("plots/cartoons/Fig1.pdf")) + paint_white_background()
-#ggsave(here::here("plots/Fig1.png"), p, width = 27, height = 15)
+family_colors <- c(
+    Others = grey(0.5),
+    Enterobacteriaceae = "#397eb8",
+    Pseudomonadaceae = "#e21e26",
+    Aeromonadaceae = "#4fb148",
+    Sphingobacteriaceae = "#984e9e",
+    Moraxellaceae = "firebrick",
+    Comamonadaceae = "yellow",
+    Alcaligenaceae = "darkorchid2"
+)
+
+genus_colors <- c(
+    Others = grey(0.5),
+    Enterobactor1 = "#225ea8",
+    Klebsiella1 = "#3eb6c5",
+    Raoultella1 = "#a3d6b2",
+    Citrobacter1 = "#fcf8cf",
+    Pseudomonas1 = "#7d1517",
+    Pseudomonas2 = "#b31e24",
+    Pseudomonas3 = "#d63226",
+    Pseudomonas4 = "#e44b34",
+    Pseudomonas5 = "#ec6448",
+    Pseudomonas6 = "#f68d5c",
+    Aeromonas1 = "#8fd1c6"
+)
+
+
+# Figure 1 inset ESC abundance over time ----
+community_abundance <- read_csv(paste0(folder_data, "raw/community_ESV/CSS_Emergent_Simplicity_Timeseries.csv"), show_col_types = F)
+p1 <- community_abundance %>%
+    filter(Inoculum == 8, Replicate == 4) %>%
+    mutate(Family = ifelse(Relative_Abundance < 0.001 | !(Family %in% names(family_colors)), "Others", Family)) %>%
+    mutate(Family = factor(Family, names(family_colors))) %>%
+    arrange(Transfer, Family) %>%
+    ggplot() +
+    geom_col(aes(x = Transfer, y = Relative_Abundance, fill = Family, alpha = ESV), linewidth = .3) +
+    annotate("text", x = 0, y = -0.1, label = "inoculum", size = 6, angle = 20, hjust = 0.9, vjust = -0.5) +
+    scale_fill_manual(values = family_colors) +
+    scale_alpha_discrete(range = c(0.5, 1)) +
+    scale_x_continuous(breaks = 0:12, expand = c(0,.3), labels = c("", 1:12)) +
+    scale_y_continuous(expand = c(0, 0), breaks = c(0, .5, 1)) +
+    coord_cartesian(ylim = c(0, 1), clip = "off") +
+    theme_classic() +
+    theme(panel.grid = element_blank(),
+          axis.title = element_text(size = 17),
+          axis.text = element_text(color = 1, size = 17),
+          panel.border = element_rect(color = 1, size = 1, fill = NA),
+          plot.background = element_blank(),
+          panel.background = element_blank()) +
+    guides(alpha = "none") +
+    labs(x = "Transfer", y = "Relative abundance")
+
+# Figure 1 inset isolate abundance in community ----
+isolates_abundance <- isolates %>%
+    mutate(Community = factor(Community, communities$Community)) %>%
+    filter(!is.na(RelativeAbundance)) %>%
+    arrange(Community) %>%
+    group_by(Community) %>%
+    select(Community, Family, Genus, RelativeAbundance) %>%
+    ungroup() %>%
+    arrange(Community, Family, Genus) %>%
+    # Unique genus name
+    group_by(Community, Family, Genus) %>%
+    mutate(Genus = paste0(Genus, 1:n()))
+
+isolates_abundance <- isolates_abundance %>%
+    split.data.frame(.$Community) %>%
+    map(function (x) {
+        MatchedRelativeAbundance = sum(x$RelativeAbundance)
+        bind_rows(x, tibble(Community = unique(x$Community), Family = "Others", Genus = "Others", RelativeAbundance = 1-MatchedRelativeAbundance))
+    }) %>%
+    bind_rows()
+
+
+p2 <- isolates_abundance %>%
+    mutate(Family = factor(Family, names(family_colors))) %>%
+    left_join(communities, by = "Community") %>%
+    ggplot() +
+    geom_bar(aes(x = CommunityLabel, y = RelativeAbundance, fill = Family, alpha = Genus), size = .3, position = "stack", stat = "identity") +
+    theme_bw() +
+    scale_fill_manual(values = family_colors, breaks = names(family_colors)[names(family_colors) != "Others"]) +
+    scale_alpha_discrete(range = c(1, 0.8)) +
+    scale_x_continuous(breaks = 1:13, expand = c(0,.3)) +
+    scale_y_continuous(breaks = c(0, .5, 1), expand = c(0,0), limits = c(0, 1)) +
+    coord_cartesian(ylim = c(0, 1), clip = "off") +
+    theme(panel.grid = element_blank(),
+          axis.title = element_text(size = 17),
+          axis.text = element_text(color = 1, size = 17),
+          panel.border = element_rect(color = 1, size = 1),
+          plot.background = element_blank(),
+          panel.background = element_blank()) +
+    guides(alpha = "none") +
+    labs(x = "Community", y = "Relative abundance")
+
+## Stats
+isolates %>%
+    group_by(Community) %>%
+    summarize(Total = sum(RelativeAbundance, na.rm = T)) %>%
+    summarize(Mean = mean(Total))
+
+## Assembly Figure 1
+p_legend <- get_legend(p1 + theme(legend.text = element_text(size = 17), legend.title = element_text(size = 17), legend.key.size = unit(1, "cm")))
+p <- ggdraw() +
+    draw_image(here::here("plots/cartoons/Fig1_cartoon.png")) +
+    draw_plot(p1 + guides(fill = "none"), x = 0.54, y = 0.4, width = 0.18, height = 0.26) +
+    draw_plot(p2 + guides(fill = "none"), x = 0.54, y = 0.05, width = 0.18, height = 0.26) +
+    draw_plot(p_legend, x = 0.76, y = 0.4, width = 0.1, height = 0.1)
+ggsave(here::here("plots/Fig1.png"), p, width = 27, height = 15)
 
 # Figure 2 ----
 # Figure 2A: cartoon
@@ -83,7 +189,7 @@ pairs_example_freq <- pairs %>%
     filter(Community == "C2R6") %>%
     select(Community, starts_with("Isolate"), starts_with("Interaction")) %>%
     mutate(Pair = 1:n()) %>%
-    left_join(pairs_freq, by = c("Community", "Isolate1", "Isolate2")) %>%
+    left_join(pairs_freq, by = c("Community", "Isolate1", "Isolate2"), multiple = "all") %>%
     mutate(Isolate1InitialODFreq = factor(Isolate1InitialODFreq)) %>%
     mutate(InteractionType = factor(InteractionType, c("exclusion", "coexistence")))
 
@@ -91,12 +197,12 @@ plot_example_freq <- function(pairs_freq) {
     pairs_freq %>%
         mutate(Isolate1InitialODFreq = factor(Isolate1InitialODFreq, c(95,50,5))) %>%
         ggplot(aes(x = Time, y = Isolate1CFUFreqMean, color = Isolate1InitialODFreq, group = Isolate1InitialODFreq)) +
-        geom_line(size = 1) +
+        geom_line(linewidth = 1) +
         geom_point(size = 1.5) +
-        geom_segment(size = 1, aes(x = Time, xend = Time,
+        geom_segment(aes(x = Time, xend = Time,
                                     y = Isolate1CFUFreqMean + 2*Isolate1CFUFreqSd,
                                     yend = Isolate1CFUFreqMean - 2*Isolate1CFUFreqSd,
-                                    color = Isolate1InitialODFreq)) +
+                                    color = Isolate1InitialODFreq), linewidth = 1) +
         scale_y_continuous(breaks = c(0, .5, 1), limits = c(-0.2, 1.2)) +
         scale_x_discrete(labels = c("start", "end")) +
         scale_color_manual(values = frequency_color, label = c("95%", "50%", "5%")) +
@@ -130,47 +236,8 @@ pB <- ggdraw(p1) +
     theme(panel.background = element_blank(), plot.background = element_rect(color = NA, fill = "white"),
           plot.margin = unit(c(0,3,3,5), "mm"))
 
-# Figure 2C: All 13 self-assembled community graphs
-plot_competitive_network_grey <- function(g, node_size = 10, edge_width = 1){
-    # Layout
-    graph_layout <- create_layout(g, "circle")
-    mean_x_coord <- mean(graph_layout$x)
-    mean_y_coord <- mean(graph_layout$x)
-    g <- g %>% activate(nodes) %>% mutate(x = graph_layout$x - mean_x_coord, y = graph_layout$y - mean_y_coord)
-
-    # Axis range
-    nodes_axis_x <- activate(g, nodes) %>% pull(x) %>% range()
-    nodes_axis_y <- activate(g, nodes) %>% pull(y) %>% range()
-
-    # Graph
-    g %>%
-        ggraph(layout = "nicely") +
-        geom_node_point(fill = "grey", size = node_size, shape = 21, colour = "black", stroke = node_size/5) +
-        geom_edge_link(aes(color = InteractionType), width = edge_width) +
-        scale_edge_color_manual(values = interaction_color) +
-        scale_x_continuous(limits = nodes_axis_x*1) +
-        scale_y_continuous(limits = nodes_axis_y*1) +
-        theme_graph() +
-        theme(
-            legend.position = "none",
-            legend.title = element_blank(),
-            strip.text = element_blank(),
-            plot.margin = unit(c(3,3,3,3), "mm"),
-            plot.background = element_rect(fill = "grey90", color = NA),
-            panel.background = element_rect(fill = "grey90", color = NA)
-        )
-}
-p_net_list <- communities_network %>%
-    mutate(Community = factor(Community, Community)) %>%
-    arrange(CommunitySize) %>%
-    mutate(NetworkPlotSize = max(CommunitySize) / CommunitySize / 5) %>%
-    rowwise() %>%
-    mutate(NetworkPlot = plot_competitive_network_grey(Network, 0, NetworkPlotSize) %>% list()) %>%
-    pull(NetworkPlot)
-p1 <- plot_grid(plotlist = p_net_list, nrow = 1, scale = 1.3) + paint_white_background()
-
-## pairwise outcomes per community
-p2 <- pairs %>%
+# Figure 2C: pairwise outcomes per community
+pC <- pairs %>%
     filter(!is.na(FitnessFunction)) %>%
     group_by(Community, InteractionType) %>%
     count(name = "Count") %>%
@@ -179,23 +246,30 @@ p2 <- pairs %>%
     replace_na(list(InteractionType = "unknown")) %>%
     ungroup() %>%
     ggplot() +
-    geom_col(aes(x = CommunityLabel, fill = InteractionType, y = Fraction), color = 1, width = .9, size = .5) +
-    geom_text(aes(x = CommunityLabel, y = .9, label = paste0("n=", TotalCount)), size = 3) +
+    geom_col(aes(x = CommunityLabel, fill = InteractionType, y = Fraction), color = 1, width = .8, size = .5) +
+    annotate("text", x = 1:13, y = 1.15, label = communities$CommunitySize, size = 4) +
+    annotate("segment", x = .5, xend = 18, y = 1.1, yend = 1.1, color = "black") +
+    geom_text(aes(x = CommunityLabel, y = 1.05, label = TotalCount), size = 4) +
+    annotate("text", x = rep(14, 2), y = c(1.15, 1.05), label = c("n. of species", "n. of tested pairs"), size = 4, hjust = 0) +
     scale_fill_manual(values = assign_interaction_color(), breaks = c("coexistence", "exclusion", "unknown")) +
     scale_x_continuous(breaks = 1:13, expand = c(0.01, 0)) +
-    scale_y_continuous(breaks = c(0,.5,1), limit = c(0, 1), expand = c(0,0)) +
+    scale_y_continuous(breaks = c(0,.5,1), limit = c(0, 1.3), expand = c(0,0)) +
+    coord_cartesian(xlim = c(0.5, 13.5), ylim = c(0, 1), clip = "off") +
     theme_classic() +
     theme(legend.text = element_text(size = 10),
-          axis.text = element_text(color = 1, size = 12),
-          axis.title = element_text(color = 1, size = 12),
           legend.title = element_blank(),
-          legend.position = "top") +
+          legend.key.size = unit(.5, "cm"),
+          legend.spacing.y = unit(.3, "cm"),
+          legend.position = "right",
+          panel.border = element_rect(color = 1, fill = NA),
+          axis.text = element_text(color = 1, size = 10),
+          axis.title = element_text(color = 1, size = 10),
+          plot.margin = unit(c(1,.5,.5,.5), "cm")
+          ) +
+    guides(fill = guide_legend(byrow = TRUE)) +
     labs(x = "Community", y = "Fraction")
-
-pC <- plot_grid(NULL, p1, p2, ncol = 1, scale = c(1, .9, .9), rel_heights = c(0.2, 0.8, 5), axis = "lr", align = "v") + paint_white_background()
-
 #
-p_bottom <- plot_grid(pB, pC, nrow = 1, labels = c("B", "C"), scale = c(0.9, 1), rel_widths = c(1, 1.8), axis = "t", align = "h")
+p_bottom <- plot_grid(pB, pC, nrow = 1, labels = c("B", "C"), scale = c(0.9, 0.9), rel_widths = c(1, 1.8), axis = "b")
 p <- plot_grid(pA, p_bottom, nrow = 2, labels = c("A", ""), scale = c(.95, .95), rel_heights = c(.8, 1)) + paint_white_background()
 ggsave(here::here("plots/Fig2.png"), p, width = 10, height = 6)
 
@@ -215,14 +289,16 @@ get_interaction_legend <- function (pairs) {
         scale_fill_manual(values = panel_fills,
                           labels = paste0(pairs_interaction_finer$InteractionTypeFiner, " (", round(pairs_interaction_finer$Fraction, 3) * 100,"%)")) +
         theme(legend.position = "right",
-              legend.spacing.y = unit("2", "mm"),
+              legend.spacing.y = unit(0.2, "cm"),
               legend.text = element_text(size = 12),
               legend.background = element_blank()) +
+        guides(fill = guide_legend(byrow = TRUE), color = "none") +
         labs(color = "", fill = "") +
         paint_white_background()
+
     return(get_legend(temp))
 }
-plot_example_freq <- function(pairs_freq) {
+plot_example_freq <- function(pairs_freq, line_size = 0.2) {
     axis_lower <- -0.5
     axis_upper <- 1.5
     pairs_freq %>%
@@ -230,44 +306,10 @@ plot_example_freq <- function(pairs_freq) {
         mutate(Isolate1InitialODFreq = factor(Isolate1InitialODFreq, c(95,50,5))) %>%
         ggplot() +
         geom_rect(xmin = axis_lower, xmax = axis_upper, ymin = axis_lower+0.2, ymax = axis_upper-0.2, aes(color = InteractionType, fill = InteractionTypeFiner), alpha = .08, size = .8) +
-        geom_hline(size = .2, yintercept = c(0,1), linetype = 1, color = "grey90") +
-        geom_line(size = .4, aes(x = Time, y = Isolate1CFUFreqMean, color = Isolate1InitialODFreq, group = Isolate1InitialODFreq)) +
-        geom_point(size = .2, aes(x = Time, y = Isolate1CFUFreqMean, color = Isolate1InitialODFreq, group = Isolate1InitialODFreq)) +
-        geom_segment(size = .4, aes(x = Time, xend = Time,
-                                    y = Isolate1CFUFreqMean + 2*Isolate1CFUFreqSd,
-                                    yend = Isolate1CFUFreqMean - 2*Isolate1CFUFreqSd,
-                                    color = Isolate1InitialODFreq)) +
-        scale_x_continuous(expand = c(0, 0), limits = c(axis_lower, axis_upper)) +
-        scale_y_continuous(expand = c(0, 0), breaks = c(0, .5, 1), limits = c(axis_lower+0.2, axis_upper-0.2)) +
-        scale_color_manual(values = c(frequency_color, interaction_color), label = c("95%", "50%", "5%", "exclusion", "coexistence")) +
-        scale_fill_manual(values = assign_interaction_color(level = "finer")) +
-        theme_classic() +
-        theme(panel.spacing = unit(2, "mm"),
-              panel.border = element_blank(),
-              panel.grid.minor.y = element_blank(),
-              axis.line = element_blank(),
-              axis.title = element_blank(), axis.text = element_blank(),
-              axis.ticks = element_blank(),
-              plot.background = element_blank(),
-              plot.title = element_text(size = 5, margin = margin(0,0,0,0)),
-              plot.margin = margin(0,0,0,0, "mm")) +
-        guides(color = "none", fill = "none") +
-        labs(x = "Time", y = "Frequency") +
-        #ggtitle(unique(pairs_freq$PairID)) +
-        NULL
-}
-plot_example_freq2 <- function(pairs_freq) {
-    axis_lower <- -0.5
-    axis_upper <- 1.5
-    pairs_freq %>%
-        mutate(Time = case_when(Time == "T0" ~ 0,Time == "T8" ~ 1)) %>%
-        mutate(Isolate1InitialODFreq = factor(Isolate1InitialODFreq, c(95,50,5))) %>%
-        ggplot() +
-        geom_rect(xmin = axis_lower, xmax = axis_upper, ymin = axis_lower+0.2, ymax = axis_upper-0.2, aes(color = InteractionType, fill = InteractionTypeFiner), alpha = .08, size = .8) +
-        geom_hline(size = .5, yintercept = c(0,1), linetype = 1, color = "grey90") +
-        geom_line(size = 1, aes(x = Time, y = Isolate1CFUFreqMean, color = Isolate1InitialODFreq, group = Isolate1InitialODFreq)) +
-        geom_point(size = 1.5, aes(x = Time, y = Isolate1CFUFreqMean, color = Isolate1InitialODFreq, group = Isolate1InitialODFreq)) +
-        geom_segment(size = 1, aes(x = Time, xend = Time,
+        geom_hline(linewidth = line_size, yintercept = c(0,1), linetype = 1, color = "grey90") +
+        geom_line(linewidth = line_size*2, aes(x = Time, y = Isolate1CFUFreqMean, color = Isolate1InitialODFreq, group = Isolate1InitialODFreq)) +
+        geom_point(size = line_size*2, aes(x = Time, y = Isolate1CFUFreqMean, color = Isolate1InitialODFreq, group = Isolate1InitialODFreq)) +
+        geom_segment(linewidth = line_size*2, aes(x = Time, xend = Time,
                                     y = Isolate1CFUFreqMean + 2*Isolate1CFUFreqSd,
                                     yend = Isolate1CFUFreqMean - 2*Isolate1CFUFreqSd,
                                     color = Isolate1InitialODFreq)) +
@@ -308,7 +350,7 @@ pairs_example_freq <- pairs %>%
     mutate(InteractionType = factor(InteractionType, c("exclusion", "coexistence"))) %>%
     mutate(InteractionTypeFiner = factor(InteractionTypeFiner, interaction_type_finer)) %>%
     arrange(InteractionType, InteractionTypeFiner) %>%
-    left_join(pairs_freq) %>%
+    left_join(pairs_freq, multiple = "all") %>%
     select(PairID, InteractionType, InteractionTypeFiner, Isolate1InitialODFreq, Time, Isolate1CFUFreqMean, Isolate1CFUFreqSd) %>%
     mutate(Isolate1InitialODFreq = factor(Isolate1InitialODFreq), Time = factor(Time, c("T0", "T8")))
 
@@ -319,9 +361,10 @@ temp_list <- pairs_example_freq %>%
 
 p_example <- pairs_example_freq %>%
     filter(PairID == 3) %>%
-    plot_example_freq2() +
+    plot_example_freq(line_size = 0.5) +
     theme(axis.text = element_text(size = 10), axis.title = element_text(size = 10)) +
-    scale_x_continuous(breaks = c(0,1), labels = c("start", "end"), limits = c(-0.5, 1.5))
+    scale_x_continuous(breaks = c(0,1), labels = c("start", "end"), limits = c(-0.5, 1.5)) +
+    labs(y = "CFU frequency", color = "Inital OD frequency")
 
 ## Grid layout
 m <- matrix(c(1:nrow(pairs), rep(NA, 10-(nrow(pairs)%%10))), nrow = 10)
@@ -332,7 +375,7 @@ ss = .3
 p <- ggdraw(p_waffle) +
     draw_plot(p_example, x = .1, y = .75, width = ss*0.4, height = ss*0.8, hjust = 0.5, vjust = .5) +
     draw_plot(p_legend_color, x = .2, y = .8, width = ss/2, height = ss/2, hjust = 0.5, vjust = .5) +
-    draw_plot(p_legend_fill, x = .16, y = .4, width = ss, height = ss*2, hjust = 0.5, vjust = .5) +
+    draw_plot(p_legend_fill, x = .16, y = .35, width = ss, height = ss*2, hjust = 0.5, vjust = .5) +
     theme(panel.background = element_blank(), plot.background = element_rect(color = NA, fill = "white"),
           plot.margin = unit(c(0,0,0,0), "mm"))
 

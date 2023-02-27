@@ -172,6 +172,7 @@ ggsave(here::here("plots/FigS6-pairwise_competition_dominant.png"), p, width = 8
 
 
 # Figure S7 16S mismatch versus rank difference ----
+## Data with mismatch
 pairs_mismatch <- pairs %>%
     left_join(rename_with(select(isolates, ExpID, Rank), ~paste0(.x, "1")), by = "ExpID1") %>%
     left_join(rename_with(select(isolates, ExpID, Rank), ~paste0(.x, "2")), by = "ExpID2") %>%
@@ -184,11 +185,36 @@ pairs_mismatch <- pairs %>%
         Mismatch >= 90 ~ ">=90"
     ))
 
+## Linear regression
+extract_statistics_equation <- function (model) {
+    p_value <- summary(model)$coefficients[2,4]
+    paste0(#"y=", round(tidy(model)$estimate[1], 2), "+", round(tidy(model)$estimate[2], 2), "x",
+           "\n", case_when(
+               p_value < 0.001 ~ "p<0.001",
+               p_value < 0.0001 ~ "p<0.0001",
+               TRUE ~ paste0("p=", as.character(round(p_value, 3)))
+           ),
+           "\nR-squared=", round(summary(model1)$r.squared,2))
+}
+model1 <- lm(RankDifference ~ Mismatch, data = pairs_mismatch)
+tidy(model1)
+model2 <- lm(RankDifferenceStandardized ~ Mismatch, data = pairs_mismatch)
+summary(model2)
+tidy(model2)
+
+## t test
+model3 <- pairs_mismatch %>%
+    t_test(formula = RankDifference ~ MismatchGroup, order = c("<90", ">=90"), alternative = "two-sided")
+model4 <- pairs_mismatch %>%
+    t_test(formula = RankDifferenceStandardized ~ MismatchGroup, order = c("<90", ">=90"), alternative = "two-sided")
+
+
 ## Rank difference raw
 p1 <- pairs_mismatch %>%
     ggplot() +
     geom_point(aes(x = Mismatch, y = RankDifference), shape = 21, size = 2, stroke = 1) +
     geom_smooth(formula = y~x, aes(x = Mismatch, y = RankDifference), method = "lm") +
+    annotate("text", x = 10, y = 11, label = extract_statistics_equation(model1), hjust = 0) +
     scale_y_continuous(limits = c(0,12), breaks = 1:12) +
     theme_classic() +
     labs(x = "# of nucleotide difference in 16S", y = expression(paste("|", R[x] - R[y], "|")))
@@ -198,6 +224,7 @@ p2 <- pairs_mismatch %>%
     ggplot() +
     geom_point(aes(x = Mismatch, y = RankDifferenceStandardized), shape = 21, size = 2, stroke = 1) +
     geom_smooth(formula = y~x, aes(x = Mismatch, y = RankDifferenceStandardized), method = "lm") +
+    annotate("text", x = 1, y = 0.9, label = extract_statistics_equation(model2), hjust = 0) +
     scale_y_continuous(limits = c(0,1), breaks = c(0, 0.5, 1)) +
     theme_classic() +
     labs(x = "# of nucleotide difference in 16S", y = expression(paste("|", R[x] - R[y], "|", "/", N[c])))
@@ -206,7 +233,7 @@ p2 <- pairs_mismatch %>%
 p3 <- pairs_mismatch %>%
     ggplot(aes(x = MismatchGroup, y = RankDifference)) +
     geom_boxplot(width = .5) +
-    geom_signif(comparisons = list(c("<90", ">=90")), map_signif_level = TRUE) +
+    geom_signif(comparisons = list(c("<90", ">=90")), map_signif_level = TRUE, ) +
     geom_jitter(shape = 21, height = 0, width = .2) +
     scale_y_continuous(limits = c(0,12), breaks = 1:12) +
     theme_classic() +
@@ -226,35 +253,26 @@ p <- plot_grid(p1, p2, p3, p4, nrow = 2, labels = LETTERS[1:4], scale = 0.9, ali
 ggsave(here::here("plots/FigS7-mismatch_vs_rank.png"), p, width = 9, height = 8)
 
 
-
-
-## Linear regression
-model1 <- lm(RankDifference ~ Mismatch, data = pairs_mismatch)
-summary(model1)
-tidy(model1)
-model2 <- lm(RankDifferenceStandardized ~ Mismatch, data = pairs_mismatch)
-summary(model2)
-tidy(model2)
-
-## t test
-pairs_mismatch %>%
-    t_test(formula = RankDifference ~ MismatchGroup, order = c("<90", ">=90"), alternative = "two-sided")
-pairs_mismatch %>%
-    t_test(formula = RankDifferenceStandardized ~ MismatchGroup, order = c("<90", ">=90"), alternative = "two-sided")
-
 # Figure S8 ESV abundance vs. strain ranks ----
 
-##
+## Isolate rank data
 isolates_rank <- isolates %>%
     left_join(select(communities, Community, CommunitySize), by = "Community") %>%
     mutate(RankStandardized = Rank / CommunitySize) %>%
     mutate(RankRelativeAbundanceStandardized = RankRelativeAbundance / CommunitySize) %>%
     filter(!is.na(RelativeAbundance))
 
+## Analysis
+model1 <- lm(Rank ~ RankRelativeAbundance, data = isolates_rank)
+model2 <- lm(RankStandardized ~ RankRelativeAbundanceStandardized, data = isolates_rank)
+
+
+##
 p1 <- isolates_rank %>%
     ggplot(aes(x = RankRelativeAbundance, y = Rank)) +
     geom_point(shape = 21, size = 2, stroke = 1, position = position_jitter(width = 0.15, height = 0.15)) +
     geom_smooth(formula = y~x, method = "lm") +
+    annotate("text", x = 1, y = 12, label = extract_statistics_equation(model1), hjust = 0) +
     scale_x_continuous(breaks = 1:12) +
     scale_y_continuous(breaks = 1:12) +
     theme_classic() +
@@ -265,18 +283,16 @@ p2 <- isolates_rank %>%
     ggplot(aes(x = RankRelativeAbundanceStandardized, y = RankStandardized)) +
     geom_point(shape = 21, size = 2, stroke = 1, position = position_jitter(width = 0.05, height = 0.05)) +
     geom_smooth(formula = y~x, method = "lm") +
+    annotate("text", x = 0.6, y = 0.18, label = extract_statistics_equation(model2), hjust = 0) +
     theme_classic() +
     labs(x = "Ranked ESV abundance (standardized)", y = "Competitive rank (standardized)")
 
 p <- plot_grid(p1, p2, nrow = 1, labels = LETTERS[1:2], scale = 0.9, align = "hv") + paint_white_background()
 ggsave(here::here("plots/FigS8-abundance_vs_rank.png"), p, width = 8, height = 4)
 
-## Analysis
-lm(Rank ~ RankRelativeAbundance, data = isolates_rank) %>% summary()
-lm(RankStandardized ~ RankRelativeAbundanceStandardized, data = isolates_rank) %>% summary()
 
 
-# Figure S9 ESV abundance vs. relative frequencies in pairwise coexistence ---
+# Figure S9 ESV abundance vs. relative frequencies in pairwise coexistence ----
 pairs_freq_ESV <- pairs_freq %>%
     left_join(pairs, by = join_by(Community, Isolate1, Isolate2)) %>%
     filter(InteractionType == "coexistence") %>%
@@ -303,6 +319,57 @@ lm(Isolate1CFUFreqMean ~ RelativeAbundance1, data = pairs_freq_ESV) %>% summary(
 
 
 
+# Figure S10 All 13 self-assembled community graphs ----
+plot_competitive_network_grey <- function(g, node_size = 10, edge_width = 1){
+    # Layout
+    graph_layout <- create_layout(g, "circle")
+    mean_x_coord <- mean(graph_layout$x)
+    mean_y_coord <- mean(graph_layout$x)
+    g <- g %>% activate(nodes) %>% mutate(x = graph_layout$x - mean_x_coord, y = graph_layout$y - mean_y_coord)
+
+    # Axis range
+    nodes_axis_x <- (activate(g, nodes) %>% pull(x) %>% range()) * 1.1
+    nodes_axis_y <- (activate(g, nodes) %>% pull(y) %>% range()) * 1.1
+
+    # Graph
+    g %>%
+        ggraph(layout = "nicely") +
+        geom_edge_link(aes(color = InteractionType), width = edge_width/2) +
+        geom_node_point(fill = "white", size = node_size*1.2, shape = 21, colour = "black", stroke = node_size/3) +
+        scale_edge_color_manual(values = interaction_color) +
+        scale_x_continuous(limits = nodes_axis_x*1) +
+        scale_y_continuous(limits = nodes_axis_y*1) +
+        theme_graph() +
+        theme(
+            legend.position = "none",
+            legend.title = element_blank(),
+            strip.text = element_blank(),
+            plot.margin = unit(c(3,3,3,3), "mm")
+            # plot.background = element_rect(fill = "grey90", color = NA),
+            # panel.background = element_rect(fill = "grey90", color = NA)
+        )
+}
+p_net_list <- communities_network %>%
+    mutate(Community = factor(Community, Community)) %>%
+    arrange(CommunitySize) %>%
+    mutate(NetworkPlotSize = max(CommunitySize) / CommunitySize) %>%
+    rowwise() %>%
+    mutate(NetworkPlot = plot_competitive_network_grey(Network, NetworkPlotSize, NetworkPlotSize) %>% list()) %>%
+    pull(NetworkPlot)
+p_network <- plot_grid(plotlist = p_net_list, nrow = 2, scale = .9, labels = 1:13) + paint_white_background()
+p_legend <- get_legend({tibble(InteractionType = c("coexistence", "exclusion", "unknown"), x = 1:3, y = 1:3) %>%
+        ggplot() +
+        geom_line(aes(color = InteractionType, x = x, y = y, group = InteractionType), linewidth = 2) +
+        scale_color_manual(values = interaction_color) +
+        theme(legend.position = "right",
+              legend.title = element_blank(),
+              legend.key.size = unit(.8, "cm"),
+              legend.text = element_text(size = 12))})
+p <- ggdraw(p_network) +
+    draw_plot(p_legend, x = .93, y = .25, hjust = 0.5, vjust = .5)
+
+ggsave(here::here("plots/FigS10-community_graph.png"), p, width = 13, height = 4)
+
 # Figure SXX h score robustness ----
 # library(igraph)
 # g <- make_ring(10)
@@ -311,6 +378,7 @@ lm(Isolate1CFUFreqMean ~ RelativeAbundance1, data = pairs_freq_ESV) %>% summary(
 # g2 <- sample_gnp(100, 10/100)
 # plot(g2)
 # transitivity(g2)   # this is about 10/1000
+
 
 
 # Table S1 image object features ----
