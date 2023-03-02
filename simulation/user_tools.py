@@ -437,8 +437,9 @@ def write_matrices(input_row, D, c, l):
         D[0].to_csv(input_row['output_dir'] + 'D_seed' + str(input_row['seed']) + '.csv')
     elif input_row['metabolism'] == "empirical":
         S = np.sum(input_row['sa'] * 2)
-        # Load only one species'D
+        # Load only two species' D
         D[0].to_csv(input_row['output_dir'] + 'D_S' + str(0) +  '_seed' + str(input_row['seed']) + '.csv')
+        D[500].to_csv(input_row['output_dir'] + 'D_S' + str(500) +  '_seed' + str(input_row['seed']) + '.csv')
         # Uncomment to load all species
         # for s in range(S):
         #     D[s].to_csv(input_row['output_dir'] + 'D_S' + str(s) +  '_seed' + str(input_row['seed']) + '.csv')
