@@ -1,0 +1,2 @@
+output_dir,save_timepoint,init_N0,init_R0,exp_id,seed,sa,ma,S,R0_food,c_symmetry,c_fs,sigc_fs,c_fa,sigc_fa,c_rs,sigc_rs,c_ra,sigc_ra,metabolism,ffss,ffsa,ffas,ffaa,frss,frsa,fras,fraa,l1,l2,l1_sd,l2_sd,n_communities,n_wells,rs
+/Users/cychang/Dropbox/lab/emergent-coexistence/simulation/02b-communities/,TRUE,communities-1-N_init.csv,communities-1-R_init.csv,1,1,500,10,100,1000,empirical,0.0415,0.0162,0.0106,0.0146,0.00911,0.0102,0.0201,0.0146,empirical,0,1,0,1,0.49,0.51,0,1,0.432,0.00297,0.105,0.00252,20,20,0

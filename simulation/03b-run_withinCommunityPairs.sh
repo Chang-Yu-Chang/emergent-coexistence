@@ -2,7 +2,7 @@
 for value in {0..1000}
 do
     echo "starting run '$value'"
-    python3 run.py input_pairs.csv $value
+    python3 run.py 03b-input_withinCommunityPairs.csv $value
     echo "finished run '$value'"
 done
 

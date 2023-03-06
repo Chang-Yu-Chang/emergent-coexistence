@@ -1,7 +1,9 @@
-#' This script generates required csv files for simlultion, including
+#' This script generates the universal parameter mapping file 01-input_parameters.csv
 #'
-#' 1. the mapping files specifying the simulation parameters
-#' 2. the initial composition of entry communities, pairs, and monocultures
+#' The 01-input_parameters.csv will later be read in
+#' 02-generate_input_mono_comm.R and 03-generate_input_pairs.R
+#' to generate specific input csv files for monoculture, communities,
+#' and pairs simulation
 
 library(tidyverse)
 source(here::here("analysis/00-metadata.R"))
@@ -16,9 +18,9 @@ input_parameters <- tibble(
     seed = 1,
     # Sampling pool
     sa = 500, # number of species in each specialist family
-    ma = 20, # number of resources in each class
-    S = 50, # number of species in the initial composition of each self-assembled community
-    R0_food = 10000, # supplied R0 amount
+    ma = 10, # number of resources in each class
+    S = 100, # number of species in the initial composition of each self-assembled community
+    R0_food = 1000, # supplied R0 amount
     # c matrix
     c_symmetry = "empirical", # "symmetry", "asymmetry", "empirical"
     c_fs = 0.0415,  # mean uptake rates of fermenter on sugar
@@ -51,44 +53,6 @@ input_parameters <- tibble(
 
 # A universal parameter setting
 write_csv(input_parameters, here::here("simulation/01-input_parameters.csv"))
-
-# Single species, or monocultures
-input_parameters %>%
-    slice(rep(1, 1)) %>%
-    mutate(save_timepoint = T) %>%
-    mutate(output_dir = paste0(folder_simulation, "01-monocultures/")) %>%
-    mutate(init_N0 = paste0("monoculture-1-N_init.csv"), exp_id = 1, n_wells = 200) %>%
-    mutate(init_R0 = paste0("monoculture-1-R_init.csv")) %>%
-    write_csv(here::here("simulation/01a-input_monocultures.csv"))
-
-# Self-assembly, or communities
-input_parameters %>%
-    slice(rep(1, 1)) %>%
-    mutate(save_timepoint = T) %>%
-    mutate(output_dir = paste0(folder_simulation, "02-communities/")) %>%
-    mutate(init_N0 = paste0("selfAssembly-1-N_init.csv"), exp_id = 1, n_wells = 20, S = 50) %>%
-    mutate(init_R0 = paste0("selfAssembly-1-R_init.csv")) %>%
-    write_csv(here::here("simulation/01b-input_communities.csv"))
-
-# Pairs from the pool
-n_comm <- input_parameters$n_communities
-input_parameters %>%
-    slice(rep(1, n_comm)) %>%
-    mutate(save_timepoint = F) %>%
-    mutate(output_dir = paste0(folder_simulation, "03-poolPairs/")) %>%
-    mutate(init_N0 = paste0("poolPairs_W", 0:(n_comm-1), "-1-N_init.csv"), exp_id = 1, S = 10) %>%
-    mutate(init_R0 = paste0("poolPairs_W", 0:(n_comm-1), "-1-R_init.csv")) %>%
-    write_csv(here::here("simulation/01c-input_poolPairs.csv"))
-
-# Pairs from within self-assembled communities
-input_parameters %>%
-    slice(rep(1, n_comm)) %>%
-    mutate(save_timepoint = F) %>%
-    mutate(output_dir = paste0(folder_simulation, "04-withinCommunityPairs/")) %>%
-    mutate(init_N0 = paste0("withinCommunityPairs_W", 0:(n_comm-1), "-1-N_init.csv")) %>%
-    mutate(init_R0 = paste0("withinCommunityPairs_W", 0:(n_comm-1), "-1-R_init.csv")) %>%
-    write_csv(here::here("simulation/01d-input_withinCommunityPairs.csv"))
-
 
 
 

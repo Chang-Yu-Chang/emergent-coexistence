@@ -1,15 +1,38 @@
-#' This script generates the initial composition for monocultures and communities
+#' This script generates the essential input for simulations
 #'
-#' Because these two simulations are independent of other simulations, this script can be run
-#' along with the 01-generate_input.R
+#' 1. Generates the mapping files for simulations
+#'     - 02a-input_monocultures.csv for monocultures
+#'     - 02b-input_communities.csv for communities
+#' 2. Generates the initial composition for these two independent simulations
 
 library(tidyverse)
 source(here::here("analysis/00-metadata.R"))
 
-# Read the parameters
+# 1. generates mapping files ----
 input_parameters <- read_csv(here::here("simulation/01-input_parameters.csv"), col_types = cols())
-input_monocultures <- read_csv(here::here("simulation/01a-input_monocultures.csv"), col_types = cols())
-input_communities <- read_csv(here::here("simulation/01b-input_communities.csv"), col_types = cols())
+
+# Single species, or monocultures
+input_parameters %>%
+    slice(rep(1, 1)) %>%
+    mutate(save_timepoint = T) %>%
+    mutate(output_dir = paste0(folder_simulation, "02a-monocultures/")) %>%
+    mutate(init_N0 = paste0("monoculture-1-N_init.csv"), exp_id = 1, n_wells = 200) %>%
+    mutate(init_R0 = paste0("monoculture-1-R_init.csv")) %>%
+    write_csv(here::here("simulation/02a-input_monocultures.csv"))
+
+# Self-assembly, or communities
+input_parameters %>%
+    slice(rep(1, 1)) %>%
+    mutate(save_timepoint = T) %>%
+    mutate(output_dir = paste0(folder_simulation, "02b-communities/")) %>%
+    mutate(init_N0 = paste0("communities-1-N_init.csv"), exp_id = 1, n_wells = 20) %>%
+    mutate(init_R0 = paste0("communities-1-R_init.csv")) %>%
+    write_csv(here::here("simulation/02b-input_communities.csv"))
+
+
+# 2. generate initial composition files ----
+input_monocultures <- read_csv(here::here("simulation/02a-input_monocultures.csv"), col_types = cols())
+input_communities <- read_csv(here::here("simulation/02b-input_communities.csv"), col_types = cols())
 
 # Generate family-species and class-resource matching tibble
 # Note that input_independent has to use the same sa and ma throughout
@@ -99,8 +122,8 @@ set_community_resource <- function (input_communities) {
 
 set.seed(1)
 draw_community(input_communities) %>%
-    write_csv(paste0(input_communities$output_dir, "selfAssembly-1-N_init.csv"))
+    write_csv(paste0(input_communities$output_dir, "communities-1-N_init.csv"))
 
 set_community_resource(input_communities) %>%
-    write_csv(paste0(input_communities$output_dir, "selfAssembly-1-R_init.csv"))
+    write_csv(paste0(input_communities$output_dir, "communities-1-R_init.csv"))
 

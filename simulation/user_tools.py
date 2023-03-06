@@ -459,8 +459,8 @@ def run_simulations(input_row):
     # Sample matrices
     np.random.seed(seed)
     D, c, l = sample_matrices(a)
-    write_matrices(input_row, D, c, l)
-    print("Matrices written")
+    # write_matrices(input_row, D, c, l)
+    # print("Matrices written")
 
     # Update params 
     params = make_params(a)
@@ -490,20 +490,21 @@ def run_simulations(input_row):
     # Make plate object
     Plate = Community(init_state, dynamics, params, parallel = False)
 #    if input_row['save_timepoint']:
-    for i in range(12): # number of passages
-        for j in range(10): # time of propagation 
-            Plate.Propagate(T = 1)
-            print("T" + str(i+1) + "t" + str(j+1))
+    for i in range(10): # number of passages
+        for j in range(12): # time of propagation 
+            Plate.Propagate(T = 0.05)
+            # print("T" + str(i+1) + "t" + str(j+1))
             # if j == 0:
             #     Plate.N.round(2).to_csv(input_row['output_dir'] + re.sub("init.csv", "T" + str(i+1) + "t" + str(0) + ".csv", input_row["init_N0"]))
             #     Plate.R.round(2).to_csv(input_row['output_dir'] + re.sub("init.csv", "T" + str(i+1) + "t" + str(0) + ".csv", input_row["init_R0"]))
         #Plate.N.round(2).to_csv(input_row['output_dir'] + re.sub("init.csv", "T" + str(i+1) + "t" + str(j+1) + ".csv", input_row["init_N0"]))
+        print("T" + str(i+1))
         Plate.N.round(2).to_csv(input_row['output_dir'] + re.sub("init.csv", "T" + str(i+1) + ".csv", input_row["init_N0"]))
         Plate.R.round(2).to_csv(input_row['output_dir'] + re.sub("init.csv", "T" + str(i+1) + ".csv", input_row["init_R0"]))
-        if i == 12: # last transfer
+        
+        if i == 9: # last transfer
             Plate.N.round(2).to_csv(input_row['output_dir'] + re.sub("init.csv", "end.csv", input_row["init_N0"]))
             Plate.R.round(2).to_csv(input_row['output_dir'] + re.sub("init.csv", "end.csv", input_row["init_R0"]))
-
         Plate.Passage(f = np.eye(a['n_wells'])/10, refresh_resource = True)
 
     # elif input_row['save_timepoint'] == False:

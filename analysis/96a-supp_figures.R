@@ -5,8 +5,10 @@ library(cowplot)
 library(broom)
 library(infer) # For tidyverse statistics
 library(ggsignif) # For adding asterisks to boxplots
-library(RColorBrewer)
-library(ggsci)
+library(RColorBrewer) # For color
+library(ggsci) # For color
+library(ggraph)
+library(tidygraph)
 library(officer)
 library(flextable)
 source(here::here("analysis/00-metadata.R"))
@@ -171,7 +173,95 @@ ggsave(here::here("plots/FigS6-pairwise_competition_dominant.png"), p, width = 8
 
 
 
-# Figure S7 16S mismatch versus rank difference ----
+# Figure S7 16S mismatch versus probability of coexistence ----
+# Data with mismatch
+pairs_mismatch <- pairs %>%
+    filter(!is.na(Mismatch)) %>%
+    mutate(MismatchGroup = case_when(
+        Mismatch < 90 ~ "<90",
+        Mismatch >= 90 ~ ">=90"
+    )) %>%
+    filter(InteractionType != "unknown") %>%
+    mutate(InteractionType = factor(InteractionType, c("exclusion", "coexistence"))) %>%
+    mutate(InteractionTypeBinary = ifelse(InteractionType == "coexistence", 1, 0))
+
+pairs_mismatch_group <- pairs_mismatch %>%
+    group_by(MismatchGroup, InteractionType) %>%
+    summarize(Count = n()) %>%
+    group_by(MismatchGroup) %>%
+    mutate(Fraction = Count / sum(Count), TotalCount = sum(Count))
+
+pairs_function_group <- pairs_mismatch %>%
+    group_by(PairFermenter, InteractionType) %>%
+    summarize(Count = n()) %>%
+    group_by(PairFermenter)
+
+
+# Statistics
+extract_statistics_equation <- function (model) {
+    p_value <- summary(model)$coefficients[2,4]
+    # For glm model
+    r_square <- with(summary(model), 1 - deviance/null.deviance)
+    paste0(
+        "\n", case_when(
+            p_value < 0.001 ~ "p<0.001",
+            p_value < 0.0001 ~ "p<0.0001",
+            TRUE ~ paste0("p=", as.character(round(p_value, 3)))
+        ),
+        "\nR-squared=", round(r_square,4))
+}
+model1 <- glm(InteractionType ~ Mismatch, family = "binomial", data = pairs_mismatch)
+
+
+pairs_mismatch %>%
+    group_by(Mismatch, InteractionType) %>%
+    chisq_test(response = MismatchGroup)
+
+# scatterplot, categorical lm
+p1 <- pairs_mismatch %>%
+    ggplot(aes(x = Mismatch, y = InteractionTypeBinary)) +
+    geom_point(shape = 21, size = 3) +
+    geom_smooth(method = "glm", method.args = list(family = "binomial")) +
+    annotate("text", x = 100, y = 0.8, label = extract_statistics_equation(model1), hjust = 0) +
+    scale_y_continuous(labels = c("0" = "exclusion", "1" = "coexistence"), breaks = c(0,1), expand = c(0,.2)) +
+    theme_classic() +
+    labs(x = "# of nucleotide difference in 16S", y = "")
+
+
+# boxplot by mismatch
+
+p2 <-  %>%
+    ggplot() +
+    geom_col(aes(x = MismatchGroup, y = Fraction, fill = InteractionType), color = 1) +
+    geom_text(aes(x = MismatchGroup, label = paste0("n=", TotalCount)), y = 0.9) +
+    scale_fill_manual(values = interaction_color) +
+    scale_y_continuous(expand = c(0,0)) +
+    theme_classic() +
+    theme(panel.border = element_rect(color = 1, fill = NA), legend.position = "top") +
+    guides(fill = guide_legend(title = "")) +
+    labs(x = "# of nucleotide difference in 16S")
+
+# boxplot by taxanomic pairs
+p3 <-  %>%
+    mutate(Fraction = Count / sum(Count), TotalCount = sum(Count)) %>%
+    ggplot() +
+    geom_col(aes(x = PairFermenter, y = Fraction, fill = InteractionType), color = 1) +
+    geom_text(aes(x = PairFermenter, label = paste0("n=", TotalCount)), y = 0.9) +
+    scale_fill_manual(values = interaction_color) +
+    scale_x_discrete(labels = c("FF" = "Fermenter\nFermenter", "FR" = "Fermenter\nRespirator", "RR" = "Respirator\nRespirator")) +
+    scale_y_continuous(expand = c(0,0)) +
+    theme_classic() +
+    theme(panel.border = element_rect(color = 1, fill = NA), legend.position = "top") +
+    guides(fill = guide_legend(title = "")) +
+    labs(x = "")
+
+p <- plot_grid(p1, p2, p3, nrow = 2, labels = LETTERS[1:3], scale = 0.9, axis = "tbrl", align = "hv") + paint_white_background()
+ggsave(here::here("plots/FigS7-mismatch_vs_coexistence.png"), p, width = 9, height = 8)
+
+
+if (FALSE) {
+
+# Figure S7a 16S mismatch versus rank difference
 ## Data with mismatch
 pairs_mismatch <- pairs %>%
     left_join(rename_with(select(isolates, ExpID, Rank), ~paste0(.x, "1")), by = "ExpID1") %>%
@@ -251,6 +341,7 @@ p4 <- pairs_mismatch %>%
 
 p <- plot_grid(p1, p2, p3, p4, nrow = 2, labels = LETTERS[1:4], scale = 0.9, align = "hv") + paint_white_background()
 ggsave(here::here("plots/FigS7-mismatch_vs_rank.png"), p, width = 9, height = 8)
+}
 
 
 # Figure S8 ESV abundance vs. strain ranks ----

@@ -11,10 +11,9 @@ library(tidyverse)
 library(cowplot)
 source(here::here("analysis/00-metadata.R"))
 
-#
-#input_parameters <- read_csv(here::here("simulation/01-input_parameters.csv"), col_types = cols())
-input_monocultures <- read_csv(here::here("simulation/01a-input_monocultures.csv"), col_types = cols())
-output_dir <- input_monocultures$output_dir[1]
+input_parameters <- read_csv(here::here("simulation/01-input_parameters.csv"), col_types = cols())
+input_monocultures <- read_csv(here::here("simulation/02a-input_monocultures.csv"), col_types = cols())
+output_dir <- paste0(folder_simulation, "01-matrices/")
 Dm_S0 <- read_csv(paste0(output_dir, "D_S0_seed1.csv"), skip = 1, col_types = cols()) # D matrix
 Dm_S500 <- read_csv(paste0(output_dir, "D_S500_seed1.csv"), skip = 1, col_types = cols()) # D matrix
 cm <- read_csv(paste0(output_dir, "c_seed1.csv"), skip = 1, col_types = cols()) # c matrix
@@ -46,10 +45,10 @@ p1_1 <- Dm_S0l %>%
     ggplot() +
     geom_tile(aes(x = Resource1, y = Resource2, fill = SecretionFlux)) +
     # Color bar
-    geom_segment(aes(color = "sugar"), x = "R0", xend = "R19", y = "R0", yend = "R0", lwd = 2) +
-    geom_segment(aes(color = "acid"), x = "R20", xend = "R39", y = "R0", yend = "R0", lwd = 2) +
-    geom_segment(aes(color = "sugar"), x = "R0", xend = "R0", y = "R0", yend = "R19", lwd = 2) +
-    geom_segment(aes(color = "acid"), x = "R0", xend = "R0", y = "R20", yend = "R39", lwd = 2) +
+    geom_segment(aes(color = "sugar"), x = "R0", xend = paste0("R", ma-1), y = "R0", yend = "R0", lwd = 2) +
+    geom_segment(aes(color = "acid"), x = paste0("R", ma-1), xend = paste0("R", ma*2-1), y = "R0", yend = "R0", lwd = 2) +
+    geom_segment(aes(color = "sugar"), x = "R0", xend = "R0", y = "R0", yend = paste0("R", ma-1), lwd = 2) +
+    geom_segment(aes(color = "acid"), x = "R0", xend = "R0", y = paste0("R", ma-1), yend = paste0("R", ma*2-1), lwd = 2) +
     # Axis label
     annotate("text", x = "R10", y = 41, label = "sugar", hjust = 0.5, color = category_colors["sugar"], fontface = "bold") +
     annotate("text", x = "R30", y = 41, label = "acid", hjust = 0.5, color = category_colors["acid"], fontface = "bold") +
@@ -92,7 +91,7 @@ p1_2 <- Dm_S500l %>%
 
 p1 <- plot_grid(p1_1, p1_2, nrow = 1, align = "h")
 
-ggsave(here::here("simulation/plots/matrix1_D.png"), p1, width = 8, height = 6)
+ggsave(here::here("simulation/plots/21-matrix1_D.png"), p1, width = 8, height = 6)
 
 
 # c matrix
@@ -126,7 +125,7 @@ p2 <- cml %>%
            color = "none") +
     labs()
 
-ggsave(here::here("simulation/plots/matrix2_c.png"), p2, width = 4, height = 6)
+ggsave(here::here("simulation/plots/21-matrix2_c.png"), p2, width = 4, height = 6)
 
 
 # l matrix
@@ -158,7 +157,7 @@ p3 <- lml %>%
     guides(fill = guide_colorbar(title = expression(l[i][alpha])),
            color = "none") +
     labs()
-ggsave(here::here("simulation/plots/matrix3_l.png"), p3, width = 4, height = 6)
+ggsave(here::here("simulation/plots/21-matrix3_l.png"), p3, width = 4, height = 6)
 
 
 
