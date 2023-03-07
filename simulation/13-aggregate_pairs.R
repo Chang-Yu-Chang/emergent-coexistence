@@ -68,7 +68,7 @@ read_init_composition <- function (input_mapping, treatment, comm, t = "init") {
         select(Community, Pair, Species, Well, Time, Abundance)
 
 }
-read_later_composition <- function (input_mapping, treatment, comm, t = "end", df_pairs_N_sp) {
+read_later_composition <- function (input_mapping, treatment, comm, t = "end", pairs_N_sp) {
     #' This is a wrapper function
     #' The reason it's separated from the function read_init_compotition() is that
     #' the later time point would have dropped data if one species went extinct.
@@ -78,20 +78,20 @@ read_later_composition <- function (input_mapping, treatment, comm, t = "end", d
     # treatment <- "withinCommunityPairs"
     # comm <- "W1"
     # t <- "init"
-    # df_pair_N_sp <- df_withinCommunityPairs_N_sp
+    # pair_N_sp <- withinCommunityPairs_N_sp
     paste0(input_mapping$output_dir[1], treatment, "_", comm, "-1-N_", t,".csv") %>%
         read_wide_file() %>%
         filter(Abundance != 0) %>%
-        right_join(df_pairs_N_sp, by = join_by(Species, Well)) %>%
+        right_join(pairs_N_sp, by = join_by(Species, Well)) %>%
         replace_na(list(Abundance = 0, Time = t)) %>%
         mutate(Community = comm, Time = t) %>%
         format_columns() %>%
         arrange(Community, Well, Species) %>%
         select(Community, Pair, Species, Well, Time, Abundance)
 }
-bind_pair_frequency <- function (df_ini, df_end) {
-    #bind_rows(df_poolPairs_N_init, df_poolPairs_N_end) %>%
-    bind_rows(df_ini, df_end) %>%
+bind_pair_frequency <- function (ini, end) {
+    #bind_rows(poolPairs_N_init, poolPairs_N_end) %>%
+    bind_rows(ini, end) %>%
         mutate(InitialFrequency = rep(rep(c(5, 50, 95), each = 2), n()/6)) %>%
         select(-Well) %>%
         select(Community, Pair, Species, InitialFrequency, Time, Abundance) %>%
@@ -151,7 +151,7 @@ append_pairs_outocme <- function (pairs_fitness) {
 }
 interaction_type <- make_interaction_type()
 compute_pairwise_outcome <- function (pairs_frequency) {
-    #df_poolPairs_N_freq %>%
+    #poolPairs_N_freq %>%
     pairs_frequency %>%
         # Compute fitness table
         select(Community, Pair, Species1, Species2, InitialFrequency, Time, Frequency1) %>%
@@ -179,74 +179,74 @@ compute_pairwise_outcome <- function (pairs_frequency) {
 
 # 1. Pool pairs ----
 communities_names <- paste0("W", 0:19)
-df_poolPairs_N_freq <- rep(list(NA), length(communities_names))
-df_poolPairs_N_outcome <- rep(list(NA), length(communities_names))
+poolPairs_N_freq <- rep(list(NA), length(communities_names))
+poolPairs_N_outcome <- rep(list(NA), length(communities_names))
 
 for (i in 1:20) {
-    cat("\nCommunity", communities_names[i])
+    cat("\nMonocultureSet ", communities_names[i])
     # Read initial composition
-    df_poolPairs_N_init <- read_init_composition(input_poolPairs, "poolPairs", comm = communities_names[i], t = "init")
+    poolPairs_N_init <- read_init_composition(input_poolPairs, "poolPairs", comm = communities_names[i], t = "init")
 
     # Mapping file of pairs
-    df_poolPairs_N_sp <- df_poolPairs_N_init %>% distinct(Community, Pair, Species, Well)
+    poolPairs_N_sp <- poolPairs_N_init %>% distinct(Community, Pair, Species, Well)
 
     # Read end composition
-    df_poolPairs_N_end <- read_later_composition(input_poolPairs, "poolPairs", comm = communities_names[i], t = "end", df_pairs_N_sp = df_poolPairs_N_sp)
+    poolPairs_N_end <- read_later_composition(input_poolPairs, "poolPairs", comm = communities_names[i], t = "end", pairs_N_sp = poolPairs_N_sp)
 
     # Check if the init and end has the same number of rows
-    stopifnot(nrow(df_poolPairs_N_init) == nrow(df_poolPairs_N_end))
+    stopifnot(nrow(poolPairs_N_init) == nrow(poolPairs_N_end))
 
     # Pair frequency
-    df_poolPairs_N_freq[[i]] <- bind_pair_frequency(df_poolPairs_N_init, df_poolPairs_N_end)
+    poolPairs_N_freq[[i]] <- bind_pair_frequency(poolPairs_N_init, poolPairs_N_end)
 
     # Determine pairwise outcome
-    df_poolPairs_N_outcome[[i]] <- compute_pairwise_outcome(df_poolPairs_N_freq[[i]])
+    poolPairs_N_outcome[[i]] <- compute_pairwise_outcome(poolPairs_N_freq[[i]])
 }
 
-df_poolPairs_N_freq <- bind_rows(df_poolPairs_N_freq)
-df_poolPairs_N_outcome <- bind_rows(df_poolPairs_N_outcome)
+poolPairs_N_freq <- bind_rows(poolPairs_N_freq)
+poolPairs_N_outcome <- bind_rows(poolPairs_N_outcome)
 
-write_csv(df_poolPairs_N_freq, paste0(folder_simulation, "12-aggregated_pairs/df_poolPairs_N_freq.csv"))
-write_csv(df_poolPairs_N_outcome, paste0(folder_simulation, "12-aggregated_pairs/df_poolPairs_N_outcome.csv"))
+write_csv(poolPairs_N_freq, paste0(folder_simulation, "12-aggregated_pairs/poolPairs_N_freq.csv"))
+write_csv(poolPairs_N_outcome, paste0(folder_simulation, "12-aggregated_pairs/poolPairs_N_outcome.csv"))
 
 
 # 2. Community pairs ----
-df_communities_richness <- read_csv(paste0(folder_simulation, "11-aggregated/df_communities_richness.csv"), col_types = cols())
+communities_richness <- read_csv(paste0(folder_simulation, "11-aggregated/communities_richness.csv"), col_types = cols())
 communities_names <- paste0("W", 0:19)
-df_withinCommunityPairs_N_freq <- rep(list(NA), length(communities_names))
-df_withinCommunityPairs_N_outcome <- rep(list(NA), length(communities_names))
+withinCommunityPairs_N_freq <- rep(list(NA), length(communities_names))
+withinCommunityPairs_N_outcome <- rep(list(NA), length(communities_names))
 
 for (i in 1:20) {
-    richness <- df_communities_richness %>%
+    richness <- communities_richness %>%
         filter(Community == communities_names[i]) %>%
         pull(Richness)
     cat("\nCommunity", communities_names[i], " richness = ", richness)
     if (richness > 1) {
         # Read initial composition
-        df_withinCommunityPairs_N_init <- read_init_composition(input_withinCommunityPairs, "withinCommunityPairs", comm = communities_names[i], t = "init")
+        withinCommunityPairs_N_init <- read_init_composition(input_withinCommunityPairs, "withinCommunityPairs", comm = communities_names[i], t = "init")
 
         # Mapping file of pairs
-        df_withinCommunityPairs_N_sp <- df_withinCommunityPairs_N_init %>% distinct(Community, Pair, Species, Well)
+        withinCommunityPairs_N_sp <- withinCommunityPairs_N_init %>% distinct(Community, Pair, Species, Well)
 
         # Read end composition
-        df_withinCommunityPairs_N_end <- read_later_composition(input_withinCommunityPairs, "withinCommunityPairs", comm = communities_names[i], t = "end", df_pairs_N_sp = df_withinCommunityPairs_N_sp)
+        withinCommunityPairs_N_end <- read_later_composition(input_withinCommunityPairs, "withinCommunityPairs", comm = communities_names[i], t = "end", pairs_N_sp = withinCommunityPairs_N_sp)
 
         # Check if the init and end has the same number of rows
-        stopifnot(nrow(df_withinCommunityPairs_N_init) == nrow(df_withinCommunityPairs_N_end))
+        stopifnot(nrow(withinCommunityPairs_N_init) == nrow(withinCommunityPairs_N_end))
 
         # Pair frequency
-        df_withinCommunityPairs_N_freq[[i]] <- bind_pair_frequency(df_withinCommunityPairs_N_init, df_withinCommunityPairs_N_end)
+        withinCommunityPairs_N_freq[[i]] <- bind_pair_frequency(withinCommunityPairs_N_init, withinCommunityPairs_N_end)
 
         # Determine pairwise outcome
-        df_withinCommunityPairs_N_outcome[[i]] <- compute_pairwise_outcome(df_withinCommunityPairs_N_freq[[i]])
+        withinCommunityPairs_N_outcome[[i]] <- compute_pairwise_outcome(withinCommunityPairs_N_freq[[i]])
     }
 }
 
-df_withinCommunityPairs_N_freq <- bind_rows(df_withinCommunityPairs_N_freq[!is.na(df_withinCommunityPairs_N_freq)])
-df_withinCommunityPairs_N_outcome <- bind_rows(df_withinCommunityPairs_N_outcome[!is.na(df_withinCommunityPairs_N_outcome)])
+withinCommunityPairs_N_freq <- bind_rows(withinCommunityPairs_N_freq[!is.na(withinCommunityPairs_N_freq)])
+withinCommunityPairs_N_outcome <- bind_rows(withinCommunityPairs_N_outcome[!is.na(withinCommunityPairs_N_outcome)])
 
-write_csv(df_withinCommunityPairs_N_freq, paste0(folder_simulation, "12-aggregated_pairs/df_withinCommunityPairs_N_freq.csv"))
-write_csv(df_withinCommunityPairs_N_outcome, paste0(folder_simulation, "12-aggregated_pairs/df_withinCommunityPairs_N_outcome.csv"))
+write_csv(withinCommunityPairs_N_freq, paste0(folder_simulation, "12-aggregated_pairs/withinCommunityPairs_N_freq.csv"))
+write_csv(withinCommunityPairs_N_outcome, paste0(folder_simulation, "12-aggregated_pairs/withinCommunityPairs_N_outcome.csv"))
 
 
 

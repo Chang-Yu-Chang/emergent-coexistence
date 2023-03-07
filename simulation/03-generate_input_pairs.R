@@ -35,7 +35,7 @@ input_parameters %>%
 "Execute the chunks below after monocultures and communities are done"
 
 # 2. generate initial composition files ----
-# Note that n_wells in the mapping files will be modified depending on the diversity of the network/community
+# Note that n_wells in the mapping files will be modified depending on the diversity of the monocultureSets/community
 
 input_monocultures <- read_csv(here::here("simulation/02a-input_monocultures.csv"), col_types = cols())
 input_communities <- read_csv(here::here("simulation/02b-input_communities.csv"), col_types = cols())
@@ -77,38 +77,45 @@ species_mono <- read_csv(paste0(input_monocultures$output_dir[1], "monoculture-1
     pull(Species) %>%
     str_replace("S", "") %>% as.numeric()
 
-N_network <- draw_community(input_poolPairs[1,], species_mono)
+N_monocultureSets <- draw_community(input_poolPairs[1,], species_mono)
 
-N_network_split <- N_network %>%
+N_monocultureSets_split <- N_monocultureSets %>%
     mutate_all(~replace(., .==0, NA)) %>%
     pivot_longer(cols = -c(Family, Species), names_to = "Community", values_to = "Abundance", values_drop_na = T) %>%
     # Order species and community
     mutate(Species = ordered(Species, sal$Species)) %>%
-    mutate(Community = ordered(Community, colnames(N_network))) %>%
+    mutate(Community = ordered(Community, colnames(N_monocultureSets))) %>%
     arrange(Community, Species) %>%
     group_by(Community) %>%
     group_split()
 
-df_network_richness <- N_network_split %>%
+
+monocultureSets_richness <- N_monocultureSets_split %>%
     bind_rows() %>%
     group_by(Community) %>%
     summarize(Richness = n())
 
+monocultureSets_species <- N_monocultureSets_split %>%
+    bind_rows() %>%
+    select(Community, Family, Species) %>%
+    arrange(Community, Family, Species)
 
-for (i in 1:length(N_network_split)) {
-    cat("\n", paste0("Pool set W", i-1, " Richness=", nrow(N_network_split[[i]])))
+for (i in 1:length(N_monocultureSets_split)) {
+    cat("\n", paste0("Pool set W", i-1, " Richness=",  monocultureSets_richness$Richness[i]))
     # init_N0
-    draw_pairs_from_community(N_network_split[[i]]) %>%
+    draw_pairs_from_community(N_monocultureSets_split[[i]]) %>%
         write_csv(paste0(input_poolPairs$output_dir[i], "poolPairs_W", i-1, "-1-N_init.csv"))
     # Update n_wells in the input files
-    input_poolPairs$n_wells[i] <- choose(nrow(N_network_split[[i]]), 2) * 3
+    input_poolPairs$n_wells[i] <- choose(nrow(N_monocultureSets_split[[i]]), 2) * 3
     # init_R0
     set_community_resource(input_poolPairs[i,]) %>%
         write_csv(paste0(input_poolPairs$output_dir[i], "poolPairs_W", i-1, "-1-R_init.csv"))
 }
 
-write_csv(df_network_richness, paste0(folder_simulation, "11-aggregated/df_network_richness.csv"))
 write_csv(input_poolPairs, here::here("simulation/03a-input_poolPairs.csv"))
+write_csv(monocultureSets, paste0(folder_simulation, "11-aggregated/monocultureSets_richness.csv"))
+write_csv(monocultureSets_richness, paste0(folder_simulation, "11-aggregated/monocultureSets_richness.csv"))
+write_csv(monocultureSets_species, paste0(folder_simulation, "11-aggregated/monocultureSets_species.csv"))
 
 
 # 2.2. Generate within community pairs ----
@@ -128,13 +135,19 @@ N_community_split <- N_community %>%
     group_by(Community) %>%
     group_split()
 
-df_communities_richness <- N_community_split %>%
+communities_richness <- N_community_split %>%
     bind_rows() %>%
     group_by(Community) %>%
     summarize(Richness = n())
 
+communities_species <- N_community_split %>%
+    bind_rows() %>%
+    select(Community, Family, Species) %>%
+    arrange(Community, Family, Species)
+
+
 for (i in 1:length(N_community_split)) {
-    cat("\n", paste0("Community W", i-1, " Richness=", df_communities_richness$Richness[i]))
+    cat("\n", paste0("Community W", i-1, " Richness=", communities_richness$Richness[i]))
     # init_N0
     draw_pairs_from_community(N_community_split[[i]]) %>%
         write_csv(paste0(input_withinCommunityPairs$output_dir[i], "withinCommunityPairs_W", i-1, "-1-N_init.csv"))
@@ -146,7 +159,7 @@ for (i in 1:length(N_community_split)) {
 
 }
 
-write_csv(df_communities_richness, paste0(folder_simulation, "11-aggregated/df_communities_richness.csv"))
 write_csv(input_withinCommunityPairs, here::here("simulation/03b-input_withinCommunityPairs.csv"))
-
+write_csv(communities_richness, paste0(folder_simulation, "11-aggregated/communities_richness.csv"))
+write_csv(communities_species, paste0(folder_simulation, "11-aggregated/communities_species.csv"))
 

@@ -104,6 +104,7 @@ assign_interaction_color <- function (level = "simple") {
 }
 interaction_color <- assign_interaction_color()
 frequency_color <- c("95"="#292F36", "50"="#9F87AF", "5"="#7D7C7C")
+category_color <- c(sugar = "#ED6A5A", acid = "#03CEA4", fermenter = "#8A89C0", respirator = "#FFCB77")
 paint_white_background <- function () theme(plot.background = element_rect(fill = "white", color = NA))
 
 

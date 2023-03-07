@@ -18,7 +18,6 @@ Dm_S0 <- read_csv(paste0(output_dir, "D_S0_seed1.csv"), skip = 1, col_types = co
 Dm_S500 <- read_csv(paste0(output_dir, "D_S500_seed1.csv"), skip = 1, col_types = cols()) # D matrix
 cm <- read_csv(paste0(output_dir, "c_seed1.csv"), skip = 1, col_types = cols()) # c matrix
 lm <- read_csv(paste0(output_dir, "l_seed1.csv"), skip = 1, col_types = cols()) # l matrix
-category_colors <- c(sugar = "#ED6A5A", acid = "#03CEA4", fermenter = "#8A89C0", respirator = "#FFCB77")
 
 # Generate family-species and class-resource matching tibble
 sa <- input_monocultures$sa[1]
@@ -50,12 +49,12 @@ p1_1 <- Dm_S0l %>%
     geom_segment(aes(color = "sugar"), x = "R0", xend = "R0", y = "R0", yend = paste0("R", ma-1), lwd = 2) +
     geom_segment(aes(color = "acid"), x = "R0", xend = "R0", y = paste0("R", ma-1), yend = paste0("R", ma*2-1), lwd = 2) +
     # Axis label
-    annotate("text", x = "R10", y = 41, label = "sugar", hjust = 0.5, color = category_colors["sugar"], fontface = "bold") +
-    annotate("text", x = "R30", y = 41, label = "acid", hjust = 0.5, color = category_colors["acid"], fontface = "bold") +
-    annotate("text", x = -0.1, y = "R10", label = "sugar", angle = 90, vjust = 0, color = category_colors["sugar"], fontface = "bold") +
-    annotate("text", x = -0.1, y = "R30", label = "acid", angle = 90, vjust = 0, color = category_colors["acid"], fontface = "bold") +
+    annotate("text", x = "R10", y = 41, label = "sugar", hjust = 0.5, color = category_color["sugar"], fontface = "bold") +
+    annotate("text", x = "R30", y = 41, label = "acid", hjust = 0.5, color = category_color["acid"], fontface = "bold") +
+    annotate("text", x = -0.1, y = "R10", label = "sugar", angle = 90, vjust = 0, color = category_color["sugar"], fontface = "bold") +
+    annotate("text", x = -0.1, y = "R30", label = "acid", angle = 90, vjust = 0, color = category_color["acid"], fontface = "bold") +
     scale_fill_gradient(high = "black", low = "white") +
-    scale_color_manual(values = category_colors, breaks = c("sugar", "acid")) +
+    scale_color_manual(values = category_color, breaks = c("sugar", "acid")) +
     scale_x_discrete(limits = mal$Resource, position = "top") +
     #scale_y_discrete(limits = mal$Resource) +
     coord_cartesian(xlim = c(0, 40), ylim = c(0, 40), clip = "off") +
@@ -75,12 +74,12 @@ p1_2 <- Dm_S500l %>%
     geom_segment(aes(color = "sugar"), x = "R0", xend = "R0", y = "R0", yend = "R19", lwd = 2) +
     geom_segment(aes(color = "acid"), x = "R0", xend = "R0", y = "R20", yend = "R39", lwd = 2) +
     # Axis label
-    annotate("text", x = "R10", y = 41, label = "sugar", hjust = 0.5, color = category_colors["sugar"], fontface = "bold") +
-    annotate("text", x = "R30", y = 41, label = "acid", hjust = 0.5, color = category_colors["acid"], fontface = "bold") +
-    annotate("text", x = -0.1, y = "R10", label = "sugar", angle = 90, vjust = 0, color = category_colors["sugar"], fontface = "bold") +
-    annotate("text", x = -0.1, y = "R30", label = "acid", angle = 90, vjust = 0, color = category_colors["acid"], fontface = "bold") +
+    annotate("text", x = "R10", y = 41, label = "sugar", hjust = 0.5, color = category_color["sugar"], fontface = "bold") +
+    annotate("text", x = "R30", y = 41, label = "acid", hjust = 0.5, color = category_color["acid"], fontface = "bold") +
+    annotate("text", x = -0.1, y = "R10", label = "sugar", angle = 90, vjust = 0, color = category_color["sugar"], fontface = "bold") +
+    annotate("text", x = -0.1, y = "R30", label = "acid", angle = 90, vjust = 0, color = category_color["acid"], fontface = "bold") +
     scale_fill_gradient(high = "black", low = "white") +
-    scale_color_manual(values = category_colors, breaks = c("sugar", "acid")) +
+    scale_color_manual(values = category_color, breaks = c("sugar", "acid")) +
     scale_x_discrete(limits = mal$Resource, position = "top") +
     coord_cartesian(xlim = c(0, 40), ylim = c(0, 40), clip = "off") +
     theme_classic() +
@@ -111,12 +110,12 @@ p2 <- cml %>%
     geom_segment(aes(color = "fermenter"), x = "R0", xend = "R0", y = "S0", yend = "S499", lwd = 2) +
     geom_segment(aes(color = "respirator"), x = "R0", xend = "R0", y = "S500", yend = "S999", lwd = 2) +
     # Axis label
-    annotate("text", x = "R10", y = 1020, label = "sugar", hjust = 0.5, color = category_colors["sugar"], fontface = "bold") +
-    annotate("text", x = "R30", y = 1020, label = "acid", hjust = 0.5, color = category_colors["acid"], fontface = "bold") +
-    annotate("text", x = -0.1, y = "S250", label = "fermenter", angle = 90, vjust = 0, color = category_colors["fermenter"], fontface = "bold") +
-    annotate("text", x = -0.1, y = "S750", label = "respirator", angle = 90, vjust = 0, color = category_colors["respirator"], fontface = "bold") +
+    annotate("text", x = "R10", y = 1020, label = "sugar", hjust = 0.5, color = category_color["sugar"], fontface = "bold") +
+    annotate("text", x = "R30", y = 1020, label = "acid", hjust = 0.5, color = category_color["acid"], fontface = "bold") +
+    annotate("text", x = -0.1, y = "S250", label = "fermenter", angle = 90, vjust = 0, color = category_color["fermenter"], fontface = "bold") +
+    annotate("text", x = -0.1, y = "S750", label = "respirator", angle = 90, vjust = 0, color = category_color["respirator"], fontface = "bold") +
     scale_fill_gradient(high = "black", low = "white") +
-    scale_color_manual(values = category_colors) +
+    scale_color_manual(values = category_color) +
     scale_x_discrete(limits = mal$Resource, position = "top") +
     coord_cartesian(xlim = c(0, 40), ylim = c(0, 1000), clip = "off") +
     theme_classic() +
@@ -144,12 +143,12 @@ p3 <- lml %>%
     geom_segment(aes(color = "fermenter"), x = "R0", xend = "R0", y = "S0", yend = "S499", lwd = 2) +
     geom_segment(aes(color = "respirator"), x = "R0", xend = "R0", y = "S500", yend = "S999", lwd = 2) +
     # Axis label
-    annotate("text", x = "R10", y = 1020, label = "sugar", hjust = 0.5, color = category_colors["sugar"], fontface = "bold") +
-    annotate("text", x = "R30", y = 1020, label = "acid", hjust = 0.5, color = category_colors["acid"], fontface = "bold") +
-    annotate("text", x = -0.1, y = "S250", label = "fermenter", angle = 90, vjust = 0, color = category_colors["fermenter"], fontface = "bold") +
-    annotate("text", x = -0.1, y = "S750", label = "respirator", angle = 90, vjust = 0, color = category_colors["respirator"], fontface = "bold") +
+    annotate("text", x = "R10", y = 1020, label = "sugar", hjust = 0.5, color = category_color["sugar"], fontface = "bold") +
+    annotate("text", x = "R30", y = 1020, label = "acid", hjust = 0.5, color = category_color["acid"], fontface = "bold") +
+    annotate("text", x = -0.1, y = "S250", label = "fermenter", angle = 90, vjust = 0, color = category_color["fermenter"], fontface = "bold") +
+    annotate("text", x = -0.1, y = "S750", label = "respirator", angle = 90, vjust = 0, color = category_color["respirator"], fontface = "bold") +
     scale_fill_gradient(high = "black", low = "white") +
-    scale_color_manual(values = category_colors) +
+    scale_color_manual(values = category_color) +
     scale_x_discrete(limits = mal$Resource, position = "top") +
     coord_cartesian(xlim = c(0, 40), ylim = c(0, 1000), clip = "off") +
     theme_classic() +

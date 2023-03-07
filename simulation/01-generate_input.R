@@ -23,14 +23,22 @@ input_parameters <- tibble(
     R0_food = 1000, # supplied R0 amount
     # c matrix
     c_symmetry = "empirical", # "symmetry", "asymmetry", "empirical"
-    c_fs = 0.0415,  # mean uptake rates of fermenter on sugar
-    sigc_fs = 0.0162, # standard deviation of uptake rates of fermenter on sugar
-    c_fa = 0.0106,  # mean uptake rates of fermenter on acid
-    sigc_fa = 0.0146, # standard deviation of uptake rates of fermenter on acid
-    c_rs = 0.00911,  # mean uptake rates of respirator on sugar
-    sigc_rs = 0.0102, # standard deviation of uptake rates of respirator on sugar
-    c_ra = 0.0201,  # mean uptake rates of respirator on acid
-    sigc_ra = 0.0146, # standard deviation of uptake rates of respirator on acid
+    # c_fs = 0.0415,  # mean uptake rates of fermenter on sugar
+    # sigc_fs = 0.0162, # standard deviation of uptake rates of fermenter on sugar
+    # c_fa = 0.0106,  # mean uptake rates of fermenter on acid
+    # sigc_fa = 0.0146, # standard deviation of uptake rates of fermenter on acid
+    # c_rs = 0.00911,  # mean uptake rates of respirator on sugar
+    # sigc_rs = 0.0102, # standard deviation of uptake rates of respirator on sugar
+    # c_ra = 0.0201,  # mean uptake rates of respirator on acid
+    # sigc_ra = 0.0146, # standard deviation of uptake rates of respirator on acid
+    c_fs = 0.218,  # mean uptake rates of fermenter on sugar
+    sigc_fs = 0.0444, # standard deviation of uptake rates of fermenter on sugar
+    c_fa = 0.21,  # mean uptake rates of fermenter on acid
+    sigc_fa = 0.0357, # standard deviation of uptake rates of fermenter on acid
+    c_rs = 0.07,  # mean uptake rates of respirator on sugar
+    sigc_rs = 0.0341, # standard deviation of uptake rates of respirator on sugar
+    c_ra = 0.31,  # mean uptake rates of respirator on acid
+    sigc_ra = 0.115, # standard deviation of uptake rates of respirator on acid
     # D matrix
     metabolism = "empirical", # "common", "two-families", "empirical", "specific"
     ffss = 0, # fraction of flux from sugar to sugar in fermenter
@@ -42,10 +50,14 @@ input_parameters <- tibble(
     fras = 0, # fraction of flux from acid to sugar in respirator
     fraa = 1, # fraction of flux from acid to acid in respirator
     # Leakiness
-    l1 = 0.432,
-    l2 = 0.00297,
-    l1_sd = 0.105,
-    l2_sd = 0.00252,
+    # l1 = 0.432,
+    # l1_sd = 0.105,
+    # l2 = 0.00297,
+    # l2_sd = 0.00252,
+    l1 = 0.442,
+    l1_sd = 0.108,
+    l2 = 0.00241,
+    l2_sd = 0.00224,
     n_communities = 20,
     n_wells = 100, # Note that the well number (column number) of init_N0 has to match n_wells
     rs = 0,

@@ -27,11 +27,10 @@ read_wide_file <- function(x, type = "N") {
     return(temp)
 }
 
-
-
 # 1. Self-assembled community composition ----
-df_communities_N <- list.files(input_communities$output_dir[1], pattern = "communities-1-N") %>%
-    map(c("N_T\\d+\\.csv", "init"), str_subset, string = .) %>%
+# Community abundance
+communities_abundance <- list.files(input_communities$output_dir[1], pattern = "communities-1-N") %>%
+    map(c("N_T\\d+\\.csv", "init", "end"), str_subset, string = .) %>%
     reduce(union) %>%
     paste0(input_communities$output_dir[1], .) %>%
     lapply(function(x) {
@@ -43,14 +42,18 @@ df_communities_N <- list.files(input_communities$output_dir[1], pattern = "commu
             return()
     }) %>%
     bind_rows %>%
-    mutate(Well = ordered(Well, paste0("W", 0:(input_communities$n_wells[1]-1)))) %>%
-    mutate(Time = ordered(Time, c("init", paste0("T", 1:20)))) %>%
-    arrange(Well, Time)
+    mutate(Community = ordered(Well, paste0("W", 0:(input_communities$n_wells[1]-1)))) %>%
+    select(-Well) %>%
+    mutate(Time = ordered(Time, c("init", paste0("T", 1:20), "end"))) %>%
+    arrange(Community, Time) %>%
+    filter(Abundance > 0) %>%
+    select(Community, Time, Family, Species, Abundance)
 
-write_csv(df_communities_N, paste0(folder_simulation, "11-aggregated/df_communities_N.csv"))
+write_csv(communities_abundance, paste0(folder_simulation, "11-aggregated/communities_abundance.csv"))
 
 # 2. Monoculture ----
-df_monocultures_N <- list.files(input_monocultures$output_dir[1], pattern = "monoculture-1-N") %>%
+# Monoculture abundance
+monocultures_abundance <- list.files(input_monocultures$output_dir[1], pattern = "monoculture-1-N") %>%
     map(c("N_T\\d+\\.csv", "init"), str_subset, string = .) %>%
     reduce(union) %>%
     paste0(input_monocultures$output_dir[1], .) %>%
@@ -66,7 +69,9 @@ df_monocultures_N <- list.files(input_monocultures$output_dir[1], pattern = "mon
     mutate(Well = ordered(Well, paste0("W", 0:(input_communities$n_wells[1]-1)))) %>%
     mutate(Time = ordered(Time, c("init", paste0("T", 1:20)))) %>%
     arrange(Well, Time) %>%
-    filter(Abundance > 0)
+    filter(Abundance > 0) %>%
+    select(Well, Time, Family, Species, Abundance)
 
-write_csv(df_monocultures_N, paste0(folder_simulation, "11-aggregated/df_monocultures_N.csv"))
+write_csv(monocultures_abundance, paste0(folder_simulation, "11-aggregated/monocultures_abundance.csv"))
+
 

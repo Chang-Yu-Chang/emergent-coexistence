@@ -1,7 +1,5 @@
 #' This scripts generate the figures for pool pairs and community pairs
-#'
-#' N: consumer abundance
-#' R: resource abundance
+
 
 library(tidyverse)
 library(cowplot)
@@ -19,13 +17,13 @@ sal <- tibble(Family = paste0("F", c(rep(0, sa), rep(1, sa))), Species = paste0(
 mal <- tibble(Class = paste0("T", c(rep(0, ma), rep(1, ma))), Resource = paste0("R", 0:(ma * 2 - 1)))
 
 # 1. Pool pairs ----
-df_poolPairs_N_freq <- read_csv(paste0(folder_simulation, "12-aggregated_pairs/df_poolPairs_N_freq.csv"), col_types = cols()) %>%
+poolPairs_N_freq <- read_csv(paste0(folder_simulation, "12-aggregated_pairs/poolPairs_N_freq.csv"), col_types = cols()) %>%
     mutate(Time = factor(Time, c("init", "end"))) %>%
     mutate(Pair = factor(Pair, paste0("P", 1:1000))) %>%
     mutate(InitialFrequency = factor(InitialFrequency, c(5, 50, 95)))
 
 # Line plot
-df_poolPairs_N_freq %>%
+poolPairs_N_freq %>%
     filter(Community == "W0") %>%
     ggplot(aes(x = Time, y = Frequency1, color = InitialFrequency, group = InitialFrequency)) +
     geom_line(linewidth = 1) +
@@ -39,21 +37,18 @@ df_poolPairs_N_freq %>%
     guides(alpha = "none", color = "none") +
     labs()
 
-#ggsave(here::here("simulation/plots/23-monoculture_line.png"), p1, width = 5, height = 4)
-
-
 # Barplot ----
-df_network_richness <- read_csv(paste0(folder_simulation, "11-aggregated/df_network_richness.csv"), col_types = cols()) %>%
+monocultureSets_richness <- read_csv(paste0(folder_simulation, "11-aggregated/monocultureSets_richness.csv"), col_types = cols()) %>%
     mutate(Community = factor(Community, paste0("W", 0:19)))
-df_poolPairs_N_outcome <- read_csv(paste0(folder_simulation, "12-aggregated_pairs/df_poolPairs_N_outcome.csv"), col_types = cols()) %>%
+poolPairs_N_outcome <- read_csv(paste0(folder_simulation, "12-aggregated_pairs/poolPairs_N_outcome.csv"), col_types = cols()) %>%
     mutate(Community = factor(Community, paste0("W", 0:19)))
 
-p <- df_poolPairs_N_outcome %>%
+p <- poolPairs_N_outcome %>%
     group_by(Community, InteractionType, .drop = F) %>%
     summarize(Count = n()) %>%
     arrange(Community, InteractionType) %>%
     mutate(Fraction = Count / sum(Count)) %>%
-    left_join(df_network_richness) %>%
+    left_join(monocultureSets_richness) %>%
     ggplot() +
     geom_col(aes(x = Community, y = Fraction, fill = InteractionType)) +
     geom_text(aes(x = Community, label = Richness), y = 0.9) +
@@ -64,13 +59,13 @@ p <- df_poolPairs_N_outcome %>%
 ggsave(here::here("simulation/plots/23-poolPairs.png"), p, width = 8, height = 4)
 
 # 2. Community pairs ----
-df_withinCommunityPairs_N_freq <- read_csv(paste0(folder_simulation, "12-aggregated_pairs/df_withinCommunityPairs_N_freq.csv"), col_types = cols()) %>%
+withinCommunityPairs_N_freq <- read_csv(paste0(folder_simulation, "12-aggregated_pairs/withinCommunityPairs_N_freq.csv"), col_types = cols()) %>%
     mutate(Time = factor(Time, c("init", "end"))) %>%
     mutate(Pair = factor(Pair, paste0("P", 1:1000))) %>%
     mutate(InitialFrequency = factor(InitialFrequency, c(5, 50, 95)))
 
 # Line plot
-df_withinCommunityPairs_N_freq %>%
+withinCommunityPairs_N_freq %>%
     filter(Community == "W6") %>%
     ggplot(aes(x = Time, y = Frequency1, color = InitialFrequency, group = InitialFrequency)) +
     geom_line(linewidth = 1) +
@@ -84,21 +79,19 @@ df_withinCommunityPairs_N_freq %>%
     guides(alpha = "none", color = "none") +
     labs()
 
-#ggsave(here::here("simulation/plots/23-lines.png"), p1, width = 5, height = 4)
-
 
 # Barplot ----
-df_communities_richness <- read_csv(paste0(folder_simulation, "11-aggregated/df_communities_richness.csv"), col_types = cols()) %>%
+communities_richness <- read_csv(paste0(folder_simulation, "11-aggregated/communities_richness.csv"), col_types = cols()) %>%
     mutate(Community = factor(Community, paste0("W", 0:19)))
-df_withinCommunityPairs_N_outcome <- read_csv(paste0(folder_simulation, "12-aggregated_pairs/df_withinCommunityPairs_N_outcome.csv"), col_types = cols()) %>%
+withinCommunityPairs_N_outcome <- read_csv(paste0(folder_simulation, "12-aggregated_pairs/withinCommunityPairs_N_outcome.csv"), col_types = cols()) %>%
     mutate(Community = factor(Community, paste0("W", 0:19)))
 
-p <- df_withinCommunityPairs_N_outcome %>%
+p <- withinCommunityPairs_N_outcome %>%
     group_by(Community, InteractionType, .drop = F) %>%
     summarize(Count = n()) %>%
     arrange(Community, InteractionType) %>%
     mutate(Fraction = Count / sum(Count)) %>%
-    left_join(df_communities_richness) %>%
+    left_join(communities_richness) %>%
     ggplot() +
     geom_col(aes(x = Community, y = Fraction, fill = InteractionType)) +
     geom_text(aes(x = Community, label = Richness), y = 0.9) +

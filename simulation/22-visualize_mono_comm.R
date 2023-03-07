@@ -20,20 +20,20 @@ mal <- tibble(Class = paste0("T", c(rep(0, ma), rep(1, ma))), Resource = paste0(
 
 
 # 1. Communities ----
-df_communities_N <- read_csv(paste0(folder_simulation, "11-aggregated/df_communities_N.csv"), col_types = cols()) %>%
-    mutate(Well = ordered(Well, paste0("W", 0:(input_communities$n_wells[1]-1)))) %>%
-    mutate(Time = ordered(Time, c("init", paste0("T", 1:20)))) %>%
-    arrange(Well, Time)
+communities_abundance <- read_csv(paste0(folder_simulation, "11-aggregated/communities_abundance.csv"), col_types = cols()) %>%
+    mutate(Community = ordered(Community, paste0("W", 0:(input_communities$n_wells[1]-1)))) %>%
+    mutate(Time = ordered(Time, c("init", paste0("T", 1:20), "end"))) %>%
+    arrange(Community, Time)
 
 # Line plot
-p1 <- df_communities_N %>%
+p1 <- communities_abundance %>%
     filter(Abundance != 0) %>%
     ggplot(aes(x = Time, y = Abundance, color = Family, group = Species)) +
     geom_line(linewidth = .2) +
     geom_point(size = 1, shape = 21) +
     scale_color_manual(values = c("F0" = "#8A89C0", "F1" = "#FFCB77")) +
     scale_linetype_manual(values = c("F0" = 1, "F1" = 2)) +
-    facet_wrap(.~Well, ncol = 5) +
+    facet_wrap(.~Community, ncol = 5) +
     theme_classic() +
     theme(panel.border = element_rect(color = 1, fill = NA)) +
     guides(alpha = "none") +
@@ -41,13 +41,13 @@ p1 <- df_communities_N %>%
 ggsave(here::here("simulation/plots/22-community_line.png"), p1, width = 12, height = 10)
 
 # Barplot over time
-p2 <- df_communities_N %>%
+p2 <- communities_abundance %>%
     filter(Abundance != 0) %>%
     ggplot(aes(x = Time, y = Abundance, fill = Family, color = Species)) +
     geom_col() +
     scale_fill_manual(values = c("F0" = "#8A89C0", "F1" = "#FFCB77")) +
     scale_color_manual(values = rep("black", length(sal$Species))) +
-    facet_wrap(.~Well, ncol = 5) +
+    facet_wrap(.~Community, ncol = 5) +
     theme_classic() +
     guides(color = "none") +
     labs()
@@ -55,13 +55,13 @@ p2 <- df_communities_N %>%
 ggsave(here::here("simulation/plots/22-community_bar.png"), p2, width = 12, height = 10)
 
 # Barplot over time, standard
-p3 <- df_communities_N %>%
+p3 <- communities_abundance %>%
     filter(Abundance != 0) %>%
     ggplot(aes(x = Time, y = Abundance, fill = Family, color = Species)) +
     geom_col(position = "fill") +
     scale_fill_manual(values = c("F0" = "#8A89C0", "F1" = "#FFCB77")) +
     scale_color_manual(values = rep("black", length(sal$Species))) +
-    facet_wrap(.~Well, ncol = 5) +
+    facet_wrap(.~Community, ncol = 5) +
     theme_classic() +
     guides(color = "none") +
     labs()
@@ -70,25 +70,24 @@ ggsave(here::here("simulation/plots/22-community_bar_standard.png"), p3, width =
 
 
 # Barplot final time point
-df_communities_N_abundant <- df_communities_N %>%
+communities_abundance_abundant <- communities_abundance %>%
     filter(Time == max(Time)) %>%
     filter(Abundance != 0) %>%
-    group_by(Well) %>%
+    group_by(Community) %>%
     mutate(TotalAbundance = sum(Abundance)) %>%
-    #filter(Well == "W0") %>%
     filter(Abundance > 0.01 * sum(Abundance))
 
-df_communities_N_summmary <- df_communities_N_abundant %>%
+communities_abundance_summmary <- communities_abundance_abundant %>%
     summarize(Richness = n())
-p4 <- df_communities_N_abundant %>%
+p4 <- communities_abundance_abundant %>%
     filter(Time == max(Time)) %>%
     filter(Abundance != 0) %>%
-    group_by(Well) %>%
+    group_by(Community) %>%
     filter(Abundance > 0.01 * sum(Abundance)) %>%
     mutate(RelativeAbundance = Abundance / sum(Abundance)) %>%
     ggplot() +
-    geom_col(aes(x = Well, y = RelativeAbundance, fill = Family), color = 1) +
-    geom_text(data = df_communities_N_summmary, aes(x = Well, label = Richness), y = 1.1) +
+    geom_col(aes(x = Community, y = RelativeAbundance, fill = Family), color = 1) +
+    geom_text(data = communities_abundance_summmary, aes(x = Community, label = Richness), y = 1.1) +
     scale_fill_manual(values = c("F0" = "#8A89C0", "F1" = "#FFCB77")) +
     scale_y_continuous(expand = c(0, 0), limits = c(0, 1.1)) +
     coord_cartesian(ylim = c(0, 1), clip = "off") +
@@ -101,15 +100,14 @@ ggsave(here::here("simulation/plots/22-community_bar_final.png"), p4, width = 9,
 
 
 
-# 2. Monoculture ----
-df_monocultures_N <- read_csv(paste0(folder_simulation, "11-aggregated/df_monocultures_N.csv"), col_types = cols()) %>%
+# 2. Monocultures ----
+monocultures_abundance <- read_csv(paste0(folder_simulation, "11-aggregated/monocultures_abundance.csv"), col_types = cols()) %>%
     mutate(Well = ordered(Well, paste0("W", 0:(input_monocultures$n_wells[1]-1)))) %>%
     mutate(Time = ordered(Time, c("init", paste0("T", 1:20)))) %>%
     arrange(Well, Time)
 
 # Line plot
-p1 <- df_monocultures_N %>%
-    filter(Abundance != 0) %>%
+p1 <- monocultures_abundance %>%
     ggplot(aes(x = Time, y = Abundance, color = Family, group = Species)) +
     geom_line(linewidth = .2) +
     geom_point(size = 1, shape = 21) +
