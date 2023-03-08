@@ -1,20 +1,14 @@
 #' This scripts generate the figures for pool pairs and community pairs
 
-
 library(tidyverse)
 library(cowplot)
 source(here::here("analysis/00-metadata.R"))
+source(here::here("simulation/01-generate_input.R"))
 
 # 0. parameters ----
 input_parameters <- read_csv(here::here("simulation/01-input_parameters.csv"), col_types = cols())
 input_poolPairs <- read_csv(here::here("simulation/03a-input_poolPairs.csv"), col_types = cols())
 input_withinCommunityPairs <- read_csv(here::here("simulation/03b-input_withinCommunityPairs.csv"), col_types = cols())
-
-# Generate family-species and class-resource table for matching
-sa <- input_parameters$sa[1]
-ma <- input_parameters$ma[1]
-sal <- tibble(Family = paste0("F", c(rep(0, sa), rep(1, sa))), Species = paste0("S", 0:(sa * 2 - 1)))
-mal <- tibble(Class = paste0("T", c(rep(0, ma), rep(1, ma))), Resource = paste0("R", 0:(ma * 2 - 1)))
 
 # 1. Pool pairs ----
 poolPairs_N_freq <- read_csv(paste0(folder_simulation, "12-aggregated_pairs/poolPairs_N_freq.csv"), col_types = cols()) %>%

@@ -1,2 +1,2 @@
-output_dir,save_timepoint,init_N0,init_R0,exp_id,seed,sa,ma,S,R0_food,n_communities,n_wells,w,sampling,c_fs,sigc_fs,c_fa,sigc_fa,c_rs,sigc_rs,c_ra,sigc_ra,ffss,ffsa,ffas,ffaa,frss,frsa,fras,fraa,l1,l1_sd,l2,l2_sd,l
-/Users/cychang/Dropbox/lab/emergent-coexistence/simulation/02c-communitiesWithoutCrossfeeding/,TRUE,communities-1-N_init.csv,communities-1-R_init.csv,1,1,500,10,50,1000,20,20,1,empirical,0.183,0.0478,0.192,0.0407,0.0268,0.0314,0.236,0.0828,0,0,0,0,0,0,0,0,0,0,0,0,0
+output_dir,save_timepoint,init_N0,init_R0,exp_id,seed,sa,ma,S,R0_food,n_communities,n_wells,w,l,sampling,c_fs,sigc_fs,c_fa,sigc_fa,c_rs,sigc_rs,c_ra,sigc_ra,ffss,ffsa,ffas,ffaa,frss,frsa,fras,fraa,l1,l1_sd,l2,l2_sd
+/Users/cychang/Dropbox/lab/emergent-coexistence/simulation/02c-communitiesWithoutCrossfeeding/,TRUE,communities-1-N_init.csv,communities-1-R_init.csv,1,1,500,10,50,1000,20,20,1,0,empirical,0.183,0.0478,0.192,0.0407,0.0268,0.0314,0.236,0.0828,0,0,0,0,0,0,0,0,0,0,0,0

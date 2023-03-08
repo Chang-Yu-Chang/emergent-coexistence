@@ -14,8 +14,8 @@ source(here::here("analysis/00-metadata.R"))
 input_parameters <- read_csv(here::here("simulation/01-input_parameters.csv"), col_types = cols())
 input_monocultures <- read_csv(here::here("simulation/02a-input_monocultures.csv"), col_types = cols())
 output_dir <- paste0(folder_simulation, "02a-monocultures/")
-Dm_S0 <- read_csv(paste0(output_dir, "00-D_S0.csv"), skip = 1, col_types = cols()) # D matrix
-Dm_S500 <- read_csv(paste0(output_dir, "00-D_S500.csv"), skip = 1, col_types = cols()) # D matrix
+Dm_F0 <- read_csv(paste0(output_dir, "00-D_S0.csv"), skip = 1, col_types = cols()) # D matrix
+Dm_F1 <- read_csv(paste0(output_dir, "00-D_S20.csv"), skip = 1, col_types = cols()) # D matrix
 cm <- read_csv(paste0(output_dir, "00-c.csv"), skip = 1, col_types = cols()) # c matrix
 lm <- read_csv(paste0(output_dir, "00-l.csv"), skip = 1, col_types = cols()) # l matrix
 
@@ -61,7 +61,7 @@ ggsave(here::here("simulation/plots/21-matrix2_c.png"), p2, width = 4, height = 
 
 
 # 2. D matrix ----
-Dm_S0l <- Dm_S0 %>% # D matrix longer
+Dm_F0l <- Dm_F0 %>% # D matrix longer
     pivot_longer(cols = starts_with("R"), names_to = "Resource1", values_to = "SecretionFlux") %>%
     rename(Class2 = ...1, Resource2 = ...2) %>%
     select(-Class2) %>%
@@ -69,7 +69,7 @@ Dm_S0l <- Dm_S0 %>% # D matrix longer
     left_join(rename_with(mal, ~ paste0(., "2"), everything()), by = join_by(Resource2)) %>%
     select(Class1, Resource1, ResourceID1, Class2, Resource2, ResourceID2, SecretionFlux)
 
-Dm_S500l <- Dm_S500 %>% # D matrix longer
+Dm_F1l <- Dm_F1 %>% # D matrix longer
     pivot_longer(cols = starts_with("R"), names_to = "Resource1", values_to = "SecretionFlux") %>%
     rename(Class2 = ...1, Resource2 = ...2) %>%
     select(-Class2) %>%
@@ -77,7 +77,7 @@ Dm_S500l <- Dm_S500 %>% # D matrix longer
     left_join(rename_with(mal, ~ paste0(., "2"), everything()), by = join_by(Resource2)) %>%
     select(Class1, Resource1, ResourceID1, Class2, Resource2, ResourceID2, SecretionFlux)
 
-p1_1 <- Dm_S0l %>%
+p1_1 <- Dm_F0l %>%
     ggplot() +
     geom_tile(aes(x = ResourceID1, y = ResourceID2, fill = SecretionFlux)) +
     # Color bar
@@ -101,7 +101,7 @@ p1_1 <- Dm_S0l %>%
     labs(x = expression(R[alpha]), y = expression(R[beta])) +
     ggtitle("Metabolic matrix (D) of a fermenter")
 
-p1_2 <- Dm_S500l %>%
+p1_2 <- Dm_F1l %>%
     ggplot() +
     geom_tile(aes(x = ResourceID1, y = ResourceID2, fill = SecretionFlux)) +
     # Color bar

@@ -24,7 +24,8 @@ input_parameters <- tibble(
     n_communities = 20,
     n_wells = 200, # Note that the well number (column number) of init_N0 has to match n_wells
     w = 1,
-    sampling = "empirical", # "empirical", "binary", "gaussian"
+    l = 0.8,
+    sampling = "empirical", # "empirical", "binary", "gamma"
     # c matrix
     c_fs = 0.183,  # mean uptake rates of fermenter on sugar
     sigc_fs = 0.0478, # standard deviation of uptake rates of fermenter on sugar
@@ -47,8 +48,7 @@ input_parameters <- tibble(
     l1 = 0.442,
     l1_sd = 0.108,
     l2 = 0.00241,
-    l2_sd = 0.00224,
-    l = 0.8
+    l2_sd = 0.00224
 )
     # Test
     # mutate(

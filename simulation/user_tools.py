@@ -48,7 +48,7 @@ def sample_matrices(assumptions):
     
     # Sample c matrix; default by gamma
     if assumptions['sampling'] == 'empirical':
-        #assert assumptions['muc'] < M*assumptions['c1'], 'muc not attainable with given M and c1.'
+        assert assumptions['muc'] < M*assumptions['c1'], 'muc not attainable with given M and c1.'
         c = pd.DataFrame(np.zeros((S,M)), columns = resource_index, index = consumer_index)
         
         # Parameterize the c matrix using empirical data
@@ -135,7 +135,8 @@ def sample_matrices(assumptions):
         
         # Sample D matrix using empirical data, Specific to each functional group
     
-    elif assumptions['sampling'] == 'gaussian':
+    elif assumptions['sampling'] == 'gamma':
+        assert assumptions['muc'] < M*assumptions['c1'], 'muc not attainable with given M and c1.'
         #Initialize dataframe
         c = pd.DataFrame(np.zeros((S,M)),columns=resource_index,index=consumer_index)
         #Add Gamma-sampled values, biasing consumption of each family towards its preferred resource
@@ -207,7 +208,6 @@ def sample_matrices(assumptions):
     
     # Sample l matrix. Default by uniform
     if assumptions['sampling'] == 'empirical':
-
         l = pd.DataFrame(np.zeros((S,M)), columns = resource_index, index = consumer_index)
     
         for k in range(F):
@@ -240,7 +240,7 @@ def sample_matrices(assumptions):
                     l.loc['F'+str(k), 'T'+str(j)] = np.ones((assumptions['SA'][k], assumptions['MA'][j]))
     elif assumptions['sampling'] == 'binary':
         l = assumptions['l'] * pd.DataFrame(np.ones((S,M)), columns = resource_index, index = consumer_index)
-    elif assumptions['sampling'] == 'gaussian':
+    elif assumptions['sampling'] == 'gamma':
         l = assumptions['l'] * pd.DataFrame(np.ones((S,M)), columns = resource_index, index = consumer_index)
 
     return D, c, l
@@ -342,8 +342,8 @@ def make_resource_dynamics(assumptions):
     #          'empirical': lambda R,params: params['l']*np.array([ J_in(R,params)[i,:].dot(params['D'][i].T) for i in range(len(params['D'])) ]),
     #          'two-families': lambda R,params: (params['l']*J_in(R,params)).dot(params['D'].T)
     #         }
-
-    ### new version --accepts D as a list of matrices (using list comprehension and trimming J_in before .dot() to speed up)
+    
+    #J_out = lambda R,params: (params['l']*J_in(R,params)).dot(params['D'][i].T)
     J_out = lambda R,params: params['l']*np.array([ J_in(R,params)[i,:].dot(params['D'][i].T) for i in range(len(params['D'])) ])
 
     
@@ -383,7 +383,6 @@ def make_consumer_dynamics(assumptions):
     J_in = lambda R,params: (u[assumptions['regulation']](params['c']*R,params)
                              *params['w']*sigma[assumptions['response']](R,params))
     J_growth = lambda R,params: (1-params['l'])*J_in(R,params)
-    #J_growth = lambda R,params: J_in(R,params)
     
     return lambda N,R,params: params['g']*N*(np.sum(J_growth(R,params),axis=1)-params['m'])
 
@@ -409,7 +408,7 @@ def load_assumptions(input_row):
     assumptions['l'] = float(input_row['l'])
     
     ## Consumer consumption rates
-    scaler = 10
+    scaler = 50
     assumptions['sampling'] = str(input_row['sampling']) 
     assumptions['c_fs'] = float(input_row['c_fs']) * scaler
     assumptions['sigc_fs'] = float(input_row['sigc_fs']) * scaler
@@ -507,6 +506,7 @@ def run_simulations(input_row):
     params['c'] = c
     params['D'] = D
     params['l'] = l
+    print(len(params['D']))
     #print(params)
     # print(type(params))
     # for k in range(assumptions['n_wells']):
@@ -533,7 +533,7 @@ def run_simulations(input_row):
     npass = 20
     for i in range(npass): # number of passages
         #for j in range(5): # time of propagation 
-        Plate.Propagate(T = 10, compress_resources = False, compress_species = True)
+        Plate.Propagate(T = 1, compress_resources = False, compress_species = True)
         #print("T" + str(i+1) + "t" + str(j+1))
         print("T" + str(i+1))
         Plate.N.round(2).to_csv(input_row['output_dir'] + re.sub("init.csv", "T" + str(i+1) + ".csv", input_row["init_N0"]))
@@ -541,7 +541,7 @@ def run_simulations(input_row):
         if i == (npass-1): # last transfer
             Plate.N.round(2).to_csv(input_row['output_dir'] + re.sub("init.csv", "end.csv", input_row["init_N0"]))
             Plate.R.round(2).to_csv(input_row['output_dir'] + re.sub("init.csv", "end.csv", input_row["init_R0"]))
-        Plate.Passage(f = np.eye(a['n_wells'])/100, refresh_resource = True)
+        Plate.Passage(f = np.eye(a['n_wells'])/10, refresh_resource = True)
 
     #     Plate.RunExperiment(np.eye(a['n_wells'])/10, T = 1, npass = 1, refresh_resource = True)
     #     Plate.N.round(2).to_csv(input_row['output_dir'] + re.sub("init.csv", "end.csv", input_row["init_N0"]))
