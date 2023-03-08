@@ -248,9 +248,10 @@ pC <- pairs %>%
     ggplot() +
     geom_col(aes(x = CommunityLabel, fill = InteractionType, y = Fraction), color = 1, width = .8, size = .5) +
     annotate("text", x = 1:13, y = 1.15, label = communities$CommunitySize, size = 4) +
+    annotate("text", x = 14, y = 1.15, label = "n. of species", size = 4, hjust = 0) +
     annotate("segment", x = .5, xend = 18, y = 1.1, yend = 1.1, color = "black") +
     geom_text(aes(x = CommunityLabel, y = 1.05, label = TotalCount), size = 4) +
-    annotate("text", x = rep(14, 2), y = c(1.15, 1.05), label = c("n. of species", "n. of tested pairs"), size = 4, hjust = 0) +
+    annotate("text", x = 14, y = 1.05, label = "n. of tested pairs", size = 4, hjust = 0) +
     scale_fill_manual(values = assign_interaction_color(), breaks = c("coexistence", "exclusion", "unknown")) +
     scale_x_continuous(breaks = 1:13, expand = c(0.01, 0)) +
     scale_y_continuous(breaks = c(0,.5,1), limit = c(0, 1.3), expand = c(0,0)) +

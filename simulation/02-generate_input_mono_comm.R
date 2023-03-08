@@ -11,16 +11,18 @@ source(here::here("analysis/00-metadata.R"))
 # 1. generates mapping files ----
 input_parameters <- read_csv(here::here("simulation/01-input_parameters.csv"), col_types = cols())
 
-# Single species, or monocultures
+
+
+# 1.1 Single species, or monocultures ----
 input_parameters %>%
     slice(rep(1, 1)) %>%
     mutate(save_timepoint = T) %>%
     mutate(output_dir = paste0(folder_simulation, "02a-monocultures/")) %>%
-    mutate(init_N0 = paste0("monoculture-1-N_init.csv"), exp_id = 1, n_wells = 200) %>%
+    mutate(init_N0 = paste0("monoculture-1-N_init.csv"), exp_id = 1) %>%
     mutate(init_R0 = paste0("monoculture-1-R_init.csv")) %>%
     write_csv(here::here("simulation/02a-input_monocultures.csv"))
 
-# Self-assembly, or communities
+# 1.2 Top-down communities ----
 input_parameters %>%
     slice(rep(1, 1)) %>%
     mutate(save_timepoint = T) %>%
@@ -29,25 +31,47 @@ input_parameters %>%
     mutate(init_R0 = paste0("communities-1-R_init.csv")) %>%
     write_csv(here::here("simulation/02b-input_communities.csv"))
 
+# 1.3 Top-down communities without crossfeeding ----
+input_parameters %>%
+    slice(rep(1, 1)) %>%
+    mutate(save_timepoint = T) %>%
+    mutate(output_dir = paste0(folder_simulation, "02c-communitiesWithoutCrossfeeding/")) %>%
+    mutate(init_N0 = paste0("communities-1-N_init.csv"), exp_id = 1, n_wells = 20) %>%
+    mutate(init_R0 = paste0("communities-1-R_init.csv")) %>%
+    mutate(l1 = 0, l1_sd = 0, l2 = 0, l2_sd = 0) %>%
+    mutate(l = 0) %>%
+    mutate(
+        ffss = 0, # fraction of flux from sugar to sugar in fermenter
+        ffsa = 0, # fraction of flux from sugar to acid in fermenter
+        ffas = 0, # fraction of flux from acid to sugar in fermenter
+        ffaa = 0, # fraction of flux from acid to acid in fermenter
+        frss = 0, # fraction of flux from sugar to sugar in respirator
+        frsa = 0, # fraction of flux from sugar to acid in respirator
+        fras = 0, # fraction of flux from acid to sugar in respirator
+        fraa = 0  # fraction of flux from acid to acid in respirator
+    ) %>%
+    write_csv(here::here("simulation/02c-input_communitiesWithoutCrossfeeding.csv"))
+
 
 # 2. generate initial composition files ----
 input_monocultures <- read_csv(here::here("simulation/02a-input_monocultures.csv"), col_types = cols())
 input_communities <- read_csv(here::here("simulation/02b-input_communities.csv"), col_types = cols())
+input_communitiesWithoutCrossfeeding <- read_csv(here::here("simulation/02c-input_communitiesWithoutCrossfeeding.csv"), col_types = cols())
 
-# Generate family-species and class-resource matching tibble
+# 2.0 Generate family-species and class-resource matching tibble ----
 # Note that input_independent has to use the same sa and ma throughout
 sa <- input_parameters$sa[1]
 ma <- input_parameters$ma[1]
 sal <- tibble(Family = paste0("F", c(rep(0, sa), rep(1, sa))), Species = paste0("S", 0:(sa * 2 - 1)))
 mal <- tibble(Class = paste0("T", c(rep(0, ma), rep(1, ma))), Resource = paste0("R", 0:(ma * 2 - 1)))
 
-# Monoculture
+# 2.1 Monoculture ----
 draw_monoculture <- function(input_monocultures) {
     n_wells <- input_monocultures$n_wells
     tibble(
         Well = paste0("W", 0:(n_wells-1)),
         Species = paste0("S", sample(0:(sa*2-1), n_wells, replace = F)), # Sample up to 200 from the global pool
-        Abundance = 1
+        Abundance = 1 # Total inoculum will be the same
     ) %>%
         full_join(sal, by = "Species") %>%
         # Fill the non-chosen species
@@ -75,7 +99,7 @@ draw_monoculture(input_monocultures) %>%
 set_monoculture_resource(input_monocultures) %>%
     write_csv(paste0(input_monocultures$output_dir, "monoculture-1-R_init.csv"))
 
-# Self-assembly. Draw a fix number of S
+# 2.2 Communities. Draw a fix number of S ----
 draw_community <- function(input_communities, candidate_species = NA) {
     S <- input_communities$S
     n_communities <- input_communities$n_communities
@@ -96,7 +120,7 @@ draw_community <- function(input_communities, candidate_species = NA) {
     # Make a long list
     N <- tibble(Well = rep(paste0("W", 0:(n_communities-1)), each = S),
                 Species = paste0("S", species),
-                Abundance = rep(1, n_communities * S)) %>%
+                Abundance = rep(1/S, n_communities * S)) %>%
         full_join(sal, by = "Species") %>%
         # Fill the non-chosen species
         replace_na(list(Well = "W0", Abundance = 0)) %>%
@@ -127,3 +151,11 @@ draw_community(input_communities) %>%
 set_community_resource(input_communities) %>%
     write_csv(paste0(input_communities$output_dir, "communities-1-R_init.csv"))
 
+# 2.3 Communities without crossfeeding ----
+
+set.seed(1)
+draw_community(input_communitiesWithoutCrossfeeding) %>%
+    write_csv(paste0(input_communitiesWithoutCrossfeeding$output_dir, "communities-1-N_init.csv"))
+
+set_community_resource(input_communitiesWithoutCrossfeeding) %>%
+    write_csv(paste0(input_communitiesWithoutCrossfeeding$output_dir, "communities-1-R_init.csv"))

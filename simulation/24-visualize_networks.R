@@ -10,13 +10,13 @@ library(tidygraph)
 library(ggraph)
 source(here::here("analysis/00-metadata.R"))
 
-# 0. ----
+# 0. load network objects ----
 load(paste0(folder_simulation, "11-aggregated/monocultureSets_network.Rdata"))
 load(paste0(folder_simulation, "11-aggregated/communities_network.Rdata"))
-monocultureSets_network
-communities_network
+# monocultureSets_network
+# communities_network
 
-#
+# 0.1 plotting functions ----
 set.seed(1)
 node_size = 3
 edge_width = .8
@@ -163,6 +163,76 @@ ggsave(here::here("simulation/plots/24-hierarchy_scores.png"), p, width = 4, hei
 #           legend.background = element_rect(fill = NA, color = NA))
 # p_legend <- get_legend(temp)
 # pB <- ggdraw(pB) + draw_plot(p_legend,.2,.2,.1,.1)
+
+
+
+
+
+
+# Matrix form of networks ----
+
+
+plot_matrix <- function (species, pairs) {
+    # species <- monocultureSets_network$Species[[i]]$Species
+    # pairs <- monocultureSets_network$Pairs[[i]]
+    pairs %>%
+        bind_rows(tibble(Species1 = species$Species, Species2 = Species1)) %>%
+        mutate(Species1 = factor(Species1, rev(species$Species))) %>%
+        mutate(Species2 = factor(Species2, species$Species)) %>%
+        ggplot() +
+        geom_tile(aes(x = Species2, y = Species1, fill = InteractionType), color = 1, linewidth = .5) +
+        scale_fill_manual(values = interaction_color) +
+        scale_x_discrete(drop = FALSE, expand = c(0, 0), position = "top") +
+        scale_y_discrete(drop = FALSE, expand = c(0, 0), position = "right") +
+        theme_classic() +
+        theme(
+            legend.position = c(0.3, 0.4),
+            legend.background = element_blank(),
+            axis.text = element_blank(),
+            axis.title = element_blank(),
+            plot.margin = unit(c(1,0.2,0.2,0.2), "cm")
+        ) +
+        guides(fill = guide_legend(title = "")) +
+        labs()
+}
+
+monocultureSets_network <- monocultureSets_network %>%
+    rowwise() %>%
+    mutate(MatrixPlot = plot_matrix(Species, Pairs) %>% list())
+
+p <- plot_grid(plotlist = monocultureSets_network$MatrixPlot, labels = monocultureSets_network$Community,
+               hjust = 0, label_x = 0.01) + paint_white_background()
+
+ggsave(here::here("simulation/plots/24-monocultureSets_matrix.png"), p, width = 15, height = 10)
+
+communities_network <- communities_network %>%
+    rowwise() %>%
+    mutate(MatrixPlot = plot_matrix(Species, Pairs) %>% list())
+
+p <- plot_grid(plotlist = communities_network$MatrixPlot, labels = communities_network$Community,
+               hjust = 0, label_x = 0.01) + paint_white_background()
+
+ggsave(here::here("simulation/plots/24-communities_matrix.png"), p, width = 15, height = 10)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

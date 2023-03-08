@@ -1,6 +1,6 @@
 from user_tools import *
 
-# input_csv = 'simulation/01b-input_communities.csv' # Input file name
+# input_csv = 'simulation/02b-input_communities.csv' # Input file name
 # row_number = 0 # Which row of experiment to run
 # input_row = pd.read_csv(input_csv).loc[row_number]
 # run_simulations(input_row)

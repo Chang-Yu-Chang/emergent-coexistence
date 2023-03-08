@@ -15,6 +15,27 @@ stl <- read_csv(paste0(folder_data, "temp/21-stl.csv"), col_types = cols())
 
 # 1. c matrix from the growth curves ----
 isolates_u <- read_csv(paste0(folder_data, "temp/21-isolates_u.csv"), col_types = cols())
+p <- isolates_u %>%
+    left_join(csl) %>%
+    mutate(Type = factor(Type, c("sugar", "acid"))) %>%
+    arrange(Type) %>%
+    mutate(Source = factor(Source, unique(Source))) %>%
+    filter(!is.na(Fermenter)) %>%
+    ggplot(aes(x = Fermenter, y = u, fill = Fermenter)) +
+    geom_boxplot(outlier.size = 0) +
+    geom_point(shape = 21, position = position_jitterdodge(jitter.width = 0.2)) +
+    scale_fill_manual(values = category_color, breaks = c("fermenter", "respirator")) +
+    facet_wrap(Type~Source, scales = "free_x", nrow = 1) +
+    theme_classic() +
+    theme(legend.position = "top",
+          axis.text.x = element_blank(),
+          #axis.text.x = element_text(angle = 30, hjust = 1, vjust = 1),
+          panel.border = element_rect(color = 1, fill = NA)) +
+    guides(fill = guide_legend(title = "")) +
+    labs(x = "", y = "update rate (u)")
+
+ggsave(paste0(folder_data, "temp/22-update_rate.png"), p, width = 15, height = 5)
+if (FALSE) {
 p1 <- isolates_u %>%
     left_join(csl) %>%
     filter(Type == "sugar") %>%
@@ -38,13 +59,13 @@ p2 <- isolates_u %>%
     ggtitle("Organic acids")
 p <- plot_grid(p1, p2, nrow = 1, rel_widths = c(1, 3), axis = "tb", align = "h")
 
-ggsave(paste0(folder_data, "temp/22-update_rate.png"), p, width = 10, height = 10)
+}
 
 
-##
+## Average values
 isolates_u %>%
     left_join(select(csl, Source, SourceType = Type)) %>%
-    drop_na() %>%
+    #drop_na() %>%
     group_by(Fermenter, ExpID, SourceType) %>%
     # Name
     mutate(SourceType = factor(SourceType, c("sugar", "acid"))) %>%
@@ -91,18 +112,26 @@ metabolomics %>%
 
 
 # 3. l matrix from the metabolites ----
-
 isolates_leakiness <- read_csv(paste0(folder_data, "temp/21-isolates_leakiness.csv"), col_types = cols())
+
+p <- isolates_leakiness %>%
+    mutate(Fermenter = ifelse(Fermenter, "fermenter", "respirator")) %>%
+    ggplot(aes(x = Fermenter, y = leakiness_16hr, fill = Fermenter)) +
+    geom_boxplot() +
+    geom_point(shape = 21, position = position_jitter(width = 0.2)) +
+    scale_fill_manual(values = category_color, breaks = c("fermenter", "respirator")) +
+    theme_classic() +
+    guides(fill = guide_legend(title = "")) +
+    labs(x = "")
+ggsave(paste0(folder_data, "temp/22-leakiness.png"), p, width = 3, height = 4)
+
+
+##
 isolates_leakiness %>%
     mutate(Fermenter = ifelse(Fermenter, "fermenter", "respirator")) %>%
     group_by(Fermenter) %>%
     summarize(leakiness_16hr_mean = mean(leakiness_16hr),
               leakiness_16hr_sd = sd(leakiness_16hr))
-
-
-
-
-
 
 
 

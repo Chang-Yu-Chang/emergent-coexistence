@@ -36,7 +36,6 @@ input_parameters %>%
 
 # 2. generate initial composition files ----
 # Note that n_wells in the mapping files will be modified depending on the diversity of the monocultureSets/community
-
 input_monocultures <- read_csv(here::here("simulation/02a-input_monocultures.csv"), col_types = cols())
 input_communities <- read_csv(here::here("simulation/02b-input_communities.csv"), col_types = cols())
 input_poolPairs <- read_csv(here::here("simulation/03a-input_poolPairs.csv"), col_types = cols())
@@ -70,7 +69,8 @@ draw_pairs_from_community <- function(N_community_long) {
     return(N_pairs)
 }
 set.seed(1)
-species_mono <- read_csv(paste0(input_monocultures$output_dir[1], "monoculture-1-N_end.csv"), col_types = cols()) %>%
+
+species_mono <- read_csv(paste0(input_monocultures$output_dir[1], "monoculture-1-N_T5.csv"), col_types = cols()) %>%
     rename(Family = ...1, Species = ...2) %>%
     mutate_all(~replace(., .==0, NA)) %>%
     pivot_longer(cols = starts_with("W"), names_to = "Well", values_to = "Abundance", values_drop_na = T) %>%
@@ -113,7 +113,6 @@ for (i in 1:length(N_monocultureSets_split)) {
 }
 
 write_csv(input_poolPairs, here::here("simulation/03a-input_poolPairs.csv"))
-write_csv(monocultureSets, paste0(folder_simulation, "11-aggregated/monocultureSets_richness.csv"))
 write_csv(monocultureSets_richness, paste0(folder_simulation, "11-aggregated/monocultureSets_richness.csv"))
 write_csv(monocultureSets_species, paste0(folder_simulation, "11-aggregated/monocultureSets_species.csv"))
 
@@ -162,4 +161,5 @@ for (i in 1:length(N_community_split)) {
 write_csv(input_withinCommunityPairs, here::here("simulation/03b-input_withinCommunityPairs.csv"))
 write_csv(communities_richness, paste0(folder_simulation, "11-aggregated/communities_richness.csv"))
 write_csv(communities_species, paste0(folder_simulation, "11-aggregated/communities_species.csv"))
+
 

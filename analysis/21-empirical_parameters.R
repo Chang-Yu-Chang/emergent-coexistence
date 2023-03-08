@@ -8,12 +8,12 @@ library(tidyverse)
 library(janitor)
 source(here::here("analysis/00-metadata.R"))
 
-# 0. isolate taxa ----
+# 0.1 isolate taxa ----
 isolates_RDP <- read_csv(paste0(folder_data, "temp/12-isolates_RDP.csv"), col_types = cols())
 isolates_ID <- read_csv(paste0(folder_data, "temp/00c-isolates_ID.csv"), col_types = cols()) %>%
     left_join(select(isolates_RDP, ExpID, Family, Genus, Fermenter))
 
-# 0.1 carbons source list ----
+# 0.2 carbons source list ----
 
 # Metabolite types
 csl <- tibble(Source = c("glucose", "fructose", "galactose", "ribose", "arabinose",
@@ -64,7 +64,7 @@ isolates_curves_T0 <- isolates_curves %>%
     group_by(ID, CS) %>%
     filter(Time == min(Time)) %>%
     mutate(T0 = ifelse(Time == min(Time), 0, Time), N0 = OD620) %>%
-    # Assign a minimum OD value
+    # Assign a minimum OD value to prevent error in log(0)
     mutate(N0 = ifelse(N0 == 0, 0.001, N0)) %>%
     select(-Time, -OD620)
 isolates_growth <- isolates_curves %>%
@@ -98,7 +98,7 @@ isolates_u <- isolates_ID %>%
     select(ID, ExpID, Community, Fermenter) %>%
     left_join(isolates_growth) %>%
     left_join(isolates_OD) %>%
-    drop_na() %>%
+    #drop_na() %>%
     mutate(Fermenter = ifelse(Fermenter, "fermenter", "respirator")) %>%
     distinct(ExpID, .keep_all = T) %>%
     select(Fermenter, ExpID, starts_with("r") & ends_with("16hr"), starts_with("OD") & ends_with("16hr")) %>%
@@ -112,10 +112,6 @@ isolates_u <- isolates_ID %>%
     rename(Source = CS)
 
 write_csv(isolates_u, paste0(folder_data, "temp/21-isolates_u.csv"))
-
-
-
-
 
 
 # 2. D matrix from the metabolomics ----
@@ -174,10 +170,9 @@ write_csv(metabolomics, paste0(folder_data, "temp/21-metabolomics.csv"))
 
 # 3. l matrix from the metabolites ----
 # Byproduct measurement on glucose. Data from Sylvie
-isolates_byproduct <- read_csv(paste0(folder_data, "raw/growth_rate/By_Products_Glucose.csv"), col_types = cols()) %>%
-    select(OD620_16h = OD620, ID = SangerID, Glucose_perc, acetate_mM, succinate_mM, lactate_mM, gluconate_mM, ketogluconate_mM)
 isolates_byproduct_time <- read_csv(paste0(folder_data, "raw/growth_rate/Estrela_2021_isolates_ph_OAs.csv"), col_types = cols()) %>%
     select(ID = SangerID, Time = time_hours, OD620, pH, Glucose_perc, acetate_mM, succinate_mM, lactate_mM)
+
 # Leakiness
 isolates_leakiness <- isolates_byproduct_time %>%
     select(ID, Time, gluConc = Glucose_perc, X_acetate = acetate_mM, X_succinate = succinate_mM, X_lactate = lactate_mM) %>%

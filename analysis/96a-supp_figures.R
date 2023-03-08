@@ -123,27 +123,39 @@ pairs_T8_combined %>%
 isolates_abundance_loose <- read_csv(paste0(folder_data, "temp/13-isolates_abundance_loose.csv"), show_col_types = F)
 
 # Highly abundant isolate species have >0.05 relative ESV abundance
-isolates_dominant <- isolates_abundance_loose %>%
+isolates_abundant <- isolates_abundance_loose %>%
     select(Community, Isolate, RelativeAbundance) %>%
     filter(RelativeAbundance > 0.05)
 
+isolates_abundant_richness <- isolates_abundant %>%
+    group_by(Community) %>%
+    summarize(Richness = n()) %>%
+    left_join(communities) %>%
+    arrange(CommunityLabel)
+
 #
-pairs_dominant <- pairs %>%
+pairs_abundant <- pairs %>%
     select(PairID, Community, Isolate1, Isolate2, InteractionType) %>%
-    left_join(rename(isolates_dominant, Isolate1 = Isolate, RelativeAbundance1 = RelativeAbundance)) %>%
-    left_join(rename(isolates_dominant, Isolate2 = Isolate, RelativeAbundance2 = RelativeAbundance)) %>%
+    left_join(rename(isolates_abundant, Isolate1 = Isolate, RelativeAbundance1 = RelativeAbundance)) %>%
+    left_join(rename(isolates_abundant, Isolate2 = Isolate, RelativeAbundance2 = RelativeAbundance)) %>%
     filter(!is.na(RelativeAbundance1), !is.na(RelativeAbundance2)) %>%
     left_join(pairs)
 
+pairs_abundant_richness <- pairs_abundant %>%
+    group_by(Community) %>%
+    summarize(Richness = n()) %>%
+    left_join(communities) %>%
+    arrange(CommunityLabel)
+
 # Stats
-pairs_dominant %>%
+pairs_abundant %>%
     group_by(InteractionType) %>%
     count(name = "Count") %>%
     ungroup() %>%
     mutate(Fraction = Count / sum(Count))
 
 #
-p <- pairs_dominant %>%
+p <- pairs_abundant %>%
     filter(!is.na(FitnessFunction)) %>%
     group_by(Community, InteractionType) %>%
     count(name = "Count") %>%
@@ -155,21 +167,28 @@ p <- pairs_dominant %>%
     mutate(CommunityLabel = factor(CommunityLabel)) %>%
     replace_na(list(InteractionType = "unknown")) %>%
     ggplot() +
-    geom_col(aes(x = Community, fill = InteractionType, y = Fraction), color = 1, width = .8, size = .5) +
-    #geom_text(aes(x = CommunityLabel, y = .9, label = paste0("n=", CommunityPairSize)), vjust = -.5, size = 3) +
-    geom_text(aes(x = Community, y = .9, label = paste0("n=", TotalCount))) +
+    geom_col(aes(x = CommunityLabel, fill = InteractionType, y = Fraction), color = 1, width = .8, linewidth = .5) +
+    annotate("text", x = 1:13, y = 1.15, label = isolates_abundant_richness$Richness, size = 4) +
+    annotate("text", x = 14, y = 1.15, label = "n. of species", size = 4, hjust = 0) +
+    annotate("segment", x = .5, xend = 18, y = 1.1, yend = 1.1, color = "black") +
+    annotate("text", x= 1:13, y = 1.05, label = pairs_abundant_richness$Richness, size = 4) +
+    annotate("text", x = 14, y = 1.05, label = "n. of tested pairs", size = 4, hjust = 0) +
     scale_fill_manual(values = assign_interaction_color(), breaks = c("coexistence", "exclusion", "unknown")) +
-    scale_y_continuous(breaks = c(0,.5,1), limit = c(0, 1), expand = c(0,0)) +
+    scale_x_discrete(breaks = 1:13, expand = c(0.01, 0)) +
+    scale_y_continuous(breaks = c(0,.5,1), limit = c(0, 1.3), expand = c(0,0)) +
+    coord_cartesian(xlim = c(0.5, 13.5), ylim = c(0, 1), clip = "off") +
     theme_classic() +
     theme(legend.text = element_text(size = 12),
           axis.text = element_text(color = 1, size = 12),
-          axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1),
+          #axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1),
           axis.title = element_text(color = 1, size = 12),
           legend.title = element_blank(),
-          legend.position = "top") +
+          legend.position = "right",
+          plot.margin = unit(c(2,.5,.5,.5), "cm")
+    ) +
     labs(x = "Community", y = "Fraction")
 
-ggsave(here::here("plots/FigS6-pairwise_competition_dominant.png"), p, width = 8, height = 4)
+ggsave(here::here("plots/FigS6-pairwise_competition_abundant.png"), p, width = 10, height = 4)
 
 
 
