@@ -101,7 +101,6 @@ p2 <- withinCommunityPairs_N_outcome %>%
 
 
 #ggsave(here::here("simulation/plots/23-withinCommunityPairs.png"), p, width = 8, height = 4)
-
 p <- plot_grid(p1, p2, nrow = 2, align = "v", axis = "rl", labels = c("Pool pairs", "Within-community pairs"), hjust = 0, label_x = 0.01) + paint_white_background()
 ggsave(here::here("simulation/plots/23-pairs.png"), p, width = 8, height = 8)
 

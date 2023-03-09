@@ -16,39 +16,43 @@ input_parameters <- tibble(
     init_R0 = "init_R0.csv",
     exp_id = 1,
     seed = 1,
-    # Sampling pool
-    sa = 500, # number of species in each specialist family
-    ma = 10, # number of resources in each class
-    S = 50, # number of species in the initial composition of each self-assembled community
-    R0_food = 1000, # supplied R0 amount
-    n_communities = 20,
-    n_wells = 200, # Note that the well number (column number) of init_N0 has to match n_wells
+    # Testing community-simulator parameters
     w = 1,
     l = 0.8,
-    sampling = "empirical", # "empirical", "binary", "gamma"
+    # Passaging
+    n_pass = 20,            # number of transfer or passages
+    t_propagation = 10,     # time length of propagation, or length of growth cycle
+    # Sampling pool
+    sa = 500,               # number of species in each specialist family
+    ma = 20,                # number of resources in each class
+    S = 50,                 # number of species in the initial composition of each self-assembled community
+    R0_food = 1000,         # supplied R0 amount
+    n_communities = 20,     # number of communities used
+    n_wells = 200,          # number of monocultures tested
+    sampling = "empirical", # sampling approach for consumer parameters "empirical", "binary", "gamma"
     # c matrix
-    c_fs = 0.183,  # mean uptake rates of fermenter on sugar
-    sigc_fs = 0.0478, # standard deviation of uptake rates of fermenter on sugar
-    c_fa = 0.192,  # mean uptake rates of fermenter on acid
-    sigc_fa = 0.0407, # standard deviation of uptake rates of fermenter on acid
-    c_rs = 0.0268,  # mean uptake rates of respirator on sugar
-    sigc_rs = 0.0314, # standard deviation of uptake rates of respirator on sugar
-    c_ra = 0.236,  # mean uptake rates of respirator on acid
-    sigc_ra = 0.0828, # standard deviation of uptake rates of respirator on acid
+    c_fs = 0.183,           # mean uptake rates of fermenter on sugar
+    sigc_fs = 0.0478,       # standard deviation of uptake rates of fermenter on sugar
+    c_fa = 0.192,           # mean uptake rates of fermenter on acid
+    sigc_fa = 0.0407,       # standard deviation of uptake rates of fermenter on acid
+    c_rs = 0.0268,          # mean uptake rates of respirator on sugar
+    sigc_rs = 0.0314,       # standard deviation of uptake rates of respirator on sugar
+    c_ra = 0.236,           # mean uptake rates of respirator on acid
+    sigc_ra = 0.0828,       # standard deviation of uptake rates of respirator on acid
     # D matrix
-    ffss = 0, # fraction of flux from sugar to sugar in fermenter
-    ffsa = 1, # fraction of flux from sugar to acid in fermenter
-    ffas = 0, # fraction of flux from acid to sugar in fermenter
-    ffaa = 1, # fraction of flux from acid to acid in fermenter
-    frss = 0.487, # fraction of flux from sugar to sugar in respirator
-    frsa = 0.513, # fraction of flux from sugar to acid in respirator
-    fras = 0, # fraction of flux from acid to sugar in respirator
-    fraa = 1, # fraction of flux from acid to acid in respirator
+    ffss = 0,               # fraction of flux from sugar to sugar in fermenter
+    ffsa = 1,               # fraction of flux from sugar to acid in fermenter
+    ffas = 0,               # fraction of flux from acid to sugar in fermenter
+    ffaa = 1,               # fraction of flux from acid to acid in fermenter
+    frss = 0.487,           # fraction of flux from sugar to sugar in respirator
+    frsa = 0.513,           # fraction of flux from sugar to acid in respirator
+    fras = 0,               # fraction of flux from acid to sugar in respirator
+    fraa = 1,               # fraction of flux from acid to acid in respirator
     # l matrix
-    l1 = 0.442,
-    l1_sd = 0.108,
-    l2 = 0.00241,
-    l2_sd = 0.00224
+    l1 = 0.442,             # mean leakiness of fermenter
+    l1_sd = 0.108,          # sd leakiness of fermenter
+    l2 = 0.00241,           # mean leakiness of respirator
+    l2_sd = 0.00224         # sd leakiness of fermenter
 )
     # Test
     # mutate(

@@ -22,6 +22,8 @@ communities_abundance <- read_csv(paste0(folder_data, "raw/community_ESV/Emergen
 write_csv(communities_abundance, paste0(folder_data, "temp/13-communities_abundance.csv"))
 
 
+communities_abundance
+
 # 2. Align isolate 16S sequences to community ESV ----
 # ESV abundance in community
 isolates_ID <- read_csv(paste0(folder_data, "temp/00c-isolates_ID.csv"), col_types = cols())

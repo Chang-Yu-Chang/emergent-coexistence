@@ -85,7 +85,7 @@ p <- metabolomics %>%
     mutate(MetaboliteConc = log(MetaboliteConc)) %>%
     ggplot() +
     geom_tile(aes(x = Source, y = Metabolite, fill = MetaboliteConc)) +
-    facet_grid(.~Strain, scales = c("free_x")) +
+    facet_grid(.~Strain) +
     scale_fill_gradient(low = "white", high = "blue") +
     theme_classic() +
     theme(axis.text.x = element_text(angle = 90, vjust = 0.5))
@@ -108,7 +108,16 @@ metabolomics %>%
     summarize(RelativeMetaboliteConc = mean(RelativeMetaboliteConc)) %>%
     mutate(Abbreviation = paste0("f", str_sub(Fermenter, 1, 1), str_sub(SourceType, 1, 1), str_sub(MetaboliteType, 1, 1)))
 
+metabolomics %>%
+    mutate(SourceType = factor(SourceType, c("sugar", "acid"))) %>%
+    mutate(MetaboliteType = factor(MetaboliteType, c("sugar", "acid")))  %>%
+    group_by(SourceType, Source) %>%
+    distinct(SourceType, Source) %>%
+    arrange(SourceType)
 
+metabolomics %>%
+    filter(Source == "succinate") %>%
+    view
 
 
 # 3. l matrix from the metabolites ----

@@ -113,6 +113,11 @@ isolates_u <- isolates_ID %>%
 
 write_csv(isolates_u, paste0(folder_data, "temp/21-isolates_u.csv"))
 
+isolates_u %>%
+    drop_na() %>%
+    group_by(ExpID) %>%
+    summarize(n())
+
 
 # 2. D matrix from the metabolomics ----
 mb <- read_csv(paste0(folder_data, "raw/metabolomics/TMIC_LCMS.csv"), col_types = cols())

@@ -9,6 +9,8 @@ input_parameters <- read_csv(here::here("simulation/01-input_parameters.csv"), c
 input_poolPairs <- read_csv(here::here("simulation/03a-input_poolPairs.csv"), col_types = cols())
 input_withinCommunityPairs <- read_csv(here::here("simulation/03b-input_withinCommunityPairs.csv"), col_types = cols())
 
+temp_end_time = "T20"
+
 # Generate family-species and class-resource table for matching
 sa <- input_parameters$sa[1]
 ma <- input_parameters$ma[1]
@@ -191,7 +193,9 @@ for (i in 1:20) {
     poolPairs_N_sp <- poolPairs_N_init %>% distinct(Community, Pair, Species, Well)
 
     # Read end composition
-    poolPairs_N_end <- read_later_composition(input_poolPairs, "poolPairs", comm = communities_names[i], t = "end", pairs_N_sp = poolPairs_N_sp)
+    poolPairs_N_end <- read_later_composition(input_poolPairs, "poolPairs", comm = communities_names[i],
+                                              t = temp_end_time, pairs_N_sp = poolPairs_N_sp) %>%
+        mutate(Time = ifelse(Time == temp_end_time, "end", Time))
 
     # Check if the init and end has the same number of rows
     stopifnot(nrow(poolPairs_N_init) == nrow(poolPairs_N_end))
@@ -203,8 +207,8 @@ for (i in 1:20) {
     poolPairs_N_outcome[[i]] <- compute_pairwise_outcome(poolPairs_N_freq[[i]])
 }
 
-poolPairs_N_freq <- bind_rows(poolPairs_N_freq)
-poolPairs_N_outcome <- bind_rows(poolPairs_N_outcome)
+poolPairs_N_freq <- bind_rows(poolPairs_N_freq[!is.na(poolPairs_N_freq)])
+poolPairs_N_outcome <- bind_rows(poolPairs_N_outcome[!is.na(poolPairs_N_outcome)])
 
 write_csv(poolPairs_N_freq, paste0(folder_simulation, "12-aggregated_pairs/poolPairs_N_freq.csv"))
 write_csv(poolPairs_N_outcome, paste0(folder_simulation, "12-aggregated_pairs/poolPairs_N_outcome.csv"))
@@ -229,7 +233,9 @@ for (i in 1:20) {
         withinCommunityPairs_N_sp <- withinCommunityPairs_N_init %>% distinct(Community, Pair, Species, Well)
 
         # Read end composition
-        withinCommunityPairs_N_end <- read_later_composition(input_withinCommunityPairs, "withinCommunityPairs", comm = communities_names[i], t = "end", pairs_N_sp = withinCommunityPairs_N_sp)
+        withinCommunityPairs_N_end <- read_later_composition(input_withinCommunityPairs, "withinCommunityPairs", comm = communities_names[i],
+                                                             t = temp_end_time, pairs_N_sp = withinCommunityPairs_N_sp) %>%
+            mutate(Time = ifelse(Time == temp_end_time, "end", Time))
 
         # Check if the init and end has the same number of rows
         stopifnot(nrow(withinCommunityPairs_N_init) == nrow(withinCommunityPairs_N_end))

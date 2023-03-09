@@ -231,7 +231,6 @@ extract_statistics_equation <- function (model) {
 }
 model1 <- glm(InteractionType ~ Mismatch, family = "binomial", data = pairs_mismatch)
 
-
 pairs_mismatch %>%
     group_by(Mismatch, InteractionType) %>%
     chisq_test(response = MismatchGroup)
@@ -248,34 +247,22 @@ p1 <- pairs_mismatch %>%
 
 
 # boxplot by mismatch
-
-p2 <-  %>%
+p2 <- pairs_mismatch %>%
+    group_by(MismatchGroup, InteractionType) %>%
+    summarize(Count = n()) %>%
+    mutate(Fraction = Count / sum(Count), TotalCount = sum(Count)) %>%
     ggplot() +
     geom_col(aes(x = MismatchGroup, y = Fraction, fill = InteractionType), color = 1) +
     geom_text(aes(x = MismatchGroup, label = paste0("n=", TotalCount)), y = 0.9) +
     scale_fill_manual(values = interaction_color) +
     scale_y_continuous(expand = c(0,0)) +
     theme_classic() +
-    theme(panel.border = element_rect(color = 1, fill = NA), legend.position = "top") +
+    theme(legend.position = "right") +
     guides(fill = guide_legend(title = "")) +
     labs(x = "# of nucleotide difference in 16S")
 
-# boxplot by taxanomic pairs
-p3 <-  %>%
-    mutate(Fraction = Count / sum(Count), TotalCount = sum(Count)) %>%
-    ggplot() +
-    geom_col(aes(x = PairFermenter, y = Fraction, fill = InteractionType), color = 1) +
-    geom_text(aes(x = PairFermenter, label = paste0("n=", TotalCount)), y = 0.9) +
-    scale_fill_manual(values = interaction_color) +
-    scale_x_discrete(labels = c("FF" = "Fermenter\nFermenter", "FR" = "Fermenter\nRespirator", "RR" = "Respirator\nRespirator")) +
-    scale_y_continuous(expand = c(0,0)) +
-    theme_classic() +
-    theme(panel.border = element_rect(color = 1, fill = NA), legend.position = "top") +
-    guides(fill = guide_legend(title = "")) +
-    labs(x = "")
-
-p <- plot_grid(p1, p2, p3, nrow = 2, labels = LETTERS[1:3], scale = 0.9, axis = "tbrl", align = "hv") + paint_white_background()
-ggsave(here::here("plots/FigS7-mismatch_vs_coexistence.png"), p, width = 9, height = 8)
+p <- plot_grid(p1, p2, nrow = 1, labels = LETTERS[1:2], scale = 0.9, axis = "tb", align = "h") + paint_white_background()
+ggsave(here::here("plots/FigS7-mismatch_vs_coexistence.png"), p, width = 9, height = 4)
 
 
 if (FALSE) {
@@ -364,7 +351,6 @@ ggsave(here::here("plots/FigS7-mismatch_vs_rank.png"), p, width = 9, height = 8)
 
 
 # Figure S8 ESV abundance vs. strain ranks ----
-
 ## Isolate rank data
 isolates_rank <- isolates %>%
     left_join(select(communities, Community, CommunitySize), by = "Community") %>%
@@ -373,29 +359,23 @@ isolates_rank <- isolates %>%
     filter(!is.na(RelativeAbundance))
 
 ## Analysis
-model1 <- lm(Rank ~ RankRelativeAbundance, data = isolates_rank)
-model2 <- lm(RankStandardized ~ RankRelativeAbundanceStandardized, data = isolates_rank)
+cor.test(isolates_rank$RankRelativeAbundance, isolates_rank$Rank, method = c("kendall")) %>%
+    broom::tidy()
+
+cor.test(isolates_rank$RelativeAbundance, isolates_rank$Rank, method = c("kendall")) %>%
+    broom::tidy()
 
 
 ##
 p1 <- isolates_rank %>%
-    ggplot(aes(x = RankRelativeAbundance, y = Rank)) +
+    ggplot(aes(x = RelativeAbundance, y = Rank)) +
     geom_point(shape = 21, size = 2, stroke = 1, position = position_jitter(width = 0.15, height = 0.15)) +
     geom_smooth(formula = y~x, method = "lm") +
-    annotate("text", x = 1, y = 12, label = extract_statistics_equation(model1), hjust = 0) +
-    scale_x_continuous(breaks = 1:12) +
+    #annotate("text", x = 1, y = 12, label = extract_statistics_equation(model1), hjust = 0) +
+    #scale_x_continuous(breaks = 1:12) +
     scale_y_continuous(breaks = 1:12) +
     theme_classic() +
     labs(x = "Ranked ESV abundance", y = "Competitive rank")
-
-
-p2 <- isolates_rank %>%
-    ggplot(aes(x = RankRelativeAbundanceStandardized, y = RankStandardized)) +
-    geom_point(shape = 21, size = 2, stroke = 1, position = position_jitter(width = 0.05, height = 0.05)) +
-    geom_smooth(formula = y~x, method = "lm") +
-    annotate("text", x = 0.6, y = 0.18, label = extract_statistics_equation(model2), hjust = 0) +
-    theme_classic() +
-    labs(x = "Ranked ESV abundance (standardized)", y = "Competitive rank (standardized)")
 
 p <- plot_grid(p1, p2, nrow = 1, labels = LETTERS[1:2], scale = 0.9, align = "hv") + paint_white_background()
 ggsave(here::here("plots/FigS8-abundance_vs_rank.png"), p, width = 8, height = 4)
@@ -406,6 +386,8 @@ ggsave(here::here("plots/FigS8-abundance_vs_rank.png"), p, width = 8, height = 4
 pairs_freq_ESV <- pairs_freq %>%
     left_join(pairs, by = join_by(Community, Isolate1, Isolate2)) %>%
     filter(InteractionType == "coexistence") %>%
+    group_by(PairID, ExpID1, ExpID2) %>%
+    summarize(meanIsolate1CFUFreqMean = mean(Isolate1CFUFreqMean)) %>%
     left_join(rename_with(select(isolates, ExpID, RelativeAbundance), ~paste0(.x, "1")), by = "ExpID1") %>%
     left_join(rename_with(select(isolates, ExpID, RelativeAbundance), ~paste0(.x, "2")), by = "ExpID2") %>%
     mutate(RelativeRelativeAbundance1 = RelativeAbundance1 / (RelativeAbundance1 + RelativeAbundance2)) %>%
@@ -413,7 +395,7 @@ pairs_freq_ESV <- pairs_freq %>%
     filter(!is.na(RelativeAbundance1))
 
 p <- pairs_freq_ESV %>%
-    ggplot(aes(x = RelativeAbundance1, y = Isolate1CFUFreqMean)) +
+    ggplot(aes(x = RelativeAbundance1, y = meanIsolate1CFUFreqMean)) +
     geom_point(shape = 21, size = 2, stroke = .5) +
     geom_smooth(formula = y~x, method = "lm") +
     scale_x_continuous(limits = c(0,1)) +
@@ -425,7 +407,8 @@ p <- pairs_freq_ESV %>%
 ggsave(here::here("plots/FigS9-abundance_vs_pair_frequency.png"), p, width = 4, height = 3)
 
 ## Analysis
-lm(Isolate1CFUFreqMean ~ RelativeAbundance1, data = pairs_freq_ESV) %>% summary()
+lm(meanIsolate1CFUFreqMean ~ RelativeAbundance1, data = pairs_freq_ESV) %>% summary()
+
 
 
 

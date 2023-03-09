@@ -55,34 +55,34 @@ def sample_matrices(assumptions):
         for k in range(F):
             for j in range(T):
                 if k==0 and j==0: # fermenter on sugar
-                    c_mean = (assumptions['c_fs']/M)*(1+assumptions['q']*(M-assumptions['MA'][j])/assumptions['MA'][j])
-                    c_var = (assumptions['sigc_fs']**2/M)*(1+assumptions['q']*(M-assumptions['MA'][j])/assumptions['MA'][j])
-                    # c_mean = (assumptions['c_fs'])
-                    # c_var = assumptions['sigc_fs']**2
+                    # c_mean = (assumptions['c_fs']/M)*(1+assumptions['q']*(M-assumptions['MA'][j])/assumptions['MA'][j])
+                    # c_var = (assumptions['sigc_fs']**2/M)*(1+assumptions['q']*(M-assumptions['MA'][j])/assumptions['MA'][j])
+                    c_mean = (assumptions['c_fs'])
+                    c_var = assumptions['sigc_fs']**2
                     thetac = c_var/c_mean
                     kc = c_mean**2/c_var
                     c.loc['F'+str(k), 'T'+str(j)] = np.random.gamma(kc, scale = thetac, size = (assumptions['SA'][k], assumptions['MA'][j]))
                 elif k==1 and j==1: # respirator on acid
-                    c_mean = (assumptions['c_ra']/M)*(1+assumptions['q']*(M-assumptions['MA'][j])/assumptions['MA'][j])
-                    c_var = (assumptions['sigc_ra']**2/M)*(1+assumptions['q']*(M-assumptions['MA'][j])/assumptions['MA'][j])
-                    # c_mean = assumptions['c_ra']
-                    # c_var = assumptions['sigc_ra']**2
+                    # c_mean = (assumptions['c_ra']/M)*(1+assumptions['q']*(M-assumptions['MA'][j])/assumptions['MA'][j])
+                    # c_var = (assumptions['sigc_ra']**2/M)*(1+assumptions['q']*(M-assumptions['MA'][j])/assumptions['MA'][j])
+                    c_mean = assumptions['c_ra']
+                    c_var = assumptions['sigc_ra']**2
                     thetac = c_var/c_mean
                     kc = c_mean**2/c_var
                     c.loc['F'+str(k), 'T'+str(j)] = np.random.gamma(kc, scale = thetac, size = (assumptions['SA'][k], assumptions['MA'][j]))
                 elif k==1 and j==0: # respirator on sugar
-                    c_mean = (assumptions['c_rs']/M)*(1+assumptions['q']*(M-assumptions['MA'][j])/assumptions['MA'][j])
-                    c_var = (assumptions['sigc_rs']**2/M)*(1+assumptions['q']*(M-assumptions['MA'][j])/assumptions['MA'][j])
-                    # c_mean = assumptions['c_rs']
-                    # c_var = assumptions['sigc_rs']**2
+                    # c_mean = (assumptions['c_rs']/M)*(1+assumptions['q']*(M-assumptions['MA'][j])/assumptions['MA'][j])
+                    # c_var = (assumptions['sigc_rs']**2/M)*(1+assumptions['q']*(M-assumptions['MA'][j])/assumptions['MA'][j])
+                    c_mean = assumptions['c_rs']
+                    c_var = assumptions['sigc_rs']**2
                     thetac = c_var/c_mean
                     kc = c_mean**2/c_var
                     c.loc['F'+str(k), 'T'+str(j)] = np.random.gamma(kc, scale = thetac, size = (assumptions['SA'][k], assumptions['MA'][j]))
                 elif k==0 and j==1: # fermenter on acid
-                    c_mean = (assumptions['c_fa']/M)*(1+assumptions['q']*(M-assumptions['MA'][j])/assumptions['MA'][j])
-                    c_var = (assumptions['sigc_fa']**2/M)*(1+assumptions['q']*(M-assumptions['MA'][j])/assumptions['MA'][j])
-                    # c_mean = assumptions['c_fa']
-                    # c_var = assumptions['sigc_fa']**2
+                    # c_mean = (assumptions['c_fa']/M)*(1+assumptions['q']*(M-assumptions['MA'][j])/assumptions['MA'][j])
+                    # c_var = (assumptions['sigc_fa']**2/M)*(1+assumptions['q']*(M-assumptions['MA'][j])/assumptions['MA'][j])
+                    c_mean = assumptions['c_fa']
+                    c_var = assumptions['sigc_fa']**2
                     thetac = c_var/c_mean
                     kc = c_mean**2/c_var
                     c.loc['F'+str(k), 'T'+str(j)] = np.random.gamma(kc, scale = thetac, size = (assumptions['SA'][k], assumptions['MA'][j]))
@@ -397,18 +397,22 @@ def load_assumptions(input_row):
     assumptions['n_communities'] = int(input_row['n_communities'])
     assumptions['m'] = 0 # Set m=0 to turn off maintanence cost. i.e., no cell dies
     assumptions['S'] = int(input_row['S']) # Number of initial per-well species sampled from the species pool
-    assumptions['w'] = float(input_row['w'])
     
-    #
+    # Test community-simulator parameters
     assumptions['q'] = 0 #Preference strength of specialist families (0 for generalist and 1 for specialist)
     assumptions['c0'] = 0 #Sum of background consumption rates in binary model
     assumptions['c1'] = 1 #Specific consumption rate in binary model
     assumptions['muc'] = 10 # Mean sum of consumption rates (used in all models)
     assumptions['sigc'] = 3 # Standard deviation of sum of consumption rates for Gaussian and Gamma models
     assumptions['l'] = float(input_row['l'])
+    assumptions['w'] = float(input_row['w'])
+    
+    # Passage parameters
+    assumptions['n_pass'] = int(input_row['n_pass'])
+    assumptions['t_propagation'] = float(input_row['t_propagation'])
     
     ## Consumer consumption rates
-    scaler = 50
+    scaler = 1
     assumptions['sampling'] = str(input_row['sampling']) 
     assumptions['c_fs'] = float(input_row['c_fs']) * scaler
     assumptions['sigc_fs'] = float(input_row['sigc_fs']) * scaler
@@ -506,7 +510,7 @@ def run_simulations(input_row):
     params['c'] = c
     params['D'] = D
     params['l'] = l
-    print(len(params['D']))
+    #print(len(params['D']))
     #print(params)
     # print(type(params))
     # for k in range(assumptions['n_wells']):
@@ -530,15 +534,14 @@ def run_simulations(input_row):
     # Make plate object
     Plate = Community(init_state, dynamics, params, parallel = False)
     print("Start passaging")
-    npass = 20
-    for i in range(npass): # number of passages
+    for i in range(a['n_pass']): # number of passages
         #for j in range(5): # time of propagation 
-        Plate.Propagate(T = 1, compress_resources = False, compress_species = True)
+        Plate.Propagate(T = a['t_propagation'], compress_resources = False, compress_species = True)
         #print("T" + str(i+1) + "t" + str(j+1))
         print("T" + str(i+1))
         Plate.N.round(2).to_csv(input_row['output_dir'] + re.sub("init.csv", "T" + str(i+1) + ".csv", input_row["init_N0"]))
         Plate.R.round(2).to_csv(input_row['output_dir'] + re.sub("init.csv", "T" + str(i+1) + ".csv", input_row["init_R0"]))
-        if i == (npass-1): # last transfer
+        if i == (a['n_pass']-1): # last transfer
             Plate.N.round(2).to_csv(input_row['output_dir'] + re.sub("init.csv", "end.csv", input_row["init_N0"]))
             Plate.R.round(2).to_csv(input_row['output_dir'] + re.sub("init.csv", "end.csv", input_row["init_R0"]))
         Plate.Passage(f = np.eye(a['n_wells'])/10, refresh_resource = True)

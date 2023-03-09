@@ -15,7 +15,7 @@ input_parameters <- read_csv(here::here("simulation/01-input_parameters.csv"), c
 input_monocultures <- read_csv(here::here("simulation/02a-input_monocultures.csv"), col_types = cols())
 output_dir <- paste0(folder_simulation, "02a-monocultures/")
 Dm_F0 <- read_csv(paste0(output_dir, "00-D_S0.csv"), skip = 1, col_types = cols()) # D matrix
-Dm_F1 <- read_csv(paste0(output_dir, "00-D_S20.csv"), skip = 1, col_types = cols()) # D matrix
+Dm_F1 <- read_csv(paste0(output_dir, "00-D_S500.csv"), skip = 1, col_types = cols()) # D matrix
 cm <- read_csv(paste0(output_dir, "00-c.csv"), skip = 1, col_types = cols()) # c matrix
 lm <- read_csv(paste0(output_dir, "00-l.csv"), skip = 1, col_types = cols()) # l matrix
 

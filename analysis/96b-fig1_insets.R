@@ -66,6 +66,18 @@ p1 <- community_abundance %>%
     guides(alpha = "none") +
     labs(x = "Generation", y = "Relative abundance")
 
+
+community_abundance %>%
+    distinct(Inoculum, Replicate) %>%
+    mutate(Community = paste0("C", Inoculum, "R", Replicate)) %>%
+    filter(Community %in% )
+    distinct(Inoculum, Replicate, Transfer) %>%
+    arrange(Inoculum, Replicate, Transfer) %>%
+    view
+    group_by(Inoculum, Replicate) %>%
+    summarize(Count = n()) %>%
+    view
+
 # Figure 1 inset isolate abundance in community ----
 isolates_abundance <- isolates %>%
     mutate(Community = factor(Community, communities$Community)) %>%
