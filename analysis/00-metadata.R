@@ -108,6 +108,33 @@ category_color <- c(sugar = "#ED6A5A", acid = "#03CEA4", fermenter = "#8A89C0", 
 paint_white_background <- function () theme(plot.background = element_rect(fill = "white", color = NA))
 
 
+family_colors <- c(
+    Others = grey(0.5),
+    Enterobacteriaceae = "#397eb8",
+    Pseudomonadaceae = "#e21e26",
+    Aeromonadaceae = "#4fb148",
+    Sphingobacteriaceae = "#984e9e",
+    Moraxellaceae = "firebrick",
+    Comamonadaceae = "yellow",
+    Alcaligenaceae = "darkorchid2"
+)
+
+genus_colors <- c(
+    Others = grey(0.5),
+    Enterobactor1 = "#225ea8",
+    Klebsiella1 = "#3eb6c5",
+    Raoultella1 = "#a3d6b2",
+    Citrobacter1 = "#fcf8cf",
+    Pseudomonas1 = "#7d1517",
+    Pseudomonas2 = "#b31e24",
+    Pseudomonas3 = "#d63226",
+    Pseudomonas4 = "#e44b34",
+    Pseudomonas5 = "#ec6448",
+    Pseudomonas6 = "#f68d5c",
+    Aeromonas1 = "#8fd1c6"
+)
+
+
 
 
 

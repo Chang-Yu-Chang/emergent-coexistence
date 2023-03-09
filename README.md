@@ -24,6 +24,20 @@ $ git clone https://github.com/Chang-Yu-Chang/emergent-coexistence
 - `data/` stores the raw data from sequencing and OD, as well as the processed image data. These data are csv or Rdata formats. [Dropbox link](https://www.dropbox.com/sh/oec7rz4wvmlitrp/AADFUvMF9Xzj4LLmzUmjPMJTa?dl=0)
 
 
+# Dependency
+
+
+Python environment
+
+```
+```
+
+R environment
+
+```
+BiocManager::install("Biostrings")
+```
+
 # Setup to reproduce the analysis
 
 ## Step 0.1 Specifying metadata
