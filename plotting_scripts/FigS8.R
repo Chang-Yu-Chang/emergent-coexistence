@@ -17,11 +17,14 @@ cor.test(isolates_rank$RankRelativeAbundance, isolates_rank$Rank, method = c("pe
 
 p <- isolates_rank %>%
     ggplot(aes(x = RankRelativeAbundance, y = Rank)) +
-    geom_point(shape = 21, size = 2, stroke = 0.5, position = position_jitter(width = 0.15, height = 0.15)) +
-    scale_x_continuous(breaks = 1:12) +
-    scale_y_continuous(breaks = 1:12) +
+    geom_point(shape = 21, size = 2, stroke = 1, position = position_jitter(width = 0.15, height = 0.15)) +
+    scale_x_continuous(breaks = 1:12, limits = c(1,12)) +
+    scale_y_continuous(breaks = 1:12, limits = c(1,12)) +
     theme_classic() +
     labs(x = "Ranked ESV abundance", y = "Competitive rank")
 
-ggsave(here::here("plots/FigS8-abundance_vs_rank.png"), p, width = 3, height = 3)
+ggsave(here::here("plots/FigS8-abundance_vs_rank.png"), p, width = 4, height = 4)
 
+#
+cor.test(isolates_rank$RankRelativeAbundance, isolates_rank$Rank,
+         method = "spearman", alternative = "two.sided", exact = FALSE)

@@ -37,7 +37,7 @@ p <- pairs_freq_ESV %>%
     labs(x = "Relative ESV abundance", y = "CFU frequency")
 
 #p <- plot_grid(p1, p2, nrow = 1, labels = LETTERS[1:2], scale = 0.9, align = "hv") + paint_white_background()
-ggsave(here::here("plots/FigS11-abundance_vs_pair_frequency.png"), p, width = 3, height = 3)
+ggsave(here::here("plots/FigS13-abundance_vs_pair_frequency.png"), p, width = 3, height = 3)
 
 
 lm(meanIsolate1CFUFreqMean ~ RelativeRelativeAbundance1, data = pairs_freq_ESV) %>%
