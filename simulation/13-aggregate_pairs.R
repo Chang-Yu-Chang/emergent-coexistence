@@ -11,12 +11,6 @@ input_withinCommunityPairs <- read_csv(here::here("simulation/03b-input_withinCo
 
 temp_end_time = "T20"
 
-# Generate family-species and class-resource table for matching
-sa <- input_parameters$sa[1]
-ma <- input_parameters$ma[1]
-sal <- tibble(Family = paste0("F", c(rep(0, sa), rep(1, sa))), Species = paste0("S", 0:(sa * 2 - 1)))
-mal <- tibble(Class = paste0("T", c(rep(0, ma), rep(1, ma))), Resource = paste0("R", 0:(ma * 2 - 1)))
-
 # Functions
 ## For reading and formating data
 read_wide_file <- function (x, type = "N") {
@@ -210,12 +204,12 @@ for (i in 1:20) {
 poolPairs_N_freq <- bind_rows(poolPairs_N_freq[!is.na(poolPairs_N_freq)])
 poolPairs_N_outcome <- bind_rows(poolPairs_N_outcome[!is.na(poolPairs_N_outcome)])
 
-write_csv(poolPairs_N_freq, paste0(folder_simulation, "12-aggregated_pairs/poolPairs_N_freq.csv"))
-write_csv(poolPairs_N_outcome, paste0(folder_simulation, "12-aggregated_pairs/poolPairs_N_outcome.csv"))
+write_csv(poolPairs_N_freq, paste0(folder_simulation, "aggregated/13-poolPairs_N_freq.csv"))
+write_csv(poolPairs_N_outcome, paste0(folder_simulation, "aggregated/13-poolPairs_N_outcome.csv"))
 
 
 # 2. Community pairs ----
-communities_richness <- read_csv(paste0(folder_simulation, "11-aggregated/communities_richness.csv"), col_types = cols())
+communities_richness <- read_csv(paste0(folder_simulation, "aggregated/12-communities_richness.csv"), col_types = cols())
 communities_names <- paste0("W", 0:19)
 withinCommunityPairs_N_freq <- rep(list(NA), length(communities_names))
 withinCommunityPairs_N_outcome <- rep(list(NA), length(communities_names))
@@ -251,8 +245,8 @@ for (i in 1:20) {
 withinCommunityPairs_N_freq <- bind_rows(withinCommunityPairs_N_freq[!is.na(withinCommunityPairs_N_freq)])
 withinCommunityPairs_N_outcome <- bind_rows(withinCommunityPairs_N_outcome[!is.na(withinCommunityPairs_N_outcome)])
 
-write_csv(withinCommunityPairs_N_freq, paste0(folder_simulation, "12-aggregated_pairs/withinCommunityPairs_N_freq.csv"))
-write_csv(withinCommunityPairs_N_outcome, paste0(folder_simulation, "12-aggregated_pairs/withinCommunityPairs_N_outcome.csv"))
+write_csv(withinCommunityPairs_N_freq, paste0(folder_simulation, "aggregated/13-withinCommunityPairs_N_freq.csv"))
+write_csv(withinCommunityPairs_N_outcome, paste0(folder_simulation, "aggregated/13-withinCommunityPairs_N_outcome.csv"))
 
 
 

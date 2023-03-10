@@ -7,6 +7,7 @@
 
 library(tidyverse)
 source(here::here("analysis/00-metadata.R"))
+source(here::here("simulation/01-generate_input.R"))
 source(here::here("simulation/02-generate_input_mono_comm.R"))
 
 # 1. generate mapping files ----
@@ -113,8 +114,8 @@ for (i in 1:length(N_monocultureSets_split)) {
 }
 
 write_csv(input_poolPairs, here::here("simulation/03a-input_poolPairs.csv"))
-write_csv(monocultureSets_richness, paste0(folder_simulation, "11-aggregated/monocultureSets_richness.csv"))
-write_csv(monocultureSets_species, paste0(folder_simulation, "11-aggregated/monocultureSets_species.csv"))
+#write_csv(monocultureSets_richness, paste0(folder_simulation, "aggregated/monocultureSets_richness.csv"))
+write_csv(monocultureSets_species, paste0(folder_simulation, "aggregated/monocultureSets_species.csv"))
 
 
 # 2.2. Generate within community pairs ----
@@ -159,7 +160,7 @@ for (i in 1:length(N_community_split)) {
 }
 
 write_csv(input_withinCommunityPairs, here::here("simulation/03b-input_withinCommunityPairs.csv"))
-write_csv(communities_richness, paste0(folder_simulation, "11-aggregated/communities_richness.csv"))
-write_csv(communities_species, paste0(folder_simulation, "11-aggregated/communities_species.csv"))
+#write_csv(communities_richness, paste0(folder_simulation, "11-aggregated/communities_richness.csv"))
+write_csv(communities_species, paste0(folder_simulation, "aggregated/communities_species.csv"))
 
 

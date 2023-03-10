@@ -10,104 +10,60 @@ source(here::here("analysis/00-metadata.R"))
 
 # Example parameters
 input_parameters <- tibble(
+    # File and folder names
     output_dir = folder_simulation,
-    save_timepoint = T,
     init_N0 = "init_pairs.csv",
     init_R0 = "init_R0.csv",
     exp_id = 1,
     seed = 1,
-    # Testing community-simulator parameters
-    w = 1,
-    l = 0.8,
-    # Passaging
-    n_pass = 20,            # number of transfer or passages
-    t_propagation = 10,     # time length of propagation, or length of growth cycle
-    # Sampling pool
-    sa = 500,               # number of species in each specialist family
-    ma = 20,                # number of resources in each class
-    S = 50,                 # number of species in the initial composition of each self-assembled community
-    R0_food = 1000,         # supplied R0 amount
-    n_communities = 20,     # number of communities used
-    n_wells = 200,          # number of monocultures tested
-    sampling = "empirical", # sampling approach for consumer parameters "empirical", "binary", "gamma"
-    # c matrix
-    c_fs = 0.183,           # mean uptake rates of fermenter on sugar
-    sigc_fs = 0.0478,       # standard deviation of uptake rates of fermenter on sugar
-    c_fa = 0.192,           # mean uptake rates of fermenter on acid
-    sigc_fa = 0.0407,       # standard deviation of uptake rates of fermenter on acid
-    c_rs = 0.0268,          # mean uptake rates of respirator on sugar
-    sigc_rs = 0.0314,       # standard deviation of uptake rates of respirator on sugar
-    c_ra = 0.236,           # mean uptake rates of respirator on acid
-    sigc_ra = 0.0828,       # standard deviation of uptake rates of respirator on acid
-    # D matrix
-    ffss = 0,               # fraction of flux from sugar to sugar in fermenter
-    ffsa = 1,               # fraction of flux from sugar to acid in fermenter
-    ffas = 0,               # fraction of flux from acid to sugar in fermenter
-    ffaa = 1,               # fraction of flux from acid to acid in fermenter
-    frss = 0.487,           # fraction of flux from sugar to sugar in respirator
-    frsa = 0.513,           # fraction of flux from sugar to acid in respirator
-    fras = 0,               # fraction of flux from acid to sugar in respirator
-    fraa = 1,               # fraction of flux from acid to acid in respirator
-    # l matrix
-    l1 = 0.442,             # mean leakiness of fermenter
-    l1_sd = 0.108,          # sd leakiness of fermenter
-    l2 = 0.00241,           # mean leakiness of respirator
-    l2_sd = 0.00224         # sd leakiness of fermenter
+    # Species pool
+    fa = 4,                       # Number of specialist families. Used to compute 'SA': 60*np.ones(3)
+    sa = 500,                     # Number of species in each specialist family. Used to compute 'SA': 60*np.ones(3)
+    ma = 10,                      # Number of resources in each class. Used to compute 'MA': 30*np.ones(3)
+    Sgen = 0,                     # CM parameter. Number of species in the generalist family
+    # Sampling parameters
+    sampling = "Gamma",           # CM parameter. Sampling approach for consumer parameters: "Binary", "Gamma", "Gaussian"
+    muc = 10,                     # CM parameter. Mean sum of consumption rates (used in all models)
+    sigc = 4,                     # CM parameter. Standard deviation of sum of consumption rates for Gaussian and Gamma models
+    q = 0.8,                      # CM parameter. Preference strength of specialist families (0 for generalist and 1 for specialist)
+    c0 = 0,                       # CM parameter. Sum of background consumption rates in binary model
+    c1 = 1,                       # CM parameter. Specific consumption rate in binary model
+    fs = 0.45,                    # CM parameter. Fraction of secretion flux with same resource type
+    fw = 0.45,                    # CM parameter. Fraction of secretion flux to 'waste' resource
+    sparsity = 0.2,               # CM parameter. Effective sparsity of metabolic matrix (between 0 and 1)
+    food = 0,                     # CM parameter. Index of food source (when a single resource is supplied externally)
+    R0_food = 1000,               # CM parameter. Unperturbed fixed point for supplied food
+    regulation = "independent",   # CM parameter. Metabolic regulation (see dRdt)
+    response = "type I",          # CM parameter. Functional response (see dRdt)
+    supply = "off",               # CM parameter. Resource supply (see dRdt) 'off' for batch culture. 'external' and 'self-renewing' for constant supply
+    # CM internal parameters
+    m = 0,                        # Set m=0 to turn off maintenance cost. i.e., no cell dies
+    w = 1,                        # CM parameter. The resource use efficiency
+    g = 1,
+    l = 0.5,                      # CM parameter. Leakage fraction
+    tau = 1,
+    r = 1,
+    sigma_max = 1,
+    nreg = 10,
+    n = 2,
+    # Experiments
+    n_pass = 20,                  # Number of transfers
+    t_propagation = 1,            # Length of propagation in one transfer
+    dilution_factor = 1/1000,      # Dilution factor for passage
+    n_wells = 50,                 # CM parameter. Number of independent wells
+    #n_wells = 20,                # number of monocultures tested
+    n_communities = 20,           # number of communities used
+    S = 50                       # CM parameter. Number of species per well (randomly sampled from the pool of size Stot = sum(SA) + Sgen)
 )
-    # Test
-    # mutate(
-    #     # c matrix
-    #     c_fs = 1,  # mean uptake rates of fermenter on sugar
-    #     sigc_fs = 0, # standard deviation of uptake rates of fermenter on sugar
-    #     c_fa = 1,  # mean uptake rates of fermenter on acid
-    #     sigc_fa = 0, # standard deviation of uptake rates of fermenter on acid
-    #     c_rs = 1,  # mean uptake rates of respirator on sugar
-    #     sigc_rs = 0, # standard deviation of uptake rates of respirator on sugar
-    #     c_ra = 1,  # mean uptake rates of respirator on acid
-    #     sigc_ra = 0, # standard deviation of uptake rates of respirator on acid
-    #     # D matrix
-    #     metabolism = "empirical", # "common", "two-families", "empirical", "specific"
-    #     ffss = 0, # fraction of flux from sugar to sugar in fermenter
-    #     ffsa = 0, # fraction of flux from sugar to acid in fermenter
-    #     ffas = 0, # fraction of flux from acid to sugar in fermenter
-    #     ffaa = 0, # fraction of flux from acid to acid in fermenter
-    #     frss = 0, # fraction of flux from sugar to sugar in respirator
-    #     frsa = 0, # fraction of flux from sugar to acid in respirator
-    #     fras = 0, # fraction of flux from acid to sugar in respirator
-    #     fraa = 0, # fraction of flux from acid to acid in respirator
-    #     # l matrix
-    #     l1 = 0,
-    #     l1_sd = 0,
-    #     l2 = 0,
-    #     l2_sd = 0
-    # )
-    #
+
 write_csv(input_parameters, here::here("simulation/01-input_parameters.csv"))
 
 
 # Generate family-species and class-resource table for matching
+fa <- input_parameters$fa[1]
 sa <- input_parameters$sa[1]
 ma <- input_parameters$ma[1]
-sal <- tibble(Family = paste0("F", c(rep(0, sa), rep(1, sa))), Species = paste0("S", 0:(sa * 2 - 1)))
-mal <- tibble(Class = paste0("T", c(rep(0, ma), rep(1, ma))), Resource = paste0("R", 0:(ma * 2 - 1)))
+sal <- tibble(Family = paste0("F", rep(c(0:(fa-1)), each = sa)), Species = paste0("S", 0:(sa * fa - 1))) %>% mutate(SpeciesID = 1:n())
+mal <- tibble(Class = paste0("T", rep(c(0:(fa-1)), each = ma)), Resource = paste0("R", 0:(ma * fa - 1))) %>% mutate(ResourceID = 1:n())
 
 
-
-
-
-
-
-
-
-# c_fs = 0.0415,  # mean uptake rates of fermenter on sugar
-# sigc_fs = 0.0162, # standard deviation of uptake rates of fermenter on sugar
-# c_fa = 0.0106,  # mean uptake rates of fermenter on acid
-# sigc_fa = 0.0146, # standard deviation of uptake rates of fermenter on acid
-# c_rs = 0.00911,  # mean uptake rates of respirator on sugar
-# sigc_rs = 0.0102, # standard deviation of uptake rates of respirator on sugar
-# c_ra = 0.0201,  # mean uptake rates of respirator on acid
-# sigc_ra = 0.0146, # standard deviation of uptake rates of respirator on acid
-# l1 = 0.432,
-# l1_sd = 0.105,
-# l2 = 0.00297,
-# l2_sd = 0.00252,

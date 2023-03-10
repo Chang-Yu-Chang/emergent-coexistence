@@ -3,18 +3,13 @@
 library(tidyverse)
 library(cowplot)
 source(here::here("analysis/00-metadata.R"))
+source(here::here("simulation/01-generate_input.R"))
 
 # 0. parameters ----
 input_parameters <- read_csv(here::here("simulation/01-input_parameters.csv"), col_types = cols())
 input_monocultures <- read_csv(here::here("simulation/02a-input_monocultures.csv"), col_types = cols())
 input_communities <- read_csv(here::here("simulation/02b-input_communities.csv"), col_types = cols())
 input_communitiesWithoutCrossfeeding <- read_csv(here::here("simulation/02c-input_communitiesWithoutCrossfeeding.csv"), col_types = cols())
-
-# Generate family-species and class-resource table for matching
-sa <- input_parameters$sa[1]
-ma <- input_parameters$ma[1]
-sal <- tibble(Family = paste0("F", c(rep(0, sa), rep(1, sa))), Species = paste0("S", 0:(sa * 2 - 1)))
-mal <- tibble(Class = paste0("T", c(rep(0, ma), rep(1, ma))), Resource = paste0("R", 0:(ma * 2 - 1)))
 
 read_wide_file <- function(x, type = "N") {
     temp <- read_csv(x, col_types = cols(), name_repair = "unique_quiet") %>%
@@ -44,11 +39,12 @@ monocultures_abundance <- list.files(input_monocultures$output_dir[1], pattern =
     mutate(Well = ordered(Well, paste0("W", 0:(input_communities$n_wells[1]-1)))) %>%
     mutate(Time = ordered(Time, c("init", paste0("T", 1:20)))) %>%
     arrange(Well, Time) %>%
-    filter(Abundance > 0) %>%
+    #filter(Abundance > 0) %>%
     select(Well, Time, Family, Species, Abundance)
 
-write_csv(monocultures_abundance, paste0(folder_simulation, "11-aggregated/monocultures_abundance.csv"))
+write_csv(monocultures_abundance, paste0(folder_simulation, "aggregated/12-monocultures_abundance.csv"))
 
+#write_csv(monocultures_abundance_richness, paste0(folder_simulation, "aggregated/12-monocultureSets_abundance_richness.csv"))
 
 # 2. Self-assembled community composition ----
 communities_abundance <- list.files(input_communities$output_dir[1], pattern = "communities-1-N") %>%
@@ -68,10 +64,17 @@ communities_abundance <- list.files(input_communities$output_dir[1], pattern = "
     select(-Well) %>%
     mutate(Time = ordered(Time, c("init", paste0("T", 1:20), "end"))) %>%
     arrange(Community, Time) %>%
-    filter(Abundance > 0) %>%
+    #filter(Abundance > 0) %>%
     select(Community, Time, Family, Species, Abundance)
 
-write_csv(communities_abundance, paste0(folder_simulation, "11-aggregated/communities_abundance.csv"))
+write_csv(communities_abundance, paste0(folder_simulation, "aggregated/12-communities_abundance.csv"))
+
+communities_abundance_richness <- communities_abundance %>%
+    group_by(Community, .drop = F) %>%
+    filter(Time == max(Time)) %>%
+    summarize(Richness = n())
+
+write_csv(communities_abundance_richness, paste0(folder_simulation, "aggregated/12-communities_richness.csv"))
 
 
 # 3. Communities without crossfeeding ----
@@ -95,8 +98,14 @@ communitiesWithoutCrossfeeding_abundance <- list.files(input_communitiesWithoutC
     filter(Abundance > 0) %>%
     select(Community, Time, Family, Species, Abundance)
 
-write_csv(communitiesWithoutCrossfeeding_abundance, paste0(folder_simulation, "11-aggregated/communitiesWithoutCrossfeeding_abundance.csv"))
+write_csv(communitiesWithoutCrossfeeding_abundance, paste0(folder_simulation, "aggregated/12-communitiesWithoutCrossfeeding_abundance.csv"))
 
+communitiesWithoutCrossfeeding_abundance <- communitiesWithoutCrossfeeding_abundance %>%
+    group_by(Community, .drop = F) %>%
+    filter(Time == max(Time)) %>%
+    summarize(Richness = n())
+
+write_csv(communitiesWithoutCrossfeeding_abundance, paste0(folder_simulation, "aggregated/12-communitiesWithoutCrossfeeding_richness.csv"))
 
 
 

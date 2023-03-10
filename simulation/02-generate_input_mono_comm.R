@@ -7,11 +7,10 @@
 
 library(tidyverse)
 source(here::here("analysis/00-metadata.R"))
+source(here::here("simulation/01-generate_input.R"))
 
 # 1. generates mapping files ----
 input_parameters <- read_csv(here::here("simulation/01-input_parameters.csv"), col_types = cols())
-
-
 
 # 1.1 Single species, or monocultures ----
 input_parameters %>%
@@ -59,18 +58,12 @@ input_communities <- read_csv(here::here("simulation/02b-input_communities.csv")
 input_communitiesWithoutCrossfeeding <- read_csv(here::here("simulation/02c-input_communitiesWithoutCrossfeeding.csv"), col_types = cols())
 
 # 2.0 Generate family-species and class-resource matching tibble ----
-# Note that input_independent has to use the same sa and ma throughout
-sa <- input_parameters$sa[1]
-ma <- input_parameters$ma[1]
-sal <- tibble(Family = paste0("F", c(rep(0, sa), rep(1, sa))), Species = paste0("S", 0:(sa * 2 - 1)))
-mal <- tibble(Class = paste0("T", c(rep(0, ma), rep(1, ma))), Resource = paste0("R", 0:(ma * 2 - 1)))
-
 # 2.1 Monoculture ----
 draw_monoculture <- function(input_monocultures) {
     n_wells <- input_monocultures$n_wells
     tibble(
         Well = paste0("W", 0:(n_wells-1)),
-        Species = paste0("S", sample(0:(sa*2-1), n_wells, replace = F)), # Sample up to 200 from the global pool
+        Species = paste0("S", sample(0:(sa*fa-1), n_wells, replace = F)), # Sample up to 200 from the global pool
         Abundance = 1 # Total inoculum will be the same
     ) %>%
         full_join(sal, by = "Species") %>%
@@ -106,7 +99,7 @@ draw_community <- function(input_communities, candidate_species = NA) {
     if (all(is.na(candidate_species))) {
         # Draw species. Default using a fix number of S. Identical to community-simulator
         species <- rep(list(NA), n_communities)
-        for (i in 1:n_communities) species[[i]] <- sample(0:(2*sa-1), size = S, replace = F) %>% sort
+        for (i in 1:n_communities) species[[i]] <- sample(0:(fa*sa-1), size = S, replace = F) %>% sort
         species <- unlist(species)
     }
     if (!all(is.na(candidate_species)) & is.vector(candidate_species)) {

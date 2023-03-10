@@ -16,27 +16,58 @@ input_communitiesWithoutCrossfeeding <- read_csv(here::here("simulation/02c-inpu
 
 
 # 1. Monocultures ----
-monocultures_abundance <- read_csv(paste0(folder_simulation, "11-aggregated/monocultures_abundance.csv"), col_types = cols()) %>%
+monocultures_abundance <- read_csv(paste0(folder_simulation, "aggregated/12-monocultures_abundance.csv"), col_types = cols()) %>%
     mutate(Well = ordered(Well, paste0("W", 0:(input_monocultures$n_wells[1]-1)))) %>%
     mutate(Time = ordered(Time, c("init", paste0("T", 1:20)))) %>%
     arrange(Well, Time)
 
 # Line plot
-p <- monocultures_abundance %>%
-    ggplot(aes(x = Time, y = Abundance, color = Family, group = Species)) +
+p1 <- monocultures_abundance %>%
+    mutate(UniqueWell = paste0(Well, Species)) %>%
+    ggplot(aes(x = Time, y = Abundance, color = Family, group = UniqueWell)) +
     geom_line(linewidth = .2) +
     geom_point(size = 1, shape = 21) +
-    scale_color_manual(values = c("F0" = "#8A89C0", "F1" = "#FFCB77"), labels = c("F0" = "fermenter", "F1" = "repirator")) +
-    scale_linetype_manual(values = c("F0" = 1, "F1" = 2)) +
+    #scale_color_manual(values = c("F0" = "#8A89C0", "F1" = "#FFCB77"), labels = c("F0" = "fermenter", "F1" = "repirator")) +
+    #scale_linetype_manual(values = c("F0" = 1, "F1" = 2)) +
     theme_classic() +
     theme(panel.border = element_rect(color = 1, fill = NA)) +
     guides(alpha = "none", color = guide_legend(title = "")) +
     labs()
-ggsave(here::here("simulation/plots/22-monoculture-01-line.png"), p, width = 5, height = 4)
+
+
+monocultures_abundance_Tinit <- monocultures_abundance %>%
+    filter(Time == min(Time)) %>%
+    filter(Abundance > 0) %>%
+    select(Well, Family, Species)
+
+monocultures_abundance_Tend <- monocultures_abundance %>%
+    filter(Time == max(Time)) %>%
+    filter(Abundance > 0) %>%
+    select(Well, Family, Species, Abundance)
+
+p2 <- monocultures_abundance_Tinit %>%
+    left_join(monocultures_abundance_Tend) %>%
+    replace_na(list(Abundance = 0)) %>%
+    mutate(Alive = ifelse(Abundance > 0, "alive", "nah")) %>%
+    group_by(Family, Alive) %>%
+    summarize(Count = n()) %>%
+    mutate(TotalCount = sum(Count),
+           Fraction = Count / TotalCount) %>%
+    ggplot(aes(x = Family, y = Fraction, fill = Alive)) +
+    geom_col(color = 1) +
+    geom_text(aes(x = Family, label = paste0("n=", TotalCount)), y = Inf, vjust = 1) +
+    #scale_color_manual(values = c("F0" = "#8A89C0", "F1" = "#FFCB77"), labels = c("F0" = "fermenter", "F1" = "repirator")) +
+    #scale_linetype_manual(values = c("F0" = 1, "F1" = 2)) +
+    theme_classic() +
+    theme(panel.border = element_rect(color = 1, fill = NA)) +
+    guides(alpha = "none", color = guide_legend(title = "")) +
+    labs()
+p <- plot_grid(p1, p2, scale = 0.9) + paint_white_background()
+ggsave(here::here("simulation/plots/22-monoculture-01-line.png"), p, width = 8, height = 4)
 
 
 # 2. Communities ----
-communities_abundance <- read_csv(paste0(folder_simulation, "11-aggregated/communities_abundance.csv"), col_types = cols()) %>%
+communities_abundance <- read_csv(paste0(folder_simulation, "aggregated/12-communities_abundance.csv"), col_types = cols()) %>%
     mutate(Community = ordered(Community, paste0("W", 0:(input_communities$n_wells[1]-1)))) %>%
     mutate(Time = ordered(Time, c("init", paste0("T", 1:20), "end"))) %>%
     arrange(Community, Time)
@@ -47,7 +78,7 @@ p <- communities_abundance %>%
     filter(Time != "end") %>%
     ggplot(aes(x = Time, y = Abundance, fill = Family, color = Species)) +
     geom_col() +
-    scale_fill_manual(values = c("F0" = "#8A89C0", "F1" = "#FFCB77"), labels = c("F0" = "fermenter", "F1" = "repirator")) +
+    #scale_fill_manual(values = c("F0" = "#8A89C0", "F1" = "#FFCB77"), labels = c("F0" = "fermenter", "F1" = "repirator")) +
     scale_color_manual(values = rep("black", length(sal$Species))) +
     facet_wrap(.~Community, ncol = 5) +
     theme_classic() +
@@ -62,7 +93,7 @@ p <- communities_abundance %>%
     filter(Time != "end") %>%
     ggplot(aes(x = Time, y = Abundance, fill = Family, color = Species)) +
     geom_col(position = "fill") +
-    scale_fill_manual(values = c("F0" = "#8A89C0", "F1" = "#FFCB77"), labels = c("F0" = "fermenter", "F1" = "repirator")) +
+    #scale_fill_manual(values = c("F0" = "#8A89C0", "F1" = "#FFCB77"), labels = c("F0" = "fermenter", "F1" = "repirator")) +
     scale_color_manual(values = rep("black", length(sal$Species))) +
     facet_wrap(.~Community, ncol = 5) +
     theme_classic() +
@@ -80,10 +111,10 @@ communities_abundance_abundant <- communities_abundance %>%
     mutate(TotalAbundance = sum(Abundance)) %>%
     filter(Abundance > 0.01 * sum(Abundance))
 
-communities_richness <- read_csv(paste0(folder_simulation, "11-aggregated/communities_richness.csv"), col_types = cols())
+communities_richness <- read_csv(paste0(folder_simulation, "aggregated/12-communities_richness.csv"), col_types = cols())
 communities_abundance_richness <- communities_abundance_abundant %>%
     filter(Time == max(Time)) %>%
-    group_by(Community) %>%
+    group_by(Community, .drop = F) %>%
     summarize(Richness = n())
 
 p <- communities_abundance_abundant %>%
@@ -95,7 +126,7 @@ p <- communities_abundance_abundant %>%
     geom_text(data = communities_abundance_richness, aes(x = Community, label = Richness), y = 1.1) +
     annotate("text", x = 1:20, y = 1.15, label = communities_richness$Richness, size = 4) +
     annotate("text", x = 21, y = 1.1, label = c("n. of species"), size = 4, hjust = 0) +
-    scale_fill_manual(values = c("F0" = "#8A89C0", "F1" = "#FFCB77"), labels = c("F0" = "fermenter", "F1" = "repirator")) +
+    #scale_fill_manual(values = c("F0" = "#8A89C0", "F1" = "#FFCB77"), labels = c("F0" = "fermenter", "F1" = "repirator")) +
     scale_y_continuous(expand = c(0, 0), limits = c(0, 1.1)) +
     coord_cartesian(xlim = c(0.5, 20.5), ylim = c(0, 1), clip = "off") +
     theme_classic() +
@@ -106,7 +137,7 @@ p <- communities_abundance_abundant %>%
 ggsave(here::here("simulation/plots/22-communities-03-bar_final.png"), p, width = 9, height = 3)
 
 # 3. Communities without crossfeeding -----
-communitiesWithoutCrossfeeding_abundance <- read_csv(paste0(folder_simulation, "11-aggregated/communitiesWithoutCrossfeeding_abundance.csv"), col_types = cols()) %>%
+communitiesWithoutCrossfeeding_abundance <- read_csv(paste0(folder_simulation, "aggregated/12-communitiesWithoutCrossfeeding_abundance.csv"), col_types = cols()) %>%
     mutate(Community = ordered(Community, paste0("W", 0:(input_communitiesWithoutCrossfeeding$n_wells[1]-1)))) %>%
     mutate(Time = ordered(Time, c("init", paste0("T", 1:20), "end"))) %>%
     arrange(Community, Time)
@@ -117,7 +148,7 @@ p <- communitiesWithoutCrossfeeding_abundance %>%
     filter(Time != "end") %>%
     ggplot(aes(x = Time, y = Abundance, fill = Family, color = Species)) +
     geom_col() +
-    scale_fill_manual(values = c("F0" = "#8A89C0", "F1" = "#FFCB77"), labels = c("F0" = "fermenter", "F1" = "repirator")) +
+    #scale_fill_manual(values = c("F0" = "#8A89C0", "F1" = "#FFCB77"), labels = c("F0" = "fermenter", "F1" = "repirator")) +
     scale_color_manual(values = rep("black", length(sal$Species))) +
     facet_wrap(.~Community, ncol = 5) +
     theme_classic() +
@@ -132,7 +163,7 @@ p <- communitiesWithoutCrossfeeding_abundance %>%
     filter(Time != "end") %>%
     ggplot(aes(x = Time, y = Abundance, fill = Family, color = Species)) +
     geom_col(position = "fill") +
-    scale_fill_manual(values = c("F0" = "#8A89C0", "F1" = "#FFCB77"), labels = c("F0" = "fermenter", "F1" = "repirator")) +
+    #scale_fill_manual(values = c("F0" = "#8A89C0", "F1" = "#FFCB77"), labels = c("F0" = "fermenter", "F1" = "repirator")) +
     scale_color_manual(values = rep("black", length(sal$Species))) +
     facet_wrap(.~Community, ncol = 5) +
     theme_classic() +
@@ -152,7 +183,7 @@ communitiesWithoutCrossfeeding_abundance_abundant <- communitiesWithoutCrossfeed
 #communitiesWithoutCrossfeeding_richness <- read_csv(paste0(folder_simulation, "11-aggregated/communitiesWithoutCrossfeeding_richness.csv"), col_types = cols())
 communitiesWithoutCrossfeeding_abundance_richness <- communitiesWithoutCrossfeeding_abundance_abundant %>%
     filter(Time == max(Time)) %>%
-    group_by(Community) %>%
+    group_by(Community, .drop = F) %>%
     summarize(Richness = n())
 
 p <- communitiesWithoutCrossfeeding_abundance_abundant %>%
@@ -164,7 +195,7 @@ p <- communitiesWithoutCrossfeeding_abundance_abundant %>%
     geom_text(data = communitiesWithoutCrossfeeding_abundance_richness, aes(x = Community, label = Richness), y = 1.1) +
     #annotate("text", x = 1:20, y = 1.15, label = communitiesWithoutCrossfeeding_richness$Richness, size = 4) +
     annotate("text", x = 21, y = 1.1, label = c("n. of species"), size = 4, hjust = 0) +
-    scale_fill_manual(values = c("F0" = "#8A89C0", "F1" = "#FFCB77"), labels = c("F0" = "fermenter", "F1" = "repirator")) +
+    #scale_fill_manual(values = c("F0" = "#8A89C0", "F1" = "#FFCB77"), labels = c("F0" = "fermenter", "F1" = "repirator")) +
     scale_y_continuous(expand = c(0, 0), limits = c(0, 1.1)) +
     coord_cartesian(xlim = c(0.5, 20.5), ylim = c(0, 1), clip = "off") +
     theme_classic() +
