@@ -72,6 +72,8 @@ write_csv(communities_abundance, paste0(folder_simulation, "aggregated/12-commun
 communities_abundance_richness <- communities_abundance %>%
     group_by(Community, .drop = F) %>%
     filter(Time == max(Time)) %>%
+    group_by(Community) %>%
+    filter(Abundance > 0.01*sum(Abundance)) %>%
     summarize(Richness = n())
 
 write_csv(communities_abundance_richness, paste0(folder_simulation, "aggregated/12-communities_richness.csv"))
@@ -103,6 +105,8 @@ write_csv(communitiesWithoutCrossfeeding_abundance, paste0(folder_simulation, "a
 communitiesWithoutCrossfeeding_abundance <- communitiesWithoutCrossfeeding_abundance %>%
     group_by(Community, .drop = F) %>%
     filter(Time == max(Time)) %>%
+    group_by(Community) %>%
+    filter(Abundance > 0.01*sum(Abundance)) %>%
     summarize(Richness = n())
 
 write_csv(communitiesWithoutCrossfeeding_abundance, paste0(folder_simulation, "aggregated/12-communitiesWithoutCrossfeeding_richness.csv"))

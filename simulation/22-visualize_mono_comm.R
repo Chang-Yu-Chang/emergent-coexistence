@@ -23,8 +23,9 @@ monocultures_abundance <- read_csv(paste0(folder_simulation, "aggregated/12-mono
 
 # Line plot
 p1 <- monocultures_abundance %>%
-    mutate(UniqueWell = paste0(Well, Species)) %>%
-    ggplot(aes(x = Time, y = Abundance, color = Family, group = UniqueWell)) +
+    filter(Abundance > 0) %>%
+    #mutate(UniqueWell = paste0(Well, Species)) %>%
+    ggplot(aes(x = Time, y = Abundance, color = Family, group = Species)) +
     geom_line(linewidth = .2) +
     geom_point(size = 1, shape = 21) +
     #scale_color_manual(values = c("F0" = "#8A89C0", "F1" = "#FFCB77"), labels = c("F0" = "fermenter", "F1" = "repirator")) +
@@ -63,7 +64,7 @@ p2 <- monocultures_abundance_Tinit %>%
     guides(alpha = "none", color = guide_legend(title = "")) +
     labs()
 p <- plot_grid(p1, p2, scale = 0.9) + paint_white_background()
-ggsave(here::here("simulation/plots/22-monoculture-01-line.png"), p, width = 8, height = 4)
+ggsave(here::here("simulation/plots/22-monoculture-01-line.png"), p, width = 10, height = 4)
 
 
 # 2. Communities ----

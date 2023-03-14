@@ -15,7 +15,7 @@ input_parameters <- read_csv(here::here("simulation/01-input_parameters.csv"), c
 # 1.1 Single species, or monocultures ----
 input_parameters %>%
     slice(rep(1, 1)) %>%
-    mutate(save_timepoint = T) %>%
+    mutate(save_timepoint = F) %>%
     mutate(output_dir = paste0(folder_simulation, "02a-monocultures/")) %>%
     mutate(init_N0 = paste0("monoculture-1-N_init.csv"), exp_id = 1) %>%
     mutate(init_R0 = paste0("monoculture-1-R_init.csv")) %>%
@@ -24,7 +24,7 @@ input_parameters %>%
 # 1.2 Top-down communities ----
 input_parameters %>%
     slice(rep(1, 1)) %>%
-    mutate(save_timepoint = T) %>%
+    mutate(save_timepoint = F) %>%
     mutate(output_dir = paste0(folder_simulation, "02b-communities/")) %>%
     mutate(init_N0 = paste0("communities-1-N_init.csv"), exp_id = 1, n_wells = 20) %>%
     mutate(init_R0 = paste0("communities-1-R_init.csv")) %>%
@@ -33,22 +33,11 @@ input_parameters %>%
 # 1.3 Top-down communities without crossfeeding ----
 input_parameters %>%
     slice(rep(1, 1)) %>%
-    mutate(save_timepoint = T) %>%
+    mutate(save_timepoint = F) %>%
     mutate(output_dir = paste0(folder_simulation, "02c-communitiesWithoutCrossfeeding/")) %>%
     mutate(init_N0 = paste0("communities-1-N_init.csv"), exp_id = 1, n_wells = 20) %>%
     mutate(init_R0 = paste0("communities-1-R_init.csv")) %>%
-    mutate(l1 = 0, l1_sd = 0, l2 = 0, l2_sd = 0) %>%
     mutate(l = 0) %>%
-    mutate(
-        ffss = 0, # fraction of flux from sugar to sugar in fermenter
-        ffsa = 0, # fraction of flux from sugar to acid in fermenter
-        ffas = 0, # fraction of flux from acid to sugar in fermenter
-        ffaa = 0, # fraction of flux from acid to acid in fermenter
-        frss = 0, # fraction of flux from sugar to sugar in respirator
-        frsa = 0, # fraction of flux from sugar to acid in respirator
-        fras = 0, # fraction of flux from acid to sugar in respirator
-        fraa = 0  # fraction of flux from acid to acid in respirator
-    ) %>%
     write_csv(here::here("simulation/02c-input_communitiesWithoutCrossfeeding.csv"))
 
 

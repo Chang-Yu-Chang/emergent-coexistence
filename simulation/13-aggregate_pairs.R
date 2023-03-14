@@ -3,13 +3,14 @@
 library(tidyverse)
 library(cowplot)
 source(here::here("analysis/00-metadata.R"))
+source(here::here("simulation/01-generate_input.R"))
 
 # 0. parameters ----
 input_parameters <- read_csv(here::here("simulation/01-input_parameters.csv"), col_types = cols())
 input_poolPairs <- read_csv(here::here("simulation/03a-input_poolPairs.csv"), col_types = cols())
 input_withinCommunityPairs <- read_csv(here::here("simulation/03b-input_withinCommunityPairs.csv"), col_types = cols())
 
-temp_end_time = "T20"
+temp_end_time = paste0("T", input_poolPairs$n_pass[1])
 
 # Functions
 ## For reading and formating data
@@ -52,6 +53,8 @@ read_init_composition <- function (input_mapping, treatment, comm, t = "init") {
     # This is a wrapper function for reading initial composition function
     # input_mapping <- input_withinCommunityPairs
     # treatment <- "withinCommunityPairs"
+    # input_mapping <- input_poolPairs
+    # treatment <- "poolPairs"
     # comm <- "W0"
     # t <- "init"
     paste0(input_mapping$output_dir[1], treatment, "_", comm, "-1-N_", t,".csv") %>%

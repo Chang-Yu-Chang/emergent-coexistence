@@ -1,5 +1,5 @@
 #!/bin/bash
-for value in {0..1000}
+for value in {0..100}
 do
     echo "starting run '$value'"
     python3 run.py 03b-input_withinCommunityPairs.csv $value

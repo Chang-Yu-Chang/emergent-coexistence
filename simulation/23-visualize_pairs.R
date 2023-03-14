@@ -11,16 +11,16 @@ input_poolPairs <- read_csv(here::here("simulation/03a-input_poolPairs.csv"), co
 input_withinCommunityPairs <- read_csv(here::here("simulation/03b-input_withinCommunityPairs.csv"), col_types = cols())
 
 # 1. Pool pairs ----
-poolPairs_N_freq <- read_csv(paste0(folder_simulation, "12-aggregated_pairs/poolPairs_N_freq.csv"), col_types = cols()) %>%
+poolPairs_N_freq <- read_csv(paste0(folder_simulation, "aggregated/13-poolPairs_N_freq.csv"), col_types = cols()) %>%
     mutate(Time = factor(Time, c("init", "end"))) %>%
     mutate(Pair = factor(Pair, paste0("P", 1:1000))) %>%
     mutate(InitialFrequency = factor(InitialFrequency, c(5, 50, 95)))
 
 # Barplot
-monocultureSets_richness <- read_csv(paste0(folder_simulation, "11-aggregated/monocultureSets_richness.csv"), col_types = cols()) %>%
+monocultureSets_richness <- read_csv(paste0(folder_simulation, "aggregated/03-monocultureSets_richness.csv"), col_types = cols()) %>%
     mutate(Community = factor(Community, paste0("W", 0:19))) %>%
     mutate(PairSize = choose(Richness, 2))
-poolPairs_N_outcome <- read_csv(paste0(folder_simulation, "12-aggregated_pairs/poolPairs_N_outcome.csv"), col_types = cols()) %>%
+poolPairs_N_outcome <- read_csv(paste0(folder_simulation, "aggregated/13-poolPairs_N_outcome.csv"), col_types = cols()) %>%
     mutate(Community = factor(Community, paste0("W", 0:19)))
 
 p1 <- poolPairs_N_outcome %>%
@@ -48,7 +48,7 @@ p1 <- poolPairs_N_outcome %>%
 #ggsave(here::here("simulation/plots/23-poolPairs.png"), p, width = 8, height = 4)
 
 # 2. Community pairs ----
-withinCommunityPairs_N_freq <- read_csv(paste0(folder_simulation, "12-aggregated_pairs/withinCommunityPairs_N_freq.csv"), col_types = cols()) %>%
+withinCommunityPairs_N_freq <- read_csv(paste0(folder_simulation, "aggregated/13-withinCommunityPairs_N_freq.csv"), col_types = cols()) %>%
     mutate(Time = factor(Time, c("init", "end"))) %>%
     mutate(Pair = factor(Pair, paste0("P", 1:1000))) %>%
     mutate(InitialFrequency = factor(InitialFrequency, c(5, 50, 95)))
@@ -70,10 +70,10 @@ withinCommunityPairs_N_freq <- read_csv(paste0(folder_simulation, "12-aggregated
 
 
 # Barplot ----
-communities_richness <- read_csv(paste0(folder_simulation, "11-aggregated/communities_richness.csv"), col_types = cols()) %>%
+communities_richness <- read_csv(paste0(folder_simulation, "aggregated/12-communities_richness.csv"), col_types = cols()) %>%
     mutate(Community = factor(Community, paste0("W", 0:19))) %>%
     mutate(PairSize = choose(Richness, 2))
-withinCommunityPairs_N_outcome <- read_csv(paste0(folder_simulation, "12-aggregated_pairs/withinCommunityPairs_N_outcome.csv"), col_types = cols()) %>%
+withinCommunityPairs_N_outcome <- read_csv(paste0(folder_simulation, "aggregated/13-withinCommunityPairs_N_outcome.csv"), col_types = cols()) %>%
     mutate(Community = factor(Community, paste0("W", 0:19)))
 
 p2 <- withinCommunityPairs_N_outcome %>%

@@ -32,6 +32,16 @@ input_parameters %>%
     mutate(init_R0 = paste0("withinCommunityPairs_W", 0:(n_comm-1), "-1-R_init.csv")) %>%
     write_csv(here::here("simulation/03b-input_withinCommunityPairs.csv"))
 
+# Pairs for fitting LV models
+n_comm <- input_parameters$n_communities
+input_parameters %>%
+    slice(rep(1, n_comm)) %>%
+    mutate(save_timepoint = TRUE, n_timepoint = 50, n_pass = 2) %>%
+    mutate(output_dir = paste0(folder_simulation, "03c-LVPairs/")) %>%
+    mutate(init_N0 = paste0("LVPairs_W", 0:(n_comm-1), "-1-N_init.csv"), exp_id = 1, S = 10) %>%
+    mutate(init_R0 = paste0("LVPairs_W", 0:(n_comm-1), "-1-R_init.csv")) %>%
+    write_csv(here::here("simulation/03c-input_LVPairs.csv"))
+
 
 "Execute the chunks below after monocultures and communities are done"
 
@@ -41,6 +51,7 @@ input_monocultures <- read_csv(here::here("simulation/02a-input_monocultures.csv
 input_communities <- read_csv(here::here("simulation/02b-input_communities.csv"), col_types = cols())
 input_poolPairs <- read_csv(here::here("simulation/03a-input_poolPairs.csv"), col_types = cols())
 input_withinCommunityPairs <- read_csv(here::here("simulation/03b-input_withinCommunityPairs.csv"), col_types = cols())
+input_LVPairs <- read_csv(here::here("simulation/03c-input_LVPairs.csv"), col_types = cols())
 
 # 2.1. Generate competing pairs from culturable monocultures ----
 draw_pairs_from_community <- function(N_community_long) {
@@ -71,7 +82,8 @@ draw_pairs_from_community <- function(N_community_long) {
 }
 set.seed(1)
 
-species_mono <- read_csv(paste0(input_monocultures$output_dir[1], "monoculture-1-N_T5.csv"), col_types = cols()) %>%
+
+species_mono <- read_csv(paste0(input_monocultures$output_dir[1], "monoculture-1-N_end.csv"), col_types = cols()) %>%
     rename(Family = ...1, Species = ...2) %>%
     mutate_all(~replace(., .==0, NA)) %>%
     pivot_longer(cols = starts_with("W"), names_to = "Well", values_to = "Abundance", values_drop_na = T) %>%
@@ -114,8 +126,8 @@ for (i in 1:length(N_monocultureSets_split)) {
 }
 
 write_csv(input_poolPairs, here::here("simulation/03a-input_poolPairs.csv"))
-#write_csv(monocultureSets_richness, paste0(folder_simulation, "aggregated/monocultureSets_richness.csv"))
-write_csv(monocultureSets_species, paste0(folder_simulation, "aggregated/monocultureSets_species.csv"))
+write_csv(monocultureSets_richness, paste0(folder_simulation, "aggregated/03-monocultureSets_richness.csv"))
+write_csv(monocultureSets_species, paste0(folder_simulation, "aggregated/03-monocultureSets_species.csv"))
 
 
 # 2.2. Generate within community pairs ----
@@ -161,6 +173,73 @@ for (i in 1:length(N_community_split)) {
 
 write_csv(input_withinCommunityPairs, here::here("simulation/03b-input_withinCommunityPairs.csv"))
 #write_csv(communities_richness, paste0(folder_simulation, "11-aggregated/communities_richness.csv"))
-write_csv(communities_species, paste0(folder_simulation, "aggregated/communities_species.csv"))
+write_csv(communities_species, paste0(folder_simulation, "aggregated/03-communities_species.csv"))
+
+
+
+# 2.3. Generate LV pair. Identical to pool pairs ----
+
+set.seed(1)
+species_mono <- read_csv(paste0(input_monocultures$output_dir[1], "monoculture-1-N_T5.csv"), col_types = cols()) %>%
+    rename(Family = ...1, Species = ...2) %>%
+    mutate_all(~replace(., .==0, NA)) %>%
+    pivot_longer(cols = starts_with("W"), names_to = "Well", values_to = "Abundance", values_drop_na = T) %>%
+    pull(Species) %>%
+    str_replace("S", "") %>% as.numeric()
+
+N_monocultureSets <- draw_community(input_poolPairs[1,], species_mono)
+
+N_monocultureSets_split <- N_monocultureSets %>%
+    mutate_all(~replace(., .==0, NA)) %>%
+    pivot_longer(cols = -c(Family, Species), names_to = "Community", values_to = "Abundance", values_drop_na = T) %>%
+    # Order species and community
+    mutate(Species = ordered(Species, sal$Species)) %>%
+    mutate(Community = ordered(Community, colnames(N_monocultureSets))) %>%
+    arrange(Community, Species) %>%
+    group_by(Community) %>%
+    group_split()
+
+
+monocultureSets_richness <- N_monocultureSets_split %>%
+    bind_rows() %>%
+    group_by(Community) %>%
+    summarize(Richness = n())
+
+monocultureSets_species <- N_monocultureSets_split %>%
+    bind_rows() %>%
+    select(Community, Family, Species) %>%
+    arrange(Community, Family, Species)
+
+for (i in 1) {
+    cat("\n", paste0("Pool set W", i-1, " Richness=",  monocultureSets_richness$Richness[i]))
+    # init_N0
+    draw_pairs_from_community(N_monocultureSets_split[[i]]) %>%
+        write_csv(paste0(input_LVPairs$output_dir[i], "LVPairs_W", i-1, "-1-N_init.csv"))
+    # Update n_wells in the input files
+    input_LVPairs$n_wells[i] <- choose(nrow(N_monocultureSets_split[[i]]), 2) * 3
+    # init_R0
+    set_community_resource(input_LVPairs[i,]) %>%
+        write_csv(paste0(input_LVPairs$output_dir[i], "LVPairs_W", i-1, "-1-R_init.csv"))
+}
+
+if (FALSE) {
+for (i in 1:length(N_monocultureSets_split)) {
+    cat("\n", paste0("LV set W", i-1, " Richness=",  monocultureSets_richness$Richness[i]))
+    # init_N0
+    read_csv(paste0(input_poolPairs$output_dir[i], "poolPairs_W", i-1, "-1-N_init.csv"), show_col_types = F) %>%
+        write_csv(paste0(input_LVPairs$output_dir[i], "LVPairs_W", i-1, "-1-N_init.csv"))
+    # Update n_wells in the input files
+    input_LVPairs$n_wells[i] <- choose(10, 2) * 3
+    # init_R0
+    read_csv(paste0(input_poolPairs$output_dir[i], "poolPairs_W", i-1, "-1-R_init.csv"), show_col_types = F) %>%
+        write_csv(paste0(input_LVPairs$output_dir[i], "LVPairs_W", i-1, "-1-R_init.csv"))
+}
+
+}
+
+write_csv(input_LVPairs, here::here("simulation/03c-input_LVPairs.csv"))
+#write_csv(monocultureSets_richness, paste0(folder_simulation, "aggregated/03-monocultureSets_richness.csv"))
+#write_csv(monocultureSets_species, paste0(folder_simulation, "aggregated/03-monocultureSets_species.csv"))
+
 
 

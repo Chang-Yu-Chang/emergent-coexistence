@@ -17,7 +17,7 @@ input_parameters <- tibble(
     exp_id = 1,
     seed = 1,
     # Species pool
-    fa = 4,                       # Number of specialist families. Used to compute 'SA': 60*np.ones(3)
+    fa = 3,                       # Number of specialist families. Used to compute 'SA': 60*np.ones(3)
     sa = 500,                     # Number of species in each specialist family. Used to compute 'SA': 60*np.ones(3)
     ma = 10,                      # Number of resources in each class. Used to compute 'MA': 30*np.ones(3)
     Sgen = 0,                     # CM parameter. Number of species in the generalist family
@@ -25,7 +25,7 @@ input_parameters <- tibble(
     sampling = "Gamma",           # CM parameter. Sampling approach for consumer parameters: "Binary", "Gamma", "Gaussian"
     muc = 10,                     # CM parameter. Mean sum of consumption rates (used in all models)
     sigc = 4,                     # CM parameter. Standard deviation of sum of consumption rates for Gaussian and Gamma models
-    q = 0.8,                      # CM parameter. Preference strength of specialist families (0 for generalist and 1 for specialist)
+    q = 0.5,                      # CM parameter. Preference strength of specialist families (0 for generalist and 1 for specialist)
     c0 = 0,                       # CM parameter. Sum of background consumption rates in binary model
     c1 = 1,                       # CM parameter. Specific consumption rate in binary model
     fs = 0.45,                    # CM parameter. Fraction of secretion flux with same resource type
@@ -49,11 +49,13 @@ input_parameters <- tibble(
     # Experiments
     n_pass = 20,                  # Number of transfers
     t_propagation = 1,            # Length of propagation in one transfer
-    dilution_factor = 1/1000,      # Dilution factor for passage
+    save_timepoint = FALSE,
+    n_timepoint = 50,
+    dilution_factor = 1/100,      # Dilution factor for passage
     n_wells = 50,                 # CM parameter. Number of independent wells
     #n_wells = 20,                # number of monocultures tested
     n_communities = 20,           # number of communities used
-    S = 50                       # CM parameter. Number of species per well (randomly sampled from the pool of size Stot = sum(SA) + Sgen)
+    S = 100                       # CM parameter. Number of species per well (randomly sampled from the pool of size Stot = sum(SA) + Sgen)
 )
 
 write_csv(input_parameters, here::here("simulation/01-input_parameters.csv"))

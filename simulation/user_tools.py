@@ -67,7 +67,7 @@ def load_assumptions(input_row):
             assumptions[item] = input_row[item]
     
     # Customized paramters 
-    for item in ['n_pass', 't_propagation', 'dilution_factor']:
+    for item in ['n_pass', 't_propagation', 'dilution_factor', 'save_timepoint', 'n_timepoint']:
         if item in input_row.keys():
             assumptions[item] = input_row[item]
 
@@ -326,13 +326,22 @@ def run_simulations(input_row):
     Plate = Community(init_state, dynamics, params, parallel = False)
     print("Start passaging")
     for i in range(assumptions['n_pass']): # number of passages
-        Plate.Propagate(T = assumptions['t_propagation'], compress_resources = False, compress_species = True)
         print("T" + str(i+1))
+        if assumptions['save_timepoint'] == True:
+            for j in range(assumptions['n_timepoint']):
+                Plate.Propagate(T = assumptions['t_propagation']/assumptions['n_timepoint'], compress_resources = False, compress_species = True)
+                Plate.N.round(2).to_csv(input_row['output_dir'] + re.sub("init.csv", "T" + str(i+1) + "t" + str(j+1) + ".csv", input_row["init_N0"]))
+                Plate.R.round(2).to_csv(input_row['output_dir'] + re.sub("init.csv", "T" + str(i+1) + "t" + str(j+1) + ".csv", input_row["init_R0"]))
+                print("T" + str(i+1) + "t" + str(j+1))
+        elif assumptions['save_timepoint'] == False:
+            Plate.Propagate(T = assumptions['t_propagation'], compress_resources = False, compress_species = True)
         Plate.N.round(2).to_csv(input_row['output_dir'] + re.sub("init.csv", "T" + str(i+1) + ".csv", input_row["init_N0"]))
         Plate.R.round(2).to_csv(input_row['output_dir'] + re.sub("init.csv", "T" + str(i+1) + ".csv", input_row["init_R0"]))
+        
         if i == (assumptions['n_pass']-1): # last transfer
             Plate.N.round(2).to_csv(input_row['output_dir'] + re.sub("init.csv", "end.csv", input_row["init_N0"]))
             Plate.R.round(2).to_csv(input_row['output_dir'] + re.sub("init.csv", "end.csv", input_row["init_R0"]))
+        
         Plate.Passage(f = np.eye(assumptions['n_wells'])*assumptions['dilution_factor'], refresh_resource = True)
 
 
