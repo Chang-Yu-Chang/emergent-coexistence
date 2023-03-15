@@ -51,7 +51,7 @@ input_parameters <- tibble(
     t_propagation = 1,            # Length of propagation in one transfer
     save_timepoint = FALSE,
     n_timepoint = 50,
-    dilution_factor = 1/100,      # Dilution factor for passage
+    dilution_factor = 1/1000,      # Dilution factor for passage
     n_wells = 50,                 # CM parameter. Number of independent wells
     #n_wells = 20,                # number of monocultures tested
     n_communities = 20,           # number of communities used

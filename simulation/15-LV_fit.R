@@ -73,14 +73,16 @@ pairs_LV <- pairs_abundance_focal_subset %>%
 
 # Interaction coefficient over time
 p1 <- pairs_LV %>%
+    filter(Transfer == 1) %>%
     ggplot(aes(x = TimeID, y = Abundance, color = Species, group = Species)) +
-    geom_point() +
+    geom_point(size = 1) +
     geom_line() +
-    #scale_x_continuous(limits = c(0, 100), breaks = seq(0, 100, 10)) +
-    facet_grid(.~Transfer, scales = "free_x", labeller = labeller(Transfer = label_both)) +
+    scale_y_log10() +
+    #facet_grid(.~Transfer, scales = "free_x", labeller = labeller(Transfer = label_both)) +
     theme_classic() +
-    theme(panel.border = element_rect(color = 1, fill = NA)) +
-    labs()
+    theme(panel.border = element_rect(color = 1, fill = NA),
+          legend.position = "top") +
+    labs(x = "time", y = "log(abundance)")
 
 
 # Time window
@@ -141,39 +143,41 @@ LVfit <- LVfit %>%
 
 # Interaction coefficients
 p2 <- LVfit %>%
+    filter(Transfer == 1) %>%
     filter(!(Term %in% c("r1", "r2"))) %>%
     ggplot(aes(x = Window, y = Estimate, color = Term, group = Term))+
-    geom_point() +
+    geom_hline(yintercept = 0, linetype = 2) +
+    geom_point(size = 1) +
     geom_line() +
     theme_classic() +
-    #scale_x_continuous(limits = c(0, 100), breaks = seq(0, 100, 10)) +
-    facet_grid(.~Transfer, scales = "free_x", labeller = labeller(Transfer = label_both)) +
+    #facet_grid(.~Transfer, scales = "free_x", labeller = labeller(Transfer = label_both)) +
     theme(panel.border = element_rect(color = 1, fill = NA)) +
-    labs()
-
-
-p <- plot_grid(p1, p2, nrow = 2, axis = "lr", align = "v")
-
-ggsave(here::here("simulation/plots/15-LV_fit_time.png"), plot = p, width = 8, height = 8)
-
+    theme(legend.position = "top") +
+    labs(x = "time", y = "estimate")
 
 # vector plot
-p <- LVfit %>%
+p3 <- LVfit %>%
     filter(!(Term %in% c("r1", "r2"))) %>%
     group_by(Window) %>%
     arrange(Window, Term) %>%
     pivot_wider(names_from = Term, values_from = Estimate) %>%
     ggplot(aes(x = a12, y = a21)) +
     #ggplot(aes(x = sign(a12) * log(abs(a12)), y = sign(a21) * log(abs(a21))))+
-    geom_point() +
-    geom_text(aes(label = Window), hjust = 0, nudge_x = 0.1, size = 3) +
+    geom_point(shape = 4, size = 2) +
+    geom_text(aes(label = Window), hjust = 0, nudge_x = 0.002, size = 2) +
     geom_vline(xintercept = 0, linetype = 2) +
     geom_hline(yintercept = 0, linetype = 2) +
     theme_classic() +
     theme() +
     labs()
 
-ggsave(here::here("simulation/plots/15-LV_fit_phase.png"), plot = p, width = 5, height = 5)
+#ggsave(here::here("simulation/plots/15-LV_fit_phase.png"), plot = p, width = 5, height = 5)
+
+p <- plot_grid(p1, p2, p3, NULL, nrow = 2, axis = "tblr", align = "hv", labels = LETTERS[1:3]) + paint_white_background()
+ggsave(here::here("simulation/plots/15-LV_fit.png"), plot = p, width = 8, height = 8)
+
+
+
 
 if (FALSE) {
 

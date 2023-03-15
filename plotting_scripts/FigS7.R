@@ -64,6 +64,7 @@ pairs_mismatch_group <- pairs_mismatch %>%
 #     theme_classic() +
 #     labs(x = "# of nucleotide difference in 16S", y = "")
 
+# boxplot by mismatch
 p1 <- pairs_mismatch %>%
     ggplot(aes(x = InteractionType, y = Mismatch, fill = InteractionType)) +
     geom_boxplot(linewidth = 1, width = 0.4) +
@@ -80,7 +81,6 @@ t.test(
     pairs_mismatch %>% filter(InteractionType == "exclusion") %>% pull(Mismatch)
 )
 
-# boxplot by mismatch
 p2 <- pairs_mismatch %>%
     mutate(InteractionType = factor(InteractionType, c("coexistence", "exclusion"))) %>%
     group_by(MismatchGroup, InteractionType) %>%

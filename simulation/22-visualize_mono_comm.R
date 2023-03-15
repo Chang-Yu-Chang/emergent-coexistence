@@ -96,10 +96,12 @@ p <- communities_abundance %>%
     geom_col(position = "fill") +
     #scale_fill_manual(values = c("F0" = "#8A89C0", "F1" = "#FFCB77"), labels = c("F0" = "fermenter", "F1" = "repirator")) +
     scale_color_manual(values = rep("black", length(sal$Species))) +
-    facet_wrap(.~Community, ncol = 5) +
+    scale_x_discrete(breaks = c("init", paste0("T", seq(5,20, 5))), labels = c("T0", paste0("T", seq(5,20, 5)))) +
+    scale_y_continuous(breaks = seq(0,1,0.2)) +
+    facet_wrap(.~Community, ncol = 5, labeller = labeller(Community = label_both)) +
     theme_classic() +
-    guides(color = "none", fill = guide_legend(title = "")) +
-    labs()
+    guides(color = "none", fill = guide_legend(title = "Family")) +
+    labs(x = "transfer", y = "relative abundance")
 
 ggsave(here::here("simulation/plots/22-communities-02-bar_fraction.png"), p, width = 12, height = 10)
 
@@ -128,12 +130,12 @@ p <- communities_abundance_abundant %>%
     annotate("text", x = 1:20, y = 1.15, label = communities_richness$Richness, size = 4) +
     annotate("text", x = 21, y = 1.1, label = c("n. of species"), size = 4, hjust = 0) +
     #scale_fill_manual(values = c("F0" = "#8A89C0", "F1" = "#FFCB77"), labels = c("F0" = "fermenter", "F1" = "repirator")) +
-    scale_y_continuous(expand = c(0, 0), limits = c(0, 1.1)) +
+    scale_y_continuous(breaks = seq(0,1, 0.2), expand = c(0,0), limits = c(0,1.1)) +
     coord_cartesian(xlim = c(0.5, 20.5), ylim = c(0, 1), clip = "off") +
     theme_classic() +
     theme(plot.margin = unit(c(1,.5,.5,.5), "cm")) +
-    guides(color = "none", fill = guide_legend(title = "")) +
-    labs(y = "Relative abundance")
+    guides(color = "none", fill = guide_legend(title = "Family")) +
+    labs(x = "community", y = "relative abundance")
 
 ggsave(here::here("simulation/plots/22-communities-03-bar_final.png"), p, width = 9, height = 3)
 

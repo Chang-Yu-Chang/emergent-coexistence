@@ -6,6 +6,7 @@ source(here::here("analysis/00-metadata.R"))
 communities <- read_csv(paste0(folder_data, "temp/00c-communities.csv"), col_types = cols())
 
 # 1. Read the community ESV abundance ----
+
 #' Note that this csv only has transfer 12
 communities_abundance <- read_csv(paste0(folder_data, "raw/community_ESV/Emergent_Simplicity_Equilibrium_Data.csv"), col_types = cols()) %>%
     # Tidy up the variable names
@@ -20,6 +21,9 @@ communities_abundance <- read_csv(paste0(folder_data, "raw/community_ESV/Emergen
     select(SampleID, Community, RelativeAbundance, CommunityESVID, ESV, ESVFamily, ESVGenus)
 
 write_csv(communities_abundance, paste0(folder_data, "temp/13-communities_abundance.csv"))
+
+
+
 
 
 # 2. Align isolate 16S sequences to community ESV ----

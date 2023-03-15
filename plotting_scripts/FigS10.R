@@ -1,66 +1,9 @@
+#' CURRENT THIS SCRIPT IS almost IDENTICAL TO 17-ESV_fitness_change.R
+
 library(tidyverse)
 library(cowplot)
 source(here::here("analysis/00-metadata.R"))
-source(here::here("plotting_scripts/FigS9.R"))
 
-
-# Calculate Malthusian fitness
-communities_abundance_fitness <- communities_abundance_sp %>%
-    #select(CommunityESV, Transfer, Relative_Abundance) %>%
-    #arrange(CommunityESV, Transfer) %>%
-    filter(Transfer %in% c(1, 9:12)) %>%
-    mutate(Time = case_when(
-        Transfer == 1 ~ "init",
-        Transfer %in% 9:12 ~ "end"
-    )) %>%
-    group_by(CommunityESV, Time) %>%
-    summarize(Relative_Abundance = mean(Relative_Abundance, na.rm = T)) %>%
-    pivot_wider(names_from = Time, names_prefix = "T", values_from = Relative_Abundance) %>%
-    mutate(Fitness = log(Tend/Tinit)) %>%
-    select(CommunityESV, Fitness)
-
-# x_T1 vs. log(x_T12/x_T1)
-p <- communities_abundance_fitness %>%
-    left_join(communities_abundance_T1) %>%
-    ggplot(aes(x = Relative_Abundance, y = Fitness)) +
-    geom_point(shape = 21, size = 3, stroke = 1) +
-    geom_hline(yintercept = 0, linetype = 2) +
-    theme_classic() +
-    theme(axis.text = element_text(size = 15),
-          axis.title = element_text(size = 15)) +
-    labs(x = expression(x[init]), y = expression(log(x[end]/x[init])))
-
-ggsave(here::here("plots/FigS10-species_abundance.png"), p, width = 4, height = 4)
-
-if (FALSE) {
-    # log(x[Ti+1]/x[i]) over transfers
-    communities_abundance_time <- communities_abundance_sp %>%
-        select(CommunityESV, Transfer, Relative_Abundance) %>%
-        arrange(CommunityESV, Transfer) %>%
-        group_by(CommunityESV) %>%
-        # time step change
-        mutate(Fitness = log(lead(Relative_Abundance) / Relative_Abundance))
-
-    communities_abundance_time %>%
-        ggplot(aes(x = Relative_Abundance, y = Fitness)) +
-        geom_point(shape = 21, size = 3, stroke = 1) +
-        geom_hline(yintercept = 0, linetype = 2) +
-        #facet_wrap(~CommunityESV) +
-        #facet_wrap(~Transfer, scales = "free") +
-        theme_classic() +
-        theme(panel.border = element_rect(color = 1, fill = NA)) +
-        labs(x = "x_T", y = "log(x_{Ti+1}/x_{Ti})")
-
-    p3 <- communities_abundance_time %>%
-        filter(Transfer != 12) %>%
-        ggplot() +
-        geom_boxplot(aes(x = Transfer, y = Fitness, group = Transfer), outlier.color = NA) +
-        geom_hline(yintercept = 0, linetype = 2) +
-        geom_point(aes(x = Transfer, y = Fitness), position = position_jitter(width = 0.1, height = 0),
-                   size = 2, shape = 21, stroke = 1) +
-        scale_x_continuous(breaks = 1:12) +
-        theme_classic() +
-        theme() +
-        labs(x = "Transfer", y = expression(log(x[Ti+1]/x[i])))
-
-}
+communities <- read_csv(paste0(folder_data, "temp/00c-communities.csv"), show_col_types = F)
+communities <- communities %>% mutate(Community = factor(Community, Community))
+communities_abundance <- read_csv(paste0(folder_data, "raw/community_ESV/Emergent_Comunity_Data.csv"), show_col_types = F)
