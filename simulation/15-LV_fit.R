@@ -7,11 +7,8 @@ library(broom)
 source(here::here("analysis/00-metadata.R"))
 source(here::here("simulation/01-generate_input.R"))
 
-
-# 0. parameters ----
+# Parameters ----
 input_parameters <- read_csv(here::here("simulation/01-input_parameters.csv"), col_types = cols())
-# input_poolPairs <- read_csv(here::here("simulation/03a-input_poolPairs.csv"), col_types = cols())
-# input_withinCommunityPairs <- read_csv(here::here("simulation/03b-input_withinCommunityPairs.csv"), col_types = cols())
 input_LVPairs <- read_csv(here::here("simulation/03c-input_LVPairs.csv"), col_types = cols())
 
 read_wide_file <- function(x, type = "N") {
@@ -61,12 +58,11 @@ pairs_abundance_focal_subset <- pairs_abundance_focal %>%
 
 
 
-# Clean up data
+# Clean up data ----
 pairs_LV <- pairs_abundance_focal_subset %>%
-    #filter(Time %in% paste0("T", rep(1, 50), "t", 1:50)) %>%
     separate(col = Time, sep = "t", into = c("Transfer", "Timepoint"), remove = F) %>%
     mutate(Transfer = as.numeric(str_replace(Transfer, "T", "")), Timepoint = as.numeric(Timepoint)) %>%
-    mutate(TimeID = (Transfer-1) * 50 + Timepoint) %>%
+    #mutate(TimeID = (Transfer-1) * 50 + Timepoint) %>%
     select(-Family) %>%
     mutate(Time = as.numeric(Time)) %>%
     mutate(SpeciesID = paste0("Species", rep(1:2, n()/2)))
@@ -74,22 +70,23 @@ pairs_LV <- pairs_abundance_focal_subset %>%
 # Interaction coefficient over time
 p1 <- pairs_LV %>%
     filter(Transfer == 1) %>%
-    ggplot(aes(x = TimeID, y = Abundance, color = Species, group = Species)) +
+    ggplot(aes(x = Time, y = Abundance, color = Species, group = Species)) +
     geom_point(size = 1) +
     geom_line() +
-    scale_y_log10() +
-    #facet_grid(.~Transfer, scales = "free_x", labeller = labeller(Transfer = label_both)) +
+    #scale_y_log10() +
     theme_classic() +
     theme(panel.border = element_rect(color = 1, fill = NA),
           legend.position = "top") +
     labs(x = "time", y = "log(abundance)")
-
+p1
 
 # Time window
-windows <- tibble(Window = c(1:46, 51:96), Transfer = rep(1:2, each = 46)) %>%
+n_timepoints_window <- 15
+windows <- tibble(Window = c(1:(50-n_timepoints_window), 51:(100-n_timepoints_window)), Transfer = rep(1:2, each = (50-n_timepoints_window))) %>%
     group_by(Window) %>%
     group_split() %>%
-    lapply(function(x) tibble(Window = x$Window[1], Transfer = x$Transfer[1], TimeID = (x$Window[1]):(x$Window[1]+4))) %>%
+    lapply(function(x) tibble(Window = x$Window[1], Transfer = x$Transfer[1],
+                              Time = (x$Window[1]):(x$Window[1]+n_timepoints_window-1))) %>%
     bind_rows() %>%
     mutate(Window = as.numeric(Window))
 
@@ -126,12 +123,12 @@ calculate_coeffs <- function (pairs_focal) {
 }
 
 LVfit <- rep(list(NA), length(unique(windows$Window)))
-
+i=1
 for (i in 1:length(unique(windows$Window))) {
-    windows_i <- filter(windows, Window == unique(windows$Window)[i])
+        windows_i <- filter(windows, Window == unique(windows$Window)[i])
     LVfit[[i]] <- pairs_LV %>%
         pivot_wider(id_cols = -Species, names_from = SpeciesID, values_from = Abundance) %>%
-        filter(TimeID %in% windows_i$TimeID) %>%
+        filter(Time %in% windows_i$Time) %>%
         calculate_coeffs() %>%
         mutate(Window = unique(windows$Window)[i])
 }
@@ -162,7 +159,6 @@ p3 <- LVfit %>%
     arrange(Window, Term) %>%
     pivot_wider(names_from = Term, values_from = Estimate) %>%
     ggplot(aes(x = a12, y = a21)) +
-    #ggplot(aes(x = sign(a12) * log(abs(a12)), y = sign(a21) * log(abs(a21))))+
     geom_point(shape = 4, size = 2) +
     geom_text(aes(label = Window), hjust = 0, nudge_x = 0.002, size = 2) +
     geom_vline(xintercept = 0, linetype = 2) +
@@ -171,11 +167,55 @@ p3 <- LVfit %>%
     theme() +
     labs()
 
-#ggsave(here::here("simulation/plots/15-LV_fit_phase.png"), plot = p, width = 5, height = 5)
-
 p <- plot_grid(p1, p2, p3, NULL, nrow = 2, axis = "tblr", align = "hv", labels = LETTERS[1:3]) + paint_white_background()
 ggsave(here::here("simulation/plots/15-LV_fit.png"), plot = p, width = 8, height = 8)
 
+
+# Plot the time window
+i=4
+windows_i <- filter(windows, Window == unique(windows$Window)[i])
+pairs_LV_window <- pairs_LV %>%
+    pivot_wider(id_cols = -Species, names_from = SpeciesID, values_from = Abundance) %>%
+    filter(Time %in% windows_i$Time)
+pairs_LV_window_params <- pairs_LV_window %>% calculate_coeffs()
+
+plot_LV_fit <- function (wide_data, params) {
+    parms <- c(r1 = params$Estimate[1],
+               r2 = params$Estimate[4],
+               a11 = params$Estimate[2],
+               a12 = params$Estimate[3],
+               a21 = params$Estimate[5],
+               a22 = params$Estimate[6])
+
+    initialN <- c(wide_data$Species1[1], wide_data$Species2[1])
+    out <- deSolve::ode(y = initialN,
+                        times = seq(wide_data$Time[1], wide_data$Time[nrow(wide_data)], length = 100),
+                        func = lv_interaction,
+                        parms = parms) %>%
+        as_tibble() %>%
+        rename(Time = time) %>%
+        pivot_longer(cols = c(`1`,`2`), names_to = "Species", values_to = "Abundance") %>%
+        mutate(Species = paste0("Species", Species))
+
+    wide_data %>%
+        pivot_longer(cols = starts_with("Species"), names_to = "Species", values_to = "Abundance") %>%
+        ggplot() +
+        geom_point(aes(x = Time, y = Abundance, color = Species), shape = 21, size = 3, stroke = 1) +
+        geom_line(data = out, aes(x = Time, y = Abundance, color = Species)) +
+        theme_classic() +
+        theme() +
+        labs()
+
+}
+plot_LV_fit(pairs_LV_window, pairs_LV_window_params)
+
+# Test all species
+pairs_LV_wide <- pairs_LV %>%
+    filter(Time %in% 1:50) %>%
+    pivot_wider(id_cols = -Species, names_from = SpeciesID, values_from = Abundance)
+pairs_LV_params <- pairs_LV_wide %>%
+    calculate_coeffs()
+plot_LV_fit(pairs_LV_wide, pairs_LV_params)
 
 
 
