@@ -1,5 +1,3 @@
-#' CURRENT THIS SCRIPT IS almost IDENTICAL TO 17-ESV_fitness_change.R
-
 library(tidyverse)
 library(cowplot)
 source(here::here("analysis/00-metadata.R"))
@@ -113,8 +111,6 @@ communities_abundance <- read_csv(paste0(folder_data, "raw/community_ESV/Emergen
     bin_ESV_names() %>%
     clean_ESV_names() %>%
     arrange(Community, Family, Transfer, ESV)
-
-
 
 # Subset T1 and T12
 communities_abundance_T1 <- communities_abundance %>%

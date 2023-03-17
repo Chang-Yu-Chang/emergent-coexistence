@@ -17,6 +17,11 @@ communities_abundance <- read_csv(paste0(folder_data, "raw/community_ESV/Emergen
     # clean_ESV_names() %>%
     arrange(Community, Family, Transfer, ESV)
 
+communities_abundance_temporal <- communities_abundance %>%
+    distinct(Community, Transfer) %>%
+    arrange(Community, Transfer) %>%
+    filter(Transfer == 4)
+
 curate_abundant_genus <- function () {
     abundant_genus <- c(
         "Enterobacteriaceae","Klebsiella", "Enterobacter", "Raoultella", "Citrobacter", "Salmonella", "Pantoea", "Yersinia",
@@ -143,7 +148,7 @@ p <- temp %>%
 
 ggsave(paste0(folder_data, "temp/13-Goldford2018_FigS6_actual_replicate.png"), p, width = 10, height = 8)
 
-## T12 composition. Replicate reordered according to the ESV abundance Fig.S6 in Goldford2018 ----
+# T12 composition. Replicate reordered according to the ESV abundance Fig.S6 in Goldford2018 ----
 communities_abundance_reordered <- communities_abundance %>%
     filter(Transfer == 12, !is.na(Community)) %>%
     select(ESV_ID, Community, Inoculum, Replicate, Relative_Abundance) %>%
@@ -187,12 +192,6 @@ p <- temp %>%
 ggsave(paste0(folder_data, "temp/13-Goldford2018_FigS6.png"), p, width = 10, height = 8)
 
 
-
-# Extract communities with temporal data ----
-communities_abundance_temporal <- communities_abundance %>%
-    distinct(Community, Transfer) %>%
-    arrange(Community, Transfer) %>%
-    filter(Transfer == 4)
 
 # Temporal dynamics of all CXXR4 communities. One replicate per inoculum. Fig.S2 in Goldford2018 ----
 temp <- communities_abundance %>%
@@ -325,7 +324,6 @@ ggsave(paste0(folder_data, "temp/13-four_communities_temporal.png"), p, width = 
 
 
 # Test plotting the fitness ----
-
 communities <- read_csv(paste0(folder_data, "temp/00c-communities.csv"), show_col_types = F) %>%
     mutate(Community = factor(Community, Community))
 communities_abundance <- read_csv(paste0(folder_data, "raw/community_ESV/Emergent_Comunity_Data.csv"), show_col_types = F) %>%
@@ -364,7 +362,7 @@ communities_abundance_fitness <- communities_abundance_temporal %>%
     mutate(Fitness = log(lead(Relative_Abundance) / Relative_Abundance))
 
 
-# ESVs in final communities
+# Abundance vs. fitness for ESVs in final communities, T8-12 ----
 p <- communities_abundance_fitness %>%
     filter(Transfer %in% 8:12) %>%
     drop_na() %>%
@@ -387,26 +385,9 @@ p <- communities_abundance_fitness %>%
 
 ggsave(paste0(folder_data, "temp/13-species_fitness_stable.png"), p, width = 12, height = 15)
 
-p <- communities_abundance_fitness %>%
-    filter(Transfer %in% 8:12) %>%
-    drop_na() %>%
-    mutate(CommunityESV = paste0(Community, ESV_ID)) %>%
-    filter(CommunityESV %in% ESV_stable$CommunityESV) %>%
-    ggplot() +
-    geom_point(aes(x = Relative_Abundance, y = Fitness), shape = 21) +
-    geom_hline(yintercept = 0, linetype = 2) +
-    scale_x_continuous(breaks = c(0,0.5,1), labels = c("0", "0.5", "1")) +
-    theme_classic() +
-    theme(axis.text = element_text(size = 15),
-          axis.title = element_text(size = 15),
-          panel.border = element_rect(color = 1, fill = NA)) +
-    labs(x = expression(x[i]), y = expression(log(x[i+1]/x[i])))
-
-ggsave(paste0(folder_data, "temp/13-species_fitness_stable_overlay.png"), p, width = 4, height = 4)
-
 # Linear regression for each species
 communities_abundance_fitness %>%
-    #filter(Transfer %in% 8:12) %>%
+    filter(Transfer %in% 8:12) %>%
     drop_na() %>%
     mutate(CommunityESV = paste0(Community, ESV_ID)) %>%
     filter(CommunityESV %in% ESV_stable$CommunityESV) %>%
@@ -422,29 +403,8 @@ communities_abundance_fitness %>%
     #filter(!is.na(estimate), !is.na(std.error)) %>%
     filter(p.value < 0.05)
 
-communities_abundance_fitness %>%
-    #filter(Transfer %in% 8:12) %>%
-    drop_na() %>%
-    mutate(CommunityESV = paste0(Community, ESV_ID)) %>%
-    filter(CommunityESV %in% ESV_stable$CommunityESV) %>%
-    filter(Community == "C6R1", ESV_ID == "Pseudomonas.1") %>%
-    # lm(Fitness ~ Relative_Abundance, data = .) %>%
-    # summary()
-    ggplot() +
-    geom_smooth(aes(x = Relative_Abundance, y = Fitness), method = "lm", formula = y~x) +
-    geom_point(aes(x = Relative_Abundance, y = Fitness), shape = 21) +
-    geom_hline(yintercept = 0, linetype = 2) +
-    #scale_x_continuous(breaks = c(0,0.5,1), labels = c("0", "0.5", "1")) +
-    #facet_wrap(Community~ESV_ID) +
-    theme_classic() +
-    theme(axis.text = element_text(size = 15),
-          axis.title = element_text(size = 15),
-          panel.border = element_rect(color = 1, fill = NA)) +
-    labs(x = expression(x[i]), y = expression(log(x[i+1]/x[i])))
-
-# All transfers
+# Abundance vs. fitness for ESVs in final communities, T1-12 ----
 p <- communities_abundance_fitness %>%
-    #filter(Transfer %in% 8:12) %>%
     drop_na() %>%
     mutate(CommunityESV = paste0(Community, ESV_ID)) %>%
     filter(CommunityESV %in% ESV_stable$CommunityESV) %>%
@@ -465,9 +425,8 @@ p <- communities_abundance_fitness %>%
 
 ggsave(paste0(folder_data, "temp/13-species_fitness_stable_all_transfers.png"), p, width = 12, height = 15)
 
-
+# Linear regression
 communities_abundance_fitness %>%
-    #filter(Transfer %in% 8:12) %>%
     drop_na() %>%
     mutate(CommunityESV = paste0(Community, ESV_ID)) %>%
     filter(CommunityESV %in% ESV_stable$CommunityESV) %>%
@@ -484,8 +443,7 @@ communities_abundance_fitness %>%
     filter(p.value < 0.05)
 
 
-
-# Extinct species ----
+# Abundance vs. fitness for extinct species, T8-12 ----
 p <-  communities_abundance_fitness %>%
     filter(Transfer %in% 8:12) %>%
     drop_na() %>%
@@ -505,24 +463,21 @@ p <-  communities_abundance_fitness %>%
 
 ggsave(paste0(folder_data, "temp/13-species_fitness_extinct.png"), p, width = 8, height = 10)
 
-p <- communities_abundance_fitness %>%
+# Linear regression
+communities_abundance_fitness %>%
     filter(Transfer %in% 8:12) %>%
     drop_na() %>%
     mutate(CommunityESV = paste0(Community, ESV_ID)) %>%
     filter(!(CommunityESV %in% ESV_stable$CommunityESV)) %>%
-    ggplot() +
-    geom_point(aes(x = Relative_Abundance, y = Fitness), shape = 21) +
-    geom_hline(yintercept = 0, linetype = 2) +
-    scale_x_continuous(breaks = c(0,0.5,1), labels = c("0", "0.5", "1")) +
-    #facet_wrap(Community~ESV_ID) +
-    theme_classic() +
-    theme(axis.text = element_text(size = 15),
-          axis.title = element_text(size = 15),
-          panel.border = element_rect(color = 1, fill = NA)) +
-    labs(x = expression(x[i]), y = expression(log(x[i+1]/x[i])))
+    nest(data = c(-Community, -ESV_ID)) %>%
+    mutate(fit = map(data, ~ lm(Fitness ~ Relative_Abundance, data = .x)),
+           tidied = map(fit, tidy)) %>%
+    unnest(tidied) %>%
+    filter(!is.na(estimate), !is.na(std.error)) %>%
+    filter(p.value < 0.05, term == "Relative_Abundance")
 
-ggsave(paste0(folder_data, "temp/13-species_fitness_extinct_overlay.png"), p, width = 4, height = 4)
 
+# Abundance vs. fitness for extinct species, T1-12 ----
 p <-  communities_abundance_fitness %>%
     #filter(Transfer %in% 8:12) %>%
     drop_na() %>%
@@ -542,38 +497,8 @@ p <-  communities_abundance_fitness %>%
 
 ggsave(paste0(folder_data, "temp/13-species_fitness_extinct_all_transfers.png"), p, width = 30, height = 30)
 
-communities_abundance %>%
-    right_join(communities_abundance_temporal_complete) %>%
-    filter(Transfer %in% 8:12) %>%
-    drop_na() %>%
-    mutate(CommunityESV = paste0(Community, ESV_ID)) %>%
-    filter(!(CommunityESV %in% ESV_stable$CommunityESV)) %>%
-    ggplot(aes(x = factor(Transfer), y = Relative_Abundance)) +
-    geom_boxplot(outlier.size = -1) +
-    geom_point(shape = 21) +
-    #coord_flip() +
-    theme_classic() +
-    theme(axis.text = element_text(size = 15),
-          axis.title = element_text(size = 15),
-          panel.border = element_rect(color = 1, fill = NA)) +
-    labs(x = expression(x[i]), y = expression(log(x[i+1]/x[i])))
-
-# Linear regression for each species
+# Linear regression
 communities_abundance_fitness %>%
-    filter(Transfer %in% 8:12) %>%
-    drop_na() %>%
-    mutate(CommunityESV = paste0(Community, ESV_ID)) %>%
-    filter(!(CommunityESV %in% ESV_stable$CommunityESV)) %>%
-    nest(data = c(-Community, -ESV_ID)) %>%
-    mutate(fit = map(data, ~ lm(Fitness ~ Relative_Abundance, data = .x)),
-           tidied = map(fit, tidy)) %>%
-    unnest(tidied) %>%
-    filter(!is.na(estimate), !is.na(std.error)) %>%
-    filter(p.value < 0.05, term == "Relative_Abundance")
-
-
-communities_abundance_fitness %>%
-    #filter(Transfer %in% 8:12) %>%
     drop_na() %>%
     mutate(CommunityESV = paste0(Community, ESV_ID)) %>%
     filter(!(CommunityESV %in% ESV_stable$CommunityESV)) %>%
@@ -587,8 +512,37 @@ communities_abundance_fitness %>%
     select(Community, ESV_ID, estimate, std.error, p.value, r.squared) %>%
     #filter(r.squared > 0.5)
     #filter(!is.na(estimate), !is.na(std.error)) %>%
-    filter(p.value < 0.05)
+    #select(Community, ESV_ID, estimate, std.error, p.value, r.squared)
+    filter(p.value < 0.05, estimate < 0, estimate > -100)
 
+
+
+# Plot one ESV
+communities_abundance_fitness %>%
+    drop_na() %>%
+    mutate(CommunityESV = paste0(Community, ESV_ID)) %>%
+    filter(!(CommunityESV %in% ESV_stable$CommunityESV)) %>%
+    filter(Community == "C11R4", ESV_ID == "Pseudomonas.3") %>%
+    # mutate(fit = map(data, ~ lm(Fitness ~ Relative_Abundance, data = .x)),
+    #        tidied = map(fit, tidy),
+    #        r.squared = map(fit, function(x) summary(x)$adj.r.squared)) %>%
+    # unnest(r.squared) %>%
+    # unnest(tidied) %>%
+    # filter(term == "Relative_Abundance") %>%
+    # select(Community, ESV_ID, estimate, std.error, p.value, r.squared) %>%
+    #filter(r.squared > 0.5)
+    #filter(!is.na(estimate), !is.na(std.error)) %>%
+    #select(Community, ESV_ID, estimate, std.error, p.value, r.squared)
+    ggplot() +
+    geom_smooth(aes(x = Relative_Abundance, y = Fitness), method = "lm", formula = y~x, se = F) +
+    geom_point(aes(x = Relative_Abundance, y = Fitness), shape = 21) +
+    geom_hline(yintercept = 0, linetype = 2) +
+    #scale_x_continuous(breaks = c(0,0.5,1), labels = c("0", "0.5", "1")) +
+    theme_classic() +
+    theme(axis.text = element_text(size = 15),
+          axis.title = element_text(size = 15),
+          panel.border = element_rect(color = 1, fill = NA)) +
+    labs(x = expression(x[i]), y = expression(log(x[i+1]/x[i])))
 
 
 
