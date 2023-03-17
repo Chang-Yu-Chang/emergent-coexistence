@@ -109,10 +109,39 @@ ggsave(here::here("simulation/plots/23-pairs.png"), p, width = 8, height = 8)
 
 
 
+#
+poolPair_fraction <- poolPairs_N_outcome %>%
+    group_by(Community, InteractionType, .drop = F) %>%
+    summarize(Count = n()) %>%
+    arrange(Community, InteractionType) %>%
+    mutate(Fraction = Count / sum(Count)) %>%
+    left_join(monocultureSets_richness) %>%
+    select(Community, InteractionType, Fraction) %>%
+    filter(InteractionType == "exclusion") %>%
+    ungroup()
+
+withinCommunityPairs_fraction <- withinCommunityPairs_N_outcome %>%
+    mutate(InteractionType = factor(InteractionType, c("exclusion", "coexistence"))) %>%
+    group_by(Community, InteractionType, .drop = F) %>%
+    summarize(Count = n()) %>%
+    drop_na() %>%
+    arrange(Community, InteractionType) %>%
+    mutate(Fraction = Count / sum(Count)) %>%
+    left_join(communities_richness) %>%
+    select(Community, InteractionType, Fraction) %>%
+    filter(InteractionType == "exclusion") %>%
+    ungroup()
+
+t.test(poolPair_fraction$Fraction, withinCommunityPairs_fraction$Fraction) %>%
+    broom::tidy()
 
 
+stderror <- function(x) sd(x)/sqrt(length(x))
+mean(poolPair_fraction$Fraction)
+stderror(poolPair_fraction$Fraction)
 
-
+mean(withinCommunityPairs_fraction$Fraction)
+stderror(withinCommunityPairs_fraction$Fraction)
 
 
 

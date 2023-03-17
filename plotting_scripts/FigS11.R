@@ -62,7 +62,7 @@ tb_lm %>%
 ESV_sig <- tb_lm %>%
     filter(term == "Relative_Abundance") %>%
     select(Community, ESV_ID, estimate, std.error, p.value, r.squared) %>%
-    filter(p.value < 0.05, estimate < 0, estimate > -100) %>%
+    filter(p.value < 0.05, estimate < 0) %>%
     distinct(Community, ESV_ID) %>%
     mutate(CommunityESV = paste0(Community, ESV_ID))
 
@@ -100,7 +100,7 @@ communities_abundance_fitness %>%
     unnest(tidied) %>%
     filter(term == "Relative_Abundance") %>%
     select(Community, ESV_ID, estimate, std.error, p.value, r.squared) %>%
-    filter(p.value < 0.05, estimate < 0, estimate > -100)
+    filter(p.value < 0.05, estimate < 0)
 
 
 

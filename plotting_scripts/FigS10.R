@@ -201,9 +201,19 @@ for (i in 1:4) {
 }
 
 
-p2 <- plot_grid(plotlist = temp_plot_list, ncol = 1)
+p2 <- plot_grid(
+    plot_grid(temp_plot_list[[1]], NULL, rel_widths = c(3.2,1)),
+    plot_grid(temp_plot_list[[2]], NULL, rel_widths = c(4,0)),
+    plot_grid(temp_plot_list[[3]], NULL, rel_widths = c(4,0)),
+    plot_grid(temp_plot_list[[4]], NULL, rel_widths = c(3.2,1)),
+    ncol = 1
+)
 
-p <- plot_grid(p1 + guides(fill = "none"), p2, nrow = 1, rel_widths = c(1, 4), labels = c("A", "B")) + paint_white_background()
-ggsave(here::here("plots/FigS10-communities_abundance.png"), p, width = 15, height = 10)
+p <- plot_grid(
+    plot_grid(p1 + guides(fill = "none"), p2, nrow = 1, rel_widths = c(1, 4), labels = c("A", "B")),
+    get_legend(p1 + theme(legend.position = "bottom") +guides(fill = guide_legend(nrow = 3))),
+    ncol = 1, rel_heights = c(5, 1)
+    ) + paint_white_background()
+ggsave(here::here("plots/FigS10-communities_abundance.png"), p, width = 13, height = 10)
 
 
