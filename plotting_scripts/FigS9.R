@@ -25,15 +25,20 @@ pairs_fermenter_group <- pairs %>%
 
 p <- pairs_fermenter_group %>%
     ggplot() +
-    geom_col(aes(x = PairFermenter, y = Fraction, fill = InteractionType), color = 1, width = 0.7) +
-    geom_text(aes(x = PairFermenter, label = paste0("n=", TotalCount)), y = 0.9) +
+    geom_col(aes(x = InteractionType, y = Fraction, fill = InteractionType), color = 1, width = 0.7, position = position_dodge()) +
+    geom_text(aes(x = InteractionType, y = Fraction, label = Count), vjust = 2, position = position_dodge(width = 0.9)) +
     scale_fill_manual(values = interaction_color) +
-    scale_x_discrete(labels = c(FF = "fermenter-fermenter", FR = "fermenter-respirator", RR = "respirator-respirator")) +
-    scale_y_continuous(expand = c(0,0), breaks = seq(0, 1, 0.2)) +
+    facet_grid(.~PairFermenter, labeller = as_labeller(c(FF = "fermenter-fermenter", FR = "fermenter-respirator", RR = "respirator-respirator"))) +
+
+    # geom_col(aes(x = PairFermenter, y = Fraction, fill = InteractionType), color = 1, width = 0.7) +
+    # geom_text(aes(x = PairFermenter, label = paste0("n=", TotalCount)), y = 0.9) +
+    # scale_fill_manual(values = interaction_color) +
+    # scale_x_discrete(labels = c(FF = "fermenter-fermenter", FR = "fermenter-respirator", RR = "respirator-respirator")) +
+    # scale_y_continuous(expand = c(0,0), breaks = seq(0, 1, 0.2)) +
     theme_classic() +
-    theme(legend.position = "right",
-          axis.text.x = element_text(angle = 30, hjust = 1)) +
-    guides(fill = guide_legend(title = "")) +
+    theme(panel.border = element_rect(color = 1, fill = NA),
+          axis.text.x = element_text(angle = 20, hjust = 1)) +
+    guides(fill = "none") +
     labs(x = "")
 
 matrix(
@@ -45,3 +50,4 @@ matrix(
     chisq.test
 
 ggsave(here::here("plots/FigS9-fermenter_vs_coexistence.png"), p, width = 5, height = 4)
+

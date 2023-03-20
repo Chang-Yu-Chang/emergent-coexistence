@@ -21,6 +21,8 @@ Dm <- read_csv(paste0(output_dir, "00-D.csv"), skip = 1, col_types = cols()) # D
 cm <- read_csv(paste0(output_dir, "00-c.csv"), skip = 1, col_types = cols()) # c matrix
 lm <- read_csv(paste0(output_dir, "00-l.csv"), skip = 1, col_types = cols()) # l matrix
 
+mcrm_resource_colors <- c(RColorBrewer::brewer.pal(9, "Set1"), RColorBrewer::brewer.pal(3, "Set2")[2]) %>% setNames(paste0("R", 0:9))
+
 # 1. c matrix ----
 cml <- cm %>% # c matrix longer
     pivot_longer(cols = starts_with("R"), names_to = "Resource", values_to = "ConsumptionRate") %>%
@@ -55,13 +57,6 @@ p1 <- cml %>%
 
 ggsave(here::here("simulation/plots/21-matrix1_c.png"), p1, width = 4, height = 6)
 
-cml %>% group_by(Species) %>%
-    summarize(sumCR = sum(ConsumptionRate)) %>%
-    ggplot(aes(x = sumCR))+
-    geom_histogram() +
-    theme_classic() +
-    theme() +
-    labs()
 
 
 # 2. D matrix ----

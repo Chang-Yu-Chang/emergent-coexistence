@@ -10,7 +10,9 @@ input_parameters <- read_csv(here::here("simulation/01-input_parameters.csv"), c
 input_poolPairs <- read_csv(here::here("simulation/03a-input_poolPairs.csv"), col_types = cols())
 input_withinCommunityPairs <- read_csv(here::here("simulation/03b-input_withinCommunityPairs.csv"), col_types = cols())
 
-temp_end_time = paste0("T", input_poolPairs$n_pass[1])
+#temp_end_time = paste0("T", input_poolPairs$n_timepoints[1])
+#temp_end_time = input_poolPairs$n_timesteps[1]
+temp_end_time <- input_communities$n_timepoints[1]
 
 # Functions
 ## For reading and formating data
@@ -39,7 +41,7 @@ format_columns <- function (x, type = "N") {
             mutate(Well = factor(Well, paste0("W", 0:999)), .keep = "unused") %>%
             mutate(Class = factor(Class, unique(mal$Class))) %>%
             mutate(Resource = factor(Resource, mal$Resource)) %>%
-            mutate(Time = factor(Time, c("init", paste0("T", 1:20), "end")))
+            mutate(Time = factor(Time, c("init", paste0("T", 1:temp_end_time), "end")))
     }
 
     return(temp)
@@ -191,8 +193,8 @@ for (i in 1:20) {
 
     # Read end composition
     poolPairs_N_end <- read_later_composition(input_poolPairs, "poolPairs", comm = communities_names[i],
-                                              t = temp_end_time, pairs_N_sp = poolPairs_N_sp) %>%
-        mutate(Time = ifelse(Time == temp_end_time, "end", Time))
+                                              t = paste0("T", 1:temp_end_time), pairs_N_sp = poolPairs_N_sp) %>%
+        mutate(Time = ifelse(Time == paste0("T", 1:temp_end_time), "end", Time))
 
     # Check if the init and end has the same number of rows
     stopifnot(nrow(poolPairs_N_init) == nrow(poolPairs_N_end))
@@ -231,8 +233,8 @@ for (i in 1:20) {
 
         # Read end composition
         withinCommunityPairs_N_end <- read_later_composition(input_withinCommunityPairs, "withinCommunityPairs", comm = communities_names[i],
-                                                             t = temp_end_time, pairs_N_sp = withinCommunityPairs_N_sp) %>%
-            mutate(Time = ifelse(Time == temp_end_time, "end", Time))
+                                                             t = paste0("T", 1:temp_end_time), pairs_N_sp = withinCommunityPairs_N_sp) %>%
+            mutate(Time = ifelse(Time == paste0("T", 1:temp_end_time), "end", Time))
 
         # Check if the init and end has the same number of rows
         stopifnot(nrow(withinCommunityPairs_N_init) == nrow(withinCommunityPairs_N_end))

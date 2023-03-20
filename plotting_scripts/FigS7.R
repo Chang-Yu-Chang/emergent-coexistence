@@ -87,15 +87,16 @@ p2 <- pairs_mismatch %>%
     summarize(Count = n()) %>%
     mutate(Fraction = Count / sum(Count), TotalCount = sum(Count)) %>%
     ggplot() +
-    geom_col(aes(x = MismatchGroup, y = Fraction, fill = InteractionType), color = 1, width = 0.7) +
-    geom_text(aes(x = MismatchGroup, label = paste0("n=", TotalCount)), y = 0.9) +
+    geom_col(aes(x = InteractionType, y = Fraction, fill = InteractionType), color = 1, width = 0.7, position = position_dodge()) +
+    geom_text(aes(x = InteractionType, y = Fraction, label = Count), vjust = 2, position = position_dodge(width = 0.9)) +
     scale_fill_manual(values = interaction_color) +
-    scale_y_continuous(expand = c(0,0), breaks = seq(0, 1, 0.2)) +
+    facet_grid(.~MismatchGroup) +
+    #scale_y_continuous(expand = c(0,0), breaks = seq(0, 1, 0.2), limits = c(0,0.8)) +
     theme_classic() +
-    theme(legend.position = "right") +
-    guides(fill = guide_legend(title = "")) +
-    labs(x = "# of nucleotide difference in 16S")
-
+    theme(panel.border = element_rect(color = 1, fill = NA),
+          axis.text.x = element_text(angle = 20, hjust = 1)) +
+    guides(fill = "none") +
+    labs(x = "")
 matrix(
     pairs_mismatch_group %>% filter(MismatchGroup == "<90") %>% pull(Count),
     pairs_mismatch_group %>% filter(MismatchGroup == ">=90") %>% pull(Count),
@@ -103,6 +104,6 @@ matrix(
 ) %>%
     chisq.test
 
-p <- plot_grid(p1, p2, nrow = 1, labels = LETTERS[1:2], scale = 0.9, axis = "tb", align = "h") + paint_white_background()
+p <- plot_grid(p1, p2, nrow = 1, labels = LETTERS[1:2], scale = 0.9, axis = "tb", align = "h", rel_widths = c(1,1)) + paint_white_background()
 ggsave(here::here("plots/FigS7-mismatch_vs_coexistence.png"), p, width = 8, height = 4)
 

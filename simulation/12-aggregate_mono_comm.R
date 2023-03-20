@@ -11,6 +11,9 @@ input_monocultures <- read_csv(here::here("simulation/02a-input_monocultures.csv
 input_communities <- read_csv(here::here("simulation/02b-input_communities.csv"), col_types = cols())
 input_communitiesWithoutCrossfeeding <- read_csv(here::here("simulation/02c-input_communitiesWithoutCrossfeeding.csv"), col_types = cols())
 
+n_timesteps <- input_communities$n_timesteps[1]
+n_timepoints <- input_communities$n_timepoints[1]
+
 read_wide_file <- function(x, type = "N") {
     temp <- read_csv(x, col_types = cols(), name_repair = "unique_quiet") %>%
         pivot_longer(cols = starts_with("W"), names_to = "Well", values_to = "Abundance")
@@ -37,7 +40,7 @@ monocultures_abundance <- list.files(input_monocultures$output_dir[1], pattern =
     }) %>%
     bind_rows %>%
     mutate(Well = ordered(Well, paste0("W", 0:(input_communities$n_wells[1]-1)))) %>%
-    mutate(Time = ordered(Time, c("init", paste0("T", 1:20)))) %>%
+    mutate(Time = ordered(Time, c("init", paste0("T", 1:n_timepoints)))) %>%
     arrange(Well, Time) %>%
     #filter(Abundance > 0) %>%
     select(Well, Time, Family, Species, Abundance)
@@ -62,7 +65,7 @@ communities_abundance <- list.files(input_communities$output_dir[1], pattern = "
     bind_rows %>%
     mutate(Community = ordered(Well, paste0("W", 0:(input_communities$n_wells[1]-1)))) %>%
     select(-Well) %>%
-    mutate(Time = ordered(Time, c("init", paste0("T", 1:20), "end"))) %>%
+    mutate(Time = ordered(Time, c("init", paste0("T", 1:n_timepoints), "end"))) %>%
     arrange(Community, Time) %>%
     #filter(Abundance > 0) %>%
     select(Community, Time, Family, Species, Abundance)
@@ -95,7 +98,7 @@ communitiesWithoutCrossfeeding_abundance <- list.files(input_communitiesWithoutC
     bind_rows %>%
     mutate(Community = ordered(Well, paste0("W", 0:(input_communitiesWithoutCrossfeeding$n_wells[1]-1)))) %>%
     select(-Well) %>%
-    mutate(Time = ordered(Time, c("init", paste0("T", 1:20), "end"))) %>%
+    mutate(Time = ordered(Time, c("init", paste0("T", 1:n_timepoints), "end"))) %>%
     arrange(Community, Time) %>%
     filter(Abundance > 0) %>%
     select(Community, Time, Family, Species, Abundance)

@@ -36,7 +36,7 @@ input_parameters %>%
 n_comm <- input_parameters$n_communities
 input_parameters %>%
     slice(rep(1, n_comm)) %>%
-    mutate(save_timepoint = TRUE, n_timepoint = 50, n_pass = 2) %>%
+    mutate(save_timepoint = T, n_timepoint = 50, n_pass = 2) %>%
     mutate(output_dir = paste0(folder_simulation, "03c-LVPairs/")) %>%
     mutate(init_N0 = paste0("LVPairs_W", 0:(n_comm-1), "-1-N_init.csv"), exp_id = 1, S = 10) %>%
     mutate(init_R0 = paste0("LVPairs_W", 0:(n_comm-1), "-1-R_init.csv")) %>%

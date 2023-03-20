@@ -8,10 +8,6 @@ import numpy as np
 from community_simulator import *
 from community_simulator.usertools import *
 
-# input_csv = 'simulation/02b-input_communities.csv' # Input file name
-# row_number = 0 # Which row of experiment to run
-# input_row = pd.read_csv(input_csv).loc[row_number]
-
 # Extract essential shape values
 def extract_shapes(assumptions):
     #Force number of species to be an array:
@@ -26,10 +22,13 @@ def extract_shapes(assumptions):
     #Default waste type is last type in list:
     if 'waste_type' not in assumptions.keys():
         assumptions['waste_type']=len(assumptions['MA'])-1
-    M = np.sum(assumptions['MA'])
-    T = len(assumptions['MA'])
-    S = np.sum(assumptions['SA'])+assumptions['Sgen']
-    F = len(assumptions['SA'])
+    #Extract total numbers of resources, consumers, resource types, and consumer families:
+    M = np.sum(assumptions['MA'])                        # Total number of resources
+    T = len(assumptions['MA'])                           # Number of resource types 
+    S = np.sum(assumptions['SA'])+assumptions['Sgen']    # Total number of species
+    F = len(assumptions['SA'])                           # Number of species families
+    M_waste = assumptions['MA'][assumptions['waste_type']]
+    #Construct lists of names of resources, consumers, resource types, and consumer families:
     resource_names = ['R'+str(k) for k in range(M)]
     type_names = ['T'+str(k) for k in range(T)]
     family_names = ['F'+str(k) for k in range(F)]
@@ -37,32 +36,44 @@ def extract_shapes(assumptions):
     waste_name = type_names[assumptions['waste_type']]
     resource_index = [[type_names[m] for m in range(T) for k in range(assumptions['MA'][m])], resource_names]
     consumer_index = [[family_names[m] for m in range(F) for k in range(assumptions['SA'][m])]+['GEN' for k in range(assumptions['Sgen'])],consumer_names]
-    return M, T, S, F, type_names, family_names, waste_name, resource_index, family_names, consumer_index
+    return M, T, S, F, M_waste, type_names, family_names, waste_name, resource_index, family_names, consumer_index
 
 # Load model parameters from the input csv
 def load_assumptions(input_row):
-    
     # Set parameters in model
     assumptions = a_default.copy()
-    assumptions['SA'] = np.ones(int(input_row['fa'])) * int(input_row['sa']) # Number of species per specialist family
-    assumptions['MA'] = np.ones(int(input_row['fa'])) * int(input_row['ma']) # Number of resource per resource class
+    assumptions['SA'] = np.ones(int(input_row['fa']), dtype = int) * int(input_row['sa']) # Number of species per specialist family
+    assumptions['MA'] = np.ones(int(input_row['fa']), dtype = int) * int(input_row['ma']) # Number of resource per resource class
     assumptions['Sgen'] = int(input_row['Sgen'])
     assumptions['n_wells'] = int(input_row['n_wells'])
     assumptions['n_communities'] = int(input_row['n_communities'])
-    assumptions['m'] = 0 # Set m=0 to turn off maintanence cost. i.e., no cell dies
-    assumptions['S'] = 2 # Number of initial per-well species sampled from the species pool
+    #assumptions['S'] = 2 # Number of initial per-well species sampled from the species pool
+    
+    #
+    for item in ['ma','sa']:
+        if item in input_row.keys():
+            assumptions[item] = int(input_row[item])
+            
+    # Goldford et al 2018 parameters
+    for item in ['mu_f','sigma_f', 'omega_f','n_timesteps']:
+        if item in input_row.keys():
+            assumptions[item] = float(input_row[item])
+    for item in ['n_timepoints']:
+        if item in input_row.keys():
+            assumptions[item] = int(input_row[item])
+    
     
     # Community-simulator assumption parameters
-    for item in ['sampling','regulation','response','supply']:
+    for item in ['sampling_c','sampling_D','regulation','response','supply']:
         if item in input_row.keys():
             assumptions[item] = str(input_row[item])
-    for item in ['muc','sigc','q','c0','c1','fs','fw','sparsity','R0_food']:
+    for item in ['muc','sigc','q','c0','c1','fs','fw','sparsity','R0_food', 'tau']:
         if item in input_row.keys():
             assumptions[item] = float(input_row[item])
     assumptions['food'] = int(input_row['food'])
             
-    # Communit-simulation params paramters
-    for item in ['m', 'w', 'g', 'l','tau','r','sigma_max','nreg','n']:
+    # Communit-simulation params parameters. Implicit to the package
+    for item in ['g','w','l','m','tau','r','n','sigma_max','nreg']:
         if item in input_row.keys():
             assumptions[item] = input_row[item]
     
@@ -73,64 +84,21 @@ def load_assumptions(input_row):
 
     return assumptions
 
-# Make matrices. It's modified to update the pandas syntax
+# Make matrices. Modified to update the pandas syntax
+
 def make_matrices(assumptions):
     """
     Construct consumer matrix and metabolic matrix.
-    
-    assumptions = dictionary of metaparameters
-        'sampling' = {'Gaussian','Binary','Gamma'} specifies choice of sampling algorithm
-        'SA' = number of species in each family
-        'MA' = number of resources of each type
-        'Sgen' = number of generalist species
-        'muc' = mean sum of consumption rates
-        'sigc' = standard deviation for Gaussian sampling of consumer matrix
-        'q' = family preference strength (from 0 to 1)
-        'c0' = row sum of background consumption rates for Binary sampling
-        'c1' = specific consumption rate for Binary sampling
-        'fs' = fraction of secretion flux into same resource type
-        'fw' = fraction of secretion flux into waste resource type
-        'sparsity' = effective sparsity of metabolic matrix (from 0 to 1)
-        'wate_type' = index of resource type to designate as "waste"
     
     Returns:
     c = consumer matrix
     D = metabolic matrix
     """
-    #PREPARE VARIABLES
-    #Force number of species to be an array:
-    if isinstance(assumptions['MA'],numbers.Number):
-        assumptions['MA'] = [assumptions['MA']]
-    if isinstance(assumptions['SA'],numbers.Number):
-        assumptions['SA'] = [assumptions['SA']]
-    #Force numbers of species to be integers:
-    assumptions['MA'] = np.asarray(assumptions['MA'],dtype=int)
-    assumptions['SA'] = np.asarray(assumptions['SA'],dtype=int)
-    assumptions['Sgen'] = int(assumptions['Sgen'])
-    #Default waste type is last type in list:
-    if 'waste_type' not in assumptions.keys():
-        assumptions['waste_type']=len(assumptions['MA'])-1
-
-    #Extract total numbers of resources, consumers, resource types, and consumer families:
-    M = np.sum(assumptions['MA'])
-    T = len(assumptions['MA'])
-    S = np.sum(assumptions['SA'])+assumptions['Sgen']
-    F = len(assumptions['SA'])
-    M_waste = assumptions['MA'][assumptions['waste_type']]
-    #Construct lists of names of resources, consumers, resource types, and consumer families:
-    resource_names = ['R'+str(k) for k in range(M)]
-    type_names = ['T'+str(k) for k in range(T)]
-    family_names = ['F'+str(k) for k in range(F)]
-    consumer_names = ['S'+str(k) for k in range(S)]
-    waste_name = type_names[assumptions['waste_type']]
-    resource_index = [[type_names[m] for m in range(T) for k in range(assumptions['MA'][m])],
-                      resource_names]
-    consumer_index = [[family_names[m] for m in range(F) for k in range(assumptions['SA'][m])]
-                      +['GEN' for k in range(assumptions['Sgen'])],consumer_names]
+    # Prepare variables 
+    M, T, S, F, M_waste, type_names, family_names, waste_name, resource_index, family_names, consumer_index = extract_shapes(assumptions)
     
-    #PERFORM GAUSSIAN SAMPLING
-    if assumptions['sampling'] == 'Gaussian':
-        #Initialize dataframe:
+    # Consumer uptake rate matrix c
+    if assumptions['sampling_c'] == 'Gaussian':
         c = pd.DataFrame(np.zeros((S,M)),columns=resource_index,index=consumer_index)
         #Add Gaussian-sampled values, biasing consumption of each family towards its preferred resource:
         for k in range(F):
@@ -147,8 +115,7 @@ def make_matrices(assumptions):
             c_var = assumptions['sigc']**2/M
             c.loc['GEN'] = c_mean + np.random.randn(assumptions['Sgen'],M)*np.sqrt(c_var)
                     
-    #PERFORM BINARY SAMPLING
-    elif assumptions['sampling'] == 'Binary':
+    elif assumptions['sampling_c'] == 'Binary':
         assert assumptions['muc'] < M*assumptions['c1'], 'muc not attainable with given M and c1.'
         #Construct uniform matrix at total background consumption rate c0:
         c = pd.DataFrame(np.ones((S,M))*assumptions['c0']/M,columns=resource_index,index=consumer_index)
@@ -167,8 +134,7 @@ def make_matrices(assumptions):
             p = assumptions['muc']/(M*assumptions['c1'])
             c.loc['GEN'] = c.loc['GEN'].values + assumptions['c1']*BinaryRandomMatrix(assumptions['Sgen'],M,p)
 
-    elif assumptions['sampling'] == 'Gamma':
-        #Initialize dataframe
+    elif assumptions['sampling_c'] == 'Gamma':
         c = pd.DataFrame(np.zeros((S,M)),columns=resource_index,index=consumer_index)
         #Add Gamma-sampled values, biasing consumption of each family towards its preferred resource
         for k in range(F):
@@ -191,9 +157,8 @@ def make_matrices(assumptions):
             thetac = c_var/c_mean
             kc = c_mean**2/c_var
             c.loc['GEN'] = np.random.gamma(kc,scale=thetac,size=(assumptions['Sgen'],M))
-        #PERFORM GAUSSIAN SAMPLING
-    elif assumptions['sampling'] == 'Uniform':
-        #Initialize dataframe:
+    
+    elif assumptions['sampling_c'] == 'Uniform':
         c = pd.DataFrame(np.zeros((S,M)),columns=resource_index,index=consumer_index)
         #Add uniformly sampled values, biasing consumption of each family towards its preferred resource:
         for k in range(F):
@@ -207,58 +172,206 @@ def make_matrices(assumptions):
             c_mean = assumptions['muc']/M
             c.loc['GEN'] = c_mean + (np.random.rand(assumptions['Sgen'],M)-0.5)*assumptions['b']
     
+    elif assumptions['sampling_c'] == 'Dirichlet':
+        c = pd.DataFrame(np.zeros((S,M)),columns=resource_index,index=consumer_index)
+        # Sample update rate proportion from Dirichlet
+        for k in range(F):
+            theta = pd.Series(np.zeros(M), index = c.keys())
+            theta_f = np.random.normal(assumptions['mu_f'], assumptions['sigma_f'])
+            # Specialized resource
+            theta['T' + str(k)] = theta_f
+            # Other resources
+            theta_a = np.random.uniform(0, 1, size = M-1)
+            theta_a = (1 - theta_f) * theta_a / sum(theta_a)
+            theta.loc[~theta.index.isin([('T' + str(k), 'R' + str(k))])] = theta_a
+            c.loc['F'+str(k), :] = dirichlet(theta * assumptions['omega_f'], size = assumptions['SA'][k])
+        # Sample total uptake capacity from Normal
+        Ti = np.random.normal(1, 0.01, size = S)
+        c = c.mul(Ti, axis = 0)
+    
     else:
-        print('Invalid distribution choice. Valid choices are kind=Gaussian, kind=Binary, kind=Gamma, kind=Uniform.')
+        print('Invalid distribution choice. Valid choices are kind=Gaussian, kind=Binary, kind=Gamma, kind=Uniform, kind = Dirichlet')
         return 'Error'
 
-    #SAMPLE METABOLIC MATRIX FROM DIRICHLET DISTRIBUTION
-    DT = pd.DataFrame(np.zeros((M,M)),index=c.keys(),columns=c.keys())
-    for type_name in type_names:
-        MA = len(DT.loc[type_name])
-        if type_name is not waste_name:
-            #Set background secretion levels
-            p = pd.Series(np.ones(M)*(1-assumptions['fs']-assumptions['fw'])/(M-MA-M_waste),index = DT.keys())
-            #Set self-secretion level
-            p.loc[type_name] = assumptions['fs']/MA
-            #Set waste secretion level
-            p.loc[waste_name] = assumptions['fw']/M_waste
-            #Sample from dirichlet
-            DT.loc[type_name] = dirichlet(p/assumptions['sparsity'],size=MA)
-        else:
-            if M > MA:
+    # Metabolic matrix D
+    if assumptions['sampling_D'] == 'Dirichlet':
+        #SAMPLE METABOLIC MATRIX FROM DIRICHLET DISTRIBUTION
+        DT = pd.DataFrame(np.zeros((M,M)),index=c.keys(),columns=c.keys())
+        for type_name in type_names:
+            MA = len(DT.loc[type_name])
+            if type_name is not waste_name:
                 #Set background secretion levels
-                p = pd.Series(np.ones(M)*(1-assumptions['fw']-assumptions['fs'])/(M-MA),index = DT.keys())
+                p = pd.Series(np.ones(M)*(1-assumptions['fs']-assumptions['fw'])/(M-MA-M_waste),index = DT.keys())
                 #Set self-secretion level
-                p.loc[type_name] = (assumptions['fw']+assumptions['fs'])/MA
+                p.loc[type_name] = assumptions['fs']/MA
+                #Set waste secretion level
+                p.loc[waste_name] = assumptions['fw']/M_waste
+                #Sample from dirichlet
+                DT.loc[type_name] = dirichlet(p/assumptions['sparsity'],size=MA)
             else:
-                p = pd.Series(np.ones(M)/M,index = DT.keys())
-            #Sample from dirichlet
-            DT.loc[type_name] = dirichlet(p/assumptions['sparsity'],size=MA)
-        
-    return c, DT.T
-
-# Make l matrix
-def make_l_matrix(assumptions):
-    M = np.sum(assumptions['MA'])
-    T = len(assumptions['MA'])
-    S = np.sum(assumptions['SA'])+assumptions['Sgen']
-    F = len(assumptions['SA'])
-    resource_names = ['R'+str(k) for k in range(M)]
-    type_names = ['T'+str(k) for k in range(T)]
-    family_names = ['F'+str(k) for k in range(F)]
-    consumer_names = ['S'+str(k) for k in range(S)]
-    waste_name = type_names[assumptions['waste_type']]
-    resource_index = [[type_names[m] for m in range(T) for k in range(assumptions['MA'][m])],
-                      resource_names]
-    consumer_index = [[family_names[m] for m in range(F) for k in range(assumptions['SA'][m])]
-                      +['GEN' for k in range(assumptions['Sgen'])],consumer_names]
-    l = pd.DataFrame(assumptions['l'] * np.ones((S,M)),columns=resource_index,index=consumer_index)
+                if M > MA:
+                    #Set background secretion levels
+                    p = pd.Series(np.ones(M)*(1-assumptions['fw']-assumptions['fs'])/(M-MA),index = DT.keys())
+                    #Set self-secretion level
+                    p.loc[type_name] = (assumptions['fw']+assumptions['fs'])/MA
+                else:
+                    p = pd.Series(np.ones(M)/M,index = DT.keys())
+                #Sample from dirichlet
+                DT.loc[type_name] = dirichlet(p/assumptions['sparsity'],size=MA)
+    elif assumptions['sampling_D'] == 'Uniform': 
+        DT = pd.DataFrame(np.zeros((M,M)),index=c.keys(),columns=c.keys())
+        for i in range(T):
+            for j in range(T):
+                DT.loc['T'+str(i), 'T'+str(j)] = np.random.uniform(0, 1/M, size = (assumptions['MA'][i], assumptions['MA'][j]))
     
-    return l
+    elif assumptions['sampling_D'] == 'Zeros': 
+        DT = pd.DataFrame(np.zeros((M,M)),index=c.keys(),columns=c.keys())
+    else:
+        print('Invalid distribution choice. Valid choices are kind = Dirichlet, kind=Uniform, kind = Zeros')
+        return 'Error'
+     
+    # Leakiness. legacy
+    l = pd.DataFrame(assumptions['l'] * np.ones((S,M)),columns=resource_index,index=consumer_index)
+       
+        
+    return c, DT.T, l
+
+def make_params(assumptions):
+    """
+    Makes a dictionary of parameters, using MakeMatrices for the matrices, MakeInitialState
+    for the resource supply point, and setting everything else to 1, except l which is zero.
+    
+    Parameter values can be modified from 1 (or zero for l) by adding their name-value pairs
+    to the assumptions dictionary.
+    """
+
+    c, D, l = make_matrices(assumptions)
+    N0,R0 = MakeInitialState(assumptions)
+    
+    if not isinstance(assumptions['food'],int) or not isinstance(assumptions['R0_food'],int):
+        params=[{'c':c,
+                'm':1,
+                'w':1,
+                'D':D,
+                'g':1,
+                'l':l,
+                'R0':R0.values[:,k],
+                'tau':1,
+                'r':1,
+                'sigma_max':1,
+                'nreg':10,
+                'n':2
+                } for k in range(assumptions['n_wells'])]
+        for item in ['m','w','g','tau','r','sigma_max','n','nreg']:
+            if item in assumptions.keys():
+                for k in range(assumptions['n_wells']):
+                    params[k][item] = assumptions[item]
+
+    else:
+        params={'c':c,
+                'm':1,
+                'w':1,
+                'D':D,
+                'g':1,
+                'l':l,
+                'R0':R0.values[:,0],
+                'tau':1,
+                'r':1,
+                'sigma_max':1,
+                'nreg':10,
+                'n':2
+                }
+            
+        for item in ['m','w','g','tau','r','sigma_max','n','nreg']:
+            if item in assumptions.keys():
+                params[item] = assumptions[item]
+
+    return params
+
+
+
+def make_resource_dynamics(assumptions):
+    """
+    Construct resource dynamics. 'assumptions' must be a dictionary containing at least
+    three entries:
+    
+    response = {'type I', 'type II', 'type III'} specifies nonlinearity of growth law
+    
+    regulation = {'independent','energy','mass'} allows microbes to adjust uptake
+        rates to favor the most abundant accessible resources (measured either by
+        energy or mass)
+    
+    supply = {'off','external','self-renewing'} sets choice of
+        intrinsic resource dynamics
+        
+    Returns a function of N, R, and the model parameters, which itself returns the
+        vector of resource rates of change dR/dt
+    """
+    sigma = {'type I': lambda R,params: params['c']*R,
+             'type II': lambda R,params: params['c']*R/(1+params['c']*R/params['sigma_max']),
+             'type III': lambda R,params: (params['c']*R)**params['n']/(1+(params['c']*R)**params['n']/params['sigma_max'])
+        }
+    
+    u = {'independent': lambda x,params: 1.,
+         'energy': lambda x,params: (((params['w']*x)**params['nreg']).T
+                                      /np.sum((params['w']*x)**params['nreg'],axis=1)).T,
+         'mass': lambda x,params: ((x**params['nreg']).T/np.sum(x**params['nreg'],axis=1)).T
+        }
+    
+    h = {'off': lambda R,params: 0.,
+         'external': lambda R,params: (params['R0']-R)/params['tau'],
+         'self-renewing': lambda R,params: params['r']*R*(params['R0']-R),
+         'predator': lambda R,params: params['r']*R*(params['R0']-R)-params['u']*R
+    }
+    
+    J_in = lambda R,params: (u[assumptions['regulation']](params['c']*R,params)
+                             *params['w']*sigma[assumptions['response']](R,params))
+    #J_out = lambda R,params: (params['l']*J_in(R,params)).dot(params['D'].T)
+    J_out = lambda R,params: (J_in(R,params)).dot(params['D'].T) # remove leakiness
+    
+    return lambda N,R,params: (h[assumptions['supply']](R,params)
+                               -(J_in(R,params)/params['w']).T.dot(N)
+                               +(J_out(R,params)/params['w']).T.dot(N))
+
+def make_consumer_dynamics(assumptions):
+    """
+    Construct resource dynamics. 'assumptions' must be a dictionary containing at least
+    three entries:
+    
+    response = {'type I', 'type II', 'type III'} specifies nonlinearity of growth law
+    
+    regulation = {'independent','energy','mass'} allows microbes to adjust uptake
+        rates to favor the most abundant accessible resources (measured either by
+        energy or mass)
+    
+    supply = {'off','external','self-renewing','predator'} sets choice of
+        intrinsic resource dynamics
+        
+    Returns a function of N, R, and the model parameters, which itself returns the
+        vector of consumer rates of change dN/dt
+    """
+    sigma = {'type I': lambda R,params: params['c']*R,
+             'type II': lambda R,params: params['c']*R/(1+params['c']*R/params['sigma_max']),
+             'type III': lambda R,params: (params['c']*R)**params['n']/(1+(params['c']*R)**params['n']/params['sigma_max'])
+            }
+    
+    u = {'independent': lambda x,params: 1.,
+         'energy': lambda x,params: (((params['w']*x)**params['nreg']).T
+                                      /np.sum((params['w']*x)**params['nreg'],axis=1)).T,
+         'mass': lambda x,params: ((x**params['nreg']).T/np.sum(x**params['nreg'],axis=1)).T
+        }
+    
+    J_in = lambda R,params: (u[assumptions['regulation']](params['c']*R,params)
+                             *params['w']
+                             *sigma[assumptions['response']](R,params))
+    #J_growth = lambda R,params: (1-params['l'])*J_in(R,params)
+    J_growth = lambda R,params: J_in(R,params) # Remove leakiness
+    
+    return lambda N,R,params: params['g']*N*(np.sum(J_growth(R,params), axis = 1) - params['m'])
 
 # Make initial state N0 and R0 
 def make_initial_state(input_row, assumptions):
-    M, T, S, F, type_names, family_names, waste_name, resource_index, family_names, consumer_index = extract_shapes(assumptions)
+    M, T, S, F, M_waste, type_names, family_names, waste_name, resource_index, family_names, consumer_index = extract_shapes(assumptions)
     
     # Default
     N0,R0 = MakeInitialState(assumptions)
@@ -277,44 +390,33 @@ def make_initial_state(input_row, assumptions):
 
 # Write matrices
 def write_matrices(input_row, D, c, l):
-    
-    # Load only one species' D
-    # Uncomment to load all species
-    # for s in range(S):
-    #     D[s].to_csv(input_row['output_dir'] + 'D_S' + str(s) +  '_seed' + str(input_row['seed']) + '.csv')
-    #S = np.sum(input_row['sa'] * input_row['fa'])
-
     D.to_csv(input_row['output_dir'] + '00-D.csv')
     c.to_csv(input_row['output_dir'] + '00-c.csv')
     l.to_csv(input_row['output_dir'] + '00-l.csv')
 
 # Run the simulation using the customized parameter sets
 def run_simulations(input_row):
+    # input_csv = 'simulation/01-input_parameters.csv' # Input file name
+    # input_csv = 'simulation/02b-input_communities.csv' # Input file name
+    # row_number = 0 # Which row of experiment to run
+    # input_row = pd.read_csv(input_csv).loc[row_number]
+
     seed = int(input_row['seed'])
     exp_id = int(input_row['exp_id'])
 
     # Update model parameters
     assumptions = load_assumptions(input_row)
-    # for i in range(len(assumptions)):
-    #     print(str(list(assumptions)[i]) + " = " + str(list(assumptions.values())[i]))
-    
-    # Sample matrices
-    np.random.seed(seed)
-    c, D = make_matrices(assumptions)
-    l = make_l_matrix(assumptions)
-    write_matrices(input_row, D, c, l)
-    
+
     # Update params 
-    params = MakeParams(assumptions)[0]
-    params['l'] = l
-    params['c'] = c
-    params['D'] = D
-    
+    np.random.seed(seed)
+    params = make_params(assumptions)[0]
+    write_matrices(input_row, params['D'], params['c'], params['l'])
+
     # Generate equations
     def dNdt(N,R,params):
-        return MakeConsumerDynamics(assumptions)(N,R,params) 
+        return make_consumer_dynamics(assumptions)(N,R,params) 
     def dRdt(N,R,params):
-        return MakeResourceDynamics(assumptions)(N,R,params) 
+        return make_resource_dynamics(assumptions)(N,R,params) 
     dynamics = [dNdt,dRdt]
 
     # Set initial state by reading in plate conditions
@@ -324,25 +426,68 @@ def run_simulations(input_row):
     
     # Make plate object
     Plate = Community(init_state, dynamics, params, parallel = False)
-    print("Start passaging")
-    for i in range(assumptions['n_pass']): # number of passages
-        print("T" + str(i+1))
-        if assumptions['save_timepoint'] == True:
-            for j in range(assumptions['n_timepoint']):
-                Plate.Propagate(T = assumptions['t_propagation']/assumptions['n_timepoint'], compress_resources = False, compress_species = True)
-                Plate.N.round(2).to_csv(input_row['output_dir'] + re.sub("init.csv", "T" + str(i+1) + "t" + str(j+1) + ".csv", input_row["init_N0"]))
-                Plate.R.round(2).to_csv(input_row['output_dir'] + re.sub("init.csv", "T" + str(i+1) + "t" + str(j+1) + ".csv", input_row["init_R0"]))
-                print("T" + str(i+1) + "t" + str(j+1))
-        elif assumptions['save_timepoint'] == False:
-            Plate.Propagate(T = assumptions['t_propagation'], compress_resources = False, compress_species = True)
-        Plate.N.round(2).to_csv(input_row['output_dir'] + re.sub("init.csv", "T" + str(i+1) + ".csv", input_row["init_N0"]))
-        Plate.R.round(2).to_csv(input_row['output_dir'] + re.sub("init.csv", "T" + str(i+1) + ".csv", input_row["init_R0"]))
-        
-        if i == (assumptions['n_pass']-1): # last transfer
-            Plate.N.round(2).to_csv(input_row['output_dir'] + re.sub("init.csv", "end.csv", input_row["init_N0"]))
-            Plate.R.round(2).to_csv(input_row['output_dir'] + re.sub("init.csv", "end.csv", input_row["init_R0"]))
-        
-        Plate.Passage(f = np.eye(assumptions['n_wells'])*assumptions['dilution_factor'], refresh_resource = True)
+
+    if assumptions['save_timepoint'] == True:
+        for i in range(int(assumptions['n_timepoints'])):
+            Plate.Propagate(T = assumptions['n_timesteps'] / assumptions['n_timepoints'], compress_resources = False, compress_species = True)
+            Plate.N.round(2).to_csv(input_row['output_dir'] + re.sub("init.csv", "T" + str(i+1) + ".csv", input_row["init_N0"]))
+            Plate.R.round(2).to_csv(input_row['output_dir'] + re.sub("init.csv", "T" + str(i+1) + ".csv", input_row["init_R0"]))
+            print("T" + str(i+1))
+
+            if i == (assumptions['n_timepoints']-1): # last transfer
+                Plate.N.round(2).to_csv(input_row['output_dir'] + re.sub("init.csv", "end.csv", input_row["init_N0"]))
+                Plate.R.round(2).to_csv(input_row['output_dir'] + re.sub("init.csv", "end.csv", input_row["init_R0"]))
+
+
+        # # Time points for output
+        # #tps1 = [x for x in range(10)]
+        # #tps1 = [x for x in range(10)] # 0-10
+        # #tps1 = [10*x for x in range(1,101)]
+        # tps2 = [10*x for x in range(100)] # 0-1000
+        # tps3 = [int(assumptions['n_timesteps'] / assumptions['n_timepoints'] * x) for x in range(1,assumptions['n_timepoints']+1)]
+        # tps = tps2 + tps3
+        # tps.sort()
+        # time_increment = np.array(tps[1:]) - np.array(tps[0:-1])
+        # 
+        # t=0
+        # for i in range(len(tps)-1):
+        #     #Plate.Propagate(T = assumptions['n_timesteps'] / assumptions['n_timepoints'], compress_resources = False, compress_species = True)
+        #     Plate.Propagate(T = time_increment[i], compress_resources = False, compress_species = True)
+        #     t = t + time_increment[i]
+        #     Plate.N.round(2).to_csv(input_row['output_dir'] + re.sub("init.csv", "T" + str(t+1) + ".csv", input_row["init_N0"]))
+        #     Plate.R.round(2).to_csv(input_row['output_dir'] + re.sub("init.csv", "T" + str(t+1) + ".csv", input_row["init_R0"]))
+        #     print("T" + str(t+1))
+        # 
+        #     if i == (len(tps)-2): # last transfer
+        #         Plate.N.round(2).to_csv(input_row['output_dir'] + re.sub("init.csv", "end.csv", input_row["init_N0"]))
+        #         Plate.R.round(2).to_csv(input_row['output_dir'] + re.sub("init.csv", "end.csv", input_row["init_R0"]))
+
+    elif assumptions['save_timepoint'] == False:
+        #Plate.Propagate(T = assumptions['n_timesteps'] / assumptions['n_timepoints'], compress_resources = False, compress_species = True)
+        Plate.Propagate(T = assumptions['n_timesteps'], compress_resources = False, compress_species = True)
+        Plate.N.round(2).to_csv(input_row['output_dir'] + re.sub("init.csv", "end.csv", input_row["init_N0"]))
+        Plate.R.round(2).to_csv(input_row['output_dir'] + re.sub("init.csv", "end.csv", input_row["init_R0"]))
+
+    
+    # print("Start passaging")
+    # for i in range(assumptions['n_pass']): # number of passages
+    #     print("T" + str(i+1))
+    #     if assumptions['save_timepoint'] == True:
+    #         for j in range(assumptions['n_timepoint']):
+    #             Plate.Propagate(T = assumptions['t_propagation']/assumptions['n_timepoint'], compress_resources = False, compress_species = True)
+    #             Plate.N.round(2).to_csv(input_row['output_dir'] + re.sub("init.csv", "T" + str(i+1) + "t" + str(j+1) + ".csv", input_row["init_N0"]))
+    #             Plate.R.round(2).to_csv(input_row['output_dir'] + re.sub("init.csv", "T" + str(i+1) + "t" + str(j+1) + ".csv", input_row["init_R0"]))
+    #             print("T" + str(i+1) + "t" + str(j+1))
+    #     elif assumptions['save_timepoint'] == False:
+    #         Plate.Propagate(T = assumptions['t_propagation'], compress_resources = False, compress_species = True)
+    #     Plate.N.round(2).to_csv(input_row['output_dir'] + re.sub("init.csv", "T" + str(i+1) + ".csv", input_row["init_N0"]))
+    #     Plate.R.round(2).to_csv(input_row['output_dir'] + re.sub("init.csv", "T" + str(i+1) + ".csv", input_row["init_R0"]))
+    #     
+    #     if i == (assumptions['n_pass']-1): # last transfer
+    #         Plate.N.round(2).to_csv(input_row['output_dir'] + re.sub("init.csv", "end.csv", input_row["init_N0"]))
+    #         Plate.R.round(2).to_csv(input_row['output_dir'] + re.sub("init.csv", "end.csv", input_row["init_R0"]))
+    #     
+    #     Plate.Passage(f = np.eye(assumptions['n_wells'])*assumptions['dilution_factor'], refresh_resource = True)
 
 
 
