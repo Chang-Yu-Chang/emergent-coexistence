@@ -33,6 +33,12 @@ ESV_sig <- tb_lm %>%
     mutate(CommunityESV = paste0(Community, ESV_ID))
 
 
+tb_lm %>%
+    filter(term == "Relative_Abundance") %>%
+    select(Community, ESV_ID, estimate, std.error, p.value, r.squared) %>%
+    filter(p.value < 0.05, estimate < 0) %>%
+    pull(r.squared) %>%
+    range
 
 # Abundance vs. fitness for ESVs in final communities, T8-12 ----
 p <- communities_abundance_fitness_equilibrium %>%

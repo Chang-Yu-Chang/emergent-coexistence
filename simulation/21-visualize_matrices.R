@@ -55,6 +55,14 @@ p1 <- cml %>%
 
 ggsave(here::here("simulation/plots/21-matrix1_c.png"), p1, width = 4, height = 6)
 
+cml %>% group_by(Species) %>%
+    summarize(sumCR = sum(ConsumptionRate)) %>%
+    ggplot(aes(x = sumCR))+
+    geom_histogram() +
+    theme_classic() +
+    theme() +
+    labs()
+
 
 # 2. D matrix ----
 if (FALSE) {
