@@ -17,7 +17,7 @@ input_parameters <- read_csv(here::here("simulation/01-input_parameters.csv"), c
 n_comm <- input_parameters$n_communities
 input_parameters %>%
     slice(rep(1, n_comm)) %>%
-    mutate(save_timepoint = F) %>%
+    mutate(save_timepoint = T) %>%
     mutate(output_dir = paste0(folder_simulation, "03a-poolPairs/")) %>%
     mutate(init_N0 = paste0("poolPairs_W", 0:(n_comm-1), "-1-N_init.csv"), exp_id = 1, S = 10) %>%
     mutate(init_R0 = paste0("poolPairs_W", 0:(n_comm-1), "-1-R_init.csv")) %>%
@@ -26,7 +26,7 @@ input_parameters %>%
 # Pairs from within self-assembled communities
 input_parameters %>%
     slice(rep(1, n_comm)) %>%
-    mutate(save_timepoint = F) %>%
+    mutate(save_timepoint = T) %>%
     mutate(output_dir = paste0(folder_simulation, "03b-withinCommunityPairs/")) %>%
     mutate(init_N0 = paste0("withinCommunityPairs_W", 0:(n_comm-1), "-1-N_init.csv")) %>%
     mutate(init_R0 = paste0("withinCommunityPairs_W", 0:(n_comm-1), "-1-R_init.csv")) %>%
