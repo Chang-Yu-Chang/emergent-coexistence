@@ -95,7 +95,7 @@ ggsave(here::here("plots/FigS11-species_fitness_all_transfers.png"), p, width = 
 
 
 # ESVs that are ephemeral
-communities_abundance_fitness %>%
+communities_abundance_ephemeral <- communities_abundance_fitness %>%
     drop_na() %>%
     mutate(CommunityESV = paste0(Community, ESV_ID)) %>%
     filter(!(CommunityESV %in% ESV_stable$CommunityESV)) %>%
@@ -109,6 +109,27 @@ communities_abundance_fitness %>%
     select(Community, ESV_ID, estimate, std.error, p.value, r.squared) %>%
     filter(p.value < 0.05, estimate < 0)
 
+
+communities_abundance_fitness_ephemeral <- communities_abundance_fitness %>%
+    drop_na() %>%
+    mutate(CommunityESV = paste0(Community, ESV_ID)) %>%
+    filter(CommunityESV %in% paste0(communities_abundance_ephemeral$Community, communities_abundance_ephemeral$ESV_ID))
+
+communities_abundance_fitness_ephemeral %>%
+    ggplot() +
+    geom_smooth(data = communities_abundance_fitness_ephemeral,
+                aes(x = Relative_Abundance, y = Fitness), method = "lm", formula = y~x, se = F) +
+    geom_point(aes(x = Relative_Abundance, y = Fitness), shape = 21) +
+    geom_hline(yintercept = 0, linetype = 2) +
+    scale_x_continuous(breaks = scales::pretty_breaks(n = 3)) +
+    scale_y_continuous(breaks = scales::pretty_breaks(n = 3)) +
+    facet_wrap(Community~ESV_ID, scales = "free", ncol = 6) +
+    theme_classic() +
+    theme(axis.text = element_text(size = 8, angle = 30, hjust = 1),
+          axis.title = element_text(size = 15),
+          strip.text = element_text(size = 8),
+          panel.border = element_rect(color = 1, fill = NA)) +
+    labs(x = expression(x[i]), y = expression(log(x[i+1]/x[i])))
 
 
 

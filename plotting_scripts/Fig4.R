@@ -178,15 +178,109 @@ p_legend <- get_legend({
 #     guides(color = "none") +
 #     ggtitle("Hierarchy")
 
-# Figure 4D: transitivity
+
+
+# Figure 4C: transitivity
 triad_possible <- tibble(CommunitySize = 3:12, TotalTriads = choose(CommunitySize, 3))
 
-pC <- communities_network %>%
+# Randomize the pairs by shuffling the network
+load(paste0(folder_data, "temp/94-communities_network_randomized.Rdata"))
+communities_network_randomized_rps <- communities_network_randomized %>%
     rowwise() %>%
-    mutate(ExclusionNetwork = extract_exclusion_network(Network) %>% list()) %>%
-    mutate(CountRPS = triad_census(Network)[10]) %>% # count rock-paper-scissor triads
+    mutate(CountRPS_randomized = list(sapply(NetworkRandomized, function (x) triad_census(x)[10]))) %>%
+    select(Community, CommunityLabel, CommunitySize, CountRPS_randomized) %>%
+    unnest(CountRPS_randomized)
+
+
+if (FALSE) {
+
+# Boxplot
+communities_network_randomized_rps %>%
+    mutate(Community = factor(Community, communities$Community)) %>%
+    ggplot(aes(x = Community, y = CountRPS_randomized)) +
+    geom_boxplot(outlier.fill = NA) +
+    geom_jitter(height = 0, shape = 21) +
+    theme_classic() +
+    theme() +
+    labs()
+
+# Violin
+communities_network_randomized_rps %>%
+    mutate(Community = factor(Community, communities$Community)) %>%
+    ggplot(aes(x = Community, y = CountRPS_randomized)) +
+    geom_violin(draw_quantiles = c(0.25, 0.5, 0.75), scale = "width") +
+    geom_jitter(height = 0, shape = 21) +
+    theme_classic() +
+    theme() +
+    labs()
+
+
+# Histogram violin
+communities_network_randomized_rps %>%
+    mutate(Community = factor(Community, communities$Community)) %>%
+    group_by(Community, CountRPS_randomized) %>%
+    #group_by(CountRPS_randomized) %>%
+    summarize(Count = n()) %>%
     ggplot() +
-    geom_col(data = triad_possible, aes(x = CommunitySize, y = TotalTriads, fill = "possible triads"), color = NA, position = position_identity()) +
+    geom_vline(xintercept = 0, linetype = 1, color = grey(0.9)) +
+    #geom_hline(yintercept = 0:15, linetype = 1, color = grey(0.9)) +
+    geom_tile(aes(x = 0, y = CountRPS_randomized, width = Count, height = 1), color = NA, fill = grey(0.8), linewidth = .5) +
+    #geom_histogram(color = 1, fill = NA, binwidth = 1) +
+    #geom_jitter(height = 0, shape = 21) +
+    scale_x_continuous(breaks = seq(-500, 500, 500)) +
+    scale_y_continuous(breaks = 0:15) +
+    facet_grid(.~Community, labeller = labeller(setNames(communities$CommunityLabel, communities$Community))) +
+    theme_classic() +
+    theme(panel.spacing.x = unit(0,"mm"),
+          strip.background = element_rect(color = NA)) +
+    labs(x = "boostrap count", y = "number of RPS")
+
+}
+
+communities_network_rps <- communities_network %>%
+    rowwise() %>%
+    #mutate(ExclusionNetwork = extract_exclusion_network(Network) %>% list()) %>%
+    mutate(CountRPS = triad_census(Network)[10]) # count rock-paper-scissor triads
+
+#
+pC <- communities_network_randomized_rps %>%
+    mutate(Community = factor(Community, communities$Community)) %>%
+    group_by(CommunityLabel, CountRPS_randomized) %>%
+    summarize(Count = n()) %>%
+    group_by(CommunityLabel) %>%
+    mutate(Fraction = Count / sum(Count)) %>%
+    ggplot() +
+    geom_hline(yintercept = 0, linetype = 1, color = grey(0.9)) +
+    geom_col(aes(x = CountRPS_randomized, y = Count, fill = "bootstrap"), color = NA, width = .9) +
+    geom_point(data = communities_network_rps, y = 0, aes(x = CountRPS, shape = "observed RPS"), stroke = .5) +
+    scale_x_continuous(breaks = 0:15) +
+    scale_y_continuous(breaks = c(0, 500), label = c(0,500), expand = c(0.15,1)) +
+    scale_shape_manual(values = c("observed RPS" = 21))+
+    scale_fill_manual(values = c("bootstrap" = grey(0.8)))+
+    coord_flip() +
+    facet_grid(.~CommunityLabel) +
+    theme_classic() +
+    theme(
+        legend.position = c(0.2, 0.85),
+        legend.background = element_rect(fill = "white"),
+        legend.margin = margin(0,0,0,0, "cm"),
+        legend.spacing.y = unit(0, "cm"),
+        legend.text = element_text(size = 8),
+        legend.key.size = unit(0.4, "cm"),
+        panel.spacing.x = unit(0,"mm"),
+        #panel.border = element_rect(fill = NA, color = 1),
+        strip.background = element_rect(color = NA),
+        axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5, size = 5)
+    ) +
+    guides(fill = guide_legend(title = ""), shape = guide_legend(title = "")) +
+    labs(x = "number of RPS", y = "bootstrap count")
+
+
+
+if (FALSE) {
+pC <- communities_network_rps %>%
+    ggplot() +
+    #geom_col(data = triad_possible, aes(x = CommunitySize, y = TotalTriads, fill = "possible triads"), color = NA, position = position_identity()) +
     geom_point(aes(x = CommunitySize, y = CountRPS, shape = "observed RPS"), position = position_dodge2(width = 0.3), stroke = .5) +
     scale_x_continuous(breaks = 1:12) +
     scale_shape_manual(values = c("observed RPS" = 21))+
@@ -203,11 +297,13 @@ pC <- communities_network %>%
     guides(fill = guide_legend(title = ""), shape = guide_legend(title = "")) +
     labs(x = "# of species", y = "# of triads")
 
+}
+
 #
 p_left <- plot_grid(pA, NULL, ncol = 1, rel_heights = c(1,1.5), scale = c(.8, .9), labels = c("A", "C"), axis = "lr", align = "v")
 p <- plot_grid(p_left, pB, nrow = 1, rel_widths = c(1,4), scale = c(1, .9), labels = c("", "B")) + paint_white_background()
 p <- ggdraw(p) +
-    draw_plot(pC, x = 0, y = 0, width = 0.3, height = 0.5,  hjust = 0, vjust = 0) +
+    draw_plot(pC, x = 0, y = 0, width = 0.4, height = 0.5,  hjust = 0, vjust = 0) +
     draw_plot(p_legend, x = 0.5, y = 0.15, width = 0.1, height = 0.1,  hjust = 0, vjust = 0)
 ggsave(here::here("plots/Fig4.png"), p, width = 10, height = 5)
 

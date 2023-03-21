@@ -14,9 +14,10 @@ lm <- read_csv(paste0(output_dir, "00-l.csv"), skip = 1, col_types = cols()) # l
 mcrm_family_colors <- RColorBrewer::brewer.pal(10, "Set3") %>% setNames(paste0("F", 0:9))
 mcrm_resource_colors <- c(RColorBrewer::brewer.pal(9, "Set1"), RColorBrewer::brewer.pal(3, "Set2")[2]) %>% setNames(paste0("R", 0:9))
 
-family_names <- paste0("family ", 1:10) %>% setNames(paste0("F", 0:9))
+family_names <- paste0("", 1:10) %>% setNames(paste0("F", 0:9))
 resource_names <- LETTERS[1:10] %>% setNames(paste0("R", 0:9))
 
+p1 <- ggdraw()
 
 # 1. c matrix ----
 cml <- cm %>% # c matrix longer
@@ -28,13 +29,9 @@ cml <- cm %>% # c matrix longer
 
 
 # Stacked bar plot
-
-p1 <- cml %>%
-    #filter(Species %in% paste0("S", c(0:10))) %>%
+p2 <- cml %>%
     filter(Species %in% (sal %>% group_by(Family) %>% slice(1:10) %>% pull(Species))) %>%
     mutate(Species = factor(Species, sal$Species)) %>%
-    #mutate(Resource = factor(Resource, rev(names(mcrm_resource_colors)))) %>%
-    # summarize(sumCR = sum(ConsumptionRate)) %>%
     ggplot()+
     geom_col(aes(x = Species, y = ConsumptionRate, fill = Resource), width = 1) +
     scale_fill_manual(values = mcrm_resource_colors, label = resource_names) +
@@ -44,9 +41,11 @@ p1 <- cml %>%
     theme(panel.border = element_rect(color = 1, fill = NA),
           strip.background = element_rect(color = NA, fill = NA),
           panel.spacing.x = unit(0, "mm"),
+          plot.title = element_text(hjust = 0.5, vjust = -1, size = 10),
           axis.text.x = element_blank()) +
     guides(fill = guide_legend(ncol = 2)) +
-    labs(x = "species", y = "uptake rate")
+    labs(x = "species", y = "uptake rate") +
+    ggtitle("family")
 
 # 2. D matrix
 Dml <- Dm %>% #
@@ -57,37 +56,30 @@ Dml <- Dm %>% #
     left_join(rename_with(mal, ~ paste0(., "2"), everything()), by = join_by(Resource2)) %>%
     select(Class1, Resource1, ResourceID1, Class2, Resource2, ResourceID2, SecretionFlux)
 
-p2 <- Dml %>%
+p3 <- Dml %>%
     ggplot() +
     geom_tile(aes(x = ResourceID1, y = ResourceID2, fill = SecretionFlux)) +
-    # Color bar
-    # geom_segment(aes(color = "sugar"), x = 0.5, xend = ma+0.5, y = 0, yend = 0, linewidth = 2) +
-    # geom_segment(aes(color = "acid"), x = ma+0.5, xend = ma*2+0.5, y = 0, yend = 0, linewidth = 2) +
-    # geom_segment(aes(color = "sugar"), x = 0, xend = 0, y = 0.5, yend = ma+0.5, linewidth = 2) +
-    # geom_segment(aes(color = "acid"), x = 0, xend = 0, y = ma+0.5, yend = ma*2+0.5, linewidth = 2) +
-    # # Axis label
-    # annotate("text", x = ma*0.5, y = -.5, label = "sugar", hjust = 0.5, color = category_color["sugar"], fontface = "bold") +
-    # annotate("text", x = ma*1.5, y = -.5, label = "acid", hjust = 0.5, color = category_color["acid"], fontface = "bold") +
-    # annotate("text", x = -.5, y = ma*0.5, label = "sugar", angle = 90, vjust = 0, color = category_color["sugar"], fontface = "bold") +
-    # annotate("text", x = -.5, y = ma*1.5, label = "acid", angle = 90, vjust = 0, color = category_color["acid"], fontface = "bold") +
     scale_fill_gradient(high = "black", low = "white") +
     scale_color_manual(values = category_color, breaks = c("sugar", "acid")) +
     scale_x_continuous(position = "top", breaks = 1:(ma*fa)) +
     coord_cartesian(xlim = c(1, ma*fa), ylim = c(ma*fa, 1), clip = "off") +
     theme_classic() +
     theme(axis.line = element_blank(), axis.ticks = element_blank(), axis.text = element_blank()) +
-    guides(fill = guide_colorbar(title = expression(D[i][beta][alpha])),
+    guides(fill = guide_colorbar(title = expression(D[beta][alpha])),
            color = "none") +
     labs(x = expression(R[alpha]), y = expression(R[beta]))
 
 # Assemble panels ----
 p <- plot_grid(
     p1,
-    #plot_grid(p3 + guides(fill = "none"), p2 + guides(fill = "none"), nrow = 1, rel_widths = c(1, 3), scale = c(.9, .95), labels = c("B", "C")),
-    plot_grid(p2, NULL, rel_widths = c(1,1)),
-    ncol = 1, rel_heights = c(1,1), labels = c("A", "B"), scale = c(.95, .95)) +
+    plot_grid(
+        p2,
+        plot_grid(p3, NULL, rel_widths = c(1,1)),
+        ncol = 1, rel_heights = c(1,1), labels = c("B", "C"), scale = c(.95, .95)),
+    nrow = 1, labels = c("A", ""), rel_widths = c(1,2)
+) +
     paint_white_background()
-ggsave(here::here("plots/FigS15-mcrm_parameters.png"), p, width = 8, height = 6)
+ggsave(here::here("plots/FigS15-mcrm_parameters.png"), p, width = 8, height = 4)
 
 
 

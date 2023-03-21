@@ -61,7 +61,7 @@ save(communities_network, file = paste0(folder_data, "temp/95-communities_networ
 
 
 # 2. Make a R list of randomized  networks ----
-if (FALSE) {
+
 randomize_network <- function(graph){
     # Step1: remove the bidirection of coexistence
     graph1 <- graph %>%
@@ -126,7 +126,7 @@ communities_network_randomized <- communities_network %>%
 
 # Save the data file
 save(communities_network_randomized, file = paste0(folder_data, "temp/94-communities_network_randomized.Rdata"))
-}
+
 
 
 # 3. Calculate network hierarchy ----
