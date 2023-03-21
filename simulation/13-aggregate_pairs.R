@@ -74,11 +74,11 @@ read_later_composition <- function (input_mapping, treatment, comm, t = "end", p
     #' the later time point would have dropped data if one species went extinct.
     #' This function deals with that by joining the incomplete data with a table
     #' of pairs
-    # input_mapping <- input_withinCommunityPairs
-    # treatment <- "withinCommunityPairs"
+    # input_mapping <- input_poolPairs
+    # treatment <- "poolPairs"
     # comm <- "W1"
-    # t <- "init"
-    # pair_N_sp <- withinCommunityPairs_N_sp
+    # t <- "end"
+    # pairs_N_sp <- poolPairs_N_sp
     paste0(input_mapping$output_dir[1], treatment, "_", comm, "-1-N_", t,".csv") %>%
         read_wide_file() %>%
         filter(Abundance != 0) %>%
@@ -191,9 +191,7 @@ for (i in 1:20) {
     poolPairs_N_sp <- poolPairs_N_init %>% distinct(Community, Pair, Species, Well)
 
     # Read end composition
-    poolPairs_N_end <- read_later_composition(input_poolPairs, "poolPairs", comm = communities_names[i],
-                                              t = paste0("T", 1:n_timepoints), pairs_N_sp = poolPairs_N_sp) %>%
-        mutate(Time = ifelse(Time == paste0("T", 1:n_timepoints), "end", Time))
+    poolPairs_N_end <- read_later_composition(input_poolPairs, "poolPairs", comm = communities_names[i], t = "end", pairs_N_sp = poolPairs_N_sp)
 
     # Check if the init and end has the same number of rows
     stopifnot(nrow(poolPairs_N_init) == nrow(poolPairs_N_end))
@@ -231,9 +229,7 @@ for (i in 1:20) {
         withinCommunityPairs_N_sp <- withinCommunityPairs_N_init %>% distinct(Community, Pair, Species, Well)
 
         # Read end composition
-        withinCommunityPairs_N_end <- read_later_composition(input_withinCommunityPairs, "withinCommunityPairs", comm = communities_names[i],
-                                                             t = paste0("T", 1:n_timepoints), pairs_N_sp = withinCommunityPairs_N_sp) %>%
-            mutate(Time = ifelse(Time == paste0("T", 1:n_timepoints), "end", Time))
+        withinCommunityPairs_N_end <- read_later_composition(input_withinCommunityPairs, "withinCommunityPairs", comm = communities_names[i], t = "end", pairs_N_sp = withinCommunityPairs_N_sp)
 
         # Check if the init and end has the same number of rows
         stopifnot(nrow(withinCommunityPairs_N_init) == nrow(withinCommunityPairs_N_end))
