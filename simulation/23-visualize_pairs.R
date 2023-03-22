@@ -18,10 +18,15 @@ poolPairs_N_freq <- read_csv(paste0(folder_simulation, "aggregated/13-poolPairs_
 
 # Barplot
 monocultureSets_richness <- read_csv(paste0(folder_simulation, "aggregated/03-monocultureSets_richness.csv"), col_types = cols()) %>%
-    mutate(Community = factor(Community, paste0("W", 0:19))) %>%
-    mutate(PairSize = choose(Richness, 2))
+    mutate(Community = factor(Community, paste0("W", 0:(nrow(input_poolPairs)-1)))) %>%
+    mutate(PairSize = choose(Richness, 2)) %>%
+    arrange(desc(Richness)) %>%
+    slice(1:20) %>%
+    mutate(CommunityLabel = 1:20)
 poolPairs_N_outcome <- read_csv(paste0(folder_simulation, "aggregated/13-poolPairs_N_outcome.csv"), col_types = cols()) %>%
-    mutate(Community = factor(Community, paste0("W", 0:19)))
+    mutate(Community = factor(Community, paste0("W", 0:(nrow(input_poolPairs)-1)))) %>%
+    # Top 20 richness
+    filter(Community %in% monocultureSets_richness$Community)
 
 p1 <- poolPairs_N_outcome %>%
     group_by(Community, InteractionType, .drop = F) %>%
@@ -30,22 +35,21 @@ p1 <- poolPairs_N_outcome %>%
     mutate(Fraction = Count / sum(Count)) %>%
     left_join(monocultureSets_richness) %>%
     ggplot() +
-    geom_col(aes(x = Community, y = Fraction, fill = InteractionType), color = 1) +
+    geom_col(aes(x = CommunityLabel, y = Fraction, fill = InteractionType), color = 1) +
     annotate("text", x = 1:20, y = 1.15, label = monocultureSets_richness$Richness, size = 4) +
     annotate("text", x = 21, y = 1.15, label = c("n. of species"), size = 4, hjust = 0) +
     annotate("segment", x = .5, xend = 25, y = 1.1, yend = 1.1, color = "black") +
     annotate("text", x = 21, y = 1.05, label = c("n. of tested pairs"), size = 4, hjust = 0) +
     annotate("text", x = 1:20, y = 1.05, label = monocultureSets_richness$PairSize, size = 4) +
     scale_fill_manual(values = interaction_color) +
-    scale_x_discrete(breaks = paste0("W", 0:19)) +
-    scale_y_continuous(expand = c(0, 0), limits = c(0, 1.2)) +
+    scale_x_continuous(breaks = 1:20) +
+    scale_y_continuous(expand = c(0, 0), limits = c(0, 1.2), breaks = seq(0, 1, .2)) +
     coord_cartesian(xlim = c(0.5, 20.5), ylim = c(0, 1), clip = "off") +
     theme_classic() +
     theme(plot.margin = unit(c(2,.5,.5,.5), "cm"))  +
     guides(color = "none", fill = guide_legend(title = "")) +
     labs(x = "Set")
 
-#ggsave(here::here("simulation/plots/23-poolPairs.png"), p, width = 8, height = 4)
 
 # 2. Community pairs ----
 withinCommunityPairs_N_freq <- read_csv(paste0(folder_simulation, "aggregated/13-withinCommunityPairs_N_freq.csv"), col_types = cols()) %>%
@@ -53,28 +57,17 @@ withinCommunityPairs_N_freq <- read_csv(paste0(folder_simulation, "aggregated/13
     mutate(Pair = factor(Pair, paste0("P", 1:1000))) %>%
     mutate(InitialFrequency = factor(InitialFrequency, c(5, 50, 95)))
 
-# # Line plot
-# withinCommunityPairs_N_freq %>%
-#     filter(Community == "W6") %>%
-#     ggplot(aes(x = Time, y = Frequency1, color = InitialFrequency, group = InitialFrequency)) +
-#     geom_line(linewidth = 1) +
-#     geom_point(size = 1, shape = 21) +
-#     scale_color_manual(values = c("F0" = "#8A89C0", "F1" = "#FFCB77")) +
-#     scale_linetype_manual(values = c("F0" = 1, "F1" = 2)) +
-#     #scale_y_log10() +
-#     facet_wrap(~Pair) +
-#     theme_classic() +
-#     theme(panel.border = element_rect(color = 1, fill = NA)) +
-#     guides(alpha = "none", color = "none") +
-#     labs()
-
-
-# Barplot ----
 communities_richness <- read_csv(paste0(folder_simulation, "aggregated/12-communities_richness.csv"), col_types = cols()) %>%
-    mutate(Community = factor(Community, paste0("W", 0:19))) %>%
-    mutate(PairSize = choose(Richness, 2))
+    mutate(Community = factor(Community, paste0("W", 0:(nrow(input_withinCommunityPairs)-1)))) %>%
+    mutate(PairSize = choose(Richness, 2)) %>%
+    arrange(desc(Richness)) %>%
+    slice(1:20) %>%
+    mutate(CommunityLabel = 1:20)
 withinCommunityPairs_N_outcome <- read_csv(paste0(folder_simulation, "aggregated/13-withinCommunityPairs_N_outcome.csv"), col_types = cols()) %>%
-    mutate(Community = factor(Community, paste0("W", 0:19)))
+    mutate(Community = factor(Community, paste0("W", 0:(nrow(input_withinCommunityPairs)-1)))) %>%
+    # Top 20 richness
+    filter(Community %in% communities_richness$Community)
+
 
 p2 <- withinCommunityPairs_N_outcome %>%
     group_by(Community, InteractionType, .drop = F) %>%
@@ -83,7 +76,7 @@ p2 <- withinCommunityPairs_N_outcome %>%
     mutate(Fraction = Count / sum(Count)) %>%
     left_join(communities_richness) %>%
     ggplot() +
-    geom_col(aes(x = Community, y = Fraction, fill = InteractionType), color = 1) +
+    geom_col(aes(x = CommunityLabel, y = Fraction, fill = InteractionType), color = 1) +
     #geom_text(aes(x = Community, label = Richness), y = 0.9) +
     annotate("text", x = 1:20, y = 1.15, label = communities_richness$Richness, size = 4) +
     annotate("text", x = 21, y = 1.15, label = c("n. of species"), size = 4, hjust = 0) +
@@ -91,26 +84,24 @@ p2 <- withinCommunityPairs_N_outcome %>%
     annotate("text", x = 21, y = 1.05, label = c("n. of tested pairs"), size = 4, hjust = 0) +
     annotate("text", x = 1:20, y = 1.05, label = communities_richness$PairSize, size = 4) +
     scale_fill_manual(values = interaction_color) +
-    scale_x_discrete(breaks = paste0("W", 0:19)) +
-    scale_y_continuous(expand = c(0, 0), limits = c(0, 1.2)) +
+    scale_x_continuous(breaks = 1:20) +
+    scale_y_continuous(expand = c(0, 0), limits = c(0, 1.2), breaks = seq(0, 1, .2)) +
     coord_cartesian(xlim = c(0.5, 20.5), ylim = c(0, 1), clip = "off") +
     theme_classic() +
     theme(plot.margin = unit(c(2,.5,.5,.5), "cm"))  +
     guides(color = "none", fill = guide_legend(title = "")) +
     labs(x = "Community")
+p2
 
-
-#ggsave(here::here("simulation/plots/23-withinCommunityPairs.png"), p, width = 8, height = 4)
 p <- plot_grid(p1, p2, nrow = 2, align = "v", axis = "rl", labels = c("Pool pairs", "Within-community pairs"), hjust = 0, label_x = 0.01) + paint_white_background()
 ggsave(here::here("simulation/plots/23-pairs.png"), p, width = 8, height = 8)
 
 
 
 
-
-
 #
 poolPair_fraction <- poolPairs_N_outcome %>%
+    mutate(Community = factor(Community, monocultureSets_richness$Community)) %>%
     group_by(Community, InteractionType, .drop = F) %>%
     summarize(Count = n()) %>%
     arrange(Community, InteractionType) %>%
@@ -121,7 +112,8 @@ poolPair_fraction <- poolPairs_N_outcome %>%
     ungroup()
 
 withinCommunityPairs_fraction <- withinCommunityPairs_N_outcome %>%
-    mutate(InteractionType = factor(InteractionType, c("exclusion", "coexistence"))) %>%
+    mutate(Community = factor(Community, communities_richness$Community)) %>%
+    #mutate(InteractionType = factor(InteractionType, c("exclusion", "coexistence"))) %>%
     group_by(Community, InteractionType, .drop = F) %>%
     summarize(Count = n()) %>%
     drop_na() %>%
@@ -142,6 +134,7 @@ stderror(poolPair_fraction$Fraction)
 
 mean(withinCommunityPairs_fraction$Fraction)
 stderror(withinCommunityPairs_fraction$Fraction)
+
 
 
 

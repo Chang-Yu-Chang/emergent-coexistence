@@ -46,8 +46,6 @@ def load_assumptions(input_row):
     assumptions['MA'] = np.ones(int(input_row['fa']), dtype = int) * int(input_row['ma']) # Number of resource per resource class
     assumptions['Sgen'] = int(input_row['Sgen'])
     assumptions['n_wells'] = int(input_row['n_wells'])
-    assumptions['n_communities'] = int(input_row['n_communities'])
-    #assumptions['S'] = 2 # Number of initial per-well species sampled from the species pool
     
     #
     for item in ['ma','sa']:
@@ -288,8 +286,6 @@ def make_params(assumptions):
 
     return params
 
-
-
 def make_resource_dynamics(assumptions):
     """
     Construct resource dynamics. 'assumptions' must be a dictionary containing at least
@@ -420,74 +416,50 @@ def run_simulations(input_row):
     dynamics = [dNdt,dRdt]
 
     # Set initial state by reading in plate conditions
-    #init_state = MakeInitialState(assumptions)
     N0, R0 = make_initial_state(input_row, assumptions)
     init_state = [N0,R0]
     
     # Make plate object
     Plate = Community(init_state, dynamics, params, parallel = False)
-
-    if assumptions['save_timepoint'] == True:
+    
+    # Batch culture
+    if assumptions['supply'] == 'off': 
+        
         for i in range(int(assumptions['n_timepoints'])):
-            Plate.Propagate(T = assumptions['n_timesteps'] / assumptions['n_timepoints'], compress_resources = False, compress_species = True)
+            Plate.Propagate(T = assumptions['n_timesteps_batch'], compress_resources = False, compress_species = True)
             Plate.N.round(2).to_csv(input_row['output_dir'] + re.sub("init.csv", "T" + str(i+1) + ".csv", input_row["init_N0"]))
             Plate.R.round(2).to_csv(input_row['output_dir'] + re.sub("init.csv", "T" + str(i+1) + ".csv", input_row["init_R0"]))
             print("T" + str(i+1))
-
             if i == (assumptions['n_timepoints']-1): # last transfer
                 Plate.N.round(2).to_csv(input_row['output_dir'] + re.sub("init.csv", "end.csv", input_row["init_N0"]))
                 Plate.R.round(2).to_csv(input_row['output_dir'] + re.sub("init.csv", "end.csv", input_row["init_R0"]))
-
-
-        # # Time points for output
-        # #tps1 = [x for x in range(10)]
-        # #tps1 = [x for x in range(10)] # 0-10
-        # #tps1 = [10*x for x in range(1,101)]
-        # tps2 = [10*x for x in range(100)] # 0-1000
-        # tps3 = [int(assumptions['n_timesteps'] / assumptions['n_timepoints'] * x) for x in range(1,assumptions['n_timepoints']+1)]
-        # tps = tps2 + tps3
-        # tps.sort()
-        # time_increment = np.array(tps[1:]) - np.array(tps[0:-1])
-        # 
-        # t=0
-        # for i in range(len(tps)-1):
-        #     #Plate.Propagate(T = assumptions['n_timesteps'] / assumptions['n_timepoints'], compress_resources = False, compress_species = True)
-        #     Plate.Propagate(T = time_increment[i], compress_resources = False, compress_species = True)
-        #     t = t + time_increment[i]
-        #     Plate.N.round(2).to_csv(input_row['output_dir'] + re.sub("init.csv", "T" + str(t+1) + ".csv", input_row["init_N0"]))
-        #     Plate.R.round(2).to_csv(input_row['output_dir'] + re.sub("init.csv", "T" + str(t+1) + ".csv", input_row["init_R0"]))
-        #     print("T" + str(t+1))
-        # 
-        #     if i == (len(tps)-2): # last transfer
-        #         Plate.N.round(2).to_csv(input_row['output_dir'] + re.sub("init.csv", "end.csv", input_row["init_N0"]))
-        #         Plate.R.round(2).to_csv(input_row['output_dir'] + re.sub("init.csv", "end.csv", input_row["init_R0"]))
-
-    elif assumptions['save_timepoint'] == False:
-        #Plate.Propagate(T = assumptions['n_timesteps'] / assumptions['n_timepoints'], compress_resources = False, compress_species = True)
-        Plate.Propagate(T = assumptions['n_timesteps'], compress_resources = False, compress_species = True)
-        Plate.N.round(2).to_csv(input_row['output_dir'] + re.sub("init.csv", "end.csv", input_row["init_N0"]))
-        Plate.R.round(2).to_csv(input_row['output_dir'] + re.sub("init.csv", "end.csv", input_row["init_R0"]))
-
     
-    # print("Start passaging")
-    # for i in range(assumptions['n_pass']): # number of passages
-    #     print("T" + str(i+1))
-    #     if assumptions['save_timepoint'] == True:
-    #         for j in range(assumptions['n_timepoint']):
-    #             Plate.Propagate(T = assumptions['t_propagation']/assumptions['n_timepoint'], compress_resources = False, compress_species = True)
-    #             Plate.N.round(2).to_csv(input_row['output_dir'] + re.sub("init.csv", "T" + str(i+1) + "t" + str(j+1) + ".csv", input_row["init_N0"]))
-    #             Plate.R.round(2).to_csv(input_row['output_dir'] + re.sub("init.csv", "T" + str(i+1) + "t" + str(j+1) + ".csv", input_row["init_R0"]))
-    #             print("T" + str(i+1) + "t" + str(j+1))
-    #     elif assumptions['save_timepoint'] == False:
-    #         Plate.Propagate(T = assumptions['t_propagation'], compress_resources = False, compress_species = True)
-    #     Plate.N.round(2).to_csv(input_row['output_dir'] + re.sub("init.csv", "T" + str(i+1) + ".csv", input_row["init_N0"]))
-    #     Plate.R.round(2).to_csv(input_row['output_dir'] + re.sub("init.csv", "T" + str(i+1) + ".csv", input_row["init_R0"]))
-    #     
-    #     if i == (assumptions['n_pass']-1): # last transfer
-    #         Plate.N.round(2).to_csv(input_row['output_dir'] + re.sub("init.csv", "end.csv", input_row["init_N0"]))
-    #         Plate.R.round(2).to_csv(input_row['output_dir'] + re.sub("init.csv", "end.csv", input_row["init_R0"]))
-    #     
-    #     Plate.Passage(f = np.eye(assumptions['n_wells'])*assumptions['dilution_factor'], refresh_resource = True)
+    # Chemostat
+    elif assumptions['supply'] == 'external':
+        if assumptions['save_timepoint'] == True:
+            for i in range(int(assumptions['n_timepoints'])):
+                Plate.Propagate(T = assumptions['n_timesteps'] / assumptions['n_timepoints'], compress_resources = False, compress_species = True)
+                Plate.N.round(2).to_csv(input_row['output_dir'] + re.sub("init.csv", "T" + str(i+1) + ".csv", input_row["init_N0"]))
+                Plate.R.round(2).to_csv(input_row['output_dir'] + re.sub("init.csv", "T" + str(i+1) + ".csv", input_row["init_R0"]))
+                print("T" + str(i+1))
+                if i == (assumptions['n_timepoints']-1): # last transfer
+                    Plate.N.round(2).to_csv(input_row['output_dir'] + re.sub("init.csv", "end.csv", input_row["init_N0"]))
+                    Plate.R.round(2).to_csv(input_row['output_dir'] + re.sub("init.csv", "end.csv", input_row["init_R0"]))
+    
+        elif assumptions['save_timepoint'] == False:
+            Plate.Propagate(T = assumptions['n_timesteps'], compress_resources = False, compress_species = True)
+            Plate.N.round(2).to_csv(input_row['output_dir'] + re.sub("init.csv", "end.csv", input_row["init_N0"]))
+            Plate.R.round(2).to_csv(input_row['output_dir'] + re.sub("init.csv", "end.csv", input_row["init_R0"]))
+
+
+
+
+
+
+
+
+
+
 
 
 

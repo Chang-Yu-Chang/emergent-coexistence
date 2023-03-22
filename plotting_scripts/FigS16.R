@@ -22,65 +22,55 @@ communities_abundance <- read_csv(paste0(folder_simulation, "aggregated/12-commu
     mutate(Community = ordered(Community, paste0("W", 0:(input_communities$n_wells[1]-1)))) %>%
     mutate(Time = ordered(Time, c("init", paste0("T", 1:20), "end"))) %>%
     arrange(Community, Time)
-
-# Barplot over time, standard
-temp <- tibble(Community = paste0("W", 0:19),
-               Community_new = factor(paste0("community ", 1:20), paste0("community ", 1:20)))
-p1 <- communities_abundance %>%
-    filter(Abundance != 0) %>%
-    filter(Time != "end") %>%
-    mutate(Species = factor(Species), Family = factor(Family)) %>%
-    left_join(temp) %>%
-    ggplot(aes(x = Time, y = Abundance, fill = Family, color = Species)) +
-    geom_col(position = "fill", linewidth = .2, color = 1) +
-    scale_fill_manual(values = mcrm_family_colors) +
-    #scale_color_manual(values = rep("black", length(sal$Species))) +
-    scale_x_discrete(labels = n_timesteps/1e5/10 * seq(0, n_timepoints, 1)) +
-    scale_y_continuous(breaks = seq(0,1,0.5), expand = c(0,0)) +
-    facet_wrap(.~Community_new, ncol = 4) +
-    theme_classic() +
-    theme(strip.background = element_rect(color = NA, fill = NA),
-          legend.position = "right") +
-    guides(color = "none", fill = guide_legend(title = "Family", ncol = 1)) +
-    labs(x = "time unit [10^5]", y = "relative abundance")
-
+#
+# # Barplot over time, standard
+# temp <- tibble(Community = paste0("W", 0:19),
+#                Community_new = factor(paste0("community ", 1:20), paste0("community ", 1:20)))
+# p1 <- communities_abundance %>%
+#     filter(Abundance != 0) %>%
+#     filter(Time != "end") %>%
+#     mutate(Species = factor(Species), Family = factor(Family)) %>%
+#     left_join(temp) %>%
+#     ggplot(aes(x = Time, y = Abundance, fill = Family, color = Species)) +
+#     geom_col(position = "fill", linewidth = .2, color = 1) +
+#     scale_fill_manual(values = mcrm_family_colors) +
+#     #scale_color_manual(values = rep("black", length(sal$Species))) +
+#     scale_x_discrete(labels = n_timesteps/1e5/10 * seq(0, n_timepoints, 1)) +
+#     scale_y_continuous(breaks = seq(0,1,0.5), expand = c(0,0)) +
+#     facet_wrap(.~Community_new, ncol = 4) +
+#     theme_classic() +
+#     theme(strip.background = element_rect(color = NA, fill = NA),
+#           legend.position = "right") +
+#     guides(color = "none", fill = guide_legend(title = "Family", ncol = 1)) +
+#     labs(x = "time unit [10^5]", y = "relative abundance")
+#
 
 # Barplot final time point
-communities_abundance_abundant <- communities_abundance %>%
-    filter(Time == max(Time)) %>%
-    filter(Abundance != 0) %>%
-    group_by(Community) %>%
-    mutate(TotalAbundance = sum(Abundance)) %>%
-    filter(Abundance > 0.01 * sum(Abundance))
-temp <- tibble(Community = paste0("W", 0:19),
-               Community_new = factor(1:20, 1:20))
+communities_richness <- read_csv(paste0(folder_simulation, "aggregated/12-communities_richness.csv"), col_types = cols()) %>%
+    #mutate(Community = factor(Community, paste0("W", 0:(nrow(input_withinCommunityPairs)-1)))) %>%
+    mutate(PairSize = choose(Richness, 2)) %>%
+    arrange(desc(Richness)) %>%
+    slice(1:20) %>%
+    mutate(CommunityLabel = 1:20)
 
-communities_richness <- read_csv(paste0(folder_simulation, "aggregated/12-communities_richness.csv"), col_types = cols())
-communities_abundance_richness <- communities_abundance_abundant %>%
-    filter(Time == max(Time)) %>%
-    group_by(Community, .drop = F) %>%
-    summarize(Richness = n()) %>%
-    left_join(temp)
-
-
-p2 <- communities_abundance_abundant %>%
-    filter(Time == max(Time)) %>%
+p2 <- communities_abundance %>%
+    filter(Time == max(Time), Abundance > 0) %>%
     group_by(Community) %>%
     mutate(RelativeAbundance = Abundance / sum(Abundance)) %>%
-    left_join(temp) %>%
+    left_join(communities_richness) %>%
     ggplot() +
-    geom_col(aes(x = Community_new, y = RelativeAbundance, fill = Family), color = 1) +
-    geom_text(data = communities_abundance_richness, aes(x = Community_new, label = Richness), y = 1.1) +
+    geom_col(aes(x = CommunityLabel, y = RelativeAbundance, fill = Family), color = 1) +
+    geom_text(data = communities_richness, aes(x = CommunityLabel, label = Richness), y = 1.1) +
     annotate("text", x = 1:20, y = 1.15, label = communities_richness$Richness, size = 4) +
     annotate("text", x = 21, y = 1.1, label = c("n. of species"), size = 4, hjust = 0) +
     scale_fill_manual(values = mcrm_family_colors) +
-    scale_x_discrete(expand = c(0,.1)) +
-    scale_y_continuous(breaks = seq(0,1,.5), expand = c(0,0), limits = c(0,1.1)) +
+    scale_x_continuous(breaks = 1:20, expand = c(0,0.1)) +
+    scale_y_continuous(breaks = seq(0,1, 0.2), expand = c(0,0), limits = c(0,1.1)) +
     coord_cartesian(xlim = c(0.5, 20.5), ylim = c(0, 1), clip = "off") +
     theme_classic() +
-    theme(plot.margin = unit(c(1,.5,.5,.5), "cm"),
+    theme(plot.margin = unit(c(10,10,5,5), "mm"),
           panel.border = element_rect(color = 1, fill = NA)) +
-    guides(color = "none", fill = guide_legend(title = "Family", ncol = 2)) +
+    guides(color = "none", fill = guide_legend(title = "Family", ncol = 1)) +
     labs(x = "community", y = "relative abundance")
 
 
@@ -130,14 +120,15 @@ p3 <- communitiesWithoutCrossfeeding_abundance_abundant %>%
 
 # Assemble panels ----
 p <- plot_grid(
-    p1,
+    #p1,
     #plot_grid(p3 + guides(fill = "none"), p2 + guides(fill = "none"), nrow = 1, rel_widths = c(1, 3), scale = c(.9, .95), labels = c("B", "C")),
     p2,
-    p3,
-    ncol = 1, rel_heights = c(3,1,1), labels = c("A", "B", "C"), scale = c(.95, .95),
+    #p3,
+    ncol = 1, rel_heights = c(1,1), labels = c("A", "B"), scale = c(.95, .95),
+    #ncol = 1, rel_heights = c(3,1,1), labels = c("A", "B", "C"), scale = c(.95, .95),
     axis = "lr", align = "v") +
     paint_white_background()
-ggsave(here::here("plots/FigS16-in_silico_assembly.png"), p, width = 8, height = 12)
+ggsave(here::here("plots/FigS16-in_silico_assembly.png"), p, width = 8, height = 3)
 
 
 

@@ -17,7 +17,7 @@ input_parameters %>%
     slice(rep(1, 1)) %>%
     mutate(save_timepoint = T) %>%
     mutate(output_dir = paste0(folder_simulation, "02a-monocultures/")) %>%
-    mutate(init_N0 = paste0("monoculture-1-N_init.csv"), exp_id = 1) %>%
+    mutate(init_N0 = paste0("monoculture-1-N_init.csv"), exp_id = 1, n_wells = n_mono) %>%
     mutate(init_R0 = paste0("monoculture-1-R_init.csv")) %>%
     write_csv(here::here("simulation/02a-input_monocultures.csv"))
 
@@ -26,7 +26,7 @@ input_parameters %>%
     slice(rep(1, 1)) %>%
     mutate(save_timepoint = T) %>%
     mutate(output_dir = paste0(folder_simulation, "02b-communities/")) %>%
-    mutate(init_N0 = paste0("communities-1-N_init.csv"), exp_id = 1, n_wells = 20) %>%
+    mutate(init_N0 = paste0("communities-1-N_init.csv"), exp_id = 1, n_wells = n_comm) %>%
     mutate(init_R0 = paste0("communities-1-R_init.csv")) %>%
     write_csv(here::here("simulation/02b-input_communities.csv"))
 
@@ -35,7 +35,7 @@ input_parameters %>%
     slice(rep(1, 1)) %>%
     mutate(save_timepoint = F) %>%
     mutate(output_dir = paste0(folder_simulation, "02c-communitiesWithoutCrossfeeding/")) %>%
-    mutate(init_N0 = paste0("communities-1-N_init.csv"), exp_id = 1, n_wells = 20) %>%
+    mutate(init_N0 = paste0("communities-1-N_init.csv"), exp_id = 1, n_wells = n_comm) %>%
     mutate(init_R0 = paste0("communities-1-R_init.csv")) %>%
     mutate(sampling_D = "Zeros") %>%
     write_csv(here::here("simulation/02c-input_communitiesWithoutCrossfeeding.csv"))
@@ -53,7 +53,7 @@ draw_monoculture <- function(input_monocultures) {
     tibble(
         Well = paste0("W", 0:(n_wells-1)),
         Species = paste0("S", sample(0:(sa*fa-1), n_wells, replace = F)), # Sample up to 200 from the global pool
-        Abundance = 1 # Total inoculum will be the same
+        Abundance = input_monocultures$Nini # Total inoculum will be the same
     ) %>%
         full_join(sal, by = "Species") %>%
         # Fill the non-chosen species
@@ -83,26 +83,26 @@ set_monoculture_resource(input_monocultures) %>%
 
 # 2.2 Communities. Draw a fix number of S ----
 draw_community <- function(input_communities, candidate_species = NA) {
-    S <- input_communities$S
-    n_communities <- input_communities$n_communities
+    Sini <- input_communities$Sini
+    n_communities <- input_communities$n_comm
     if (all(is.na(candidate_species))) {
         # Draw species. Default using a fix number of S. Identical to community-simulator
         species <- rep(list(NA), n_communities)
-        for (i in 1:n_communities) species[[i]] <- sample(0:(fa*sa-1), size = S, replace = F) %>% sort
+        for (i in 1:n_communities) species[[i]] <- sample(0:(fa*sa-1), size = Sini, replace = F) %>% sort
         species <- unlist(species)
     }
     if (!all(is.na(candidate_species)) & is.vector(candidate_species)) {
         candidate_species <- str_replace(candidate_species, "S", "") %>% as.numeric()
         # Draw species. Default using a fix number of S. Identical to community-simulator
         species <- rep(list(NA), n_communities)
-        for (i in 1:n_communities) species[[i]] <- sample(candidate_species, size = S, replace = F) %>% sort
+        for (i in 1:n_communities) species[[i]] <- sample(candidate_species, size = Sini, replace = F) %>% sort
         species <- unlist(species)
     }
 
     # Make a long list
-    N <- tibble(Well = rep(paste0("W", 0:(n_communities-1)), each = S),
+    N <- tibble(Well = rep(paste0("W", 0:(n_communities-1)), each = Sini),
                 Species = paste0("S", species),
-                Abundance = rep(1/S, n_communities * S)) %>%
+                Abundance = rep(input_communities$Nini/Sini, n_communities * Sini)) %>%
         full_join(sal, by = "Species") %>%
         # Fill the non-chosen species
         replace_na(list(Well = "W0", Abundance = 0)) %>%

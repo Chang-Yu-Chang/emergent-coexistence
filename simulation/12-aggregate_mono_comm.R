@@ -105,14 +105,14 @@ communitiesWithoutCrossfeeding_abundance <- list.files(input_communitiesWithoutC
 
 write_csv(communitiesWithoutCrossfeeding_abundance, paste0(folder_simulation, "aggregated/12-communitiesWithoutCrossfeeding_abundance.csv"))
 
-communitiesWithoutCrossfeeding_abundance <- communitiesWithoutCrossfeeding_abundance %>%
+communitiesWithoutCrossfeeding_abundance_richness <- communitiesWithoutCrossfeeding_abundance %>%
     group_by(Community, .drop = F) %>%
     filter(Time == max(Time)) %>%
     group_by(Community) %>%
     filter(Abundance > 0.01*sum(Abundance)) %>%
     summarize(Richness = n())
 
-write_csv(communitiesWithoutCrossfeeding_abundance, paste0(folder_simulation, "aggregated/12-communitiesWithoutCrossfeeding_richness.csv"))
+write_csv(communitiesWithoutCrossfeeding_abundance_richness, paste0(folder_simulation, "aggregated/12-communitiesWithoutCrossfeeding_richness.csv"))
 
 
 

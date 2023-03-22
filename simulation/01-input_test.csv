@@ -1,2 +1,0 @@
-output_dir,init_N0,init_R0,exp_id,seed,fa,sa,ma,Sgen,sampling_c,sampling_D,mu_f,sigma_f,omega_f,muc,sigc,q,c0,c1,fs,fw,sparsity,food,R0_food,regulation,response,supply,g,w,l,m,tau,r,n,sigma_max,nreg,n_timesteps,n_timepoints,save_timepoint,n_pass,t_propagation,dilution_factor,n_wells,n_communities,S
-/Users/cychang/Dropbox/lab/emergent-coexistence/simulation/test/,test-1-N_init.csv,test-1-R_init.csv,1,1,10,100,1,0,Dirichlet,Uniform,0.4,0.01,100,10,4,0.5,0,1,0.45,0.45,0.2,0,1000,independent,type I,external,1,1,0,1,1,1,2,1,10,1000000,10,TRUE,20,1,0.001,20,20,100

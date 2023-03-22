@@ -178,11 +178,11 @@ compute_pairwise_outcome <- function (pairs_frequency) {
 
 
 # 1. Pool pairs ----
-communities_names <- paste0("W", 0:19)
+communities_names <- paste0("W", 0:(nrow(input_poolPairs)-1))
 poolPairs_N_freq <- rep(list(NA), length(communities_names))
 poolPairs_N_outcome <- rep(list(NA), length(communities_names))
 
-for (i in 1:20) {
+for (i in 1:nrow(input_poolPairs)) {
     cat("\nMonocultureSet ", communities_names[i])
     # Read initial composition
     poolPairs_N_init <- read_init_composition(input_poolPairs, "poolPairs", comm = communities_names[i], t = "init")
@@ -212,11 +212,11 @@ write_csv(poolPairs_N_outcome, paste0(folder_simulation, "aggregated/13-poolPair
 
 # 2. Community pairs ----
 communities_richness <- read_csv(paste0(folder_simulation, "aggregated/12-communities_richness.csv"), col_types = cols())
-communities_names <- paste0("W", 0:19)
+communities_names <- paste0("W", 0:(nrow(input_withinCommunityPairs)-1))
 withinCommunityPairs_N_freq <- rep(list(NA), length(communities_names))
 withinCommunityPairs_N_outcome <- rep(list(NA), length(communities_names))
 
-for (i in 1:20) {
+for (i in 1:nrow(input_withinCommunityPairs)) {
     richness <- communities_richness %>%
         filter(Community == communities_names[i]) %>%
         pull(Richness)

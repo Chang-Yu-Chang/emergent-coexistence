@@ -14,13 +14,12 @@ source(here::here("simulation/02-generate_input_mono_comm.R"))
 input_parameters <- read_csv(here::here("simulation/01-input_parameters.csv"), col_types = cols())
 
 # Pairs from the pool
-n_comm <- input_parameters$n_communities
 input_parameters %>%
-    slice(rep(1, n_comm)) %>%
+    slice(rep(1, input_parameters$n_comm)) %>%
     mutate(save_timepoint = T) %>%
     mutate(output_dir = paste0(folder_simulation, "03a-poolPairs/")) %>%
-    mutate(init_N0 = paste0("poolPairs_W", 0:(n_comm-1), "-1-N_init.csv"), exp_id = 1, S = 10) %>%
-    mutate(init_R0 = paste0("poolPairs_W", 0:(n_comm-1), "-1-R_init.csv")) %>%
+    mutate(init_N0 = paste0("poolPairs_W", 0:(input_parameters$n_comm-1), "-1-N_init.csv"), exp_id = 1, Sini = 10) %>%
+    mutate(init_R0 = paste0("poolPairs_W", 0:(input_parameters$n_comm-1), "-1-R_init.csv")) %>%
     write_csv(here::here("simulation/03a-input_poolPairs.csv"))
 
 # Pairs from within self-assembled communities
@@ -28,19 +27,21 @@ input_parameters %>%
     slice(rep(1, n_comm)) %>%
     mutate(save_timepoint = T) %>%
     mutate(output_dir = paste0(folder_simulation, "03b-withinCommunityPairs/")) %>%
-    mutate(init_N0 = paste0("withinCommunityPairs_W", 0:(n_comm-1), "-1-N_init.csv")) %>%
-    mutate(init_R0 = paste0("withinCommunityPairs_W", 0:(n_comm-1), "-1-R_init.csv")) %>%
+    mutate(init_N0 = paste0("withinCommunityPairs_W", 0:(input_parameters$n_comm-1), "-1-N_init.csv")) %>%
+    mutate(init_R0 = paste0("withinCommunityPairs_W", 0:(input_parameters$n_comm-1), "-1-R_init.csv")) %>%
     write_csv(here::here("simulation/03b-input_withinCommunityPairs.csv"))
 
+if (FALSE) {
 # Pairs for fitting LV models
-n_comm <- input_parameters$n_communities
 input_parameters %>%
-    slice(rep(1, n_comm)) %>%
+    slice(rep(1, input_parameters$n_comm)) %>%
     mutate(save_timepoint = T, n_timepoint = 50, n_pass = 2) %>%
     mutate(output_dir = paste0(folder_simulation, "03c-LVPairs/")) %>%
-    mutate(init_N0 = paste0("LVPairs_W", 0:(n_comm-1), "-1-N_init.csv"), exp_id = 1, S = 10) %>%
-    mutate(init_R0 = paste0("LVPairs_W", 0:(n_comm-1), "-1-R_init.csv")) %>%
+    mutate(init_N0 = paste0("LVPairs_W", 0:(input_parameters$n_comm-1), "-1-N_init.csv"), exp_id = 1, S = 10) %>%
+    mutate(init_R0 = paste0("LVPairs_W", 0:(input_parameters$n_comm-1), "-1-R_init.csv")) %>%
     write_csv(here::here("simulation/03c-input_LVPairs.csv"))
+
+}
 
 
 "Execute the chunks below after monocultures and communities are done"
@@ -51,7 +52,7 @@ input_monocultures <- read_csv(here::here("simulation/02a-input_monocultures.csv
 input_communities <- read_csv(here::here("simulation/02b-input_communities.csv"), col_types = cols())
 input_poolPairs <- read_csv(here::here("simulation/03a-input_poolPairs.csv"), col_types = cols())
 input_withinCommunityPairs <- read_csv(here::here("simulation/03b-input_withinCommunityPairs.csv"), col_types = cols())
-input_LVPairs <- read_csv(here::here("simulation/03c-input_LVPairs.csv"), col_types = cols())
+#input_LVPairs <- read_csv(here::here("simulation/03c-input_LVPairs.csv"), col_types = cols())
 
 # 2.1. Generate competing pairs from culturable monocultures ----
 draw_pairs_from_community <- function(N_community_long) {
@@ -70,7 +71,7 @@ draw_pairs_from_community <- function(N_community_long) {
             group_by(Well) %>%
             pivot_longer(cols = starts_with("sp"), names_to = "temp", values_to = "Species") %>%
             ungroup() %>%
-            mutate(Abundance = rep(c(0.05, 0.95, 0.5, 0.5, 0.95, 0.05), n()/6)) %>%
+            mutate(Abundance = input_parameters$Nini* rep(c(0.05, 0.95, 0.5, 0.5, 0.95, 0.05), n()/6)) %>%
             full_join(sal, by = "Species") %>%
             replace_na(list(Well = "W0", Abundance = 0)) %>%
             select(Pair, Well, Family, Species, Abundance) %>%
@@ -81,7 +82,6 @@ draw_pairs_from_community <- function(N_community_long) {
     return(N_pairs)
 }
 set.seed(1)
-
 
 species_mono <- read_csv(paste0(input_monocultures$output_dir[1], "monoculture-1-N_end.csv"), col_types = cols()) %>%
     rename(Family = ...1, Species = ...2) %>%
@@ -177,6 +177,9 @@ write_csv(communities_species, paste0(folder_simulation, "aggregated/03-communit
 
 
 
+
+if (FALSE) {
+
 # 2.3. Generate LV pair. Identical to pool pairs ----
 
 set.seed(1)
@@ -243,3 +246,4 @@ write_csv(input_LVPairs, here::here("simulation/03c-input_LVPairs.csv"))
 
 
 
+}

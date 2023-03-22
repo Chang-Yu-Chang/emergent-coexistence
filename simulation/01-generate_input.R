@@ -17,7 +17,7 @@ input_parameters <- tibble(
     exp_id = 1,
     seed = 1,
     # Species pool
-    fa = 10,                       # Number of specialist families. Used to compute 'SA': 60*np.ones(3)
+    fa = 10,                      # Number of specialist families. Used to compute 'SA': 60*np.ones(3)
     sa = 100,                     # Number of species in each specialist family. Used to compute 'SA': 60*np.ones(3)
     ma = 1,                       # Number of resources in each resource type. Used to compute 'MA': 30*np.ones(3)
     Sgen = 0,                     # CM parameter. Number of species in the generalist family
@@ -37,7 +37,7 @@ input_parameters <- tibble(
     fw = 0.45,                    # CM parameter. Fraction of secretion flux to 'waste' resource
     sparsity = 0.2,               # CM parameter. Effective sparsity of metabolic matrix (between 0 and 1)
     food = 0,                     # CM parameter. Index of food source (when a single resource is supplied externally)
-    R0_food = 10^3,               # CM parameter. Unperturbed fixed point for supplied food
+    R0_food = 1000,               # CM parameter. Unperturbed fixed point for supplied food
     regulation = "independent",   # CM parameter. Metabolic regulation (see dRdt)
     response = "type I",          # CM parameter. Functional response (see dRdt)
     supply = "external",          # CM parameter. Resource supply (see dRdt) 'off' for batch culture. 'external' and 'self-renewing' for constant supply
@@ -66,17 +66,16 @@ input_parameters <- tibble(
     sigma_max = 1,                # CM parameter. Maximum input flux (mass/time). Useful when 'response' is 'type II' or 'type III'
     nreg = 10,                    # CM parameter. Hill coefficient for metabolic regulation (unitless). Useful when 'regulation' is 'energy' or 'mass'
     # Experiments
-    n_timesteps = 10^6,           # Goldford et al 2018 parameter. Number of timesteps for ODE
+    n_timesteps = 10000,          # Goldford et al 2018 parameter. Number of timesteps for ODE
     n_timepoints = 10,            # Goldford et al 2018 parameter. Number of timepoints for outputing the abundance for plotting
+    n_timesteps_batch = 48,       # Goldford et al 2018 parameter. Number of timesteps per growth cycle
     save_timepoint = FALSE,
-    #
-    n_pass = 20,                  # Number of transfers
-    t_propagation = 1,            # Length of propagation in one transfer
-    dilution_factor = 1/1000,      # Dilution factor for passage
-    n_wells = 50,                 # CM parameter. Number of independent wells
-    #n_wells = 20,                # number of monocultures tested
-    n_communities = 20,           # number of communities used
-    S = 100                       # CM parameter. Number of species per well (randomly sampled from the pool of size Stot = sum(SA) + Sgen)
+    dilution_factor = 1/100,      # Dilution factor when passage is turned on
+    Nini = 1,                     # Inoculum size
+    Sini = 100,                    # Equivalent to CM parameter S. Number of species per well (randomly sampled from the pool of size Stot = sum(SA) + Sgen)
+    n_wells = 20,                 # CM parameter. Number of independent wells
+    n_comm = 50,                  # Number of communities used
+    n_mono = 200,                  # Number of species in the communities
 )
 
 write_csv(input_parameters, here::here("simulation/01-input_parameters.csv"))
@@ -89,6 +88,7 @@ sal <- tibble(Family = paste0("F", rep(c(0:(fa-1)), each = sa)), Species = paste
 mal <- tibble(Class = paste0("T", rep(c(0:(fa-1)), each = ma)), Resource = paste0("R", 0:(ma * fa - 1))) %>% mutate(ResourceID = 1:n())
 
 
+if (FALSE) {
 
 # Test
 input_parameters %>%
@@ -152,4 +152,6 @@ draw_community(input_test) %>%
 
 set_community_resource(input_test) %>%
     write_csv(paste0(input_test$output_dir, "test-1-R_init.csv"))
+
+}
 
