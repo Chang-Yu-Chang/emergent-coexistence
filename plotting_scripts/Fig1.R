@@ -7,9 +7,12 @@ source(here::here("analysis/00-metadata.R"))
 isolates <- read_csv(paste0(folder_data, "output/isolates.csv"), show_col_types = F)
 pairs <- read_csv(paste0(folder_data, "output/pairs.csv"), show_col_types = F)
 communities <- read_csv(paste0(folder_data, "temp/00c-communities.csv"), show_col_types = F)
+communities_abundance <- read_csv(paste0(folder_data, "raw/community_ESV/Emergent_Comunity_Data.csv"), show_col_types = F) %>%
+    filter(Carbon_Source == "Glucose" | Carbon_Source == "Original") %>%
+    mutate(Community = factor(paste0("C", Inoculum, "R", Replicate), paste0("C", rep(1:12, each = 8), "R", rep(1:8, 12))))%>%
+    arrange(Community, Family, Transfer, ESV)
+isolates_abundance <- read_csv(paste0(folder_data, "temp/14-isolates_abundance.csv"), col_types = cols())
 
-
-# Edit the abundance genus
 curate_abundant_genus <- function () {
     abundant_genus <- c(
         "Enterobacteriaceae","Klebsiella", "Enterobacter", "Raoultella", "Citrobacter", "Salmonella", "Pantoea", "Yersinia",
@@ -108,16 +111,13 @@ get_ESV_colors <- function (comm_abundance) {
 
 }
 
-communities_abundance <- read_csv(paste0(folder_data, "raw/community_ESV/Emergent_Comunity_Data.csv"), show_col_types = F) %>%
-    filter(Carbon_Source == "Glucose" | Carbon_Source == "Original") %>%
-    mutate(Community = factor(paste0("C", Inoculum, "R", Replicate), paste0("C", rep(1:12, each = 8), "R", rep(1:8, 12))))%>%
-    arrange(Community, Family, Transfer, ESV)
-isolates_abundance <- read_csv(paste0(folder_data, "temp/14-isolates_abundance.csv"), col_types = cols())
 
-# Color code shared by both figures
+comm = "C2R8"
+# Color code shared by both insets I and II
 temp <- communities_abundance %>%
-    filter((Inoculum == 8 & Replicate == 4) | (Transfer == 12)) %>%
-    bind_rows(filter(communities_abundance, Inoculum == 8, Transfer == 0)) %>%
+    #filter((Inoculum == 8 & Replicate == 4) | (Transfer == 12)) %>%
+    filter(Community == comm | (Transfer == 12)) %>%
+    bind_rows(filter(communities_abundance, Inoculum == str_sub(comm, 2, 2), Transfer == 0)) %>%
     bind_rows(select(drop_na(isolates_abundance), Family, ESV_ID = CommunityESVID)) %>%
     #distinct(Family, ESV_ID) %>%
     bin_ESV_names() %>%
@@ -131,28 +131,23 @@ ESV_colors <- temp %>% get_ESV_colors()
 
 
 # Inset 1: ESC abundance over time ----
-communities_abundance_C8R4 <- communities_abundance %>%
-    filter(Inoculum == 8, Replicate == 4) %>%
-    bind_rows(filter(communities_abundance, Inoculum == 8, Transfer == 0)) %>%
+communities_abundance_comm <- communities_abundance %>%
+    filter(Community == comm) %>%
+    bind_rows(filter(communities_abundance, Inoculum == str_sub(comm, 2, 2), Transfer == 0)) %>%
     bin_ESV_names() %>%
     clean_ESV_names() %>%
     mutate(Family =  ifelse(Family %in% c("Enterobacteriaceae", "Pseudomonadaceae"), Family, "Others")) %>%
     select(Transfer, Family, ESV_ID, Relative_Abundance) %>%
     arrange(Transfer, Family, ESV_ID)
 
-#ESV_colors <- temp %>% get_ESV_colors
-p1 <- communities_abundance_C8R4 %>%
+p1 <- communities_abundance_comm %>%
     mutate(ESV_ID = ifelse(ESV_ID %in% names(ESV_colors[-length(ESV_colors)]), ESV_ID, "Other")) %>%
     mutate(ESV_ID = factor(ESV_ID, names(ESV_colors))) %>%
-    # mutate(Family = ifelse(Relative_Abundance < 0.001 | !(Family %in% names(family_colors)), "Others", Family)) %>%
-    #mutate(Family = factor(Family, names(family_colors))) %>%
-    #arrange(Transfer, Family) %>%
     ggplot() +
     geom_col(aes(x = Transfer, y = Relative_Abundance, fill = ESV_ID, color = ESV_ID), linewidth = .3, position = position_stack(reverse = T)) +
     annotate("text", x = 0, y = -0.1, label = "inoculum", size = 6, angle = 20, hjust = 0.9, vjust = -0.5) +
     scale_fill_manual(values = ESV_colors) +
     scale_color_manual(values = ESV_colors) +
-    #scale_alpha_discrete(range = c(0.5, 1)) +
     scale_x_continuous(breaks = 0:12, expand = c(0,.3), labels = c("", 1:12)) +
     scale_y_continuous(expand = c(0, 0), breaks = c(0, .5, 1)) +
     coord_cartesian(ylim = c(0, 1), clip = "off") +
@@ -165,7 +160,6 @@ p1 <- communities_abundance_C8R4 %>%
           plot.background = element_rect(color = NA, fill = NA),
           legend.background = element_rect(color = NA, fill = "#FBF2E4"),
           legend.key.size = unit(10, "mm"),
-          #legend.spacing = unit(20, "mm"),
           legend.text = element_text(size = 10),
           legend.title = element_blank(),
     ) +
@@ -187,14 +181,11 @@ isolates_abundance_other <- isolates_abundance_factor %>%
 p2 <- isolates_abundance_factor %>%
     bind_rows(isolates_abundance_other) %>%
     mutate(ESV_ID = factor(ESV_ID, names(ESV_colors))) %>%
-    #mutate(Family = factor(Family, names(family_colors))) %>%
     left_join(communities, by = "Community") %>%
     ggplot() +
     geom_col(aes(x = CommunityLabel, y = RelativeAbundance, fill = ESV_ID), position = position_stack(reverse = T)) +
     theme_bw() +
     scale_fill_manual(values = ESV_colors) +
-    #scale_fill_manual(values = family_colors, breaks = names(family_colors)[names(family_colors) != "Others"]) +
-    #scale_alpha_discrete(range = c(1, 0.8)) +
     scale_x_continuous(breaks = 1:13, expand = c(0,.3)) +
     scale_y_continuous(breaks = c(0, .5, 1), expand = c(0,0), limits = c(0, 1)) +
     coord_cartesian(ylim = c(0, 1), clip = "off") +
@@ -208,15 +199,7 @@ p2 <- isolates_abundance_factor %>%
     labs(x = "community", y = "relative abundance")
 
 
-# Inset 3: Negative frequenct dependent selection of three ESVs from C8R4 ----
-communities <- read_csv(paste0(folder_data, "temp/00c-communities.csv"), show_col_types = F) %>%
-    mutate(Community = factor(Community, Community))
-communities_abundance <- read_csv(paste0(folder_data, "raw/community_ESV/Emergent_Comunity_Data.csv"), show_col_types = F) %>%
-    filter(Carbon_Source == "Glucose" | Carbon_Source == "Original") %>%
-    mutate(Community = factor(paste0("C", Inoculum, "R", Replicate), paste0("C", rep(1:12, each = 8), "R", rep(1:8, 12))))%>%
-    # bin_ESV_names() %>%
-    # clean_ESV_names() %>%
-    arrange(Community, Family, Transfer, ESV)
+# Inset 3: Negative frequency dependent selection of three ESVs from C1R4 ----
 communities_abundance_temporal <- communities_abundance %>%
     filter(Transfer != 0) %>%
     # Filter for those that has temporal data
@@ -227,6 +210,7 @@ communities_abundance_temporal_complete <- communities_abundance_temporal %>%
     distinct(Community, ESV_ID) %>%
     slice(rep(1:n(), each = 12)) %>%
     mutate(Transfer = rep(1:12, n()/12))
+
 # Calculate fitness
 communities_abundance_fitness <- communities_abundance_temporal %>%
     right_join(communities_abundance_temporal_complete) %>%
@@ -234,17 +218,20 @@ communities_abundance_fitness <- communities_abundance_temporal %>%
     arrange(Community, ESV_ID, Transfer) %>%
     mutate(Fitness = log(lead(Relative_Abundance) / Relative_Abundance))
 
+communities_abundance_comm <- communities_abundance %>%
+    filter(Community == comm, Transfer == 12, Relative_Abundance > 0.02)
 
-communities_abundance_C8R4_three <- communities_abundance %>%
-    filter(Community == "C8R4", Transfer == 12, Relative_Abundance > 0.01)
+communities_abundance %>%
+    filter(Community == comm, Transfer == 12)
 
-communities_abundance_fitness_C8R4 <- communities_abundance_fitness %>%
-    filter(Community == "C8R4") %>%
-    filter(ESV_ID %in% communities_abundance_C8R4_three$ESV_ID) %>%
+communities_abundance_fitness_comm <- communities_abundance_fitness %>%
+    filter(Community == comm) %>%
+    filter(ESV_ID %in% communities_abundance_comm$ESV_ID) %>%
     mutate(CommunityESV = paste0(Community, ESV_ID))
 
-p3 <- communities_abundance_fitness_C8R4 %>%
-    mutate(ESV_ID = factor(ESV_ID, c("Pseudomonas.10", "Raoultella", "Klebsiella"))) %>%
+
+p3 <- communities_abundance_fitness_comm %>%
+    mutate(ESV_ID = factor(ESV_ID, c("Aeromonas", "Pseudomonas.2", "Citrobacter", "Raoultella", "Enterobacteriaceae"))) %>%
     ggplot() +
     geom_smooth(aes(x = Relative_Abundance, y = Fitness), method = "lm", formula = y~x, se = F) +
     geom_point(aes(x = Relative_Abundance, y = Fitness), shape = 21, stroke = 1, size = 3) +
@@ -254,18 +241,16 @@ p3 <- communities_abundance_fitness_C8R4 %>%
     facet_wrap(~ESV_ID, ncol = 1) +
     theme_classic() +
     theme(
-        #axis.text = element_text(size = 8, angle = 30, hjust = 1),
         axis.title = element_text(size = 15),
         axis.text = element_text(size = 15),
-        strip.text = element_text(size = 15),
+        strip.text = element_text(size = 13),
         strip.background = element_blank(),
         panel.border = element_rect(color = 1, linewidth = 0.5, fill = NA),
         plot.background = element_blank()
     ) +
-    # labs(x = expression(x[i]), y = expression(log(x[i+1]/x[i])))
     labs(x = "relative abundance", y = "fitness")
 
-communities_abundance_fitness_C8R4 %>%
+communities_abundance_fitness_comm %>%
     nest(data = c(-Community, -ESV_ID)) %>%
     mutate(fit = map(data, ~ lm(Fitness ~ Relative_Abundance, data = .x)),
            tidied = map(fit, tidy),
@@ -278,7 +263,7 @@ communities_abundance_fitness_C8R4 %>%
 # Assemble panels
 p_legend_ESV <- {p1 +
         theme(
-            legend.text = element_text(size = 12),
+            legend.text = element_text(size = 13),
             legend.title = element_blank(),
             #legend.title = element_text(size = 12),
             legend.key.size = unit(5, "mm")) +
@@ -286,25 +271,35 @@ p_legend_ESV <- {p1 +
     } %>% get_legend()
 
 
-zoom_polygon1 <- polygonGrob(x = c(0.76, 0.76, 0.875, 0.875),
-                             y = c(0.605, 0.65, 0.735, 0.65),
+zoom_polygon1 <- polygonGrob(x = c(0.76, 0.76, 0.865, 0.865),
+                             y = c(0.635, 0.65, 0.755, 0.68),
                              gp = gpar(fill = "grey", alpha = 0.3, col = NA))
 zoom_polygon2 <- polygonGrob(x = c(0.76, 0.76, 0.87, 0.87),
-                             y = c(0.603, 0.607, 0.62, 0.53),
+                             y = c(0.58, 0.64, 0.67, 0.59),
                              gp = gpar(fill = "grey", alpha = 0.3, col = NA))
 zoom_polygon3 <- polygonGrob(x = c(0.76, 0.76, 0.87, 0.87),
-                             y = c(0.445, 0.603, 0.50, 0.42),
+                             y = c(0.5, 0.57, 0.58, 0.52),
                              gp = gpar(fill = "grey", alpha = 0.3, col = NA))
+zoom_polygon4 <- polygonGrob(x = c(0.76, 0.76, 0.87, 0.87),
+                             y = c(0.5, 0.57, 0.58, 0.52),
+                             gp = gpar(fill = "grey", alpha = 0.3, col = NA))
+zoom_polygon5 <- polygonGrob(x = c(0.76, 0.76, 0.87, 0.87),
+                             y = c(0.5, 0.57, 0.58, 0.52),
+                             gp = gpar(fill = "grey", alpha = 0.3, col = NA))
+
+
 
 p <- ggdraw() +
     draw_image(here::here("plots/cartoons/Fig1_cartoon.png")) +
     draw_grob(zoom_polygon1) +
     draw_grob(zoom_polygon2) +
     draw_grob(zoom_polygon3) +
+    draw_grob(zoom_polygon4) +
+    draw_grob(zoom_polygon5) +
     draw_plot(p1 + guides(fill = "none"), x = 0.52, y = 0.40, width = 0.25, height = 0.26) +
     draw_plot(p2 + guides(fill = "none"), x = 0.52, y = 0.05, width = 0.25, height = 0.26) +
-    draw_plot(plot_grid(p3 + guides(fill = "none"), labels = "C", label_size = 25), x = 0.83, y = 0.38, width = 0.13, height = 0.38) +
-    draw_plot(p_legend_ESV, x = 0.85, y = 0.15, width = 0.1, height = 0.1)
+    draw_plot(plot_grid(p3 + guides(fill = "none"), labels = "C", label_size = 25), x = 0.83, y = 0.28, width = 0.12, height = 0.5) +
+    draw_plot(p_legend_ESV, x = 0.85, y = 0.1, width = 0.08, height = 0.1)
 
 ggsave(here::here("plots/Fig1.png"), p, width = 20, height = 15)
 
@@ -314,5 +309,7 @@ isolates %>%
     group_by(Community) %>%
     summarize(Total = sum(RelativeAbundance, na.rm = T)) %>%
     summarize(Mean = mean(Total))
+
+
 
 
