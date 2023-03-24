@@ -2,7 +2,7 @@ library(tidyverse)
 library(cowplot)
 library(gridExtra)
 source(here::here("analysis/00-metadata.R"))
-source(here::here("plotting_scripts/Fig2.R"))
+#source(here::here("plotting_scripts/Fig2.R"))
 
 pairs <- read_csv(paste0(folder_data, "output/pairs.csv"), show_col_types = F)
 pairs_freq <- read_csv(paste0(folder_data, "temp/93-pairs_freq.csv"), show_col_types = F)
@@ -21,6 +21,42 @@ pairs_freq <- pairs_freq %>%
     select(PairID, everything()) %>%
     filter(!is.na(PairID))
 
+# Negative frequency dependent of isolate
+p <- pairs_freq %>%
+    #filter(Community == "C8R4") %>%
+    select(PairID, Isolate1, Isolate2, Isolate1InitialODFreq, Time, Isolate1CFUFreqMean) %>%
+    #group_by(PairID, Isolate1, Isolate2) %>%
+    #pivot_wider(names_from = Isolate1InitialODFreq, names_prefix = "F", values_from = Isolate1CFUFreqMean) %>%
+    pivot_wider(names_from = Time, values_from = Isolate1CFUFreqMean) %>%
+    mutate(Fitness = log(T8/T0)) %>%
+    ggplot() +
+    geom_rect(data = pairs, xmin = -Inf, xmax = Inf, ymin = -Inf, ymax = Inf, aes(fill = InteractionTypeFiner), alpha = .4) +
+    geom_smooth(aes(x = T0, y = Fitness), method = "lm", formula = y~x, se = F, linewidth = .3) +
+    geom_point(aes(x = T0, y = Fitness), shape = 21, stroke = .5, size = 1) +
+    geom_hline(yintercept = 0, linetype = 2) +
+    scale_x_continuous(breaks = scales::pretty_breaks(n = 3), limits = c(0,1), expand = c(0,0)) +
+    scale_y_continuous(breaks = scales::pretty_breaks(n = 3), expand = c(0, 0.5)) +
+    #scale_y_log10() +
+    scale_fill_manual(values = assign_interaction_color(level = "finer")) +
+    facet_wrap(.~PairID, ncol = 10, scales = "free_y") +
+    theme_classic() +
+    theme(
+        axis.title = element_text(size = 10),
+        axis.text = element_text(size = 5),
+        strip.text = element_text(size = 8),
+        strip.background = element_blank(),
+        legend.position = "bottom",
+        panel.spacing = unit(0, "mm"),
+        panel.border = element_rect(color = 1, linewidth = 0.5, fill = NA)
+    ) +
+    guides() +
+    labs()
+
+ggsave(here::here("plots/FigS93-pairs_negative_freq_dep.png"), p, width = 8, height = 12)
+
+
+
+interaction_color
 
 get_interaction_legend <- function (pairs) {
     panel_colors <- c(interaction_color[1], rep(interaction_color[2], 6), interaction_color[3]) %>% setNames(pairs_interaction_finer$InteractionTypeFiner)
@@ -86,67 +122,10 @@ plot_example_freq <- function(pairs_freq, line_size = 0.5) {
         NULL
 }
 
-# Legend for fill
-pairs_interaction_finer <- pairs %>%
-    group_by(InteractionType, InteractionTypeFiner) %>%
-    count(name = "Count") %>%
-    ungroup() %>%
-    mutate(Fraction = Count / sum(Count)) %>%
-    mutate(InteractionTypeFiner = factor(InteractionTypeFiner, interaction_type_finer)) %>%
-    arrange(InteractionTypeFiner)
-p_legend_fill <- pairs %>%
-    get_interaction_legend()
-
-# Append competition outcome to frequencies
-pairs_example_freq <- pairs %>%
-    filter(!is.na(FitnessFunction)) %>%
-    mutate(InteractionType = factor(InteractionType, c("exclusion", "coexistence"))) %>%
-    mutate(InteractionTypeFiner = factor(InteractionTypeFiner, interaction_type_finer)) %>%
-    arrange(InteractionType, InteractionTypeFiner) %>%
-    left_join(pairs_freq, multiple = "all") %>%
-    select(PairID, InteractionType, InteractionTypeFiner, Isolate1InitialODFreq, Time, Isolate1CFUFreqMean, Isolate1CFUFreqSd) %>%
-    mutate(Isolate1InitialODFreq = factor(Isolate1InitialODFreq), Time = factor(Time, c("T0", "T8")))
-
-temp_list <- pairs_example_freq %>%
-    arrange(InteractionTypeFiner, PairID) %>%
-    group_split(InteractionTypeFiner, PairID) %>%
-    lapply(plot_example_freq)
-
-p_example <- pairs_example_freq %>%
+pairs_freq %>%
+    left_join(pairs) %>%
     filter(PairID == 3) %>%
-    plot_example_freq(line_size = 0.5) +
-    theme(axis.text = element_text(size = 10), axis.title = element_text(size = 10)) +
-    scale_x_continuous(breaks = c(0,1), labels = c("start", "end"), limits = c(-0.5, 1.5)) +
-    labs(y = "CFU frequency", color = "Inital OD frequency")
-
-## Grid layout
-# m <- matrix(c(1:nrow(pairs), rep(NA, 10-(nrow(pairs)%%10))), nrow = 10)
-m <- matrix(c(1:nrow(pairs), rep(NA, 15-(nrow(pairs)%%15))), nrow = 15)
-p_waffle <- arrangeGrob(grobs = temp_list, layout_matrix = m)
-p_waffle <- plot_grid(NULL, p_waffle, rel_widths = c(1, 2.3), scale = c(1, 0.95)) + paint_white_background()
-
-ss = .3
-p <- ggdraw(p_waffle) +
-    draw_plot(p_example, x = 0.01, y = .7, width = ss*0.6, height = ss*0.8, hjust = 0, vjust = 0) +
-    draw_plot(p_legend_color, x = .18, y = .75, width = ss/2, height = ss/2, hjust = 0, vjust = 0) +
-    draw_plot(p_legend_fill, x = .01, y = .2, width = ss, height = ss, hjust = 0, vjust = 0) +
-    theme(panel.background = element_blank(), plot.background = element_rect(color = NA, fill = "white"),
-          plot.margin = unit(c(0,0,0,0), "mm"))
-
-ggsave(here::here("plots/Fig3.png"), p, width = 12, height = 8)
-
-
-
-
-
-
-
-
-
-
-
-
-
+    plot_example_freq()
 
 
 

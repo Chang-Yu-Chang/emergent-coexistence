@@ -1,96 +1,318 @@
 library(tidyverse)
 library(cowplot)
+library(broom)
+library(grid) # For drawing polygon
 source(here::here("analysis/00-metadata.R"))
 
 isolates <- read_csv(paste0(folder_data, "output/isolates.csv"), show_col_types = F)
 pairs <- read_csv(paste0(folder_data, "output/pairs.csv"), show_col_types = F)
 communities <- read_csv(paste0(folder_data, "temp/00c-communities.csv"), show_col_types = F)
-community_abundance <- read_csv(paste0(folder_data, "raw/community_ESV/CSS_Emergent_Simplicity_Timeseries.csv"), show_col_types = F)
 
-# Inset1: ESC abundance over time ----
-p1 <- community_abundance %>%
+
+# Edit the abundance genus
+curate_abundant_genus <- function () {
+    abundant_genus <- c(
+        "Enterobacteriaceae","Klebsiella", "Enterobacter", "Raoultella", "Citrobacter", "Salmonella", "Pantoea", "Yersinia",
+        "Pseudomonadaceae", "Pseudomonas", "Azomonas", "Aeromonas", "Acinetobacter", "Enterococcus", "Bordetella",
+        "Stenotrophomonas", "Delftia", "Serratia"
+    )
+    abundant_genus <- paste0(rep(abundant_genus, each = 101),
+                             rep(c("", paste0(".", 1:100)), length(abundant_genus)))
+    return(abundant_genus)
+}
+abundant_genus <- curate_abundant_genus()
+bin_ESV_names <- function (comm_abundance) {
+    comm_abundance %>%
+        #mutate(ESV_ID = str_replace(ESV_ID, "Enterobacteriaceae", "Enterobacter")) %>%
+        mutate(ESV_ID = case_when(
+            str_detect(ESV_ID, "Enterobacteriaceae") ~ str_replace(ESV_ID, "\\.\\d+", ""),
+            str_detect(ESV_ID, "Pantoea") ~ str_replace(ESV_ID, "\\.\\d+", ""),
+            str_detect(ESV_ID, "Raoultella") ~ str_replace(ESV_ID, "\\.\\d+", ""),
+            #str_detect(ESV_ID, "Salmonella") ~ str_replace(ESV_ID, "\\.\\d+", ""),
+            str_detect(ESV_ID, "Citrobacter") ~ str_replace(ESV_ID, "\\.\\d+", ""),
+            str_detect(ESV_ID, "Enterobacter") ~ str_replace(ESV_ID, "\\.\\d+", ""),
+            str_detect(ESV_ID, "Klebsiella") ~ str_replace(ESV_ID, "\\.\\d+", ""),
+            #str_detect(ESV_ID, "Acinetobacter") ~ str_replace(ESV_ID, ".\\d+", ""),
+            #str_detect(ESV_ID, "Pseudomonadaceae") ~ str_replace(ESV_ID, "Pseudomonadaceae", "Pseudomonadas"),
+            str_detect(ESV_ID, "Pseudomonadaceae") ~ str_replace(ESV_ID, "\\.\\d+", ""),
+            #str_detect(ESV_ID, "Pseudomonas.1\\d+") ~ str_replace(ESV_ID, "\\.1\\d+", "\\.1"),
+            str_detect(ESV_ID, "Pseudomonas.2\\d+") ~ str_replace(ESV_ID, "\\.2\\d+", "\\.2"),
+            str_detect(ESV_ID, "Pseudomonas.3\\d+") ~ str_replace(ESV_ID, "\\.3\\d+", "\\.3"),
+            str_detect(ESV_ID, "Pseudomonas.4\\d+") ~ str_replace(ESV_ID, "\\.4\\d+", "\\.4"),
+            str_detect(ESV_ID, "Pseudomonas.5\\d+") ~ str_replace(ESV_ID, "\\.5\\d+", "\\.5"),
+            str_detect(ESV_ID, "Pseudomonas.5\\d+") ~ str_replace(ESV_ID, "\\.5\\d+", "\\.5"),
+            str_detect(ESV_ID, "Azomonas") ~ str_replace(ESV_ID, ".\\d+", ""),
+            #str_detect(ESV_ID, "Stenotrophomonas") ~ str_replace(ESV_ID, ".\\d+", ""),
+            str_detect(ESV_ID, "Aeromonas") ~ str_replace(ESV_ID, ".\\d+", ""),
+            str_detect(ESV_ID, "Delftia") ~ str_replace(ESV_ID, ".\\d+", ""),
+            str_detect(ESV_ID, "Enterococcus") ~ str_replace(ESV_ID, ".\\d+", ""),
+            T ~ ESV_ID
+        ))
+}
+clean_ESV_names <- function (comm_abundance) {
+    comm_abundance %>%
+        mutate(ESV_ID = ifelse(!(ESV_ID %in% abundant_genus), "Other", ESV_ID)) %>%
+        return()
+}
+get_ESV_colors <- function (comm_abundance) {
+    communities_abundance_ESV_ID <- comm_abundance %>%
+        distinct(Family, ESV_ID) %>%
+        mutate(ESV_ID = factor(ESV_ID, abundant_genus)) %>%
+        arrange(Family, ESV_ID)
+
+    # Entero
+    temp1 <- communities_abundance_ESV_ID %>%
+        filter(Family %in% c("Enterobacteriaceae")) %>%
+        drop_na() %>%
+        #mutate(ESV_color = viridis::viridis_pal(option = "viridis")(n())) %>%
+        #mutate(ESV_color = scales::div_gradient_pal(low = "#313797", mid = "#ffffbf", high = "#a50026", space = "Lab")(seq(0, 1, length.out = n()))) %>%
+        filter(ESV_ID != "Other")
+
+    if (nrow(temp1) >= 12) {
+        temp1 <- temp1 %>% mutate(ESV_color = c(rev(RColorBrewer::brewer.pal(11, "RdYlBu")), rev(RColorBrewer::brewer.pal(9, "OrRd")))[1:n()])
+    } else if (nrow(temp1) >= 3) {
+        temp1 <- temp1 %>% mutate(ESV_color = rev(RColorBrewer::brewer.pal(n(), "RdYlBu")))
+    } else if (nrow(temp1) < 3) {
+        temp1 <- temp1 %>% mutate(ESV_color = rev(RColorBrewer::brewer.pal(3, "RdYlBu"))[1:n()])
+    }
+
+    # Pseudo
+    temp2 <- communities_abundance_ESV_ID %>%
+        filter(Family == c("Pseudomonadaceae")) %>%
+        drop_na() %>%
+        #mutate(ESV_color = scales::seq_gradient_pal(low = "#d73027", high = "#fef1e7", space = "Lab")(seq(0, 1, length.out = n()))) %>%
+        #mutate(ESV_color = scales::div_gradient_pal(low = "#00451a", mid = "#f6f6f7", high = "#41004a", space = "Lab")(seq(0, 1, length.out = n()))) %>%
+        filter(ESV_ID != "Other")
+
+    if (nrow(temp2) >= 12) {
+        temp2 <- temp2 %>% mutate(ESV_color = c(rev(RColorBrewer::brewer.pal(11, "PRGn")), rev(RColorBrewer::brewer.pal(9, "YlGn")))[1:n()])
+    } else if (nrow(temp2) >= 3) {
+        temp2 <- temp2 %>% mutate(ESV_color = rev(RColorBrewer::brewer.pal(n(), "PRGn")))
+    } else if (nrow(temp2) < 3) {
+        temp2 <- temp2 %>% mutate(ESV_color =rev(RColorBrewer::brewer.pal(3, "PRGn"))[1:n()])
+    }
+
+    # Other
+    temp3 <- communities_abundance_ESV_ID %>%
+        filter(!(Family %in% c("Enterobacteriaceae", "Pseudomonadaceae")) & ESV_ID != "Other") %>%
+        mutate(ESV_color = c(RColorBrewer::brewer.pal(8, "Set2"), RColorBrewer::brewer.pal(8, "Set3"))[1:n()]) %>%
+        filter(ESV_ID != "Other")
+
+    ESV_colors <- c(temp1$ESV_color %>% setNames(temp1$ESV_ID),
+                    temp2$ESV_color %>% setNames(temp2$ESV_ID),
+                    temp3$ESV_color %>% setNames(temp3$ESV_ID),
+                    Other = "#999998")
+
+
+    return(ESV_colors)
+
+}
+
+communities_abundance <- read_csv(paste0(folder_data, "raw/community_ESV/Emergent_Comunity_Data.csv"), show_col_types = F) %>%
+    filter(Carbon_Source == "Glucose" | Carbon_Source == "Original") %>%
+    mutate(Community = factor(paste0("C", Inoculum, "R", Replicate), paste0("C", rep(1:12, each = 8), "R", rep(1:8, 12))))%>%
+    arrange(Community, Family, Transfer, ESV)
+isolates_abundance <- read_csv(paste0(folder_data, "temp/14-isolates_abundance.csv"), col_types = cols())
+
+# Color code shared by both figures
+temp <- communities_abundance %>%
+    filter((Inoculum == 8 & Replicate == 4) | (Transfer == 12)) %>%
+    bind_rows(filter(communities_abundance, Inoculum == 8, Transfer == 0)) %>%
+    bind_rows(select(drop_na(isolates_abundance), Family, ESV_ID = CommunityESVID)) %>%
+    #distinct(Family, ESV_ID) %>%
+    bin_ESV_names() %>%
+    clean_ESV_names() %>%
+    mutate(Family =  ifelse(Family %in% unique(isolates_abundance$Family), Family, "Others")) %>%
+    select(Transfer, Family, ESV_ID, Relative_Abundance) %>%
+    arrange(Transfer, Family, ESV_ID) %>%
+    distinct(Family, ESV_ID)
+
+ESV_colors <- temp %>% get_ESV_colors()
+
+
+# Inset 1: ESC abundance over time ----
+communities_abundance_C8R4 <- communities_abundance %>%
     filter(Inoculum == 8, Replicate == 4) %>%
-    mutate(Family = ifelse(Relative_Abundance < 0.001 | !(Family %in% names(family_colors)), "Others", Family)) %>%
-    mutate(Family = factor(Family, names(family_colors))) %>%
-    arrange(Transfer, Family) %>%
+    bind_rows(filter(communities_abundance, Inoculum == 8, Transfer == 0)) %>%
+    bin_ESV_names() %>%
+    clean_ESV_names() %>%
+    mutate(Family =  ifelse(Family %in% c("Enterobacteriaceae", "Pseudomonadaceae"), Family, "Others")) %>%
+    select(Transfer, Family, ESV_ID, Relative_Abundance) %>%
+    arrange(Transfer, Family, ESV_ID)
+
+#ESV_colors <- temp %>% get_ESV_colors
+p1 <- communities_abundance_C8R4 %>%
+    mutate(ESV_ID = ifelse(ESV_ID %in% names(ESV_colors[-length(ESV_colors)]), ESV_ID, "Other")) %>%
+    mutate(ESV_ID = factor(ESV_ID, names(ESV_colors))) %>%
+    # mutate(Family = ifelse(Relative_Abundance < 0.001 | !(Family %in% names(family_colors)), "Others", Family)) %>%
+    #mutate(Family = factor(Family, names(family_colors))) %>%
+    #arrange(Transfer, Family) %>%
     ggplot() +
-    geom_col(aes(x = Transfer, y = Relative_Abundance, fill = Family, alpha = ESV), linewidth = .3) +
+    geom_col(aes(x = Transfer, y = Relative_Abundance, fill = ESV_ID, color = ESV_ID), linewidth = .3, position = position_stack(reverse = T)) +
     annotate("text", x = 0, y = -0.1, label = "inoculum", size = 6, angle = 20, hjust = 0.9, vjust = -0.5) +
-    scale_fill_manual(values = family_colors) +
-    scale_alpha_discrete(range = c(0.5, 1)) +
+    scale_fill_manual(values = ESV_colors) +
+    scale_color_manual(values = ESV_colors) +
+    #scale_alpha_discrete(range = c(0.5, 1)) +
     scale_x_continuous(breaks = 0:12, expand = c(0,.3), labels = c("", 1:12)) +
     scale_y_continuous(expand = c(0, 0), breaks = c(0, .5, 1)) +
     coord_cartesian(ylim = c(0, 1), clip = "off") +
     theme_classic() +
     theme(panel.grid = element_blank(),
+          panel.border = element_rect(color = 1, linewidth = .5, fill = NA),
+          panel.background = element_rect(color = 1, fill = "#FBF2E4"),
           axis.title = element_text(size = 17),
           axis.text = element_text(color = 1, size = 17),
-          panel.border = element_rect(color = 1, size = 1, fill = NA),
-          plot.background = element_blank(),
-          panel.background = element_blank()) +
-    guides(alpha = "none") +
-    labs(x = "Transfer", y = "Relative abundance")
+          plot.background = element_rect(color = NA, fill = NA),
+          legend.background = element_rect(color = NA, fill = "#FBF2E4"),
+          legend.key.size = unit(10, "mm"),
+          #legend.spacing = unit(20, "mm"),
+          legend.text = element_text(size = 10),
+          legend.title = element_blank(),
+    ) +
+    guides(alpha = "none", color = "none", fill = guide_legend(ncol = 1)) +
+    labs(x = "transfer", y = "relative abundance")
 
-# Inset2: isolate abundance in community ----
-isolates_abundance <- isolates %>%
-    mutate(Community = factor(Community, communities$Community)) %>%
-    filter(!is.na(RelativeAbundance)) %>%
-    arrange(Community) %>%
+# Inset 2: isolate abundance in community ----
+isolates_abundance_factor <- isolates_abundance %>%
+    drop_na() %>%
+    rename(ESV_ID = CommunityESVID) %>%
+    mutate(ESV_ID = ifelse(ESV_ID %in% names(ESV_colors[-length(ESV_colors)]), ESV_ID, "Other")) %>%
+    mutate(ESV_ID = factor(ESV_ID, names(ESV_colors)))
+
+isolates_abundance_other <- isolates_abundance_factor %>%
     group_by(Community) %>%
-    select(Community, Family, Genus, RelativeAbundance) %>%
-    ungroup() %>%
-    arrange(Community, Family, Genus) %>%
-    # Unique genus name
-    group_by(Community, Family, Genus) %>%
-    mutate(Genus = paste0(Genus, 1:n()))
+    summarize(RelativeAbundance = 1-sum(RelativeAbundance)) %>%
+    mutate(ESV_ID = "Other")
 
-isolates_abundance <- isolates_abundance %>%
-    split.data.frame(.$Community) %>%
-    map(function (x) {
-        MatchedRelativeAbundance = sum(x$RelativeAbundance)
-        bind_rows(x, tibble(Community = unique(x$Community), Family = "Others", Genus = "Others", RelativeAbundance = 1-MatchedRelativeAbundance))
-    }) %>%
-    bind_rows()
-
-
-p2 <- isolates_abundance %>%
-    mutate(Family = factor(Family, names(family_colors))) %>%
+p2 <- isolates_abundance_factor %>%
+    bind_rows(isolates_abundance_other) %>%
+    mutate(ESV_ID = factor(ESV_ID, names(ESV_colors))) %>%
+    #mutate(Family = factor(Family, names(family_colors))) %>%
     left_join(communities, by = "Community") %>%
     ggplot() +
-    geom_bar(aes(x = CommunityLabel, y = RelativeAbundance, fill = Family, alpha = Genus), size = .3, position = "stack", stat = "identity") +
+    geom_col(aes(x = CommunityLabel, y = RelativeAbundance, fill = ESV_ID), position = position_stack(reverse = T)) +
     theme_bw() +
-    scale_fill_manual(values = family_colors, breaks = names(family_colors)[names(family_colors) != "Others"]) +
-    scale_alpha_discrete(range = c(1, 0.8)) +
+    scale_fill_manual(values = ESV_colors) +
+    #scale_fill_manual(values = family_colors, breaks = names(family_colors)[names(family_colors) != "Others"]) +
+    #scale_alpha_discrete(range = c(1, 0.8)) +
     scale_x_continuous(breaks = 1:13, expand = c(0,.3)) +
     scale_y_continuous(breaks = c(0, .5, 1), expand = c(0,0), limits = c(0, 1)) +
     coord_cartesian(ylim = c(0, 1), clip = "off") +
     theme(panel.grid = element_blank(),
           axis.title = element_text(size = 17),
           axis.text = element_text(color = 1, size = 17),
-          panel.border = element_rect(color = 1, size = 1),
+          panel.border = element_rect(color = 1, linewidth = .5),
           plot.background = element_blank(),
           panel.background = element_blank()) +
     guides(alpha = "none") +
-    labs(x = "Community", y = "Relative abundance")
+    labs(x = "community", y = "relative abundance")
+
+
+# Inset 3: Negative frequenct dependent selection of three ESVs from C8R4 ----
+communities <- read_csv(paste0(folder_data, "temp/00c-communities.csv"), show_col_types = F) %>%
+    mutate(Community = factor(Community, Community))
+communities_abundance <- read_csv(paste0(folder_data, "raw/community_ESV/Emergent_Comunity_Data.csv"), show_col_types = F) %>%
+    filter(Carbon_Source == "Glucose" | Carbon_Source == "Original") %>%
+    mutate(Community = factor(paste0("C", Inoculum, "R", Replicate), paste0("C", rep(1:12, each = 8), "R", rep(1:8, 12))))%>%
+    # bin_ESV_names() %>%
+    # clean_ESV_names() %>%
+    arrange(Community, Family, Transfer, ESV)
+communities_abundance_temporal <- communities_abundance %>%
+    filter(Transfer != 0) %>%
+    # Filter for those that has temporal data
+    filter(Inoculum %in% c(2,6) | Replicate == 4) %>%
+    select(Community, Transfer, ESV_ID, Relative_Abundance) %>%
+    arrange(Community, Transfer, ESV_ID)
+communities_abundance_temporal_complete <- communities_abundance_temporal %>%
+    distinct(Community, ESV_ID) %>%
+    slice(rep(1:n(), each = 12)) %>%
+    mutate(Transfer = rep(1:12, n()/12))
+# Calculate fitness
+communities_abundance_fitness <- communities_abundance_temporal %>%
+    right_join(communities_abundance_temporal_complete) %>%
+    group_by(Community, ESV_ID) %>%
+    arrange(Community, ESV_ID, Transfer) %>%
+    mutate(Fitness = log(lead(Relative_Abundance) / Relative_Abundance))
+
+
+communities_abundance_C8R4_three <- communities_abundance %>%
+    filter(Community == "C8R4", Transfer == 12, Relative_Abundance > 0.01)
+
+communities_abundance_fitness_C8R4 <- communities_abundance_fitness %>%
+    filter(Community == "C8R4") %>%
+    filter(ESV_ID %in% communities_abundance_C8R4_three$ESV_ID) %>%
+    mutate(CommunityESV = paste0(Community, ESV_ID))
+
+p3 <- communities_abundance_fitness_C8R4 %>%
+    mutate(ESV_ID = factor(ESV_ID, c("Pseudomonas.10", "Raoultella", "Klebsiella"))) %>%
+    ggplot() +
+    geom_smooth(aes(x = Relative_Abundance, y = Fitness), method = "lm", formula = y~x, se = F) +
+    geom_point(aes(x = Relative_Abundance, y = Fitness), shape = 21, stroke = 1, size = 3) +
+    geom_hline(yintercept = 0, linetype = 2) +
+    scale_x_continuous(breaks = scales::pretty_breaks(n = 3), limits = c(0,1)) +
+    scale_y_continuous(breaks = scales::pretty_breaks(n = 3)) +
+    facet_wrap(~ESV_ID, ncol = 1) +
+    theme_classic() +
+    theme(
+        #axis.text = element_text(size = 8, angle = 30, hjust = 1),
+        axis.title = element_text(size = 15),
+        axis.text = element_text(size = 15),
+        strip.text = element_text(size = 15),
+        strip.background = element_blank(),
+        panel.border = element_rect(color = 1, linewidth = 0.5, fill = NA),
+        plot.background = element_blank()
+    ) +
+    # labs(x = expression(x[i]), y = expression(log(x[i+1]/x[i])))
+    labs(x = "relative abundance", y = "fitness")
+
+communities_abundance_fitness_C8R4 %>%
+    nest(data = c(-Community, -ESV_ID)) %>%
+    mutate(fit = map(data, ~ lm(Fitness ~ Relative_Abundance, data = .x)),
+           tidied = map(fit, tidy),
+           r.squared = map(fit, function(x) summary(x)$adj.r.squared)) %>%
+    unnest(r.squared) %>%
+    unnest(tidied) %>%
+    filter(term == "Relative_Abundance")
+
+
+# Assemble panels
+p_legend_ESV <- {p1 +
+        theme(
+            legend.text = element_text(size = 12),
+            legend.title = element_blank(),
+            #legend.title = element_text(size = 12),
+            legend.key.size = unit(5, "mm")) +
+        guides(fill = guide_legend(ncol = 2))
+    } %>% get_legend()
+
+
+zoom_polygon1 <- polygonGrob(x = c(0.76, 0.76, 0.875, 0.875),
+                             y = c(0.605, 0.65, 0.735, 0.65),
+                             gp = gpar(fill = "grey", alpha = 0.3, col = NA))
+zoom_polygon2 <- polygonGrob(x = c(0.76, 0.76, 0.87, 0.87),
+                             y = c(0.603, 0.607, 0.62, 0.53),
+                             gp = gpar(fill = "grey", alpha = 0.3, col = NA))
+zoom_polygon3 <- polygonGrob(x = c(0.76, 0.76, 0.87, 0.87),
+                             y = c(0.445, 0.603, 0.50, 0.42),
+                             gp = gpar(fill = "grey", alpha = 0.3, col = NA))
+
+p <- ggdraw() +
+    draw_image(here::here("plots/cartoons/Fig1_cartoon.png")) +
+    draw_grob(zoom_polygon1) +
+    draw_grob(zoom_polygon2) +
+    draw_grob(zoom_polygon3) +
+    draw_plot(p1 + guides(fill = "none"), x = 0.52, y = 0.40, width = 0.25, height = 0.26) +
+    draw_plot(p2 + guides(fill = "none"), x = 0.52, y = 0.05, width = 0.25, height = 0.26) +
+    draw_plot(plot_grid(p3 + guides(fill = "none"), labels = "C", label_size = 25), x = 0.83, y = 0.38, width = 0.13, height = 0.38) +
+    draw_plot(p_legend_ESV, x = 0.85, y = 0.15, width = 0.1, height = 0.1)
+
+ggsave(here::here("plots/Fig1.png"), p, width = 20, height = 15)
+
 
 # Stats
 isolates %>%
     group_by(Community) %>%
     summarize(Total = sum(RelativeAbundance, na.rm = T)) %>%
     summarize(Mean = mean(Total))
-
-# Assemble panels
-p_legend <- get_legend(p1 + theme(legend.text = element_text(size = 17), legend.title = element_text(size = 17), legend.key.size = unit(1, "cm")))
-p <- ggdraw() +
-    draw_image(here::here("plots/cartoons/Fig1_cartoon.png")) +
-    draw_plot(p1 + guides(fill = "none"), x = 0.54, y = 0.4, width = 0.18, height = 0.26) +
-    draw_plot(p2 + guides(fill = "none"), x = 0.54, y = 0.05, width = 0.18, height = 0.26) +
-    draw_plot(p_legend, x = 0.76, y = 0.4, width = 0.1, height = 0.1)
-ggsave(here::here("plots/Fig1.png"), p, width = 27, height = 15)
-
-
-
-
-
 
 

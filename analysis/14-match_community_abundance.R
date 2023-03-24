@@ -20,7 +20,7 @@ communities_abundance <- read_csv(paste0(folder_data, "raw/community_ESV/Emergen
     arrange(Community, CarbonSource, desc(RelativeAbundance)) %>%
     select(SampleID, Community, RelativeAbundance, CommunityESVID, ESV, ESVFamily, ESVGenus)
 
-write_csv(communities_abundance, paste0(folder_data, "temp/13-communities_abundance.csv"))
+write_csv(communities_abundance, paste0(folder_data, "temp/14-communities_abundance.csv"))
 
 
 
@@ -129,10 +129,33 @@ for (i in 1:length(alignment_type)) {
 }
 ## Merge list
 sequences_alignment <- bind_rows(sequences_alignment_list) %>% as_tibble
-write_csv(sequences_alignment, paste0(folder_data, "temp/13-sequences_alignment.csv"))
+write_csv(sequences_alignment, paste0(folder_data, "temp/14-sequences_alignment.csv"))
 
 
-# 3. Pick the best-matched ESV-isolate pairs with up to  0-2 mismatch ----
+# 3. Pick the best-matched ESV-isolate pairs with up to 0-2 mismatch ----
+sequences_alignment <- read_csv(paste0(folder_data, "temp/14-sequences_alignment.csv"), show_col_types = F)
+
+# sequences_alignment %>%
+#     group_by(Community) %>%
+#     distinct(Community, CommunityESVID, RelativeAbundance) %>%
+#     filter(RelativeAbundance>0.01) %>%
+#     count()
+# #    summarize(sum(RelativeAbundance))
+#
+# sequences_alignment %>%
+#     distinct(Community, ExpID) %>%
+#     #filter(RelativeAbundance>0.01) %>%
+#     group_by(Community) %>%
+#     count()
+#
+# sequences_alignment %>%
+#     filter(AlignmentType == "local") %>%
+#     filter(BasePairMismatch <= Inf) %>%
+#     group_by(ExpID) %>%
+#     arrange(desc(AlignmentScore)) %>%
+#     slice(1) %>%
+#     select(ExpID, Community, CommunityESVID, Genus, RelativeAbundance) %>%
+#     arrange(Community, CommunityESVID)
 
 # Find the match with highest alignment score; 68 rows
 sequences_abundance_list <- rep(list(NA), 3)
@@ -163,18 +186,27 @@ isolates_abundance <- bind_rows(sequences_abundance_list) %>%
     arrange(AlignmentType, AllowMismatch, Community) %>%
     filter(AlignmentType == "local", AllowMismatch == "Inf") %>%
     # Select only necessary variables
-    select(Community, ExpID, RelativeAbundance, CommunityESVID) %>%
+    select(Community, ExpID, RelativeAbundance, Family, Genus, CommunityESVID) %>%
     # Match it to isolate
     right_join(isolates_ID, by = c("Community", "ExpID")) %>%
-    select(Community, Isolate, ExpID, RelativeAbundance) %>%
+    select(Community, Isolate, ExpID, Family, Genus, CommunityESVID, RelativeAbundance) %>%
     group_by(Community) %>%
     mutate(RankRelativeAbundance = rank(-RelativeAbundance))
 
+isolate_ESV_1on1_match <- sequences_alignment %>%
+    filter(AlignmentType == "local") %>%
+    # Filter for BasePairMatch
+    filter(BasePairMismatch <= Inf) %>%
+    # For each Sanger, find the Sanger-ESV match with highest alignment score
+    group_by(AlignmentType, ExpID) %>%
+    arrange(desc(AlignmentScore)) %>%
+    slice(1)
 
-write_csv(isolates_abundance, paste0(folder_data, "temp/13-isolates_abundance.csv"))
+write_csv(isolates_abundance, paste0(folder_data, "temp/14-isolates_abundance.csv"))
+write_csv(isolate_ESV_1on1_match, paste0(folder_data, "temp/14-isolate_ESV_1on1_match.csv"))
 
 # 4. Keep all Sangers that match to any ESV with up to  0-2 mismatch ----
-sequences_alignment <- read_csv(paste0(folder_data, "temp/13-sequences_alignment.csv"), show_col_types = F)
+sequences_alignment <- read_csv(paste0(folder_data, "temp/14-sequences_alignment.csv"), show_col_types = F)
 
 # Find the match with highest alignment score; 68 rows
 sequences_abundance_list <- rep(list(NA), 3)
@@ -205,7 +237,7 @@ isolates_abundance_loose <- bind_rows(sequences_abundance_list) %>%
     right_join(isolates_ID, by = c("Community", "ExpID")) %>%
     select(Community, Isolate, ExpID, RelativeAbundance)
 
-write_csv(isolates_abundance_loose, paste0(folder_data, "temp/13-isolates_abundance_loose.csv"))
+write_csv(isolates_abundance_loose, paste0(folder_data, "temp/14-isolates_abundance_loose.csv"))
 
 
 

@@ -122,6 +122,7 @@ get_ESV_colors <- function (comm_abundance) {
 
 }
 
+
 # T12 composition. Replicate reflect the actual order. Fig. S6 in Goldford2018 ----
 temp <- communities_abundance %>%
     filter(Transfer == 12) %>%

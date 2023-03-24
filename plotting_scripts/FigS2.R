@@ -91,7 +91,7 @@ p <- communities_abundance_fitness_all %>%
           panel.border = element_rect(color = 1, fill = NA)) +
     labs(x = expression(x[i]), y = expression(log(x[i+1]/x[i])))
 
-ggsave(here::here("plots/FigS11-species_fitness_all_transfers.png"), p, width = 12, height = 15)
+ggsave(here::here("plots/FigS2-species_fitness_all_transfers.png"), p, width = 12, height = 15)
 
 
 # ESVs that are ephemeral

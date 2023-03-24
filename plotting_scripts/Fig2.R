@@ -9,6 +9,14 @@ communities <- read_csv(paste0(folder_data, "temp/00c-communities.csv"), show_co
 pairs_freq <- read_csv(paste0(folder_data, "temp/93-pairs_freq.csv"), show_col_types = F)
 load(paste0(folder_data, "temp/95-communities_network.Rdata"))
 
+# Clean up pairs data
+pairs <- pairs %>%
+    # Remove no-colony pairs
+    unite(col = "Pair", Community, Isolate1, Isolate2, sep = "_", remove = F) %>%
+    filter(!(Pair %in% pairs_no_colony)) %>%
+    # Remove low-accuracy model pairs
+    filter(AccuracyMean > 0.9)
+
 # Figure 2A: cartoon----
 pA <- ggdraw() + draw_image(here::here("plots/cartoons/Fig2A.png")) + paint_white_background()
 
@@ -30,11 +38,13 @@ p1 <- net %>%
     scale_x_continuous(limits = c(-0.2, 1.2), breaks = c(0, .5, 1)) +
     scale_y_continuous(limits = c(-0.2, 1.2), breaks = c(0, .5, 1)) +
     theme_void() +
-    theme(legend.position = "none",
-          legend.key.size = unit(1.3, "line"),
-          panel.background = element_blank(),
-          plot.margin = unit(c(0,0,0,0), "mm"),
-          plot.background = element_rect(fill = NA, color = NA)) +
+    theme(
+        legend.position = "none",
+        legend.key.size = unit(1.3, "line"),
+        panel.background = element_blank(),
+        plot.margin = unit(c(0,0,0,0), "mm"),
+        plot.background = element_rect(fill = NA, color = NA),
+    ) +
     draw_image(here::here("plots/cartoons/Fig2B_1.png"), x = -0.5, y = 0.75, vjust = 0.25, hjust = 0, clip = "on", scale = .3) +
     draw_image(here::here("plots/cartoons/Fig2B_2.png"), x = 0.5, y = 0.75, vjust = 0.25, hjust = 0, clip = "on", scale = .3) +
     draw_image(here::here("plots/cartoons/Fig2B_3.png"), x = -0.5, y = -0.25, vjust = 0.25, hjust = 0, clip = "on", scale = .3) +
@@ -64,15 +74,17 @@ plot_example_freq <- function(pairs_freq) {
         scale_color_manual(values = frequency_color, label = c("95%", "50%", "5%")) +
         facet_wrap(.~Pair) +
         theme_bw() +
-        theme(panel.spacing = unit(2, "mm"), strip.text.x = element_blank(),
-              panel.border = element_rect(color = 1, fill = NA, linewidth = 1),
-              panel.grid.minor.y = element_blank(),
-              axis.title = element_blank(), axis.text = element_blank(),
-              axis.ticks = element_blank(),
-              panel.background = element_rect(fill = "white"),
-              plot.background = element_blank()) +
+        theme(
+            panel.spacing = unit(2, "mm"), strip.text.x = element_blank(),
+            panel.border = element_rect(color = 1, fill = NA, linewidth = 1),
+            panel.grid.minor.y = element_blank(),
+            panel.background = element_rect(fill = "white"),
+            axis.title = element_blank(), axis.text = element_blank(),
+            axis.ticks = element_blank(),
+            plot.background = element_blank()
+        ) +
         guides(color = "none") +
-        labs(x = "Time", y = "Frequency")
+        labs(x = "time", y = "frequency")
 }
 p_pairs_example_freq_list <- pairs_example_freq %>% group_split(Pair) %>% lapply(plot_example_freq)
 p_pairs_example_freq_list[[1]] <- p_pairs_example_freq_list[[1]] + theme(axis.text = element_text(size = 8), axis.title = element_text(size = 10))
@@ -123,9 +135,104 @@ pC <- pairs %>%
           plot.margin = unit(c(1,.5,.5,.5), "cm")
     ) +
     guides(fill = guide_legend(byrow = TRUE)) +
-    labs(x = "Community", y = "Fraction")
+    labs(x = "community", y = "fraction")
 
 # Assemble panels ----
 p_bottom <- plot_grid(pB, pC, nrow = 1, labels = c("B", "C"), scale = c(0.9, 0.9), rel_widths = c(1, 1.8), axis = "b")
 p <- plot_grid(pA, p_bottom, nrow = 2, labels = c("A", ""), scale = c(.95, .95), rel_heights = c(.8, 1)) + paint_white_background()
 ggsave(here::here("plots/Fig2.png"), p, width = 10, height = 6)
+
+
+# Stats ----
+
+pairs <- read_csv(paste0(folder_data, "output/pairs.csv"), show_col_types = F)
+communities <- read_csv(paste0(folder_data, "temp/00c-communities.csv"), show_col_types = F)
+pairs_freq <- read_csv(paste0(folder_data, "temp/93-pairs_freq.csv"), show_col_types = F)
+
+pairs <- pairs %>%
+    # Remove no-colony pairs
+    unite(col = "Pair", Community, Isolate1, Isolate2, sep = "_", remove = F) %>%
+    filter(!(Pair %in% pairs_no_colony)) %>%
+    # Remove low-accuracy model pairs
+    filter(AccuracyMean > 0.9)
+pairs_freq <- pairs_freq %>%
+    left_join(distinct(pairs, PairID, Community, Isolate1, Isolate2)) %>%
+    select(PairID, everything()) %>%
+    filter(!is.na(PairID))
+
+compute_freq <- function (n_incidence, n_total) {
+    paste0(n_incidence, "/", n_total, "=", round(n_incidence/n_total*100, 1), "%")
+}
+
+# One species went extinct anyways
+pairs_freq %>%
+    group_by(PairID) %>%
+    filter(Time == "T8") %>%
+    select(PairID, Isolate1InitialODFreq, Isolate1CFUFreqMean) %>%
+    pivot_wider(names_from = Isolate1InitialODFreq, names_prefix = "F", values_from = Isolate1CFUFreqMean) %>%
+    filter((F5 == 0 & F50 == 0 & F95 == 0) | (F5 == 1 & F50 == 1 & F95 == 1)) %>%
+    nrow() %>%
+    compute_freq(nrow(pairs))
+
+# Losing species declines in frequency but not extinct
+temp_id <- pairs_freq %>%
+    group_by(PairID) %>%
+    filter(Time == "T8") %>%
+    select(PairID, Isolate1InitialODFreq, Isolate1CFUFreqMean) %>%
+    pivot_wider(names_from = Isolate1InitialODFreq, names_prefix = "F", values_from = Isolate1CFUFreqMean) %>%
+    filter(!((F5 == 0 & F50 == 0 & F95 == 0) | (F5 == 1 & F50 == 1 & F95 == 1))) %>%
+    pull(PairID)
+
+pairs %>%
+    filter(InteractionType == "exclusion") %>%
+    filter(PairID %in% temp_id) %>%
+    nrow() %>%
+    compute_freq(nrow(pairs))
+
+# Coexisting at 1) stable equilibrim or 2) one negative frequency-dependent equilibirum
+unique(pairs$InteractionTypeFiner)
+pairs %>%
+    filter(InteractionType == "coexistence") %>%
+    filter(InteractionTypeFiner %in% c("stable coexistence", "frequency-dependent coexistence")) %>%
+    nrow() %>%
+    compute_freq(nrow(filter(pairs, InteractionType == "coexistence")))
+
+# Coexisting at 1) 5% or 95%, or 2) neutrality
+pairs %>%
+    filter(InteractionType == "coexistence") %>%
+    filter(InteractionTypeFiner %in% c("coexistence at 95%", "coexistence at 5%",
+                                       "2-freq neutrality", "3-freq neutrality")) %>%
+    nrow() %>%
+    compute_freq(nrow(filter(pairs, InteractionType == "coexistence")))
+
+# Undetermined pairs
+pairs %>%
+    filter(InteractionType == "unknown") %>%
+    nrow() %>%
+    compute_freq(nrow(pairs))
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
