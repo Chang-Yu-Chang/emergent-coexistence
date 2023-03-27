@@ -23,7 +23,7 @@ isolates <- isolates_ID %>%
     left_join(isolates_RDP, by = c("ExpID", "ID", "Community", "Isolate")) %>%
     left_join(isolates_epsilon, by = c("Community", "Isolate")) %>%
     left_join(isolates_tournament, by = c("Community", "Isolate")) %>%
-    left_join(isolates_abundance, by = c("ExpID", "Community", "Isolate")) %>%
+    left_join(isolates_abundance, by = join_by(ExpID, ID, Community, Isolate, Sequence, Family, Genus)) %>%
     mutate(Community = ordered(Community, levels = communities$Community))
 
 write_csv(isolates, paste0(folder_data, "output/isolates.csv"))

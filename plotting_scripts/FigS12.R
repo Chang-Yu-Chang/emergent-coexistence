@@ -2,8 +2,6 @@ library(tidyverse)
 library(cowplot)
 library(broom)
 source(here::here("analysis/00-metadata.R"))
-source(here::here("plotting_scripts/FigS11.R"))
-
 
 #
 communities_abundance_fitness_equilibrium <- communities_abundance_fitness %>%

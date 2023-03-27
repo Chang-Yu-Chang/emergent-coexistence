@@ -48,7 +48,10 @@ pairs_freq <- bind_rows(pairs_freq_T0_boots, pairs_freq_T8_boots) %>%
 
 write_csv(pairs_freq, paste0(folder_data, "temp/93a-pairs_freq.csv"))
 
+
 # 2. Determine pairwise competition ----
+if (FALSE) {
+
 read_pairs_boots_table <- function () {
     #' This function batchly reads the table of boostrapped frequency change per pair
     temp <- rep(list(NA), nrow(pairs_ID))
@@ -59,6 +62,44 @@ read_pairs_boots_table <- function () {
         cat("\n", i, "/", nrow(pairs_ID))
     }
     pairs_boots_table <- bind_rows(temp[which(!is.na(temp))])
+}
+}
+read_pairs_boots_table <- function () {
+    #' This function binds the table of bootstrapped frequency change per pair
+    pairs_boots_table_list <- rep(list(NA), nrow(pairs_ID))
+    for (i in 1:nrow(pairs_ID)) {
+        community <- pairs_ID$Community[i]
+        isolate1 <- pairs_ID$Isolate1[i]
+        isolate2 <- pairs_ID$Isolate2[i]
+        pair_name <- paste0(community, "_", isolate1, "_", isolate2)
+        if (pair_name %in% pairs_no_colony) {cat("\nT8 has no colony, skip pair\t", pair_name); next}
+
+        # Increase or decrease sign
+        pair_boots <- bind_rows(
+            filter(pairs_T0_boots, Community == community, Isolate1 == isolate1, Isolate2 == isolate2),
+            filter(pairs_T8_boots, Community == community, Isolate1 == isolate1, Isolate2 == isolate2),
+        ) %>%
+            select(Community, Isolate1, Isolate2, Isolate1InitialODFreq, Time, BootstrapID, Isolate1CFUFreq) %>%
+            pivot_wider(names_from = Time, values_from = Isolate1CFUFreq) %>%
+            mutate(FreqChange = T8-T0) %>%
+            mutate(FreqChangeSign = case_when(
+                FreqChange > 0 ~ "increase",
+                FreqChange == 0 ~ "same",
+                FreqChange < 0 ~ "decrease",
+            )) %>%
+            pivot_longer(cols = c(T0, T8), names_to = "Time", values_to = "Isolate1CFUFreq")
+
+        # Table of increase and decrease
+        pairs_boots_table_list[[i]] <- pair_boots %>%
+            filter(Time == "T0") %>%
+            mutate(FreqChangeSign = factor(FreqChangeSign, c("increase", "same", "decrease"))) %>%
+            group_by(Community, Isolate1, Isolate2, Isolate1InitialODFreq, FreqChangeSign, .drop = F) %>%
+            count(name = "Count") %>%
+            group_by(Community, Isolate1, Isolate2, Isolate1InitialODFreq) %>%
+            mutate(Fraction = Count / sum(Count))
+    }
+    pairs_boots_table <- bind_rows(pairs_boots_table_list[!is.na(pairs_boots_table_list)])
+    return(pairs_boots_table)
 }
 compute_pairs_fitness <- function (pairs_boots_table) {
     #' This script takes the bootstrap samples and compute the significance of frequency changes
@@ -117,7 +158,8 @@ append_pairs_outcome <- function (pairs_fitness) {
 }
 interaction_type <- make_interaction_type()
 
-pairs_fitness <- read_pairs_boots_table() %>%
+pairs_boots_table <- read_pairs_boots_table()
+pairs_fitness <- pairs_boots_table %>%
     compute_pairs_fitness() %>%
     append_pairs_outcome() %>%
     ungroup() %>%

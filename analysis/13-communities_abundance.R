@@ -11,13 +11,12 @@ source(here::here("analysis/00-metadata.R"))
 communities <- read_csv(paste0(folder_data, "temp/00c-communities.csv"), show_col_types = F) %>%
     mutate(Community = factor(Community, Community))
 communities_abundance <- read_csv(paste0(folder_data, "raw/community_ESV/Emergent_Comunity_Data.csv"), show_col_types = F) %>%
+    # Remove Leucine and Citrate communities
     filter(Carbon_Source == "Glucose" | Carbon_Source == "Original") %>%
     mutate(Community = factor(paste0("C", Inoculum, "R", Replicate), paste0("C", rep(1:12, each = 8), "R", rep(1:8, 12))))%>%
-    # bin_ESV_names() %>%
-    # clean_ESV_names() %>%
     arrange(Community, Family, Transfer, ESV)
 
-communities_abundance_temporal <- communities_abundance %>%
+communities_temporal <- communities_abundance %>%
     distinct(Community, Transfer) %>%
     arrange(Community, Transfer) %>%
     filter(Transfer == 4)
@@ -124,14 +123,14 @@ get_ESV_colors <- function (comm_abundance) {
 
 
 # T12 composition. Replicate reflect the actual order. Fig. S6 in Goldford2018 ----
-temp <- communities_abundance %>%
+communities_abundance_T12 <- communities_abundance %>%
     filter(Transfer == 12) %>%
     bin_ESV_names() %>%
     clean_ESV_names()
 
-ESV_colors <- temp %>% get_ESV_colors
+ESV_colors <- communities_abundance_T12 %>% get_ESV_colors
 
-p <- temp %>%
+p <- communities_abundance_T12 %>%
     mutate(ESV_ID = ifelse(ESV_ID %in% names(ESV_colors[-length(ESV_colors)]), ESV_ID, "Other")) %>%
     mutate(ESV_ID = factor(ESV_ID, rev(names(ESV_colors)))) %>%
     ggplot() +
@@ -159,22 +158,22 @@ communities_abundance_reordered <- communities_abundance %>%
     summarize(Relative_Abundance = sum(Relative_Abundance)) %>%
     ungroup() %>%
     pivot_wider(names_from = ESV_ID, values_from = Relative_Abundance, values_fill = 0) %>%
-    #
+    # Replicate ordered according to ESV abundance
     arrange(Inoculum, Klebsiella, Enterobacteriaceae, Raoultella, Citrobacter, Pseudomonas) %>%
     group_by(Inoculum) %>%
     mutate(ReplicateReordered = 1:n()) %>%
     select(Community, Inoculum, Replicate, ReplicateReordered)
 
 
-temp <- communities_abundance %>%
+communities_abundance_T12_ordered <- communities_abundance %>%
     left_join(communities_abundance_reordered) %>%
     filter(Transfer == 12) %>%
     bin_ESV_names() %>%
     clean_ESV_names()
 
-ESV_colors <- temp %>% get_ESV_colors
+ESV_colors <- communities_abundance_T12_ordered %>% get_ESV_colors
 
-p <- temp %>%
+p <- communities_abundance_T12_ordered %>%
     mutate(ESV_ID = ifelse(ESV_ID %in% names(ESV_colors[-length(ESV_colors)]), ESV_ID, "Other")) %>%
     mutate(ESV_ID = factor(ESV_ID, rev(names(ESV_colors)))) %>%
     ggplot() +
@@ -195,15 +194,15 @@ ggsave(paste0(folder_data, "temp/13-Goldford2018_FigS6.png"), p, width = 10, hei
 
 
 # Temporal dynamics of all CXXR4 communities. One replicate per inoculum. Fig.S2 in Goldford2018 ----
-temp <- communities_abundance %>%
-    filter(Community %in% communities_abundance_temporal$Community | Transfer == 0) %>%
+communities_abundance_R4 <- communities_abundance %>%
+    filter(Community %in% communities_temporal$Community | Transfer == 0) %>%
     filter(Replicate == 4 | Transfer == 0) %>%
     bin_ESV_names() %>%
     clean_ESV_names()
 
-ESV_colors <- temp %>% get_ESV_colors
+ESV_colors <- communities_abundance_R4 %>% get_ESV_colors
 
-p <- temp %>%
+p <- communities_abundance_R4 %>%
     mutate(Community = factor(Community, paste0("C", rep(1:12, each = 8), "R", rep(1:8, 12)))) %>%
     mutate(ESV_ID = ifelse(ESV_ID %in% names(ESV_colors[-length(ESV_colors)]), ESV_ID, "Other")) %>%
     mutate(ESV_ID = factor(ESV_ID, rev(names(ESV_colors)))) %>%
@@ -221,21 +220,22 @@ p <- temp %>%
     labs(x = "transfer", y = "relative abundance")
 ggsave(paste0(folder_data, "temp/13-Goldford2018_FigS2.png"), p, width = 10, height = 8)
 
+
 # Temporal dynamics of all C2RXX communities.  ----
 communities_abundance_T0 <- communities_abundance %>%
     filter(Transfer == 0, Inoculum == 2) %>%
     slice(rep(1:n(), each = 8)) %>%
     mutate(Community = paste0("C2R", rep(1:8, n()/8)))
 
-temp <- communities_abundance %>%
-    filter(Community %in% communities_abundance_temporal$Community) %>%
+communities_abundance_C2 <- communities_abundance %>%
+    filter(Community %in% communities_temporal$Community) %>%
     filter(Inoculum == 2) %>%
     bin_ESV_names() %>%
     clean_ESV_names()
 
-ESV_colors <- temp %>% get_ESV_colors
+ESV_colors <- communities_abundance_C2 %>% get_ESV_colors
 
-p <- temp %>%
+p <- communities_abundance_C2 %>%
     bind_rows(communities_abundance_T0) %>%
     mutate(Community = factor(Community, paste0("C", rep(1:12, each = 8), "R", rep(1:8, 12)))) %>%
     mutate(ESV_ID = ifelse(ESV_ID %in% names(ESV_colors[-length(ESV_colors)]), ESV_ID, "Other")) %>%
@@ -260,15 +260,15 @@ communities_abundance_T0 <- communities_abundance %>%
     slice(rep(1:n(), each = 8)) %>%
     mutate(Community = paste0("C6R", rep(1:8, n()/8)))
 
-temp <- communities_abundance %>%
-    filter(Community %in% communities_abundance_temporal$Community) %>%
+communities_abundance_C6 <- communities_abundance %>%
+    filter(Community %in% communities_temporal$Community) %>%
     filter(Inoculum == 6) %>%
     bin_ESV_names() %>%
     clean_ESV_names()
 
-ESV_colors <- temp %>% get_ESV_colors
+ESV_colors <- communities_abundance_C6 %>% get_ESV_colors
 
-p <- temp %>%
+p <- communities_abundance_C6 %>%
     bind_rows(communities_abundance_T0) %>%
     mutate(Community = factor(Community, paste0("C", rep(1:12, each = 8), "R", rep(1:8, 12)))) %>%
     mutate(ESV_ID = ifelse(ESV_ID %in% names(ESV_colors[-length(ESV_colors)]), ESV_ID, "Other")) %>%
@@ -289,7 +289,7 @@ ggsave(paste0(folder_data, "temp/13-Goldford2018_FigS7.png"), p, width = 6, heig
 
 
 
-# Temporal dynamics of only the communities used for pairwise competition experiments ----
+# Temporal dynamics of only the four communities used for pairwise competition experiments ----
 communities_abundance_T0 <- bind_rows(
     communities_abundance %>% filter(Transfer == 0, Inoculum == 1) %>% mutate(Community = "C1R4"),
     communities_abundance %>% filter(Transfer == 0, Inoculum == 2) %>% mutate(Community = "C2R6"),
@@ -298,7 +298,7 @@ communities_abundance_T0 <- bind_rows(
 )
 
 temp <- communities_abundance %>%
-    filter(Community %in% communities_abundance_temporal$Community) %>%
+    filter(Community %in% communities_temporal$Community) %>%
     filter(Community %in% communities$Community) %>%
     bin_ESV_names() %>%
     clean_ESV_names()
@@ -334,19 +334,19 @@ communities_abundance <- read_csv(paste0(folder_data, "raw/community_ESV/Emergen
     # clean_ESV_names() %>%
     arrange(Community, Family, Transfer, ESV)
 
-communities_abundance_temporal <- communities_abundance %>%
+communities_temporal <- communities_abundance %>%
     filter(Transfer != 0) %>%
     # Filter for those that has temporal data
     filter(Inoculum %in% c(2,6) | Replicate == 4) %>%
     select(Community, Transfer, ESV_ID, Relative_Abundance) %>%
     arrange(Community, Transfer, ESV_ID)
 
-communities_abundance_temporal_complete <- communities_abundance_temporal %>%
+communities_temporal_complete <- communities_temporal %>%
     distinct(Community, ESV_ID) %>%
     slice(rep(1:n(), each = 12)) %>%
     mutate(Transfer = rep(1:12, n()/12))
 
-ESV_stable <- communities_abundance_temporal %>% # ESVs that make it to the last 2 transfers
+ESV_stable <- communities_temporal %>% # ESVs that make it to the last 2 transfers
     filter(Transfer %in% c(8:12)) %>%
     pivot_wider(id_cols = c(Community, ESV_ID), names_from = Transfer, names_prefix = "T", values_from = Relative_Abundance) %>%
     filter(!is.na(T12), !is.na(T11)) %>%
@@ -356,8 +356,8 @@ ESV_stable <- communities_abundance_temporal %>% # ESVs that make it to the last
 
 
 # Calculate fitness
-communities_abundance_fitness <- communities_abundance_temporal %>%
-    right_join(communities_abundance_temporal_complete) %>%
+communities_abundance_fitness <- communities_temporal %>%
+    right_join(communities_temporal_complete) %>%
     group_by(Community, ESV_ID) %>%
     arrange(Community, ESV_ID, Transfer) %>%
     mutate(Fitness = log(lead(Relative_Abundance) / Relative_Abundance))

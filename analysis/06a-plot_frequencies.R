@@ -1,11 +1,17 @@
-#' This script reads the aggregated csv from 06-cleanup_frequencies and for each pair
+#' This script reads the aggregated csv from 06-bootstrapping and plot the results for each pair in
+#'
+#' B-09-bootstrap/
+#' C-09-bootstrap/
+#' C2-09-bootstrap/
+#' D-09-bootstrap/
+
 library(tidyverse)
 library(cowplot)
 source(here::here("analysis/00-metadata.R"))
 
 pairs_ID <- read_csv(paste0(folder_data, "temp/00c-pairs_ID.csv"), show_col_types = F)
 pairs_T0_boots <- read_csv(paste0(folder_data, "temp/06-pairs_T0_boots.csv"), show_col_types = F) # bootstraps using T0 mean and sd
-pairs_T8_boots <- read_csv(paste0(folder_data, "temp/06-pairs_T8_boots.csv"), show_col_types = F) # bootstraps using random forest object probabilities=
+pairs_T8_boots <- read_csv(paste0(folder_data, "temp/06-pairs_T8_boots.csv"), show_col_types = F) # bootstraps using random forest object probabilities
 
 
 for (i in 1:nrow(pairs_ID)) {

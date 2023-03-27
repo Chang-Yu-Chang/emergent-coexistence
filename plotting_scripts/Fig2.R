@@ -11,10 +11,10 @@ load(paste0(folder_data, "temp/95-communities_network.Rdata"))
 
 # Clean up pairs data
 pairs <- pairs %>%
-    # Remove no-colony pairs
+    # Remove no-colony pairs, six pairs
     unite(col = "Pair", Community, Isolate1, Isolate2, sep = "_", remove = F) %>%
     filter(!(Pair %in% pairs_no_colony)) %>%
-    # Remove low-accuracy model pairs
+    # Remove low-accuracy model pairs. nine pairs
     filter(AccuracyMean > 0.9)
 
 # Figure 2A: cartoon----
@@ -145,112 +145,23 @@ ggsave(here::here("plots/Fig2.png"), p, width = 10, height = 6)
 
 # Stat
 
+pairs_freq <- read_csv(paste0(folder_data, "temp/93-pairs_freq.csv"), show_col_types = F)
+load(paste0(folder_data, "temp/95-communities_network.Rdata"))
+
+# Clean up pairs data
 pairs %>%
-    filter() %>%
+    # Remove no-colony pairs, six pairs
+    unite(col = "Pair", Community, Isolate1, Isolate2, sep = "_", remove = F) %>%
+    filter(!(Pair %in% pairs_no_colony)) %>%
+    # # Remove low-accuracy model pairs. nine pairs
+    # filter(AccuracyMean > 0.9)
     group_by(InteractionType, InteractionTypeFiner) %>%
     summarize(Count = n()) %>%
     ungroup() %>%
     mutate(Fraction = Count / sum(Count)) %>%
     arrange(InteractionTypeFiner)
 
-pairs_interaction <- read_csv(paste0(folder_data, "temp/93a-pairs_interaction.csv"), show_col_types = F)
+#pairs_interaction <- read_csv(paste0(folder_data, "temp/93a-pairs_interaction.csv"), show_col_types = F)
 
-
-if (FALSE) {
-
-# Stats ----
-
-pairs <- read_csv(paste0(folder_data, "output/pairs.csv"), show_col_types = F)
-communities <- read_csv(paste0(folder_data, "temp/00c-communities.csv"), show_col_types = F)
-pairs_freq <- read_csv(paste0(folder_data, "temp/93-pairs_freq.csv"), show_col_types = F)
-
-pairs <- pairs %>%
-    # Remove no-colony pairs
-    unite(col = "Pair", Community, Isolate1, Isolate2, sep = "_", remove = F) %>%
-    filter(!(Pair %in% pairs_no_colony)) %>%
-    # Remove low-accuracy model pairs
-    filter(AccuracyMean > 0.9)
-pairs_freq <- pairs_freq %>%
-    left_join(distinct(pairs, PairID, Community, Isolate1, Isolate2)) %>%
-    select(PairID, everything()) %>%
-    filter(!is.na(PairID))
-
-compute_freq <- function (n_incidence, n_total) {
-    paste0(n_incidence, "/", n_total, "=", round(n_incidence/n_total*100, 1), "%")
-}
-
-# One species went extinct anyways
-pairs_freq %>%
-    group_by(PairID) %>%
-    filter(Time == "T8") %>%
-    select(PairID, Isolate1InitialODFreq, Isolate1CFUFreqMean) %>%
-    pivot_wider(names_from = Isolate1InitialODFreq, names_prefix = "F", values_from = Isolate1CFUFreqMean) %>%
-    filter((F5 == 0 & F50 == 0 & F95 == 0) | (F5 == 1 & F50 == 1 & F95 == 1)) %>%
-    nrow() %>%
-    compute_freq(nrow(pairs))
-
-# Losing species declines in frequency but not extinct
-temp_id <- pairs_freq %>%
-    group_by(PairID) %>%
-    filter(Time == "T8") %>%
-    select(PairID, Isolate1InitialODFreq, Isolate1CFUFreqMean) %>%
-    pivot_wider(names_from = Isolate1InitialODFreq, names_prefix = "F", values_from = Isolate1CFUFreqMean) %>%
-    filter(!((F5 == 0 & F50 == 0 & F95 == 0) | (F5 == 1 & F50 == 1 & F95 == 1))) %>%
-    pull(PairID)
-
-pairs %>%
-    filter(InteractionType == "exclusion") %>%
-    filter(PairID %in% temp_id) %>%
-    nrow() %>%
-    compute_freq(nrow(pairs))
-
-# Coexisting at 1) stable equilibrim or 2) one negative frequency-dependent equilibirum
-#unique(pairs$InteractionTypeFiner)
-pairs %>%
-    filter(InteractionType == "coexistence") %>%
-    #filter(InteractionTypeFiner %in% c("stable coexistence", "frequency-dependent coexistence")) %>%
-    nrow() %>%
-    compute_freq(nrow(filter(pairs, InteractionType == "coexistence")))
-
-# Coexisting at 1) 5% or 95%, or 2) neutrality
-pairs %>%
-    filter(InteractionType == "coexistence") %>%
-    filter(InteractionTypeFiner %in% c("coexistence at 95%", "coexistence at 5%",
-                                       "2-freq neutrality", "3-freq neutrality")) %>%
-    nrow() %>%
-    compute_freq(nrow(filter(pairs, InteractionType == "coexistence")))
-
-# Undetermined pairs
-pairs %>%
-    filter(InteractionType == "unknown") %>%
-    nrow() %>%
-    compute_freq(nrow(pairs))
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-}
 
 

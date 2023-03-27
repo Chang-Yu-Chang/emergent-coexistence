@@ -4,6 +4,7 @@ library(broom)
 library(grid) # For drawing polygon
 source(here::here("analysis/00-metadata.R"))
 
+
 isolates <- read_csv(paste0(folder_data, "output/isolates.csv"), show_col_types = F)
 pairs <- read_csv(paste0(folder_data, "output/pairs.csv"), show_col_types = F)
 communities <- read_csv(paste0(folder_data, "temp/00c-communities.csv"), show_col_types = F)
@@ -140,6 +141,8 @@ communities_abundance_comm <- communities_abundance %>%
     select(Transfer, Family, ESV_ID, Relative_Abundance) %>%
     arrange(Transfer, Family, ESV_ID)
 
+ESV_colors <- communities_abundance_comm %>% get_ESV_colors()
+
 p1 <- communities_abundance_comm %>%
     mutate(ESV_ID = ifelse(ESV_ID %in% names(ESV_colors[-length(ESV_colors)]), ESV_ID, "Other")) %>%
     mutate(ESV_ID = factor(ESV_ID, names(ESV_colors))) %>%
@@ -158,13 +161,14 @@ p1 <- communities_abundance_comm %>%
           axis.title = element_text(size = 17),
           axis.text = element_text(color = 1, size = 17),
           plot.background = element_rect(color = NA, fill = NA),
-          legend.background = element_rect(color = NA, fill = "#FBF2E4"),
+          legend.background = element_rect(color = NA, fill = NA),
           legend.key.size = unit(10, "mm"),
           legend.text = element_text(size = 10),
           legend.title = element_blank(),
     ) +
-    guides(alpha = "none", color = "none", fill = guide_legend(ncol = 1)) +
+    guides(alpha = "none", color = "none", fill = guide_legend(ncol = 2)) +
     labs(x = "transfer", y = "relative abundance")
+
 
 # Inset 2: isolate abundance in community ----
 isolates_abundance_factor <- isolates_abundance %>%
@@ -175,17 +179,23 @@ isolates_abundance_factor <- isolates_abundance %>%
 
 isolates_abundance_other <- isolates_abundance_factor %>%
     group_by(Community) %>%
-    summarize(RelativeAbundance = 1-sum(RelativeAbundance)) %>%
-    mutate(ESV_ID = "Other")
+    summarize(TotalAbundance = sum(RelativeAbundance)) %>%
+    mutate(RelativeAbundance = 1-TotalAbundance) %>%
+    mutate(ESV_ID = "haha")
+
+ESV_colors <- isolates_abundance_factor %>% get_ESV_colors()
+
+#isolates_RDP <- read_csv(paste0(folder_data, "temp/12-isolates_RDP.csv"), show_col_types = F)
 
 p2 <- isolates_abundance_factor %>%
-    bind_rows(isolates_abundance_other) %>%
+    #bind_rows(isolates_abundance_other) %>%
     mutate(ESV_ID = factor(ESV_ID, names(ESV_colors))) %>%
     left_join(communities, by = "Community") %>%
     ggplot() +
-    geom_col(aes(x = CommunityLabel, y = RelativeAbundance, fill = ESV_ID), position = position_stack(reverse = T)) +
+    geom_col(aes(x = CommunityLabel, y = RelativeAbundance, fill = Genus), position = position_stack(reverse = T)) +
     theme_bw() +
-    scale_fill_manual(values = ESV_colors) +
+    #scale_fill_manual(values = ESV_colors) +
+    scale_fill_manual(values = c(RColorBrewer::brewer.pal(8, "Set1"), c(RColorBrewer::brewer.pal(5, "Set2")))) +
     scale_x_continuous(breaks = 1:13, expand = c(0,.3)) +
     scale_y_continuous(breaks = c(0, .5, 1), expand = c(0,0), limits = c(0, 1)) +
     coord_cartesian(ylim = c(0, 1), clip = "off") +
@@ -197,7 +207,7 @@ p2 <- isolates_abundance_factor %>%
           panel.background = element_blank()) +
     guides(alpha = "none") +
     labs(x = "community", y = "relative abundance")
-
+p2
 
 # Inset 3: Negative frequency dependent selection of three ESVs from C1R4 ----
 communities_abundance_temporal <- communities_abundance %>%
@@ -220,9 +230,6 @@ communities_abundance_fitness <- communities_abundance_temporal %>%
 
 communities_abundance_comm <- communities_abundance %>%
     filter(Community == comm, Transfer == 12, Relative_Abundance > 0.02)
-
-communities_abundance %>%
-    filter(Community == comm, Transfer == 12)
 
 communities_abundance_fitness_comm <- communities_abundance_fitness %>%
     filter(Community == comm) %>%
@@ -289,22 +296,23 @@ p_legend_ESV <- {p1 +
     } %>% get_legend()
 
 
-zoom_polygon1 <- polygonGrob(x = c(0.76, 0.76, 0.865, 0.865),
-                             y = c(0.635, 0.65, 0.755, 0.68),
-                             gp = gpar(fill = "grey", alpha = 0.3, col = NA))
-zoom_polygon2 <- polygonGrob(x = c(0.76, 0.76, 0.87, 0.87),
-                             y = c(0.58, 0.64, 0.67, 0.59),
-                             gp = gpar(fill = "grey", alpha = 0.3, col = NA))
-zoom_polygon3 <- polygonGrob(x = c(0.76, 0.76, 0.87, 0.87),
-                             y = c(0.5, 0.57, 0.58, 0.52),
-                             gp = gpar(fill = "grey", alpha = 0.3, col = NA))
-zoom_polygon4 <- polygonGrob(x = c(0.76, 0.76, 0.87, 0.87),
-                             y = c(0.5, 0.57, 0.58, 0.52),
-                             gp = gpar(fill = "grey", alpha = 0.3, col = NA))
-zoom_polygon5 <- polygonGrob(x = c(0.76, 0.76, 0.87, 0.87),
-                             y = c(0.5, 0.57, 0.58, 0.52),
-                             gp = gpar(fill = "grey", alpha = 0.3, col = NA))
+make_polygon <- function (x1, x2, x3, x4, y1, y2, y3, y4) {
+    polygonGrob(x = c(x1, x2, x3, x4),
+                y = c(y1, y2, y3, y4),
+                gp = gpar(fill = "grey", alpha = 0.3, col = NA))
 
+}
+
+zoom_polygon1 <- make_polygon(0.76, 0.76, 0.865, 0.865,
+                              0.635, 0.65, 0.755, 0.68)
+zoom_polygon2 <- make_polygon(0.76, 0.76, 0.87, 0.87,
+                              0.58, 0.64, 0.67, 0.59)
+zoom_polygon3 <- make_polygon(0.76, 0.76, 0.87, 0.87,
+                              0.5, 0.57, 0.58, 0.52)
+zoom_polygon4 <- make_polygon(0.76, 0.76, 0.87, 0.87,
+                              0.5, 0.57, 0.58, 0.52)
+zoom_polygon5 <- make_polygon(0.76, 0.76, 0.87, 0.87,
+                              0.5, 0.57, 0.58, 0.52)
 
 
 p <- ggdraw() +
@@ -328,6 +336,10 @@ isolates %>%
     summarize(Total = sum(RelativeAbundance, na.rm = T)) %>%
     summarize(Mean = mean(Total))
 
+
+isolates_abundance %>%
+    filter(Genus != str_replace(CommunityESVID, "\\.\\d+", "")) %>%
+    view
 
 
 

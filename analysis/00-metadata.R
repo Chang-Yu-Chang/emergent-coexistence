@@ -8,9 +8,6 @@ folder_script <- "/Users/cychang/Desktop/lab/emergent-coexistence/analysis/" # E
 folder_pipeline <- "/Users/cychang/Dropbox/lab/emergent-coexistence/pipeline/" # Enter the directory of image processing pipeline
 folder_data <- "/Users/cychang/Dropbox/lab/emergent-coexistence/data/" # Enter the directory of data
 folder_simulation <-  "/Users/cychang/Dropbox/lab/emergent-coexistence/simulation/" # Enter the directory of simulation data
-# Python somehow does not read ~/ instead I have to specify /Users/cychang/
-# folder_main <- "/Users/cychang/Dropbox/lab/emergent-coexistence/plate_scan_pipeline/"
-# folder_script <- "/Users/cychang/Desktop/lab/emergent-coexistence/analysis/"
 
 # 2. For image processing pipeline ----
 list_folders <- c("01-channel", "02-rolled", "03-threshold", "04-round", "05-watershed", "06-transect", "07-feature", "08-random_forest", "09-bootstrap", "10-images_and_random_forest")
