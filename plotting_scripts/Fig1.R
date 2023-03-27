@@ -229,13 +229,31 @@ communities_abundance_fitness_comm <- communities_abundance_fitness %>%
     filter(ESV_ID %in% communities_abundance_comm$ESV_ID) %>%
     mutate(CommunityESV = paste0(Community, ESV_ID))
 
+cor_test_long <- function (long_data) cor.test(long_data$Relative_Abundance, long_data$Fitness, method = "spearman", exact = F, alternative = c("less"))
+tb_cor <- communities_abundance_fitness_comm %>%
+    nest(data = c(-Community, -ESV_ID)) %>%
+    mutate(fit = map(data, ~ cor_test_long(.x)),
+           tidied = map(fit, tidy)) %>%
+    unnest(tidied)
+
+ESV_sig <- tb_cor %>%
+    #filter(term == "Relative_Abundance") %>%
+    select(Community, ESV_ID, estimate, p.value) %>%
+    filter(p.value < 0.05, estimate < 0) %>%
+    #distinct(Community, ESV_ID) %>%
+    mutate(CommunityESV = paste0(Community, ESV_ID)) %>%
+    mutate(Significance = "p<0.05")
 
 p3 <- communities_abundance_fitness_comm %>%
     mutate(ESV_ID = factor(ESV_ID, c("Aeromonas", "Pseudomonas.2", "Citrobacter", "Raoultella", "Enterobacteriaceae"))) %>%
     ggplot() +
-    geom_smooth(aes(x = Relative_Abundance, y = Fitness), method = "lm", formula = y~x, se = F) +
+    #geom_smooth(aes(x = Relative_Abundance, y = Fitness), method = "lm", formula = y~x, se = F) +
+    geom_smooth(data = communities_abundance_fitness_comm %>% left_join(ESV_sig) %>% replace_na(list(Significance = "p>=0.05")),
+                aes(x = Relative_Abundance, y = Fitness, color = Significance),
+                method = stats::lm, formula = y ~ x, se = F) +
     geom_point(aes(x = Relative_Abundance, y = Fitness), shape = 21, stroke = 1, size = 3) +
     geom_hline(yintercept = 0, linetype = 2) +
+    scale_color_manual(values = c("p<0.05" = "pink", "p>=0.05" = grey(0.8))) +
     scale_x_continuous(breaks = scales::pretty_breaks(n = 3), limits = c(0,1)) +
     scale_y_continuous(breaks = scales::pretty_breaks(n = 3)) +
     facet_wrap(~ESV_ID, ncol = 1) +
@@ -248,6 +266,7 @@ p3 <- communities_abundance_fitness_comm %>%
         panel.border = element_rect(color = 1, linewidth = 0.5, fill = NA),
         plot.background = element_blank()
     ) +
+    guides(color = "none") +
     labs(x = "relative abundance", y = "fitness")
 
 communities_abundance_fitness_comm %>%
@@ -258,7 +277,6 @@ communities_abundance_fitness_comm %>%
     unnest(r.squared) %>%
     unnest(tidied) %>%
     filter(term == "Relative_Abundance")
-
 
 # Assemble panels
 p_legend_ESV <- {p1 +

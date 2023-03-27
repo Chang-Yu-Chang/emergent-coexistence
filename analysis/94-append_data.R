@@ -16,7 +16,7 @@ communities <- read_csv(paste0(folder_data, "temp/00c-communities.csv"), show_co
 isolates_ID <- read_csv(paste0(folder_data, "temp/00c-isolates_ID.csv"), show_col_types = F)
 isolates_RDP <- read_csv(paste0(folder_data, "temp/12-isolates_RDP.csv"), show_col_types = F)
 isolates_epsilon <- read_csv(paste0(folder_data, "temp/06-isolates_epsilon.csv"), show_col_types = F)
-isolates_abundance <- read_csv(paste0(folder_data, "temp/13-isolates_abundance.csv"), show_col_types = F)
+isolates_abundance <- read_csv(paste0(folder_data, "temp/14-isolates_abundance.csv"), show_col_types = F)
 isolates_tournament <- read_csv(paste0(folder_data, "temp/93-isolates_tournament.csv"), show_col_types = F)
 
 isolates <- isolates_ID %>%
@@ -33,45 +33,18 @@ pairs_ID <- read_csv(paste0(folder_data, "temp/00c-pairs_ID.csv"), show_col_type
 pairs_mismatch <- read_csv(paste0(folder_data, "temp/15-pairs_mismatch.csv"), show_col_types = F)
 pairs_RDP <- read_csv(paste0(folder_data, "temp/16-pairs_RDP.csv"), show_col_types = F)
 pairs_accuracy <- read_csv(paste0(folder_data, "temp/91-pairs_accuracy.csv"), show_col_types = F)
-pairs_interaction <- read_csv(paste0(folder_data, "temp/93-pairs_interaction.csv"), show_col_types = F)
-pairs_freq <- read_csv(paste0(folder_data, "temp/93-pairs_freq.csv"), show_col_types = F)
+pairs_interaction <- read_csv(paste0(folder_data, "temp/93a-pairs_interaction.csv"), show_col_types = F)
+pairs_freq <- read_csv(paste0(folder_data, "temp/93a-pairs_freq.csv"), show_col_types = F)
 
 pairs <- pairs_ID %>%
     left_join(pairs_mismatch, by = c("Community", "Isolate1", "Isolate2")) %>%
     left_join(pairs_RDP, by = c("Batch", "Community", "Isolate1", "Isolate2", "ID1", "ID2")) %>%
     left_join(pairs_accuracy, by = c("Community", "Isolate1", "Isolate2")) %>%
-    left_join(pairs_interaction, by = c("Community", "Isolate1", "Isolate2")) %>%
+    left_join(pairs_interaction, by = c("PairID", "Community", "Isolate1", "Isolate2")) %>%
     select(PairID, Community, Isolate1, Isolate2, From, To,
            ExpID1, ID1, Fermenter1, GramPositive1, Family1, Genus1, GenusScore1, Sequence1,
            ExpID2, ID2, Fermenter2, GramPositive2, Family2, Genus2, GenusScore2, Sequence2,
            PairFermenter, PairFamily, Mismatch, AccuracyMean, AccuracySd,
-           InteractionType, InteractionTypeFiner, FitnessFunction, Isolate1Dominant)
+           InteractionType, InteractionTypeFiner, FitnessFunction, FlipLoser)
 
 write_csv(pairs, paste0(folder_data, "output/pairs.csv"))
-
-
-if (FALSE) {
-# 3. example pairs ----
-# Example for plotting interaction types ----
-## Stable coexistence and coexistence in examples
-pairs_example_outcomes <- pairs %>%
-    filter((Community == "C1R2" & Isolate1 == 1 & Isolate2 == 2) |
-               (Community == "C1R7" & Isolate1 == 3 & Isolate2 == 6) |
-               (Community == "C2R8" & Isolate1 == 1 & Isolate2 == 2))
-
-
-## Examples of outcomes in a finer scale
-pairs_example_outcomes_finer <- pairs %>%
-    filter((Community == "C1R2" & Isolate1 == 1 & Isolate2 == 2) |
-               (Community == "C1R7" & Isolate1 == 3 & Isolate2 == 6) |
-               (Community == "C2R8" & Isolate1 == 1 & Isolate2 == 2) |
-               (Community == "C11R1" & Isolate1 == 1 & Isolate2 == 5) |
-               (Community == "C2R6" & Isolate1 == 1 & Isolate2 == 4))
-
-write_csv(pairs_example_outcomes, paste0(folder_data, "output/pairs_example_outcomes.csv"))
-write_csv(pairs_example_outcomes_finer, paste0(folder_data, "output/pairs_example_outcomes_finer.csv"))
-
-
-
-}
-

@@ -110,7 +110,7 @@ pC <- pairs %>%
     count(name = "Count") %>%
     group_by(Community) %>% mutate(Fraction = Count / sum(Count), TotalCount = sum(Count)) %>%
     left_join(communities, by = "Community") %>%
-    replace_na(list(InteractionType = "unknown")) %>%
+    replace_na(list(InteractionType = "inconclusive")) %>%
     ungroup() %>%
     ggplot() +
     geom_col(aes(x = CommunityLabel, fill = InteractionType, y = Fraction), color = 1, width = .8, linewidth = .5) +
@@ -119,7 +119,7 @@ pC <- pairs %>%
     annotate("segment", x = .5, xend = 18, y = 1.1, yend = 1.1, color = "black") +
     geom_text(aes(x = CommunityLabel, y = 1.05, label = TotalCount), size = 4) +
     annotate("text", x = 14, y = 1.05, label = "n. of tested pairs", size = 4, hjust = 0) +
-    scale_fill_manual(values = assign_interaction_color(), breaks = c("coexistence", "exclusion", "unknown")) +
+    scale_fill_manual(values = c(assign_interaction_color(), inconclusive = "#808080"), breaks = c("coexistence", "exclusion", "inconclusive")) +
     scale_x_continuous(breaks = 1:13, expand = c(0.01, 0)) +
     scale_y_continuous(breaks = seq(0,1,0.2), limit = c(0, 1.3), expand = c(0,0)) +
     coord_cartesian(xlim = c(0.5, 13.5), ylim = c(0, 1), clip = "off") +
@@ -142,6 +142,21 @@ p_bottom <- plot_grid(pB, pC, nrow = 1, labels = c("B", "C"), scale = c(0.9, 0.9
 p <- plot_grid(pA, p_bottom, nrow = 2, labels = c("A", ""), scale = c(.95, .95), rel_heights = c(.8, 1)) + paint_white_background()
 ggsave(here::here("plots/Fig2.png"), p, width = 10, height = 6)
 
+
+# Stat
+
+pairs %>%
+    filter() %>%
+    group_by(InteractionType, InteractionTypeFiner) %>%
+    summarize(Count = n()) %>%
+    ungroup() %>%
+    mutate(Fraction = Count / sum(Count)) %>%
+    arrange(InteractionTypeFiner)
+
+pairs_interaction <- read_csv(paste0(folder_data, "temp/93a-pairs_interaction.csv"), show_col_types = F)
+
+
+if (FALSE) {
 
 # Stats ----
 
@@ -190,10 +205,10 @@ pairs %>%
     compute_freq(nrow(pairs))
 
 # Coexisting at 1) stable equilibrim or 2) one negative frequency-dependent equilibirum
-unique(pairs$InteractionTypeFiner)
+#unique(pairs$InteractionTypeFiner)
 pairs %>%
     filter(InteractionType == "coexistence") %>%
-    filter(InteractionTypeFiner %in% c("stable coexistence", "frequency-dependent coexistence")) %>%
+    #filter(InteractionTypeFiner %in% c("stable coexistence", "frequency-dependent coexistence")) %>%
     nrow() %>%
     compute_freq(nrow(filter(pairs, InteractionType == "coexistence")))
 
@@ -234,5 +249,8 @@ pairs %>%
 
 
 
+
+
+}
 
 

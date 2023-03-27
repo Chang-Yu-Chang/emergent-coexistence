@@ -34,7 +34,7 @@ make_network <- function(isolates, pairs) {
     # Edges
     ## Remove no-growth
     edges <- pairs %>%
-        filter(InteractionType %in% c("coexistence", "exclusion", "unknown", "no colony or low accuracy")) %>%
+        filter(InteractionType %in% c("coexistence", "exclusion", "inconclusive")) %>%
         mutate(from=From, to=To) %>% select(from, to, InteractionType)
     edges_coext <- edges[edges$InteractionType == "coexistence",]
     edges_coext[,c("from", "to")] <- edges_coext[,c("to", "from")] # Add the mutual edges for coexistence links
@@ -61,7 +61,6 @@ save(communities_network, file = paste0(folder_data, "temp/95-communities_networ
 
 
 # 2. Make a R list of randomized  networks ----
-
 randomize_network <- function(graph){
     # Step1: remove the bidirection of coexistence
     graph1 <- graph %>%

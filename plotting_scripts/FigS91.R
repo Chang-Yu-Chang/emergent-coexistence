@@ -26,7 +26,7 @@ plot_competitive_network_grey <- function(g, node_size = 10, edge_width = 1){
     # Graph
     g %>%
         ggraph(layout = "nicely") +
-        geom_edge_link(aes(color = InteractionType), width = edge_width/2) +
+        geom_edge_link(aes(color = InteractionType), width = edge_width/2, arrow = arrow()) +
         geom_node_point(fill = "white", size = node_size*1.2, shape = 21, colour = "black", stroke = node_size/3) +
         scale_edge_color_manual(values = interaction_color) +
         scale_x_continuous(limits = nodes_axis_x*1) +
@@ -61,4 +61,11 @@ p <- ggdraw(p_network) +
     draw_plot(p_legend, x = .93, y = .25, hjust = 0.5, vjust = .5)
 
 ggsave(here::here("plots/FigS91-community_graph.png"), p, width = 13, height = 4)
+
+
+communities_network$Network[[9]] %>%
+    activate(edges) %>%
+    #filter(InteractionType == "exclusion") %>%
+    triad_census()
+    plot_competitive_network_grey(5, 5)
 
