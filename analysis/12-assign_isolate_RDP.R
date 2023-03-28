@@ -21,7 +21,7 @@ isolates_16S <- read_csv(paste0(folder_data, "temp/11-isolates_16S.csv"), col_ty
     filter(!is.na(Sequence))
 
 # Make DNA string set object
-isolates_seq_set <- DNAStringSet(isolates_16S$Sequence,use.names = T)
+isolates_seq_set <- DNAStringSet(isolates_16S$Sequence, use.names = T)
 names(isolates_seq_set) <- isolates_16S$ExpID
 
 # Use rdp for classification (this needs package rRDPData)

@@ -16,11 +16,11 @@ communities <- read_csv(paste0(folder_data, "temp/00c-communities.csv"), show_co
 isolates_ID <- read_csv(paste0(folder_data, "temp/00c-isolates_ID.csv"), show_col_types = F)
 isolates_RDP <- read_csv(paste0(folder_data, "temp/12-isolates_RDP.csv"), show_col_types = F)
 isolates_epsilon <- read_csv(paste0(folder_data, "temp/06-isolates_epsilon.csv"), show_col_types = F)
-isolates_abundance <- read_csv(paste0(folder_data, "temp/14-isolates_abundance.csv"), show_col_types = F)
+isolates_abundance <- read_csv(paste0(folder_data, "temp/32-isolates_abundance.csv"), show_col_types = F)
 isolates_tournament <- read_csv(paste0(folder_data, "temp/93-isolates_tournament.csv"), show_col_types = F)
 
 isolates <- isolates_ID %>%
-    left_join(isolates_RDP, by = c("ExpID", "ID", "Community", "Isolate")) %>%
+    left_join(select(isolates_RDP, -ID), by = c("ExpID", "Community", "Isolate")) %>%
     left_join(isolates_epsilon, by = c("Community", "Isolate")) %>%
     left_join(isolates_tournament, by = c("Community", "Isolate")) %>%
     left_join(isolates_abundance, by = join_by(ExpID, ID, Community, Isolate, Sequence, Family, Genus)) %>%
