@@ -4,13 +4,16 @@ library(tidygraph)
 library(ggraph)
 source(here::here("analysis/00-metadata.R"))
 
+#pairs <- read_csv(paste0(folder_data, "output/pairs_outcome.csv"), show_col_types = F)
+#pairs_accuracy <- read_csv(paste0(folder_data, "temp/91-pairs_accuracy.csv"), show_col_types = F)
 pairs <- read_csv(paste0(folder_data, "output/pairs.csv"), show_col_types = F)
 communities <- read_csv(paste0(folder_data, "temp/00c-communities.csv"), show_col_types = F)
-pairs_freq <- read_csv(paste0(folder_data, "temp/93-pairs_freq.csv"), show_col_types = F)
+pairs_freq <- read_csv(paste0(folder_data, "temp/93a-pairs_freq.csv"), show_col_types = F)
 load(paste0(folder_data, "temp/95-communities_network.Rdata"))
 
 # Clean up pairs data
 pairs <- pairs %>%
+    #    left_join(pairs_accuracy) %>%
     # Remove no-colony pairs, six pairs
     unite(col = "Pair", Community, Isolate1, Isolate2, sep = "_", remove = F) %>%
     filter(!(Pair %in% pairs_no_colony)) %>%
@@ -18,7 +21,8 @@ pairs <- pairs %>%
     filter(AccuracyMean > 0.9)
 
 # Figure 2A: cartoon----
-pA <- ggdraw() + draw_image(here::here("plots/cartoons/Fig2A.png")) + paint_white_background()
+#pA <- ggdraw() + draw_image(here::here("plots/cartoons/Fig2A.png")) + paint_white_background()
+pA <- ggdraw()
 
 # Figure 2B: example network C2R6 ----
 ## Main network
@@ -30,7 +34,7 @@ net <- communities_network %>%
     mutate(x = c(0, 0, 1, 1), y = c(1, 0, 1, 0))
 p1 <- net %>%
     ggraph(layout = "nicely") +
-    geom_edge_link(aes(color = InteractionType), width = 1,
+    geom_edge_link(aes(color = outcome), width = 1,
                    arrow = arrow(length = unit(node_size/2-3, "mm"), type = "closed", angle = 30, ends = "last"),
                    start_cap = circle(node_size-7, "mm"),
                    end_cap = circle(node_size-7, "mm")) +
@@ -53,13 +57,42 @@ p1 <- net %>%
 ## frequency plots
 pairs_example_freq <- pairs %>%
     filter(Community == "C2R6") %>%
-    select(Community, starts_with("Isolate"), starts_with("Interaction")) %>%
+    select(Community, starts_with("Isolate"), outcome) %>%
     mutate(Pair = 1:n()) %>%
     left_join(pairs_freq, by = c("Community", "Isolate1", "Isolate2"), multiple = "all") %>%
     mutate(Isolate1InitialODFreq = factor(Isolate1InitialODFreq)) %>%
-    mutate(InteractionType = factor(InteractionType, c("exclusion", "coexistence")))
+    mutate(outcome = factor(outcome, c("exclusion", "coexistence")))
 
 plot_example_freq <- function(pairs_freq) {
+    pairs_boots_mean %>%
+        filter(Measure == "Mean") %>%
+        # Order by outcome
+        left_join(pairs) %>% arrange(outcome, PairID) %>% mutate(PairID = factor(PairID, unique(PairID))) %>%
+        drop_na(outcome) %>%
+        #filter(PairID %in% 1:10) %>%
+        mutate(Isolate1InitialODFreq = factor(Isolate1InitialODFreq, c(95,50,5))) %>%
+        ggplot() +
+        geom_rect(aes(fill = outcome), xmin = -Inf, xmax = Inf, ymin = -Inf, ymax = Inf, alpha = .03, linewidth = .8) +
+        geom_hline(linewidth = line_size/2, yintercept = c(0,1), linetype = 1, color = "black") +
+        geom_line(aes(x = Time, y = Isolate1CFUFreq, color = Isolate1InitialODFreq, group = Isolate1InitialODFreq), linewidth = line_size) +
+        geom_point(aes(x = Time, y = Isolate1CFUFreq, color = Isolate1InitialODFreq, group = Isolate1InitialODFreq), size = line_size*2, shape = 21) +
+        geom_segment(data = pairs_boots_percentile_wider, linewidth = line_size,
+                     aes(x = Time, xend = Time, y = P5, yend = P95, color = factor(Isolate1InitialODFreq))) +
+        scale_y_continuous(breaks = c(0, .5, 1)) +
+        scale_color_manual(values = frequency_color, label = c("95%", "50%", "5%")) +
+        scale_fill_manual(values = interaction_colors) +
+        facet_wrap(.~PairID, nrow = 10, dir = "v") +
+        theme_classic() +
+        theme(panel.spacing = unit(2, "mm"),
+              panel.border = element_blank(),
+              panel.grid.minor.y = element_blank(),
+              strip.background = element_rect(color = NA, fill = "white"),
+              plot.background = element_rect(color = NA, fill = "white"),
+              plot.margin = margin(0,0,0,0, "mm")) +
+        guides(alpha = "none") +
+        labs(x = "Time", y = "Frequency")
+
+
     pairs_freq %>%
         mutate(Isolate1InitialODFreq = factor(Isolate1InitialODFreq, c(95,50,5))) %>%
         ggplot(aes(x = Time, y = Isolate1CFUFreqMean, color = Isolate1InitialODFreq, group = Isolate1InitialODFreq)) +
@@ -104,49 +137,63 @@ pB <- ggdraw(p1) +
           plot.margin = unit(c(0,3,3,5), "mm"))
 
 # Figure 2C: pairwise outcomes per community ----
+interaction_colors <- c("1-exclusion" = "maroon4",
+                        "2-exclusion" = "darkorange1",
+                        "3-coexistence" = "navyblue",
+                        "4-coexistence" = "olivedrab3",
+                        "5-inconclusive" = "snow")
+
 pC <- pairs %>%
-    filter(!is.na(FitnessFunction)) %>%
-    group_by(Community, InteractionType) %>%
+    group_by(Community, outcome) %>%
     count(name = "Count") %>%
+    # Total count
     group_by(Community) %>% mutate(Fraction = Count / sum(Count), TotalCount = sum(Count)) %>%
     left_join(communities, by = "Community") %>%
-    replace_na(list(InteractionType = "inconclusive")) %>%
+    replace_na(list(outcome = "inconclusive")) %>%
     ungroup() %>%
     ggplot() +
-    geom_col(aes(x = CommunityLabel, fill = InteractionType, y = Fraction), color = 1, width = .8, linewidth = .5) +
+    geom_col(aes(x = CommunityLabel, fill = outcome, y = Fraction), color = 1, width = .8, linewidth = .5) +
     annotate("text", x = 1:13, y = 1.15, label = communities$CommunitySize, size = 4) +
     annotate("text", x = 14, y = 1.15, label = "n. of species", size = 4, hjust = 0) +
     annotate("segment", x = .5, xend = 18, y = 1.1, yend = 1.1, color = "black") +
     geom_text(aes(x = CommunityLabel, y = 1.05, label = TotalCount), size = 4) +
     annotate("text", x = 14, y = 1.05, label = "n. of tested pairs", size = 4, hjust = 0) +
-    scale_fill_manual(values = c(assign_interaction_color(), inconclusive = "#808080"), breaks = c("coexistence", "exclusion", "inconclusive")) +
+    scale_fill_manual(values = interaction_colors) +
     scale_x_continuous(breaks = 1:13, expand = c(0.01, 0)) +
     scale_y_continuous(breaks = seq(0,1,0.2), limit = c(0, 1.3), expand = c(0,0)) +
     coord_cartesian(xlim = c(0.5, 13.5), ylim = c(0, 1), clip = "off") +
     theme_classic() +
-    theme(legend.text = element_text(size = 10),
-          legend.title = element_blank(),
-          legend.key.size = unit(.5, "cm"),
-          legend.spacing.y = unit(.3, "cm"),
-          legend.position = "right",
-          panel.border = element_rect(color = 1, fill = NA),
-          axis.text = element_text(color = 1, size = 10),
-          axis.title = element_text(color = 1, size = 10),
-          plot.margin = unit(c(1,.5,.5,.5), "cm")
+    theme(
+        legend.text = element_text(size = 10),
+        legend.title = element_blank(),
+        legend.key.size = unit(.5, "cm"),
+        legend.spacing.y = unit(.3, "cm"),
+        legend.position = "right",
+        panel.border = element_rect(color = 1, fill = NA),
+        axis.text = element_text(color = 1, size = 10),
+        axis.title = element_text(color = 1, size = 10),
+        plot.margin = unit(c(1,.5,.5,.5), "cm")
     ) +
     guides(fill = guide_legend(byrow = TRUE)) +
     labs(x = "community", y = "fraction")
 
+pairs %>%
+    group_by(outcome) %>%
+    count(name = "Count") %>%
+    ungroup() %>%
+    mutate(Fraction = Count / sum(Count), TotalCount = sum(Count))
+
+
 # Assemble panels ----
 p_bottom <- plot_grid(pB, pC, nrow = 1, labels = c("B", "C"), scale = c(0.9, 0.9), rel_widths = c(1, 1.8), axis = "b")
 p <- plot_grid(pA, p_bottom, nrow = 2, labels = c("A", ""), scale = c(.95, .95), rel_heights = c(.8, 1)) + paint_white_background()
+p<-pC
 ggsave(here::here("plots/Fig2.png"), p, width = 10, height = 6)
 
 
 # Stat
-
-pairs_freq <- read_csv(paste0(folder_data, "temp/93-pairs_freq.csv"), show_col_types = F)
-load(paste0(folder_data, "temp/95-communities_network.Rdata"))
+#pairs_freq <- read_csv(paste0(folder_data, "temp/93-pairs_freq.csv"), show_col_types = F)
+#load(paste0(folder_data, "temp/95-communities_network.Rdata"))
 
 # Clean up pairs data
 pairs %>%
@@ -155,11 +202,8 @@ pairs %>%
     filter(!(Pair %in% pairs_no_colony)) %>%
     # # Remove low-accuracy model pairs. nine pairs
     # filter(AccuracyMean > 0.9)
-    group_by(InteractionType, InteractionTypeFiner) %>%
-    summarize(Count = n()) %>%
-    ungroup() %>%
-    mutate(Fraction = Count / sum(Count)) %>%
-    arrange(InteractionTypeFiner)
+    group_by(outcome) %>%
+    summarize(Count = n())
 
 #pairs_interaction <- read_csv(paste0(folder_data, "temp/93a-pairs_interaction.csv"), show_col_types = F)
 

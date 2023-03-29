@@ -18,15 +18,7 @@ pairs <- pairs %>%
     filter(AccuracyMean > 0.9)
 
 
-# pairs <- pairs %>%
-#     #  no-colony pairs or low-accuracy pairs
-#     mutate(InteractionType = ifelse(AccuracyMean < 0.9, "no colony or low accuracy", InteractionType)) %>%
-#     mutate(InteractionTypeFiner = ifelse(AccuracyMean < 0.9, "no colony or low accuracy", InteractionTypeFiner)) %>%
-#     # low accuracy
-#     mutate(InteractionType = ifelse(AccuracyMean < 0.9, "no colony or low accuracy", InteractionType)) %>%
-#     mutate(InteractionTypeFiner = ifelse(AccuracyMean < 0.9, "no colony or low accuracy", InteractionTypeFiner))
 
-#
 make_network <- function(isolates, pairs) {
     # Nodes
     nodes <- isolates %>% select(Isolate, Rank, PlotRank)
@@ -34,9 +26,10 @@ make_network <- function(isolates, pairs) {
     # Edges
     ## Remove no-growth
     edges <- pairs %>%
-        filter(InteractionType %in% c("coexistence", "exclusion", "inconclusive")) %>%
-        mutate(from=From, to=To) %>% select(from, to, InteractionType)
-    edges_coext <- edges[edges$InteractionType == "coexistence",]
+        #filter(outcome %in% c("coexistence", "exclusion", "inconclusive")) %>%
+        filter(outcome %in% c("1-exclusion", "2-exclusion", "3-coexistence", "4-coexistence", "5-inconclusive")) %>%
+        mutate(from = From, to = To) %>% select(from, to, outcome)
+    edges_coext <- edges[edges$outcome %in% c("3-coexistence","4-coexistence"),]
     edges_coext[,c("from", "to")] <- edges_coext[,c("to", "from")] # Add the mutual edges for coexistence links
     edges <- rbind(edges, edges_coext)
 
@@ -60,71 +53,71 @@ communities_network <- communities %>%
 save(communities_network, file = paste0(folder_data, "temp/95-communities_network.Rdata"))
 
 
-# 2. Make a R list of randomized  networks ----
-randomize_network <- function(graph){
-    # Step1: remove the bidirection of coexistence
-    graph1 <- graph %>%
-        activate(edges) %>%
-        reroute(from = to, to = from, subset = from > to) %>%
-        distinct()
-
-    # Step2: shuffle interaction types
-    graph2 <- graph1 %>%
-        activate(edges) %>%
-        mutate(InteractionType = InteractionType[order(runif(n=n()))])
-
-    # Step3: for pairs that coexist, add back the reverse direction links
-    pairs_coexistence_reversed <- graph2 %>%
-        activate(edges) %>%
-        filter(InteractionType == "coexistence") %>%
-        reroute(from = to, to = from) %>%
-        activate(nodes) %>%
-        select(Isolate)
-
-    graph_coexistence <- graph_join(graph2, pairs_coexistence_reversed, by = "Isolate") %>%
-        filter(InteractionType == "coexistence")
-
-    # Step4: for exclusionary pairs, 50% of those has a flip direction
-    n_exclusion_pairs <- graph2 %>% filter(InteractionType == "exclusion") %>% pull(InteractionType) %>% length()
-    graph_exclusion <- graph2 %>%
-        activate(edges) %>%
-        filter(InteractionType == "exclusion") %>%
-        reroute(from = to, to = from, subset = sample(c(T,F), n_exclusion_pairs, replace = T, prob = c(0.5,0.5))) %>%
-        activate(nodes) %>%
-        select(Isolate)
-
-    graph3 <- graph_join(graph_coexistence, graph_exclusion, by = "Isolate") %>%
-        arrange(from, to)
-
-    return(graph3)
-}
-b <- 1000 # Number of bootstrapping/randomization
-
-# Make an empty two-layer R list
-net_randomized_list <- rep(list(rep(list(NA), b)), nrow(communities_network))
-names(net_randomized_list) <- communities$Community
-
-time_start <- proc.time()
-for (i in 1:nrow(communities_network)) {
-    time_t <- proc.time()
-    for (b_loop_index in 1:b) {
-        set.seed(b_loop_index)
-        net_randomized_list[[i]][[b_loop_index]] <- randomize_network(communities_network$Network[[i]])
-        if (b_loop_index %% 100 == 0) cat("\nboostrap =", b_loop_index)
-    }
-    # Print
-    cat("\n\n", communities$Community[i])
-    cat("\n", (proc.time() - time_t)[3], "seconds")
-
-}
-cat("\n\n total time:", (proc.time() - time_start)[3], "seconds\n\n")
-
-communities_network_randomized <- communities_network %>%
-    ungroup() %>%
-    mutate(NetworkRandomized = net_randomized_list)
-
-# Save the data file
-save(communities_network_randomized, file = paste0(folder_data, "temp/94-communities_network_randomized.Rdata"))
+# # 2. Make a R list of randomized  networks ----
+# randomize_network <- function(graph){
+#     # Step1: remove the bidirection of coexistence
+#     graph1 <- graph %>%
+#         activate(edges) %>%
+#         reroute(from = to, to = from, subset = from > to) %>%
+#         distinct()
+#
+#     # Step2: shuffle interaction types
+#     graph2 <- graph1 %>%
+#         activate(edges) %>%
+#         mutate(outcome = outcome[order(runif(n=n()))])
+#
+#     # Step3: for pairs that coexist, add back the reverse direction links
+#     pairs_coexistence_reversed <- graph2 %>%
+#         activate(edges) %>%
+#         filter(outcome == "coexistence") %>%
+#         reroute(from = to, to = from) %>%
+#         activate(nodes) %>%
+#         select(Isolate)
+#
+#     graph_coexistence <- graph_join(graph2, pairs_coexistence_reversed, by = "Isolate") %>%
+#         filter(outcome == "coexistence")
+#
+#     # Step4: for exclusionary pairs, 50% of those has a flip direction
+#     n_exclusion_pairs <- graph2 %>% filter(outcome == "exclusion") %>% pull(outcome) %>% length()
+#     graph_exclusion <- graph2 %>%
+#         activate(edges) %>%
+#         filter(outcome == "exclusion") %>%
+#         reroute(from = to, to = from, subset = sample(c(T,F), n_exclusion_pairs, replace = T, prob = c(0.5,0.5))) %>%
+#         activate(nodes) %>%
+#         select(Isolate)
+#
+#     graph3 <- graph_join(graph_coexistence, graph_exclusion, by = "Isolate") %>%
+#         arrange(from, to)
+#
+#     return(graph3)
+# }
+# b <- 1000 # Number of bootstrapping/randomization
+#
+# # Make an empty two-layer R list
+# net_randomized_list <- rep(list(rep(list(NA), b)), nrow(communities_network))
+# names(net_randomized_list) <- communities$Community
+#
+# time_start <- proc.time()
+# for (i in 1:nrow(communities_network)) {
+#     time_t <- proc.time()
+#     for (b_loop_index in 1:b) {
+#         set.seed(b_loop_index)
+#         net_randomized_list[[i]][[b_loop_index]] <- randomize_network(communities_network$Network[[i]])
+#         if (b_loop_index %% 100 == 0) cat("\nboostrap =", b_loop_index)
+#     }
+#     # Print
+#     cat("\n\n", communities$Community[i])
+#     cat("\n", (proc.time() - time_t)[3], "seconds")
+#
+# }
+# cat("\n\n total time:", (proc.time() - time_start)[3], "seconds\n\n")
+#
+# communities_network_randomized <- communities_network %>%
+#     ungroup() %>%
+#     mutate(NetworkRandomized = net_randomized_list)
+#
+# # Save the data file
+# save(communities_network_randomized, file = paste0(folder_data, "temp/94-communities_network_randomized.Rdata"))
 
 
 
@@ -137,7 +130,7 @@ tournament_rank <- function(pairs) {
         net <- pairs
         pairs <- as_tibble(get.edgelist(net)) %>%
             setNames(c("From", "To")) %>%
-            mutate(InteractionType = get.edge.attribute(net)$InteractionType) %>%
+            mutate(outcome = get.edge.attribute(net)$outcome) %>%
             rowwise() %>%
             mutate(Isolate1 = min(From, To), Isolate2 = max(From, To))
     }
@@ -146,13 +139,13 @@ tournament_rank <- function(pairs) {
     tour_rank <- data.frame(
         Isolate = isolate_name,
         # Win
-        Win = filter(pairs, InteractionType == "exclusion") %>%
+        Win = filter(pairs, outcome == "exclusion") %>%
             select(From) %>% unlist() %>% factor(isolate_name) %>% table() %>% as.vector(),
         # Lose
-        Lose = filter(pairs, InteractionType == "exclusion") %>%
+        Lose = filter(pairs, outcome == "exclusion") %>%
             select(To) %>% unlist() %>% factor(isolate_name) %>% table() %>% as.vector(),
         # Draw; Note that I consider neturality and bistability as draw in the tournament
-        Draw = filter(pairs, InteractionType %in% c("coexistence", "neutrality", "bistability")) %>%
+        Draw = filter(pairs, outcome %in% c("coexistence", "neutrality", "bistability")) %>%
             select(From, To) %>% unlist() %>% factor(isolate_name) %>% table() %>% as.vector())
 
     # Arrange the df by score
@@ -175,13 +168,13 @@ tournament_rank <- function(pairs) {
 }
 compute_hierarchy2 <- function(pairs_mock) {
     pairs_temp <- pairs_mock %>%
-        select(Community, Isolate1, Isolate2, InteractionType, From, To)
+        select(Community, Isolate1, Isolate2, outcome, From, To)
     isolates_tournament <- tournament_rank(pairs_temp) %>% select(Isolate, Score)
 
     pairs_temp %>%
         left_join(rename_with(isolates_tournament, ~ paste0(., "1")), by = "Isolate1") %>%
         left_join(rename_with(isolates_tournament, ~ paste0(., "2")), by = "Isolate2") %>%
-        filter(InteractionType == "exclusion") %>%
+        filter(outcome == "exclusion") %>%
         mutate(WinnerScore = ifelse(From == Isolate1, Score1, Score2),
                LoserScore = ifelse(From == Isolate1, Score2, Score1)) %>%
         mutate(FollowRank = (WinnerScore > LoserScore) %>% factor(c(T,F))) %>%
@@ -194,7 +187,7 @@ compute_hierarchy2 <- function(pairs_mock) {
 randomize_pairs2 <- function(x) {
     # Shuffle pairs
     rng <- order(runif(nrow(x),0,1))
-    x$InteractionType <- x$InteractionType[rng]
+    x$outcome <- x$outcome[rng]
     # Shuffle dominance
     rng <- sample(1:nrow(x), size = nrow(x)/2, replace = F)
     temp <- x$From[rng]
