@@ -137,13 +137,51 @@ paint_white_background <- function () theme(plot.background = element_rect(fill 
 #                     "4-coexistence" = "#F0E442",
 #                     "5-inconclusive" = "#999999")
 
-outcome_colors <- c("1-exclusion" = "red",
+outcome_colors <- c("1-exclusion" = "firebrick",
                     "2-exclusion" = "pink",
-                    "3-coexistence" = "blue",
+                    "3-coexistence" = "royalblue4",
                     "4-coexistence" = "lightblue",
                     "5-inconclusive" = "#999999")
 
+outcome_labels <- c("exclusion with extinction",
+                    "exclusion without extinction",
+                    "coexistence with MIC",
+                    "coexistence without MIC",
+                    "inconclusive")
 
+# Process
+
+remove_ineligible_pairs <- function(pairs) {
+    pairs %>%
+        arrange(outcome, PairID) %>%
+        mutate(PairID = factor(PairID, unique(PairID))) %>%
+        # Remove no-colony pairs. six pairs
+        drop_na(outcome) %>%
+        # Remove low-accuracy model pairs. nine pairs
+        filter(AccuracyMean > 0.9)
+}
+
+flip_winner_species_freq <- function (pairs_freq) {
+    temp_index <- which(pairs_freq$Isolate1IsLoser)
+    if (length(temp_index) !=0) {
+    pairs_freq_flipped <- pairs_freq[temp_index, ] %>%
+        rename(temp = Isolate1, Isolate1 = Isolate2) %>%
+        rename(Isolate2 = temp) %>%
+        mutate(
+            Isolate1CFUFreqMean = 1-Isolate1CFUFreqMean,
+            Isolate1InitialODFreq = 100-Isolate1InitialODFreq,
+            Isolate1CFUFreqMedian = 1-Isolate1CFUFreqMedian,
+            Isolate1CFUFreqPercentile5 = 1-Isolate1CFUFreqPercentile5,
+            Isolate1CFUFreqPercentile95 = 1-Isolate1CFUFreqPercentile95
+        )
+
+    bind_rows(pairs_freq[-temp_index, ], pairs_freq_flipped) %>%
+        arrange(Time, PairID) %>%
+        return()
+    } else if (length(temp_index) == 0) {
+        return(pairs_freq)
+    }
+}
 
 
 

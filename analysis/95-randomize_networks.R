@@ -21,7 +21,7 @@ pairs <- pairs %>%
 
 make_network <- function(isolates, pairs) {
     # Nodes
-    nodes <- isolates %>% select(Isolate, Rank, PlotRank)
+    nodes <- isolates
 
     # Edges
     ## Remove no-growth

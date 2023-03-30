@@ -6,36 +6,8 @@ communities <- read_csv(paste0(folder_data, "temp/00c-communities.csv"), show_co
 pairs <- read_csv(paste0(folder_data, "output/pairs.csv"), show_col_types = F)
 pairs_freq <- read_csv(paste0(folder_data, "temp/93a-pairs_freq.csv"), show_col_types = F)
 
-
-remove_ineligible_pairs <- function(pairs) {
-    pairs %>%
-        arrange(outcome, PairID) %>%
-        mutate(PairID = factor(PairID, unique(PairID))) %>%
-        drop_na(outcome) %>%
-        filter(AccuracyMean > 0.9)
-}
-
-
 pairs_freq <- pairs_freq %>% left_join(pairs) %>% remove_ineligible_pairs()
 pairs <- remove_ineligible_pairs(pairs)
-flip_winner_species_freq <- function (pairs_freq) {
-    temp_index <- which(pairs_freq$Isolate1IsLoser)
-
-    pairs_freq_flipped <- pairs_freq[temp_index, ] %>%
-        rename(temp = Isolate1, Isolate1 = Isolate2) %>%
-        rename(Isolate2 = temp) %>%
-        mutate(
-            Isolate1CFUFreqMean = 1-Isolate1CFUFreqMean,
-            Isolate1InitialODFreq = 100-Isolate1InitialODFreq,
-            Isolate1CFUFreqMedian = 1-Isolate1CFUFreqMedian,
-            Isolate1CFUFreqPercentile5 = 1-Isolate1CFUFreqPercentile5,
-            Isolate1CFUFreqPercentile95 = 1-Isolate1CFUFreqPercentile95
-        )
-
-    bind_rows(pairs_freq[-temp_index, ], pairs_freq_flipped) %>%
-        arrange(Time, PairID)
-}
-
 
 pairs_freq_mean_three <- pairs_freq %>%
     filter(Time == "T8") %>%
@@ -43,7 +15,6 @@ pairs_freq_mean_three <- pairs_freq %>%
     group_by(PairID, Community, Isolate1, Isolate2) %>%
     summarize(Isolate1CFUFreq_mean_three = mean(Isolate1CFUFreqMean))
 
-pairs_freq %>%
 
 
 line_size = 1
@@ -63,11 +34,7 @@ p <- pairs_freq %>%
     scale_x_continuous(breaks = c(0,8), limits = c(-3,11)) +
     scale_y_continuous(breaks = c(0, .5, 1)) +
     scale_color_manual(values = frequency_color, label = c("95%", "50%", "5%")) +
-    scale_fill_manual(values = outcome_colors, labels = c("exclusion with extinction",
-                                                          "exclusion without extinction",
-                                                          "coexistence met MIC",
-                                                          "coexistence not met MIC",
-                                                          "inconclusive")) +
+    scale_fill_manual(values = outcome_colors, labels = outcome_labels) +
     facet_wrap(.~PairID, nrow = 10, dir = "v") +
     theme_classic() +
     theme(
@@ -75,9 +42,9 @@ p <- pairs_freq %>%
         panel.border = element_blank(),
         panel.grid.minor.y = element_blank(),
         legend.position = "right",
-        legend.title = element_text(size = 15),
-        legend.text = element_text(size = 10),
-        legend.key.size = unit(5, "mm"),
+        legend.title = element_text(size = 20),
+        legend.text = element_text(size = 15),
+        legend.key.size = unit(10, "mm"),
         legend.spacing.y = unit(5, "mm"),
         strip.text = element_blank(),
         plot.background = element_rect(color = NA, fill = "white")
@@ -88,7 +55,7 @@ p <- pairs_freq %>%
     ) +
     labs(x = "transfer", y = "frequency")
 
-ggsave(here::here("plots/Fig3.png"), p, width = 15, height = 8)
+ggsave(here::here("plots/Fig3.png"), p, width = 16, height = 8)
 
 
 

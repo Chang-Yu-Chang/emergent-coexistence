@@ -64,12 +64,9 @@ count_alignment_bp <- function(seq1, seq2, type = "local"){
 }
 
 ## Example code for match one pair of sequences
-seq1 <- isolates_RDP$Sequence[1]
-seq2 <- isolates_RDP$Sequence[3]
-count_alignment_bp(seq1, seq2) # R function from `sequence_pairwise_alignment.R`
-
-count_alignment_bp(seq1, seq1)
-count_alignment_bp(seq2, seq2)
+# seq1 <- isolates_RDP$Sequence[1]
+# seq2 <- isolates_RDP$Sequence[3]
+# count_alignment_bp(seq1, seq2) # R function from `sequence_pairwise_alignment.R`
 
 sequences_alignment_list <- rep(list(NA), nrow(communities))
 for (i in 1:nrow(communities)) {
@@ -77,7 +74,7 @@ for (i in 1:nrow(communities)) {
     comm_Sanger <- isolates_RDP %>% filter(Community == communities$Community[i])
 
     # Merge two dfs: it will auto create df with nrow(comm_seqs) = nrow(comm_ESV) * nrow(comm_Sanger)
-    comm_seqs <- full_join(comm_ESV, comm_Sanger, by = join_by(Community), relationship = "many-to-many")
+    comm_seqs <- full_join(comm_ESV, comm_Sanger, by = join_by(Community), multiple = "all")
     cat("\n", communities$Community[i], "\n number of ESVs = ", nrow(comm_ESV), "\n number of isolates = ", nrow(comm_Sanger), "\n number of matches = ", nrow(comm_seqs), "\n")
     comm_seqs[,c("AlignmentType", "ConsensusLength", "BasePairGap", "BasePairMismatch", "AlignmentScore")] <- NA
 
@@ -119,8 +116,8 @@ n_align_comm <- n_Sanger_comm %>%
     left_join(n_ESV_comm) %>%
     mutate(n_algn = n_Sanger * n_ESV)
 
-sum(n_align_comm$n_algn)
-nrow(sequences_alignment)
+sum(n_align_comm$n_algn) # expected number of alignments
+nrow(sequences_alignment) # actual number of alignments
 
 # Check the bp distribution
 sequences_alignment %>%
@@ -166,7 +163,7 @@ algn_Sanger_ESV <- sequences_alignment %>%
     slice(1) %>%
     ungroup()
 
-nrow(algn_Sanger_ESV) # The number of data points should be 66 because of 66 Sanger sequences
+nrow(algn_Sanger_ESV) # The number of data points should be 68 because of 68 Sanger sequences
 
 algn_Sanger_ESV %>% # Number of mismatches for each isolate Sanger
     group_by(BasePairMismatch) %>%
@@ -471,8 +468,14 @@ algn_Sanger_ESV %>%
 
 # Store the isolate abundance data ----
 
+# Store csv where each Sanger has one ESV
+isolates_abundance_all_sanger <- algn_Sanger_ESV
+write_csv(isolates_abundance_all_sanger, paste0(folder_data, "temp/32-isolates_abundance_all_sanger.csv"))
+
+# Store csv where one Sanger match one ESV
 isolates_abundance <- algn_Sanger_ESV1
 write_csv(isolates_abundance, paste0(folder_data, "temp/32-isolates_abundance.csv"))
+
 
 # isolates_abundance <- sequences_abundance %>%
 #     arrange(AlignmentType, AllowMismatch, Community) %>%
