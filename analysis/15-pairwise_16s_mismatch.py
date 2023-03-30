@@ -181,7 +181,7 @@ for i in range(0,len(merged_sequence_list)):
         mismatch_matrix[i,j] = calculate_mismatches(merged_sequence_list[i],merged_sequence_list[j])
 
 df = pd.DataFrame(mismatch_matrix, index = ids, columns = ids)
-df.to_csv(folder_data + 'temp/14-mismatch_matrix_communities.csv')	
+df.to_csv(folder_data + 'temp/15-mismatch_matrix_communities.csv')	
     
 
 

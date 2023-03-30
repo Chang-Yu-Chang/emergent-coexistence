@@ -3,75 +3,45 @@ library(cowplot)
 library(broom)
 source(here::here("analysis/00-metadata.R"))
 
-#
-communities_abundance_fitness_equilibrium <- communities_abundance_fitness %>%
-    filter(Transfer %in% 8:12) %>%
-    drop_na() %>%
-    mutate(CommunityESV = paste0(Community, ESV_ID)) %>%
-    filter(CommunityESV %in% ESV_stable$CommunityESV)
+isolates <- read_csv(paste0(folder_data, "output/isolates.csv"), show_col_types = F)
+communities <- read_csv(paste0(folder_data, "temp/00c-communities.csv"), show_col_types = F)
+isolates_growth_syl <- read_csv(paste0(folder_data, "raw/growth_rate/Estrela_2021_isolates_grmax.csv"), col_types = cols()) %>%
+    filter(cs == "glucose") %>%
+    mutate(ID = as.character(SangerID))
 
-# Linear regression
-tb_lm <- communities_abundance_fitness_equilibrium %>%
-    nest(data = c(-Community, -ESV_ID)) %>%
-    mutate(fit = map(data, ~ lm(Fitness ~ Relative_Abundance, data = .x)),
-           tidied = map(fit, tidy),
-           r.squared = map(fit, function(x) summary(x)$adj.r.squared)) %>%
-    unnest(r.squared) %>%
-    unnest(tidied)
+# Ranked glucose growth rate
+isolates <- isolates %>%
+    left_join(isolates_growth_syl) %>%
+    #left_join(isolates_growth_jean) %>%
+    group_by(Community) %>%
+    # Rank glucose maximum growth rate
+    drop_na(gr_max) %>%
+    mutate(rank_gr_max = rank(-gr_max)) # Top growth rate is rank 1
 
-tb_lm %>%
-    filter(term == "Relative_Abundance") %>%
-    select(Community, ESV_ID, estimate, std.error, p.value, r.squared)
+# Growth vs. rank, normalized within community
+isolates_norm <- isolates %>%
+    group_by(Community) %>%
+    left_join(communities) %>%
+    mutate(RankNorm = Rank / CommunitySize, rank_gr_max_norm = rank_gr_max / CommunitySize)
 
-ESV_sig <- tb_lm %>%
-    filter(term == "Relative_Abundance") %>%
-    select(Community, ESV_ID, estimate, std.error, p.value, r.squared) %>%
-    filter(p.value < 0.05, estimate < 0) %>%
-    distinct(Community, ESV_ID) %>%
-    mutate(CommunityESV = paste0(Community, ESV_ID))
-
-
-tb_lm %>%
-    filter(term == "Relative_Abundance") %>%
-    select(Community, ESV_ID, estimate, std.error, p.value, r.squared) %>%
-    filter(p.value < 0.05, estimate < 0) %>%
-    pull(r.squared) %>%
-    range
-
-# Abundance vs. fitness for ESVs in final communities, T8-12 ----
-p <- communities_abundance_fitness_equilibrium %>%
-    ggplot() +
-    geom_smooth(data = filter(communities_abundance_fitness_equilibrium, CommunityESV %in% ESV_sig$CommunityESV),
-                aes(x = Relative_Abundance, y = Fitness), method = "lm", formula = y~x, se = F) +
-    geom_point(aes(x = Relative_Abundance, y = Fitness), shape = 21) +
-    geom_hline(yintercept = 0, linetype = 2) +
-    scale_x_continuous(breaks = scales::pretty_breaks(n = 3)) +
-    scale_y_continuous(breaks = scales::pretty_breaks(n = 3)) +
-    facet_wrap(Community~ESV_ID, scales = "free", ncol = 9) +
+p <- isolates_norm %>%
+    ggplot(aes(x = rank_gr_max_norm, y = RankNorm)) +
+    geom_abline(slope = 1, intercept = 0, color = "red", linetype = 2) +
+    geom_point(shape = 21, size = 2, stroke = 1) +
+    scale_x_continuous(limits = c(0,1)) +
+    scale_y_continuous(limits = c(0,1)) +
     theme_classic() +
-    theme(axis.text = element_text(size = 8, angle = 30, hjust = 1),
-          axis.title = element_text(size = 15),
-          strip.text = element_text(size = 8),
-          panel.border = element_rect(color = 1, fill = NA)) +
-    labs(x = expression(x[i]), y = expression(log(x[i+1]/x[i])))
+    theme() +
+    guides() +
+    labs(x = "ranked growth rate (normalized)", y = "competition rank (normalized)")
 
-ggsave(here::here("plots/FigS12-species_fitness_equilibrium.png"), p, width = 12, height = 15)
+ggsave(here::here("plots/FigS12-growth_vs_rank.png"), p, width = 4, height = 4)
 
-# ESVs that are ephemeral
-communities_abundance_fitness %>%
-    filter(Transfer %in% 8:12) %>%
-    drop_na() %>%
-    mutate(CommunityESV = paste0(Community, ESV_ID)) %>%
-    filter(!(CommunityESV %in% ESV_stable$CommunityESV)) %>%
-    nest(data = c(-Community, -ESV_ID)) %>%
-    mutate(fit = map(data, ~ lm(Fitness ~ Relative_Abundance, data = .x)),
-           tidied = map(fit, tidy),
-           r.squared = map(fit, function(x) summary(x)$adj.r.squared)) %>%
-    unnest(r.squared) %>%
-    unnest(tidied) %>%
-    filter(term == "Relative_Abundance") %>%
-    select(Community, ESV_ID, estimate, std.error, p.value, r.squared) %>%
-    filter(p.value < 0.05, estimate < 0, estimate > -100)
+
+cor.test(isolates_norm$RankNorm, isolates_norm$rank_gr_max_norm,
+         method = "pearson", alternative = "two.sided") %>%
+    tidy()
+
 
 
 

@@ -398,6 +398,35 @@ p <- communities_abundance_fitness_stable %>%
 
 ggsave(paste0(folder_data, "temp/35-08-species_fitness_stable.png"), p, width = 10, height = 15)
 
+# Check abundance vs. invasion fitness, ESVs present in stable communities, Polynomial fit, T1-12 ----
+# ESVs that are present from T8-12
+
+p <- communities_abundance_fitness_stable %>%
+    ggplot() +
+    geom_smooth(data = communities_abundance_fitness_stable %>% left_join(ESV_sig) %>% replace_na(list(Significance = "p>=0.05")),
+                aes(x = Relative_Abundance, y = Fitness, color = Significance),
+                method = stats::loess, span = 0.9, formula = y ~ x, se = F) +
+    geom_point(aes(x = Relative_Abundance, y = Fitness), shape = 21) +
+    geom_hline(yintercept = 0, linetype = 2) +
+    scale_color_manual(values = c("p<0.05" = "maroon", "p>=0.05" = grey(0.8))) +
+    #scale_x_continuous(breaks = c(0.001, 0.1, 1), trans = "log10") +
+    scale_x_continuous(breaks = c(0.001, 0.1, 1), trans = "log10") +
+    scale_y_continuous(breaks = scales::pretty_breaks(n = 3)) +
+    facet_wrap(Community~ESV_ID, ncol = 8) +
+    theme_classic() +
+    theme(
+        axis.text = element_text(size = 8, angle = 30, hjust = 1),
+        axis.title = element_text(size = 15),
+        strip.text = element_text(size = 6),
+        panel.border = element_rect(color = 1, fill = NA),
+        legend.position = "top"
+    ) +
+    guides(color = "none") +
+    labs(x = expression(x[i]), y = expression(log(x[i+1]/x[i])))
+
+ggsave(paste0(folder_data, "temp/35-08a-species_fitness_stable_logfit.png"), p, width = 10, height = 15)
+
+
 # Check abundance vs. invasion fitness, extinct ESVs, linear fit T1-12 ----
 ESV_extinct <- communities_abundance_fitness %>%
     drop_na() %>%
@@ -473,29 +502,3 @@ p <- communities_abundance_fitness %>%
 ggsave(paste0(folder_data, "temp/35-10-check_one_ESV.png"), p, width = 4, height = 4)
 
 
-# Polynomial fit
-p <- communities_abundance_fitness_all %>%
-    ggplot() +
-    # geom_smooth(data = filter(communities_abundance_fitness_all, CommunityESV %in% ESV_sig$CommunityESV),
-    #             aes(x = Relative_Abundance, y = Fitness), method = "lm", formula = y~x, se = F) +
-    geom_smooth(data = communities_abundance_fitness_all %>% left_join(ESV_sig) %>% replace_na(list(Significance = "p>=0.05")),
-                aes(x = Relative_Abundance, y = Fitness, color = Significance),
-                method = stats::loess, span = 0.9, formula = y ~ x, se = F) +
-    geom_point(aes(x = Relative_Abundance, y = Fitness), shape = 21) +
-    geom_hline(yintercept = 0, linetype = 2) +
-    scale_color_manual(values = c("p<0.05" = "pink", "p>=0.05" = grey(0.8))) +
-    scale_x_continuous(breaks = scales::pretty_breaks(n = 3)) +
-    scale_y_continuous(breaks = scales::pretty_breaks(n = 3)) +
-    facet_wrap(Community~ESV_ID, scales = "free", ncol = 9) +
-    theme_classic() +
-    theme(
-        axis.text = element_text(size = 8, angle = 30, hjust = 1),
-        axis.title = element_text(size = 15),
-        strip.text = element_text(size = 8),
-        panel.border = element_rect(color = 1, fill = NA),
-        legend.position = "top"
-    ) +
-    guides(color = guide_legend(title = "spearman correlation")) +
-    labs(x = expression(x[i]), y = expression(log(x[i+1]/x[i])))
-
-ggsave(paste0(folder_data, "temp/35-10-species_fitness_logfit.png"), p, width = 12, height = 15)

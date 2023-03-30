@@ -21,6 +21,13 @@ communities_abundance <- read_csv(paste0(folder_data, "raw/community_ESV/Emergen
 
 communities_abundance_T12 <- communities_abundance %>%
     filter(Transfer == 12)
+nrow(communities_abundance_T12)
+
+# Number of ESVs within communities
+communities_abundance_T12 %>%
+    group_by(Community) %>%
+    count(name = "Count") %>%
+    pull(Count) %>% range()
 
 write_csv(communities_abundance, paste0(folder_data, "temp/32-communities_abundance.csv"))
 write_csv(communities_abundance_T12, paste0(folder_data, "temp/32-communities_abundance_T12.csv"))
@@ -109,7 +116,7 @@ isolates <- read_csv(paste0(folder_data, "output/isolates.csv"), show_col_types 
 sequences_alignment <- read_csv(paste0(folder_data, "temp/32-sequences_alignment.csv"), show_col_types = F)
 communities_abundance_T12 <- read_csv(paste0(folder_data, "temp/32-communities_abundance_T12.csv"), show_col_types = F)
 
-# 2.1 Check if the number of alignment is correct ----
+# 2.1 Check if the number of alignments is correct ----
 n_Sanger_comm <- isolates %>% drop_na(Sequence) %>% group_by(Community) %>% count(name = "n_Sanger") # Number of sanger sequences per community
 n_ESV_comm <- communities_abundance_T12 %>% drop_na(ESV) %>% group_by(Community) %>% count(name = "n_ESV") # Number of ESVs per community
 n_align_comm <- n_Sanger_comm %>%
@@ -153,9 +160,39 @@ sequences_alignment %>%
     labs()
 
 
+# Check the number of alignments pass the first criteria
+sequences_alignment %>%
+    filter(ConsensusLength >= 200, BasePairMismatch <= 4) %>%
+    nrow
+
+
+# The Isolates where its alignments are all dropped because of low-alignment quality
+sequences_alignment %>%
+    filter(ConsensusLength >= 200, BasePairMismatch <= 4) %>%
+    distinct(Community, ExpID) %>%
+    mutate(PassFirstFilter = T) %>%
+    right_join(isolates) %>%
+    filter(is.na(PassFirstFilter))
+
+
 # 2.2 For each isolate Sanger, find the ESVs that it has the least base pair mismatch ----
+
+# Approach one: find match and apply filter
 algn_Sanger_ESV <- sequences_alignment %>%
-    filter(ConsensusLength > 160) %>%
+    # For each Sanger, find the ESV which it has least base pair mismatch with
+    group_by(ExpID) %>%
+    filter(BasePairMismatch == min(BasePairMismatch)) %>%
+    # When a Sanger has two ESV that both has zero, pick the first one
+    slice(1)
+
+nrow(algn_Sanger_ESV) # The number of data points should be 68 because of 68 Sanger sequences and no one is dropped
+table(algn_Sanger_ESV$BasePairMismatch) # Three have mismatches at 9, 10,, 34
+table(algn_Sanger_ESV$ConsensusLength) # Two have short concensus length
+
+
+# Approach two: apply filter and find match
+algn_Sanger_ESV <- sequences_alignment %>%
+    filter(ConsensusLength >= 200, BasePairMismatch <= 4) %>%
     # For each Sanger, find the ESV which it has least base pair mismatch with
     group_by(ExpID) %>%
     filter(BasePairMismatch == min(BasePairMismatch)) %>%
@@ -163,20 +200,28 @@ algn_Sanger_ESV <- sequences_alignment %>%
     slice(1) %>%
     ungroup()
 
-nrow(algn_Sanger_ESV) # The number of data points should be 68 because of 68 Sanger sequences
+nrow(algn_Sanger_ESV) # The number of data points should be 64 because 4 isolates did not align well
+table(algn_Sanger_ESV$BasePairMismatch)
+table(algn_Sanger_ESV$ConsensusLength)
 
-algn_Sanger_ESV %>% # Number of mismatches for each isolate Sanger
-    group_by(BasePairMismatch) %>%
-    count()
-# algn_Sanger_ESV %>%
-#     filter(BasePairMismatch > 4) %>%
-#     select(Community, ExpID, Genus, CommunityESVID, BasePairMismatch)
+#
+algn_Sanger_ESV1 <- sequences_alignment %>%
+    filter(ConsensusLength >= 200, BasePairMismatch <= 4) %>%
+    #distinct(Community, ExpID) %>%
+    # For each Sanger, find the ESV which it has least base pair mismatch with
+    group_by(ExpID) %>%
+    filter(BasePairMismatch == min(BasePairMismatch)) %>%
+    # When a Sanger has two ESV that both has zero, pick the first one
+    slice(1) %>%
+    ungroup()
+
+table(algn_Sanger_ESV1$BasePairMismatch)
 
 
 # Heatmap, ESV and sanger alignment
 isolates_algn_bp_mismatch <- isolates %>%
-    select(Community, ExpID) %>%
-    left_join(algn_Sanger_ESV) %>%
+    select(Community, ExpID, Genus) %>%
+    left_join(algn_Sanger_ESV1) %>%
     mutate(Community = factor(Community, communities$Community)) %>%
     mutate(ExpIDGenus = paste0(ExpID, "-", Genus))
 
@@ -279,8 +324,8 @@ nrow(algn_Sanger_ESV) # The number of data points should be 66 because of 66 San
 
 # Heatmap, ESV and sanger alignment
 isolates_algn_score <- isolates %>%
-    select(Community, ExpID) %>%
-    left_join(algn_Sanger_ESV) %>%
+    select(Community, ExpID, Genus) %>%
+    left_join(algn_Sanger_ESV1) %>%
     mutate(Community = factor(Community, communities$Community)) %>%
     mutate(ExpIDGenus = paste0(ExpID, "-", Genus))
 
@@ -308,13 +353,15 @@ p <- sequences_alignment %>%
 ggsave(paste0(folder_data, "temp/32-04-ESV_Sanger_score.png"), p, width = 12, height = 12)
 
 # 2.4 For each ESV, find the Sanger with least bp mismatch ----
-algn_Sanger_ESV1 <- algn_Sanger_ESV %>%
+algn_Sanger_ESV2 <- algn_Sanger_ESV1 %>% # FOr plotting, for each ESV, find the best Sanger
     group_by(Community, CommunityESVID) %>%
     arrange(BasePairMismatch) %>%
     slice(1)
 
+table(algn_Sanger_ESV2$BasePairMismatch)
+
 isolates_algn_bp_mismatch1 <- isolates %>%
-    left_join(algn_Sanger_ESV1) %>%
+    right_join(algn_Sanger_ESV2) %>%
     mutate(Community = factor(Community, communities$Community)) %>%
     mutate(ExpIDGenus = paste0(ExpID, "-", Genus))
 
@@ -359,7 +406,7 @@ ggsave(paste0(folder_data, "temp/32-05-ESV_Sanger_bp_mismatch_binned.png"), p, w
 
 # 2.5 plot the isolate abundance ----
 # Check if the number is correct. Facet by community
-algn_Sanger_ESV1 %>%
+algn_Sanger_ESV2 %>%
     mutate(Community = factor(Community, communities$Community)) %>%
     group_by(Community) %>% count()
 
@@ -379,10 +426,11 @@ p <- algn_Sanger_ESV1 %>%
 ggsave(paste0(folder_data, "temp/32-06-matched_ESV_abundance_comm.png"), p, width = 12, height = 12)
 
 # Total abundance by community
-p1 <- algn_Sanger_ESV1 %>%
-    mutate(Community = factor(Community, communities$Community)) %>%
+p1 <- algn_Sanger_ESV2 %>%
+    mutate(Community = factor(Community, paste0("C", rep(1:12, each = 8), "R", rep(1:8, 12)))) %>%
     ggplot() +
     geom_col(aes(x = Community, y = RelativeAbundance, fill = ESVGenus, group = CommunityESVID), color = "black") +
+    scale_y_continuous(limits = c(0,1), expand = c(0,0)) +
     scale_fill_manual(values = c(RColorBrewer::brewer.pal(8, "Set1"), RColorBrewer::brewer.pal(8, "Set2"))) +
     #facet_wrap(~Community, ncol = 3, scales = "free_x") +
     theme_classic() +
@@ -394,10 +442,11 @@ p1 <- algn_Sanger_ESV1 %>%
     labs() +
     ggtitle("ESV genus")
 
-p2 <- algn_Sanger_ESV1 %>%
-    mutate(Community = factor(Community, communities$Community)) %>%
+p2 <- algn_Sanger_ESV2 %>%
+    mutate(Community = factor(Community, paste0("C", rep(1:12, each = 8), "R", rep(1:8, 12)))) %>%
     ggplot() +
     geom_col(aes(x = Community, y = RelativeAbundance, fill = Genus, group = CommunityESVID), color = "black") +
+    scale_y_continuous(limits = c(0,1), expand = c(0,0)) +
     scale_fill_manual(values = c(RColorBrewer::brewer.pal(8, "Set1"), RColorBrewer::brewer.pal(8, "Set2"))) +
     #facet_wrap(~Community, ncol = 3, scales = "free_x") +
     theme_classic() +
@@ -413,14 +462,22 @@ ggsave(paste0(folder_data, "temp/32-07-matched_ESV_abundance_color.png"), p, wid
 
 
 # 2.6 Plot by family ----
-p <- algn_Sanger_ESV1 %>%
-    mutate(Community = factor(Community, communities$Community)) %>%
+total_abundance <- algn_Sanger_ESV2 %>%
     group_by(Community) %>%
-    arrange(Community, desc(RelativeAbundance)) %>%
+    summarize(TotalAbundance = round(sum(RelativeAbundance),2)) %>%
+    mutate(Community = factor(Community, paste0("C", rep(1:12, each = 8), "R", rep(1:8, 12))))
+mean(total_abundance$TotalAbundance)
+
+p <- algn_Sanger_ESV2 %>%
+    arrange(Community, Family) %>%
     mutate(CommunityESVID = factor(CommunityESVID)) %>%
-    #mutate(Family = factor(CommunityESVID)) %>%
+    group_by(Community) %>%
+    mutate(ESVLabel = 1:n()) %>%
+    mutate(Community = factor(Community, paste0("C", rep(1:12, each = 8), "R", rep(1:8, 12)))) %>%
     ggplot() +
-    geom_col(aes(x = Community, y = RelativeAbundance, fill = Family, group = CommunityESVID), color = "black") +
+    geom_col(aes(x = Community, y = RelativeAbundance, fill = Family, group = ESVLabel), color = "black") +
+    geom_text(data = total_abundance, aes(x =  Community, label = TotalAbundance), y = 0.95, size = 2) +
+    scale_y_continuous(limits = c(0,1), expand = c(0,0)) +
     scale_fill_manual(values = c(RColorBrewer::brewer.pal(8, "Set1"), RColorBrewer::brewer.pal(8, "Set2"))) +
     #facet_wrap(~Community, ncol = 3, scales = "free_x") +
     theme_classic() +
@@ -432,6 +489,8 @@ p <- algn_Sanger_ESV1 %>%
     labs()
 
 ggsave(paste0(folder_data, "temp/32-08-matched_ESV_abundance_family.png"), p, width = 6, height = 4)
+
+
 
 # 2.7 Check if the total number of ESV adds up ----
 n_ESV <- communities_abundance_T12 %>%
@@ -468,14 +527,18 @@ algn_Sanger_ESV %>%
 
 # Store the isolate abundance data ----
 
-# Store csv where each Sanger has one ESV
-isolates_abundance_all_sanger <- algn_Sanger_ESV
-write_csv(isolates_abundance_all_sanger, paste0(folder_data, "temp/32-isolates_abundance_all_sanger.csv"))
+# Store csv 68 alignments
+#isolates_abundance_all_sanger <- algn_Sanger_ESV
+#write_csv(isolates_abundance_all_sanger, paste0(folder_data, "temp/32-isolates_abundance_all_sanger.csv"))
 
-# Store csv where one Sanger match one ESV
+# Store csv 64 alignments, the 4 removed beacause of short consensus legnth and >5 mismatch
 isolates_abundance <- algn_Sanger_ESV1
 write_csv(isolates_abundance, paste0(folder_data, "temp/32-isolates_abundance.csv"))
 
+
+isolates_abundance %>%
+    filter(Community == "C4R1") %>%
+    view
 
 # isolates_abundance <- sequences_abundance %>%
 #     arrange(AlignmentType, AllowMismatch, Community) %>%

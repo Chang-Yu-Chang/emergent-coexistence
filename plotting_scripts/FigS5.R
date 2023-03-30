@@ -10,13 +10,13 @@ communities_abundance_T12 <- read_csv(paste0(folder_data, "temp/32-communities_a
 isolates_abundance <- read_csv(paste0(folder_data, "temp/32-isolates_abundance.csv"), show_col_types = F)
 
 
-# Number of matchens
+# Number of isolates with good match
 sequences_alignment %>%
-    filter(ConsensusLength > 200, BasePairMismatch <= 4) %>%
+    filter(ConsensusLength >= 200, BasePairMismatch <= 4) %>%
     distinct(Community, Isolate)
 
 algn_Sanger_ESV <- sequences_alignment %>%
-    filter(ConsensusLength > 200, BasePairMismatch <= 4) %>%
+    #filter(ConsensusLength > 200, BasePairMismatch <= 4) %>%
     # For each Sanger, find the ESV which it has least base pair mismatch with
     group_by(ExpID) %>%
     filter(BasePairMismatch == min(BasePairMismatch)) %>%
