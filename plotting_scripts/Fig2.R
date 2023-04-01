@@ -4,17 +4,15 @@ library(tidygraph)
 library(ggraph)
 source(here::here("analysis/00-metadata.R"))
 
-pairs <- read_csv(paste0(folder_data, "output/pairs.csv"), show_col_types = F)
-communities <- read_csv(paste0(folder_data, "temp/00c-communities.csv"), show_col_types = F)
+communities <- read_csv(paste0(folder_data, "output/communities_remained.csv"), show_col_types = F)
+isolates <- read_csv(paste0(folder_data, "output/isolates_remained.csv"), show_col_types = F)
+pairs <- read_csv(paste0(folder_data, "output/pairs_remained.csv"), show_col_types = F)
 pairs_freq <- read_csv(paste0(folder_data, "temp/93a-pairs_freq.csv"), show_col_types = F)
-load(paste0(folder_data, "temp/95-communities_network.Rdata"))
-
 pairs_freq <- pairs_freq %>% left_join(pairs) %>% remove_ineligible_pairs()
-pairs <- remove_ineligible_pairs(pairs)
+load(paste0(folder_data, "temp/95-communities_network.Rdata"))
 
 # Figure 2A: cartoon----
 pA <- ggdraw() + draw_image(here::here("plots/cartoons/Fig2A.png")) + paint_white_background()
-#pA <- ggdraw()
 
 # Figure 2B: example network C2R6 ----
 ## Main network
@@ -141,7 +139,7 @@ pC <- pairs %>%
     coord_cartesian(xlim = c(0.5, 13.5), ylim = c(0, 1), clip = "off") +
     theme_classic() +
     theme(
-        legend.text = element_text(size = 10),
+        legend.text = element_text(size = 8),
         legend.title = element_blank(),
         legend.key.size = unit(.5, "cm"),
         legend.spacing.y = unit(.3, "cm"),

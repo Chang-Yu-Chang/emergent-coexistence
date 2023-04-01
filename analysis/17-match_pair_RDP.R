@@ -24,7 +24,8 @@ pairs_RDP <- pairs_ID %>%
     mutate(PairFamily = case_when(
         Family1 == "Enterobacteriaceae" & Family2 == "Pseudomonadaceae"~ "EE",
         Family1 == "Pseudomonadaceae" & Family2 == "Pseudomonadaceae" ~ "PP",
-        (Family1 == "Enterobacteriaceae" & Family2 == "Pseudomonadaceae") | (Family1 == "Pseudomonadaceae" & Family2 == "Enterobacteriaceae") ~"FR"
+        (Family1 == "Enterobacteriaceae" & Family2 == "Pseudomonadaceae") | (Family1 == "Pseudomonadaceae" & Family2 == "Enterobacteriaceae") ~"FR",
+        T ~ "others"
     )) %>%
     select(-PairID)
 

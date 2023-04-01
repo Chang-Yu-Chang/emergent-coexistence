@@ -36,6 +36,15 @@ write_csv(communities_abundance_T12, paste0(folder_data, "temp/32-communities_ab
 isolates_RDP <- read_csv(paste0(folder_data, "temp/12-isolates_RDP.csv"), col_types = cols()) %>%
     select(ExpID, ID, Community, Isolate, Family, Genus, Sequence)
 
+isolates_RDP %>%
+    mutate(n_seq = str_count(Sequence)) %>%
+    select(ExpID, ID, Community, Isolate, Genus, n_seq) %>%
+    view
+
+# isolates_RDP <- read_csv(paste0(folder_data, "temp/12-isolates_silva.csv"), col_types = cols()) %>%
+#     select(ExpID, ID, Community, Isolate, Family, Genus, Sequence)
+
+
 # 1. Align isolate 16S sequences to community ESV ----
 count_alignment_bp <- function(seq1, seq2, type = "local"){
     #' R function for pairwise alignment and counting bp gap and mismatch
@@ -466,6 +475,7 @@ total_abundance <- algn_Sanger_ESV2 %>%
     group_by(Community) %>%
     summarize(TotalAbundance = round(sum(RelativeAbundance),2)) %>%
     mutate(Community = factor(Community, paste0("C", rep(1:12, each = 8), "R", rep(1:8, 12))))
+total_abundance
 mean(total_abundance$TotalAbundance)
 
 p <- algn_Sanger_ESV2 %>%
@@ -532,13 +542,9 @@ algn_Sanger_ESV %>%
 #write_csv(isolates_abundance_all_sanger, paste0(folder_data, "temp/32-isolates_abundance_all_sanger.csv"))
 
 # Store csv 64 alignments, the 4 removed beacause of short consensus legnth and >5 mismatch
-isolates_abundance <- algn_Sanger_ESV1
+isolates_abundance <- algn_Sanger_ESV1 %>%
+    select(Community, RelativeAbundance, CommunityESVID, ESV, ESVFamily, ESVGenus, ExpID, ID, Isolate, Family, Genus, Sequence, AlignmentType, ConsensusLength, BasePairGap, BasePairMismatch, AlignmentScore)
 write_csv(isolates_abundance, paste0(folder_data, "temp/32-isolates_abundance.csv"))
-
-
-isolates_abundance %>%
-    filter(Community == "C4R1") %>%
-    view
 
 # isolates_abundance <- sequences_abundance %>%
 #     arrange(AlignmentType, AllowMismatch, Community) %>%

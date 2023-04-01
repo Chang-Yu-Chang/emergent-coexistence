@@ -35,7 +35,7 @@ pairs_boots_percentile <- pairs_boots %>%
     select(Community, Isolate1, Isolate2, Isolate1InitialODFreq, Time, Isolate1CFUFreq, Measure = Percentile) %>%
     pivot_wider(names_from = Measure, names_prefix = "Isolate1CFUFreq", values_from = Isolate1CFUFreq)
 
-# FInd mean and median
+# Find mean and median
 pairs_boots_mean <- pairs_boots %>%
     group_by(Community, Isolate1, Isolate2, Isolate1InitialODFreq, Time) %>%
     summarize(Isolate1CFUFreqMean = mean(Isolate1CFUFreq),
@@ -54,9 +54,8 @@ pairs_freq <- left_join(pairs_boots_mean, pairs_boots_percentile) %>%
 
 write_csv(pairs_freq, paste0(folder_data, "temp/93a-pairs_freq.csv"))
 
-
-# Pair outcomes
-pairs_outcome <- read_csv(paste0(folder_data, "output/pairs_outcome.csv"), show_col_types = F) %>%
+# Pair outcomes from Djordje's scripts ----
+pairs_outcome <- read_csv(paste0(folder_data, "raw/pairs_outcome.csv"), show_col_types = F) %>%
     left_join(pairs_ID)
 
 # Determine direction of exclusion
@@ -76,16 +75,16 @@ pairs_ID_loser <- pairs_freq_exclusion$PairID[pairs_freq_exclusion$Sign == -1]
 pairs_ID_others <- pairs_outcome$PairID[pairs_outcome$outcome %in% c("3-coexistence", "4-coexistence", "5-inconclusive")]
 
 pairs_outcome <- pairs_outcome %>%
-    mutate(From = case_when(
+    mutate(From = case_when( # For network
         PairID %in% pairs_ID_winner ~ Isolate1,
         PairID %in% pairs_ID_loser ~ Isolate2,
         PairID %in% pairs_ID_others ~ Isolate1,
     )) %>%
-    mutate(To = case_when(
+    mutate(To = case_when( # For network
         PairID %in% pairs_ID_winner ~ Isolate2,
         PairID %in% pairs_ID_loser ~ Isolate1,
         PairID %in% pairs_ID_others ~ Isolate2,
-    )) %>%
+    )) %>% # For plotting the frequency
     mutate(Isolate1IsLoser = case_when(
         PairID %in% pairs_ID_winner ~ F,
         PairID %in% pairs_ID_loser ~ T,
@@ -94,6 +93,18 @@ pairs_outcome <- pairs_outcome %>%
 
 
 write_csv(pairs_outcome, paste0(folder_data, "temp/93a-pairs_outcome.csv"))
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

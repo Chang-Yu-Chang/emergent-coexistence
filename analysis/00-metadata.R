@@ -161,28 +161,27 @@ remove_ineligible_pairs <- function(pairs) {
         filter(AccuracyMean > 0.9)
 }
 
-flip_winner_species_freq <- function (pairs_freq) {
-    temp_index <- which(pairs_freq$Isolate1IsLoser)
-    if (length(temp_index) !=0) {
-    pairs_freq_flipped <- pairs_freq[temp_index, ] %>%
-        rename(temp = Isolate1, Isolate1 = Isolate2) %>%
-        rename(Isolate2 = temp) %>%
-        mutate(
-            Isolate1CFUFreqMean = 1-Isolate1CFUFreqMean,
-            Isolate1InitialODFreq = 100-Isolate1InitialODFreq,
-            Isolate1CFUFreqMedian = 1-Isolate1CFUFreqMedian,
-            Isolate1CFUFreqPercentile5 = 1-Isolate1CFUFreqPercentile5,
-            Isolate1CFUFreqPercentile95 = 1-Isolate1CFUFreqPercentile95
-        )
-
-    bind_rows(pairs_freq[-temp_index, ], pairs_freq_flipped) %>%
-        arrange(Time, PairID) %>%
-        return()
-    } else if (length(temp_index) == 0) {
-        return(pairs_freq)
-    }
-}
-
+# flip_winner_species_freq <- function (pairs_freq) {
+#     temp_index <- which(pairs_freq$Isolate1IsLoser)
+#     if (length(temp_index) !=0) {
+#     pairs_freq_flipped <- pairs_freq[temp_index, ] %>%
+#         rename(temp = Isolate1, Isolate1 = Isolate2) %>%
+#         rename(Isolate2 = temp) %>%
+#         mutate(
+#             Isolate1CFUFreqMean = 1-Isolate1CFUFreqMean,
+#             Isolate1InitialODFreq = 100-Isolate1InitialODFreq,
+#             Isolate1CFUFreqMedian = 1-Isolate1CFUFreqMedian,
+#             Isolate1CFUFreqPercentile5 = 1-Isolate1CFUFreqPercentile5,
+#             Isolate1CFUFreqPercentile95 = 1-Isolate1CFUFreqPercentile95
+#         )
+#
+#     bind_rows(pairs_freq[-temp_index, ], pairs_freq_flipped) %>%
+#         arrange(Time, PairID) %>%
+#         return()
+#     } else if (length(temp_index) == 0) {
+#         return(pairs_freq)
+#     }
+# }
 
 
 

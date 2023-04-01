@@ -5,19 +5,19 @@ library(ggraph)
 library(igraph)
 source(here::here("analysis/00-metadata.R"))
 
-isolates <- read_csv(paste0(folder_data, "output/isolates.csv"), show_col_types = F)
-pairs <- read_csv(paste0(folder_data, "output/pairs.csv"), show_col_types = F)
-communities <- read_csv(paste0(folder_data, "temp/00c-communities.csv"), show_col_types = F)
+communities <- read_csv(paste0(folder_data, "output/communities_remained.csv"), show_col_types = F)
+isolates <- read_csv(paste0(folder_data, "output/isolates_remained.csv"), show_col_types = F)
+pairs <- read_csv(paste0(folder_data, "output/pairs_remained.csv"), show_col_types = F)
 pairs_freq <- read_csv(paste0(folder_data, "temp/93a-pairs_freq.csv"), show_col_types = F)
-load(paste0(folder_data, "temp/95-communities_network.Rdata"))
+load(paste0(folder_data, "temp/38-communities_network.Rdata"))
 
 
 # Plot individual networks ----
 set.seed(1)
 node_size = 3
 edge_width = .8
-plot_network_hierarchy <- function(net, n_rank = 12, n_break = 12) {
-    #net <- communities_network$Network[[2]]
+plot_network_hierarchy <- function(net, n_rank = 10, n_break = 10) {
+    #net <- communities_network$Network[[13]]
     graph_ranked <- net %>%
         activate(nodes) %>%
         select(Isolate, Rank, PlotRank) %>%
@@ -55,7 +55,6 @@ plot_network_hierarchy <- function(net, n_rank = 12, n_break = 12) {
         ungroup() %>%
         # Filter out coexistence edges
         activate(edges) %>%
-        #filter(fromRank > toRank) %>%
         filter((outcome == "1-exclusion" | outcome == "2-exclusion")) %>%
         mutate(Temp = sample(c(-1, 1), size = n(), replace = T))
     strength_angle <- as_tibble(temp)$Temp * 0.06
@@ -70,9 +69,6 @@ plot_network_hierarchy <- function(net, n_rank = 12, n_break = 12) {
                       start_cap = circle(node_size/2, "mm"),
                       end_cap = circle(node_size/2, "mm")) +
         scale_edge_color_manual(values = outcome_colors, labels = outcome_labels) +
-        # scale_edge_color_manual(values = assign_interaction_color(level = "hierarchy"),
-        #                         breaks = c("exclusion", "exclusion violating rank", "coexistence", "unknown"),
-        #                         labels = c("exclusion pair that follows rank", "exclusion pair that violates rank", "coexistence", "unknown")) +
         scale_x_continuous(limits = c(0.1, 0.9), expand = c(0,0)) +
         scale_y_continuous(limits = c(-n_break-1, 0), breaks = -n_break:-1, labels = n_break:1) +
         theme_void() +
@@ -81,22 +77,23 @@ plot_network_hierarchy <- function(net, n_rank = 12, n_break = 12) {
             legend.title = element_blank(),
             axis.title = element_blank(),
             strip.text = element_blank(),
-            plot.margin=unit(c(0,0,0,0),"mm")
+            plot.margin = unit(c(0,0,0,0),"mm")
         ) +
         labs(y = "Rank")
 
 }
 communities_network_hierarchy <- communities_network %>%
-    mutate(Community = factor(Community, Community)) %>%
-    arrange(CommunitySize) %>%
+    #mutate(Community = factor(Community, Community)) %>%
+    arrange(CommunityLabel) %>%
     rowwise() %>%
     mutate(NetworkHierarchyPlot = plot_network_hierarchy(Network, n_rank = CommunitySize) %>% list())
+plot_network_hierarchy(communities_network_hierarchy$Network[[13]])
 
 # Check the isolate identity in hierarchy ----
 p_net_hierarchy_list <- communities_network_hierarchy$NetworkHierarchyPlot
 #for (i in 1:13) p_net_hierarchy_list[[i]] <- p_net_hierarchy_list + theme(legend.position = "none")
 p_net_hierarchy_list[[13]] <- p_net_hierarchy_list[[13]] +
-    scale_y_continuous(limits = c(-12-1, 0), breaks = -12:-1, labels = 12:1, position = "right") +
+    scale_y_continuous(limits = c(-10-1, 0), breaks = -10:-1, labels = 10:1, position = "right") +
     theme(axis.title.y = element_text(color = 1, size = 10, angle = 270, margin = margin(l = 2, unit = "mm")),
           axis.text.y = element_text(color = 1, size = 10, margin = margin(l = 1, unit = "mm")))
 p_axistitle <- ggdraw() + draw_label("Community", fontface = 'plain', x = .5, hjust = .5) + theme(plot.margin = margin(5, 0, 5, 7))
@@ -152,8 +149,8 @@ networks <- union(
     communities_network$Network[[11]], communities_network$Network[[12]],
     communities_network$Network[[13]], byname = "auto")
 
-triad_census(networks) %>% sum() # 220 possible triads with 0, 1, 2, or 3 links
-triad_census(networks) %>% `[`(c(9, 10, 12:16)) %>% sum() # 182 fully connected nodes
+triad_census(networks) %>% sum() # 120 possible triads with 0, 1, 2, or 3 links
+triad_census(networks) %>% `[`(c(9, 10, 12:16)) %>% sum() # 90 fully connected nodes
 
 exclusion_networks <- union(
     communities_network$ExclusionNetwork[[1]], communities_network$ExclusionNetwork[[2]],
@@ -164,18 +161,18 @@ exclusion_networks <- union(
     communities_network$ExclusionNetwork[[11]], communities_network$ExclusionNetwork[[12]],
     communities_network$ExclusionNetwork[[13]], byname = "auto")
 
-triad_census(exclusion_networks) %>% `[`(c(9, 10, 12:16)) %>% sum() # 77 fully connected nodes
+n_triads <- triad_census(exclusion_networks) %>% `[`(c(9, 10, 12:16)) %>% sum() # 45 fully connected nodes
 
 
 union(communities_network$ExclusionNetwork[[1]], communities_network$ExclusionNetwork[[2]],
       communities_network$ExclusionNetwork[[3]], communities_network$ExclusionNetwork[[4]]) %>%
-    triad_census() %>% `[`(c(9, 10, 12:16)) %>% sum() # These small networks should only have total 2 fully connected triads
+    triad_census() %>% `[`(c(9, 10, 12:16)) %>% sum() # These small networks should only have 0 fully connected triads
 
 set.seed(2)
 N = 10000
 tb <- tibble(
     BootstrapID = 1:N,
-    NumberExpectedRPS = rbinom(N, 77, prob = 1/4)
+    NumberExpectedRPS = rbinom(N, n_triads, prob = 1/4)
 )
 
 range(tb$NumberExpectedRPS)
@@ -184,7 +181,7 @@ p2 <- tb %>%
     ggplot() +
     geom_histogram(aes(x = NumberExpectedRPS), color = "black", fill = "white") +
     #scale_x_continuous(limits = c(0, max(tb$NumberExpectedRPS)+2)) +
-    annotate("text", x = Inf, y = Inf, label = "Binomial(n=77, p = 1/4)", vjust = 1, hjust = 1, size = 3) +
+    annotate("text", x = Inf, y = Inf, label = paste0("Binomial(n=, ", n_triads, ", p = 1/4)"), vjust = 2, hjust = 1, size = 2.5) +
     theme_classic() +
     theme() +
     guides() +
@@ -192,7 +189,7 @@ p2 <- tb %>%
 
 #
 p <- ggdraw(plot_grid(p1, labels = "A")) +
-    draw_plot(plot_grid(p2, labels = "B") , x = 0, y = 0, width = 0.3, height = 0.5,  hjust = 0, vjust = 0)
+    draw_plot(plot_grid(p2, labels = "B") , x = 0, y = 0, width = 0.3, height = 0.5, hjust = 0, vjust = 0)
 
 
 ggsave(here::here("plots/Fig4.png"), p, width = 10, height = 5)
