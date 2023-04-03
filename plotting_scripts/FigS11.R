@@ -1,112 +1,114 @@
 library(tidyverse)
 library(cowplot)
-library(broom)
-library(infer) # For tidyverse statistics
 source(here::here("analysis/00-metadata.R"))
 
-pairs <- read_csv(paste0(folder_data, "output/pairs.csv"), show_col_types = F)
-communities <- read_csv(paste0(folder_data, "temp/00c-communities.csv"), show_col_types = F)
+isolates <- read_csv(paste0(folder_data, "output/isolates.csv"), show_col_types = F) # 68 isolates
+pairs_T8_combined <- read_csv(paste0(folder_data, "temp/92-pairs_T8_combined.csv"), show_col_types = F) # 558 pairs
+accuracy <- read_csv(paste0(folder_data, "temp/91-accuracy.csv"), show_col_types = F)
 
-# Clean up the pairs data ----
-pairs <- pairs %>%
-    # Remove no-colony pairs
-    unite(col = "Pair", Community, Isolate1, Isolate2, sep = "_", remove = F) %>%
-    filter(!(Pair %in% pairs_no_colony)) %>%
-    # Remove low-accuracy model pairs
-    filter(AccuracyMean > 0.9)
+# Step 1: remove the pairs containing the four isolates
+isolates_removal <- isolates$ExpID[which(is.na(isolates$BasePairMismatch))] # Isolates that do not match ESV
+pairs_T8_combined <- pairs_T8_combined %>%
+    left_join(accuracy) %>%
+    # Remove the pairs containing the isolates that do not match ESV
+    left_join(select(isolates, Community, Isolate1 = Isolate, ExpID1 = ExpID)) %>%
+    left_join(select(isolates, Community, Isolate2 = Isolate, ExpID2 = ExpID)) %>%
+    filter(!(ExpID1 %in% isolates_removal) & !(ExpID2 %in% isolates_removal))
 
-# 16S mismatch versus probability of coexistence ----
-# Data with mismatch
-pairs_mismatch <- pairs %>%
-    filter(outcome != "5-inconclusive") %>%
-    #filter(!is.na(Mismatch)) %>%
-    mutate(MismatchGroup = case_when(
-        Mismatch < 90 ~ "<90",
-        Mismatch >= 90 ~ ">=90"
-    )) %>%
-    mutate(outcome = case_when(
-        outcome %in% c("1-exclusion", "2-exclusion") ~ "exclusion",
-        outcome %in% c("3-coexistence", "4-coexistence") ~ "coexistence"
-    )) %>%
-    mutate(outcomeBinary = ifelse(outcome == "coexistence", 1, 0))
+nrow(pairs_T8_combined) # 186-26 = 160 pairs. 160*3=480 cocultures
 
-pairs_mismatch %>%
-    group_by(outcome) %>%
-    count()
+# Check numbers
+pairs_machine <- pairs_T8_combined %>%
+    select(Community, Isolate1, Isolate2, Isolate1InitialODFreq, Isolate1CFUFreq_machine) %>%
+    pivot_wider(names_from = Isolate1InitialODFreq, names_prefix = "F", values_from = Isolate1CFUFreq_machine) %>%
+    filter(!is.na(F5), !is.na(F50), !is.na(F95)) %>%
+    select(Community, Isolate1, Isolate2) %>%
+    mutate(ContainMachine = T)
+nrow(pairs_machine) # 154 pairs have machine result. 160 total - 6 pairs that have no colony = 154
 
-pairs_mismatch_group <- pairs_mismatch %>%
-    group_by(MismatchGroup, outcome) %>%
-    summarize(Count = n()) %>%
-    group_by(MismatchGroup) %>%
-    mutate(Fraction = Count / sum(Count), TotalCount = sum(Count))
+pairs_human <- pairs_T8_combined %>%
+    select(Community, Isolate1, Isolate2, Isolate1InitialODFreq, Isolate1CFUFreq_human) %>%
+    pivot_wider(names_from = Isolate1InitialODFreq, names_prefix = "F", values_from = Isolate1CFUFreq_human) %>%
+    filter(!is.na(F5), !is.na(F50), !is.na(F95)) %>%
+    select(Community, Isolate1, Isolate2) %>%
+    mutate(ContainHuman = T)
+nrow(pairs_human) # 130 pairs have human result. 160 total - 6 pairs that have no colony - 24 hard to distinguish by eyes = 130
 
+pairs_human_machine <- pairs_T8_combined %>%
+    select(Community, Isolate1, Isolate2, Isolate1InitialODFreq, machine = Isolate1CFUFreq_machine, human = Isolate1CFUFreq_human) %>%
+    pivot_wider(names_from = Isolate1InitialODFreq, names_prefix = "F", values_from = c(human, machine)) %>%
+    filter(!is.na(human_F5), !is.na(human_F50), !is.na(human_F95), !is.na(machine_F5), !is.na(machine_F50), !is.na(machine_F95)) %>%
+    select(Community, Isolate1, Isolate2) %>%
+    mutate(ContainHumanMachine = T)
+nrow(pairs_human_machine) # 130 pairs have both human and machine data
 
-# Statistics
-# extract_statistics_equation <- function (model) {
-#     p_value <- summary(model)$coefficients[2,4]
-#     # For glm model
-#     r_square <- with(summary(model), 1 - deviance/null.deviance)
-#     paste0(
-#         "\n", case_when(
-#             p_value < 0.001 ~ "p<0.001",
-#             p_value < 0.0001 ~ "p<0.0001",
-#             TRUE ~ paste0("p=", as.character(round(p_value, 3)))
-#         ),
-#         "\nR-squared=", round(r_square,4))
-# }
-# model1 <- glm(outcome ~ Mismatch, family = "binomial", data = pairs_mismatch)
+pairs_machine %>%
+    left_join(pairs_human) %>%
+    left_join(filter(accuracy, Isolate1InitialODFreq == 5)) %>%
+    filter(ContainMachine, ContainHuman, Accuracy > 0.9) %>%
+    nrow() # 129 pairs that have both human and machine data, and the machine accurarcy is > 0.9
 
 
-# scatterplot, categorical lm
-# p1 <- pairs_mismatch %>%
-#     ggplot(aes(x = Mismatch, y = outcomeBinary)) +
-#     geom_point(shape = 21, size = 3) +
-#     geom_smooth(method = "glm", method.args = list(family = "binomial")) +
-#     annotate("text", x = 100, y = 0.8, label = extract_statistics_equation(model1), hjust = 0) +
-#     scale_y_continuous(labels = c("0" = "exclusion", "1" = "coexistence"), breaks = c(0,1), expand = c(0,.2)) +
-#     theme_classic() +
-#     labs(x = "# of nucleotide difference in 16S", y = "")
+#
+pairs_T8_combined_cleaned1 <- pairs_T8_combined %>% # 160*3 = 480 cocultures
+    left_join(pairs_machine) %>%
+    filter(ContainMachine) %>% # 154 pairs that have machine result. 154*3 = 462 cocultures
+    # Remove those with low accuracy
+    left_join(accuracy) %>%
+    filter(Accuracy > 0.9) # 145 pairs that have human result. 145*3=435 cocultures
+nrow(pairs_T8_combined_cleaned1) # 145*3 = 135 cocultures that have high accurarcy machine result
 
-# boxplot by mismatch
-p1 <- pairs_mismatch %>%
-    ggplot(aes(x = outcome, y = Mismatch, fill = outcome)) +
-    geom_boxplot(linewidth = 1, width = 0.4) +
-    geom_point(size = 2, stroke = .5, shape = 21, position = position_jitter(width = 0.2)) +
-    scale_fill_manual(values = interaction_color) +
-    coord_flip() +
-    theme_classic() +
-    theme(axis.title.y = element_blank()) +
-    guides(color = "none", fill = "none") +
-    labs(y = "# of nucleotide difference in 16S", y = "")
+pairs_T8_combined_cleaned2 <- pairs_T8_combined_cleaned1 %>% # 145*3=435 cocultures
+    # Remove pairs that have no human results
+    left_join(pairs_human_machine) %>%
+    select(Community, Isolate1, Isolate2, Isolate1InitialODFreq,
+           Isolate1Count_machine, Isolate1Count_human,
+           TotalCount_machine, TotalCount_human,
+           Isolate1CFUFreq_machine, Isolate1CFUFreq_human,
+           ContainHumanMachine) %>%
+    filter(ContainHumanMachine)
+nrow(pairs_T8_combined_cleaned2) # 129*3 = 387 cocultures
 
-t.test(
-    pairs_mismatch %>% filter(outcome == "coexistence") %>% pull(Mismatch),
-    pairs_mismatch %>% filter(outcome == "exclusion") %>% pull(Mismatch)
-)
+pairs_T8_combined_cleaned3 <- pairs_T8_combined %>% # 160*3 = 480 cocultures
+    left_join(pairs_human) %>%
+    filter(ContainHuman)
+nrow(pairs_T8_combined_cleaned3) # 130 pairs that have human result. 130*3 = 390 cocultures
 
-p2 <- pairs_mismatch %>%
-    mutate(outcome = factor(outcome, c("coexistence", "exclusion"))) %>%
-    group_by(MismatchGroup, outcome) %>%
-    summarize(Count = n()) %>%
-    mutate(Fraction = Count / sum(Count), TotalCount = sum(Count)) %>%
+
+#
+p1 <- pairs_T8_combined_cleaned2 %>%
     ggplot() +
-    geom_col(aes(x = outcome, y = Fraction, fill = outcome), color = 1, width = 0.7, position = position_dodge()) +
-    geom_text(aes(x = outcome, y = Fraction, label = Count), vjust = 2, position = position_dodge(width = 0.9)) +
-    scale_fill_manual(values = interaction_color) +
-    facet_grid(.~MismatchGroup) +
-    #scale_y_continuous(expand = c(0,0), breaks = seq(0, 1, 0.2), limits = c(0,0.8)) +
+    geom_abline(slope = 1, intercept = 0, color = "red", linetype = 2) +
+    geom_point(aes(x = TotalCount_human, y = TotalCount_machine), shape = 21, size = 2) +
+    geom_text(x = -Inf, y = Inf, label = paste0("N=", nrow(pairs_T8_combined_cleaned2)), vjust = 2, hjust = -1) +
+    scale_x_log10() +
+    scale_y_log10() +
     theme_classic() +
-    theme(panel.border = element_rect(color = 1, fill = NA),
-          axis.text.x = element_text(angle = 20, hjust = 1)) +
-    guides(fill = "none") +
-    labs(x = "")
-matrix(
-    pairs_mismatch_group %>% filter(MismatchGroup == "<90") %>% pull(Count),
-    pairs_mismatch_group %>% filter(MismatchGroup == ">=90") %>% pull(Count),
-    ncol = 2
-) %>%
-    chisq.test
+    labs(x = "Segmentation CFU count", y = "Manual CFU count")
 
-p <- plot_grid(p1, p2, nrow = 1, labels = LETTERS[1:2], scale = 0.9, axis = "tb", align = "h", rel_widths = c(1,1)) + paint_white_background()
-ggsave(here::here("plots/FigS11-mismatch_vs_coexistence.png"), p, width = 8, height = 4)
 
+p2 <- pairs_T8_combined_cleaned2 %>%
+    ggplot() +
+    geom_abline(slope = 1, intercept = 0, color = "red", linetype = 2) +
+    geom_hline(yintercept = c(0,1), color = gray(.8), linetype = 2) +
+    geom_vline(xintercept = c(0,1), color = gray(.8), linetype = 2) +
+    geom_point(aes(x = Isolate1CFUFreq_human, y = Isolate1CFUFreq_machine), shape = 21, size = 2, stroke = .4) +
+    geom_text(x = 0.5, y = 0.9, label = paste0("N=", nrow(pairs_T8_combined_cleaned2))) +
+    scale_shape_manual(values = c("TRUE" = 16, "FALSE" = 21)) +
+    theme_classic() +
+    labs(x = "Random Forest CFU frequency", y = "Manual CFU frequency")
+
+p <- plot_grid(p1, p2, nrow = 1, axis = "tblr", align = "h", scale = .9, labels = c("A", "B")) +
+    paint_white_background()
+
+ggsave(here::here("plots/FigS11-human_machine_comparison.png"), p, width = 8, height = 4)
+
+# R-squared
+pairs_T8_combined_cleaned2 %>%
+    filter(!is.na(Isolate1Count_human)) %>%
+    lm(TotalCount_human ~ TotalCount_machine, data = .) %>%
+    summary() # Multiple R-squared:  0.8482
+pairs_T8_combined_cleaned2 %>%
+    filter(!is.na(Isolate1Count_human)) %>%
+    lm(Isolate1CFUFreq_human ~ Isolate1CFUFreq_machine, data = .) %>%
+    summary() # Multiple R-squared:  0.8669,

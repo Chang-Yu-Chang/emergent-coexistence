@@ -25,6 +25,8 @@ pairs_T8_boots <- read_csv(paste0(folder_data, "temp/06-pairs_T8_boots.csv"), sh
 pairs_boots <- bind_rows(pairs_T0_boots, pairs_T8_boots) %>%
     select(Community, Isolate1, Isolate2, Isolate1InitialODFreq, Time, BootstrapID, Isolate1CFUFreq)
 
+write_csv(pairs_boots, paste0(folder_data, "temp/93a-pairs_boots.csv"))
+
 # Find 5% and 95%
 pairs_boots_percentile <- pairs_boots %>%
     group_by(Community, Isolate1, Isolate2, Isolate1InitialODFreq, Time) %>%

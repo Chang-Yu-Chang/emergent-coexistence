@@ -36,30 +36,3 @@ for (i in 1:length(list_image_crop)) {
 }
 
 
-
-# window_length <- 100
-# list_image_crop <- rep(list(NA), nrow(list_image_isolates))
-#
-# for (i in 1:length(list_image_crop)) {
-#     img <- readImage(paste0(list_image_isolates$folder_original[i], list_image_isolates$image_name_isolate1[i], ".tiff"))
-#     list_image_isolates
-#     object_feature <- read_csv(paste0(list_image_isolates$folder_feature[i], "green/", list_image_isolates$image_name_isolate1[i], ".csv"), show_col_types = F)
-#     colony_center_x <- round(object_feature$m.cx[2],0)
-#     colony_center_y <- round(object_feature$m.cy[2],0)
-#     img_crop <- img[((colony_center_x-window_length):(colony_center_x+window_length)), ((colony_center_y-window_length):(colony_center_y+window_length)), 1:3]
-#     list_image_crop[[i]] <- img_crop
-#     cat(" ", i)
-#
-#     writeImage(img_crop, paste0(folder_pipeline, "isolate_colony/", list_image_isolates$image_name_isolate1[i], ".tiff"))
-# }
-
-# list_image_isolates1 <- list_image_isolates %>%
-#     select(Batch, Community, Isolate1) %>%
-#     mutate(image_crop = list_image_crop)
-#
-# i = 1
-# x <- list_image_isolates1 %>%
-#     filter(Community == communities$Community[i]) %>%
-#     pull(image_crop)
-
-

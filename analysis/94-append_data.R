@@ -56,7 +56,7 @@ nrow(pairs) # 186 pairs in pairwise competition
 isolates_removal <- isolates$ExpID[which(is.na(isolates$BasePairMismatch))] # Isolates that do not match to ESVs
 pairs_remained <- pairs %>%
     filter(!(ExpID1 %in% isolates_removal) & !(ExpID2 %in% isolates_removal))
-nrow(pairs_remained) # 160 pairs
+nrow(pairs_remained) # 160 pairs. 186=26 pairs
 pairs_remained <- pairs_remained %>%
     # Remove no-colony pairs. six pairs
     drop_na(outcome) %>% # 154 pairs
@@ -109,9 +109,6 @@ tournament_rank <- function(pairs_comm) {
     tour_rank$PlotRank <- 1:nrow(tour_rank)
     return(tour_rank)
 }
-# pairs_comm <- pairs_remained %>%
-#     filter(Community == "C2R6")
-# tournament_rank(pairs_comm)
 
 isolates_tournament <- communities %>%
     select(comm = Community, everything()) %>%
@@ -120,10 +117,6 @@ isolates_tournament <- communities %>%
     mutate(tournaments_comm = pairs_comm %>% tournament_rank() %>% list()) %>%
     select(Community = comm, tournaments_comm) %>%
     unnest(cols = tournaments_comm)
-
-# pairs_outcome %>%
-#     filter(Community == "C11R2")  %>%
-#     tournament_rank()
 
 write_csv(isolates_tournament, paste0(folder_data, "temp/94-isolates_tournament.csv"))
 
@@ -134,16 +127,21 @@ isolates_remained <- isolates %>%
     left_join(isolates_tournament)
 write_csv(isolates_remained, paste0(folder_data, "output/isolates_remained.csv"))
 
-
-
 # Update the community size
+pairs_tested_count <- pairs_remained %>%
+    group_by(Community) %>%
+    count(name = "CommunityPairSize")
 count_pairs <- function(x) choose(x,2)
 communities_remained <- isolates_remained %>%
     left_join(select(communities, Community, CommunityLabel)) %>%
     group_by(Community, CommunityLabel) %>%
     summarize(CommunitySize = n()) %>%
-    mutate(CommunityPairSize = count_pairs(CommunitySize)) %>%
-    arrange(CommunityLabel)
+    ungroup() %>%
+    left_join(pairs_tested_count) %>%
+    #mutate(CommunityPairSize = count_pairs(CommunitySize)) %>%
+    # Re order the communities according to communitiy size
+    arrange(CommunitySize, CommunityPairSize) %>%
+    mutate(CommunityLabel = 1:13)
 write_csv(communities_remained, paste0(folder_data, "output/communities_remained.csv"))
 
 

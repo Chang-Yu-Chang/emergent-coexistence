@@ -502,3 +502,6 @@ p <- communities_abundance_fitness %>%
 ggsave(paste0(folder_data, "temp/35-10-check_one_ESV.png"), p, width = 4, height = 4)
 
 
+
+
+

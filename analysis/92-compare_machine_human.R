@@ -10,8 +10,9 @@ pairs_T8_boots <- read_csv(paste0(folder_data, "temp/06-pairs_T8_boots.csv"), sh
 pairs_T8 <- read_csv(paste0(folder_data, "temp/06-pairs_T8.csv"), show_col_types = F) # random forest classification
 # Human manual results
 pairs_freq <- read_csv(paste0(folder_pipeline, "result_pairwise_competition_arranged.csv"), show_col_types = F) # human-eye results
+
 isolates_duplicate <- tibble(ID = c(462, 355, 356, 461, 452, 446, 305, 435, 444, 348, 460, 454), Duplicated = T)
-isolates_ID_match <- read_csv(paste0(folder_data, "raw/pairwise_competition/isolates1.csv"), col_types = cols()) %>%
+isolates_ID_match <- read_csv(paste0(folder_data, "raw/isolates1.csv"), col_types = cols()) %>%
     mutate(Assembly = "self_assembly") %>%
     select(ID, Community, Isolate) %>%
     left_join(isolates_duplicate, by = "ID") %>%
@@ -19,6 +20,7 @@ isolates_ID_match <- read_csv(paste0(folder_data, "raw/pairwise_competition/isol
 
 
 # 1. Clean up column names ----
+# Human result
 pairs_freq_renamed <- pairs_freq %>%
     mutate(Experiment = str_replace(Experiment, "Transitivity_", "")) %>%
     select(Batch = Experiment, Community, Isolate1, Isolate2, Isolate1InitialODFreq = Isolate1Freq, Isolate1Count = ColonyCount1, TotalCount = ColonyCount) %>%
@@ -27,6 +29,7 @@ pairs_freq_renamed <- pairs_freq %>%
     mutate(Type = "human") %>%
     ungroup()
 
+# Machine result
 pairs_T8_renamed <- pairs_T8 %>%
     select(Batch, Community, Isolate1, Isolate2, Isolate1InitialODFreq, Isolate1Count, TotalCount, Isolate1CFUFreq) %>%
     mutate(Type = "machine")

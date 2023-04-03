@@ -138,15 +138,15 @@ paint_white_background <- function () theme(plot.background = element_rect(fill 
 #                     "5-inconclusive" = "#999999")
 
 outcome_colors <- c("1-exclusion" = "firebrick",
-                    "2-exclusion" = "pink",
-                    "3-coexistence" = "royalblue4",
+                    "2-exclusion" = "hotpink2",
+                    "3-coexistence" = "dodgerblue3",
                     "4-coexistence" = "lightblue",
                     "5-inconclusive" = "#999999")
 
-outcome_labels <- c("exclusion with extinction",
-                    "exclusion without extinction",
-                    "coexistence with MIC",
-                    "coexistence without MIC",
+outcome_labels <- c("competitive exclusion",
+                    "on the path to\ncompetitive exclusion",
+                    "stable coexistence\n(mutual invasibility)",
+                    "coexistence without evidence\nof mutual invasibility",
                     "inconclusive")
 
 # Process

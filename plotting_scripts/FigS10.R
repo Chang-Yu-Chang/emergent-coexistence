@@ -2,80 +2,44 @@ library(tidyverse)
 library(cowplot)
 source(here::here("analysis/00-metadata.R"))
 
-communities <- read_csv(paste0(folder_data, "temp/00c-communities.csv"), show_col_types = F)
-pairs <- read_csv(paste0(folder_data, "output/pairs.csv"), show_col_types = F)
-pairs <- remove_ineligible_pairs(pairs)
+isolates <- read_csv(paste0(folder_data, "output/isolates.csv"), show_col_types = F) # 68 isolates
+accuracy <- read_csv(paste0(folder_data, "temp/91-accuracy.csv"), show_col_types = F)
 
-# Pairwise competition between highly abundant species. Use the Islate sanger where each matches to one ESV
-isolates_abundance_all_sanger <- read_csv(paste0(folder_data, "temp/32-isolates_abundance_all_sanger.csv"), show_col_types = F)
-
-isolates_abundance_all_sanger <- isolates_abundance_all_sanger %>%
-    # Remove the two isolates with bad alignment. Threshold = 8
-    filter(BasePairMismatch <= 4) %>%
-    select(Community, Isolate, RelativeAbundance) %>%
-    # Highly abundant isolate species means they have  >0.05 relative abundance
-    filter(RelativeAbundance > 0.05)
-
-isolates_abundant_richness <- isolates_abundance_all_sanger %>%
-    group_by(Community) %>%
-    summarize(Richness = n()) %>%
-    left_join(communities) %>%
-    arrange(CommunityLabel)
-
-pairs_abundant <- pairs %>%
-    select(PairID, Community, Isolate1, Isolate2, outcome) %>%
-    left_join(rename(isolates_abundance_all_sanger, Isolate1 = Isolate, RelativeAbundance1 = RelativeAbundance)) %>%
-    left_join(rename(isolates_abundance_all_sanger, Isolate2 = Isolate, RelativeAbundance2 = RelativeAbundance)) %>%
-    filter(!is.na(RelativeAbundance1), !is.na(RelativeAbundance2)) %>%
-    left_join(pairs)
-
-pairs_abundant_richness <- pairs_abundant %>%
-    group_by(Community) %>%
-    summarize(Richness = n()) %>%
-    left_join(communities) %>%
-    arrange(CommunityLabel)
+# Random forest model accuracy
+isolates_removal <- isolates$ExpID[which(is.na(isolates$BasePairMismatch))] # Isolates that do not match ESV
+accuracy_to_plot <- accuracy %>%
+    # Remove pairs that have cocultures with no colony
+    unite(col = "Pair", Community, Isolate1, Isolate2, sep = "_", remove = F) %>%
+    filter(!(Pair %in% pairs_no_colony)) %>% # 186-6=180 pairs. 180*3 = 540 cocultures
+    # Remove the pairs containing the isolates that do not match ESV
+    left_join(select(isolates, Community, Isolate1 = Isolate, ExpID1 = ExpID)) %>%
+    left_join(select(isolates, Community, Isolate2 = Isolate, ExpID2 = ExpID)) %>%
+    filter(!(ExpID1 %in% isolates_removal) & !(ExpID2 %in% isolates_removal))
+nrow(accuracy_to_plot) # 180-20 = 160 pairs. (160-6)*3 = 154*3=462 cocultures
 
 
-p <- pairs_abundant %>%
-    group_by(Community, outcome) %>%
-    count(name = "Count") %>%
-    # Total count
-    group_by(Community) %>% mutate(Fraction = Count / sum(Count), TotalCount = sum(Count)) %>%
-    left_join(communities, by = "Community") %>%
-    ungroup() %>%
+p1 <- accuracy_to_plot %>%
     ggplot() +
-    geom_col(aes(x = CommunityLabel, fill = outcome, y = Fraction), color = 1, width = .8, linewidth = .5) +
-    annotate("text", x = 1:13, y = 1.15, label = communities$CommunitySize, size = 4) +
-    annotate("text", x = 14, y = 1.15, label = "n. of species", size = 4, hjust = 0) +
-    annotate("segment", x = .5, xend = 18, y = 1.1, yend = 1.1, color = "black") +
-    geom_text(aes(x = CommunityLabel, y = 1.05, label = TotalCount), size = 4) +
-    annotate("text", x = 14, y = 1.05, label = "n. of tested pairs", size = 4, hjust = 0) +
-    scale_fill_manual(values = outcome_colors, labels = outcome_labels) +
-    scale_x_continuous(breaks = 1:13, expand = c(0.01, 0)) +
-    scale_y_continuous(breaks = seq(0,1,0.2), limit = c(0, 1.3), expand = c(0,0)) +
-    coord_cartesian(xlim = c(0.5, 13.5), ylim = c(0, 1), clip = "off") +
+    geom_histogram(aes(x = Accuracy), color = 1, binwidth = 0.01, breaks = seq(0.6,1,.01), fill = NA) +
+    geom_text(x = -Inf, y = Inf, label = paste0("N=", nrow(accuracy_to_plot)), vjust = 2, hjust = -1) +
+    geom_vline(xintercept = 0.9, color = "red", linetype = 2) +
     theme_classic() +
-    theme(
-        legend.text = element_text(size = 10),
-        legend.title = element_blank(),
-        legend.key.size = unit(.5, "cm"),
-        legend.spacing.y = unit(.3, "cm"),
-        legend.position = "right",
-        panel.border = element_rect(color = 1, fill = NA),
-        axis.text = element_text(color = 1, size = 10),
-        axis.title = element_text(color = 1, size = 10),
-        plot.margin = unit(c(1,.5,.5,.5), "cm")
-    ) +
-    guides(fill = guide_legend(byrow = TRUE)) +
-    labs(x = "community", y = "fraction")
+    labs(x = "Accuracy", y = "Count")
 
-ggsave(here::here("plots/FigS10-pairwise_competition_abundant.png"), p, width = 6, height = 3)
+#
+accuracy_to_plot_count <- accuracy_to_plot %>%
+    group_by(AccuracyPassThreshold) %>%
+    count(name = "Count")
 
+p2 <- accuracy_to_plot_count %>%
+    ggplot() +
+    geom_col(aes(x = AccuracyPassThreshold, y = Count), color = 1, fill = NA, width = .8) +
+    geom_text(aes(x = AccuracyPassThreshold, y = Count, label = paste0("n=", Count)), vjust = -1) +
+    geom_text(x = -Inf, y = Inf, label = paste0("N=", nrow(accuracy_to_plot)), vjust = 2, hjust = -1) +
+    scale_x_discrete(labels = c("FALSE" = "Accuracy<0.9", "TRUE" = "Accuracy>0.9")) +
+    scale_y_continuous(limits = c(0, 560)) +
+    theme_classic() +
+    labs(x = "")
+p <- plot_grid(p1, p2, nrow = 1, labels = LETTERS[1:2], scale = 0.9) + paint_white_background()
+ggsave(here::here("plots/FigS10-random_forest_accuracy.png"), p, width = 8, height = 4)
 
-# Stats
-nrow(pairs_abundant)
-pairs_abundant %>%
-    group_by(outcome) %>%
-    count(name = "Count") %>%
-    ungroup() %>%
-    mutate(Fraction = Count / sum(Count), TotalCount = sum(Count))
