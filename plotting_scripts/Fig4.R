@@ -150,7 +150,7 @@ networks <- union(
     communities_network$Network[[13]], byname = "auto")
 
 triad_census(networks) %>% sum() # 120 possible triads with 0, 1, 2, or 3 links
-triad_census(networks) %>% `[`(c(9, 10, 12:16)) %>% sum() # 90 fully connected nodes
+triad_census(networks) %>% `[`(c(9, 10, 12:16)) %>% sum() # 90 fully connected triads
 
 exclusion_networks <- union(
     communities_network$ExclusionNetwork[[1]], communities_network$ExclusionNetwork[[2]],
@@ -161,7 +161,7 @@ exclusion_networks <- union(
     communities_network$ExclusionNetwork[[11]], communities_network$ExclusionNetwork[[12]],
     communities_network$ExclusionNetwork[[13]], byname = "auto")
 
-n_triads <- triad_census(exclusion_networks) %>% `[`(c(9, 10, 12:16)) %>% sum() # 45 fully connected nodes
+n_triads <- triad_census(exclusion_networks) %>% `[`(c(9, 10, 12:16)) %>% sum() # 45 fully connected triads
 
 
 union(communities_network$ExclusionNetwork[[1]], communities_network$ExclusionNetwork[[2]],
@@ -177,11 +177,13 @@ tb <- tibble(
 
 range(tb$NumberExpectedRPS)
 
+#'' binning issue
+
 p2 <- tb %>%
     ggplot() +
     geom_histogram(aes(x = NumberExpectedRPS), color = "black", fill = "white") +
     #scale_x_continuous(limits = c(0, max(tb$NumberExpectedRPS)+2)) +
-    annotate("text", x = Inf, y = Inf, label = paste0("Binomial(n=, ", n_triads, ", p = 1/4)"), vjust = 2, hjust = 1, size = 2.5) +
+    annotate("text", x = Inf, y = Inf, label = paste0("Binomial(n= ", n_triads, ", p = 1/4)"), vjust = 2, hjust = 1, size = 2.5) +
     theme_classic() +
     theme() +
     guides() +
