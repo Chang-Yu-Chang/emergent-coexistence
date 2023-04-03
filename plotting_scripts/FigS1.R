@@ -65,13 +65,39 @@ p <- plot_grid(p1, p2, nrow = 1, labels = LETTERS[1:2], scale = .9, rel_widths =
 ggsave(here::here("plots/FigS1-inoculum_diversity.png"), p, width = 8, height = 3)
 
 
+#
+communities_rarefaction %>%
+    filter(SamplingSize == 10000) %>%
+    pull(RarefiedRichness) %>%
+    range()
 
 
+#
+communities_abundance_T0 %>%
+    group_by(Inoculum) %>%
+    count()
 
+communities_abundance %>%
+    filter(Transfer == 0) %>%
+#    filter(Relative_Abundance > 0.0001) %>%
+    group_by(Inoculum) %>%
+    count()
+min(communities_abundance$Relative_Abundance)
 
+# Check T12 ESV richness
+communities_abundance <- read_csv(paste0(folder_data, "raw/community_ESV/Emergent_Comunity_Data.csv"), show_col_types = F)
+range(communities_abundance$Relative_Abundance)
 
+communities_abundance <- read_csv(paste0(folder_data, "raw/community_ESV/Emergent_Comunity_Data.csv"), show_col_types = F) %>%
+    filter(Carbon_Source == "Glucose" | Carbon_Source == "Original") %>%
+    mutate(Community = factor(paste0("C", Inoculum, "R", Replicate), paste0("C", rep(1:12, each = 8), "R", rep(1:8, 12))))%>%
+    arrange(Community, Family, Transfer, ESV)
 
-
-
+communities_abundance %>%
+    filter(Transfer == 12) %>%
+    group_by(Community) %>%
+    filter(Community %in% communities$Community) %>%
+    count() %>%
+    arrange(desc(n))
 
 

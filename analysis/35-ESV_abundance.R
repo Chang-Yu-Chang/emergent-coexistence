@@ -359,6 +359,14 @@ communities_abundance_fitness_stable <- communities_abundance_fitness %>%
     mutate(CommunityESV = paste0(Community, ESV_ID)) %>%
     filter(CommunityESV %in% ESV_stable$CommunityESV)
 
+# communities_abundance_fitness %>%
+#     drop_na() %>%
+#     group_by(Community, ESV_ID) %>%
+#     count() %>%
+#     filter(n >= 6) %>%
+#     mutate(CommunityESV = paste0(Community, ESV_ID)) %>%
+#     filter((CommunityESV %in% ESV_stable$CommunityESV))
+
 # Spearman correlation
 cor_test_long <- function (long_data) cor.test(long_data$Relative_Abundance, long_data$Fitness, method = "spearman", exact = F, alternative = c("less"))
 tb_cor <- communities_abundance_fitness_stable %>%
@@ -382,7 +390,7 @@ p <- communities_abundance_fitness_stable %>%
     geom_hline(yintercept = 0, linetype = 2) +
     scale_color_manual(values = c("p<0.05" = "maroon", "p>=0.05" = grey(0.8))) +
     #scale_x_continuous(breaks = c(0.001, 0.1, 1), trans = "log10") +
-    scale_x_continuous(breaks = c(0.001, 0.1, 1), trans = "log10") +
+    scale_x_continuous(breaks = c(0.001, 0.01, 0.1, 1), trans = "log10") +
     scale_y_continuous(breaks = scales::pretty_breaks(n = 3)) +
     facet_wrap(Community~ESV_ID, ncol = 8) +
     theme_classic() +
@@ -410,7 +418,7 @@ p <- communities_abundance_fitness_stable %>%
     geom_hline(yintercept = 0, linetype = 2) +
     scale_color_manual(values = c("p<0.05" = "maroon", "p>=0.05" = grey(0.8))) +
     #scale_x_continuous(breaks = c(0.001, 0.1, 1), trans = "log10") +
-    scale_x_continuous(breaks = c(0.001, 0.1, 1), trans = "log10") +
+    scale_x_continuous(breaks = c(0.001, 0.01, 0.1, 1), trans = "log10") +
     scale_y_continuous(breaks = scales::pretty_breaks(n = 3)) +
     facet_wrap(Community~ESV_ID, ncol = 8) +
     theme_classic() +
@@ -464,7 +472,7 @@ p <- communities_abundance_fitness_extinct %>%
     geom_point(aes(x = Relative_Abundance, y = Fitness), shape = 21) +
     geom_hline(yintercept = 0, linetype = 2) +
     scale_color_manual(values = c("p<0.05" = "maroon", "p>=0.05" = grey(0.8))) +
-    scale_x_continuous(breaks = c(0.001, 0.1, 1), trans = "log10") +
+    scale_x_continuous(breaks = c(0.001, 0.01, 0.1, 1), trans = "log10") +
     scale_y_continuous(breaks = scales::pretty_breaks(n = 4)) +
     facet_wrap(Community~ESV_ID, ncol = 8) +
     theme_classic() +
@@ -482,23 +490,109 @@ ggsave(paste0(folder_data, "temp/35-09-species_fitness_extinct.png"), p, width =
 
 
 # Check one ESV's fitness ----
-communities_abundance %>%
-    filter(Community == "C5R4", ESV_ID == "Klebsiella")
 
 p <- communities_abundance_fitness %>%
     drop_na() %>%
     mutate(CommunityESV = paste0(Community, ESV_ID)) %>%
-    filter(Community == "C5R4", ESV_ID == "Klebsiella")  %>%
+    #filter(Community == "C8R4", ESV_ID == "Raoultella") %>%
+    filter(Community == "C8R4", ESV_ID %in% c("Raoultella", "Klebsiella", "Pseudomonas.10")) %>%
     ggplot() +
-    geom_smooth(aes(x = Relative_Abundance, y = Fitness), method = "lm", formula = y~x, se = T) +
+    geom_smooth(aes(x = Relative_Abundance, y = Fitness), method = "lm", formula = y~x, se = T, color = "black") +
     geom_point(aes(x = Relative_Abundance, y = Fitness), shape = 21) +
     geom_hline(yintercept = 0, linetype = 2) +
+    scale_x_continuous(breaks = c(0.001, 0.01, 0.1, 1), trans = "log10") +
+    scale_y_continuous(breaks = scales::pretty_breaks(n = 3)) +
+    facet_wrap(~ESV_ID, nrow = 1) +
     theme_classic() +
-    theme(axis.text = element_text(size = 15),
-          axis.title = element_text(size = 15),
-          panel.border = element_rect(color = 1, fill = NA)) +
+    theme(
+        axis.text = element_text(size = 8, angle = 30, hjust = 1),
+        axis.title = element_text(size = 15),
+        axis.title.x = element_blank(),
+        strip.text = element_text(size = 6),
+        panel.border = element_rect(color = 1, fill = NA),
+        legend.position = "top"
+    ) +
     labs(x = expression(x[i]), y = expression(log(x[i+1]/x[i])))
 
-ggsave(paste0(folder_data, "temp/35-10-check_one_ESV.png"), p, width = 4, height = 4)
+ggsave(paste0(folder_data, "temp/35-10-check_one_ESV.png"), p, width = 6, height = 3)
+
+
+
+# Check the isolates in the 13 communities
+tb_cor <- communities_abundance_fitness_stable %>%
+    nest(data = c(-Community, -ESV_ID)) %>%
+    mutate(fit = map(data, ~ cor_test_long(.x)),
+           tidied = map(fit, tidy)) %>%
+    unnest(tidied)
+
+ESV_sig <- tb_cor %>%
+    select(Community, ESV_ID, estimate, p.value) %>%
+    filter(p.value < 0.05, estimate < 0) %>%
+    mutate(CommunityESV = paste0(Community, ESV_ID)) %>%
+    mutate(Significance = "p<0.05")
+plot_comm_ESV <- function (communities_abundance_fitness_stable, comm) {
+    n_facets = 9
+    communities_abundance_fitness_stable_comm <- communities_abundance_fitness_stable %>%
+        left_join(ESV_sig) %>%
+        replace_na(list(Significance = "p>=0.05")) %>%
+        filter(Community %in% comm)
+
+    n_ESVs <- length(unique(communities_abundance_fitness_stable_comm$ESV_ID))
+
+    p1 <- communities_abundance_fitness_stable %>%
+        filter(Community %in% comm) %>%
+        ggplot() +
+        geom_smooth(data = communities_abundance_fitness_stable_comm,
+                    aes(x = Relative_Abundance, y = Fitness, color = Significance),
+                    method = "lm", formula = y ~ x, se = F) +
+        geom_point(aes(x = Relative_Abundance, y = Fitness), shape = 21) +
+        geom_hline(yintercept = 0, linetype = 2) +
+        scale_color_manual(values = c("p<0.05" = "maroon", "p>=0.05" = grey(0.8))) +
+        #scale_x_continuous(breaks = c(0.001, 0.1, 1), trans = "log10") +
+        scale_x_continuous(breaks = c(0.001, 0.01, 0.1, 1), trans = "log10") +
+        scale_y_continuous(breaks = scales::pretty_breaks(n = 3)) +
+        facet_wrap(~ESV_ID, nrow = 1) +
+        theme_classic() +
+        theme(
+            axis.text = element_text(size = 8, angle = 30, hjust = 1),
+            axis.title = element_text(size = 15),
+            axis.title.x = element_blank(),
+            strip.text = element_text(size = 6),
+            panel.border = element_rect(color = 1, fill = NA),
+            legend.position = "top"
+        ) +
+        guides(color = "none") +
+        labs(x = expression(x[i]), y = expression(log(x[i+1]/x[i]))) +
+        ggtitle(comm)
+
+    plot_grid(p1, NULL, rel_widths = c(n_ESVs, n_facets - n_ESVs))
+
+}
+
+p1 <- plot_comm_ESV(communities_abundance_fitness_stable, "C1R4")
+p2 <- plot_comm_ESV(communities_abundance_fitness_stable, "C2R6")
+p3 <- plot_comm_ESV(communities_abundance_fitness_stable, "C2R8")
+p4 <- plot_comm_ESV(communities_abundance_fitness_stable, "C8R4")
+
+p <- plot_grid(p1,p2,p3,p4 + theme(axis.title.x = element_text(size = 5)), ncol = 1) + paint_white_background()
+
+ggsave(paste0(folder_data, "temp/35-12-species_fitness_stable_comm_ordered.png"), p, width = 10, height = 6)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 

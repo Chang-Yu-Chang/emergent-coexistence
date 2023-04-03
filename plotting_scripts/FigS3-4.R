@@ -28,9 +28,10 @@ ESV_stable <- communities_abundance_temporal %>%
     filter(
         # Species with complete presence at T8-12
         (!is.na(T8) & !is.na(T9) & !is.na(T10) & !is.na(T11) & !is.na(T12) ) |
-            # Community C4R4, C5R4, C9R4 have missing time points at T11. For these communities, add back the species
+            # Community C4R4, C9R4 have missing time points at T11. For these communities, add back the species
             (Community %in% c("C4R4", "C5R4", "C9R4") & (!is.na(T8) & !is.na(T9) & !is.na(T10) & !is.na(T12))) |
-            Community %in% c()
+            # Community C5R4 have missing time points at T9. For these communities, add back the species
+            (Community %in% c("C5R4") & (!is.na(T8) & !is.na(T10) & !is.na(T11) & !is.na(T12)))
     ) %>%
     distinct(Community, ESV_ID) %>%
     mutate(CommunityESV = paste0(Community, ESV_ID))
@@ -95,59 +96,59 @@ ggsave(here::here("plots/FigS3-species_fitness_all_transfers_linear.png"), p, wi
 
 
 # ESVs that are ephemeral
-communities_abundance_ephemeral <- communities_abundance_fitness %>%
+ESV_extinct <- communities_abundance_fitness %>%
     drop_na() %>%
-    mutate(CommunityESV = paste0(Community, ESV_ID)) %>%
-    filter(!(CommunityESV %in% ESV_stable$CommunityESV)) %>%
-    group_by(CommunityESV, Community, ESV_ID) %>%
+    group_by(Community, ESV_ID) %>%
     count() %>%
-    filter(n>=5)
+    filter(n >= 6) %>%
+    mutate(CommunityESV = paste0(Community, ESV_ID)) %>%
+    filter(!(CommunityESV %in% ESV_stable$CommunityESV))
+nrow(ESV_extinct)
 
-tb_cor_ephermeral <- communities_abundance_fitness %>%
+
+communities_abundance_fitness_extinct <- communities_abundance_fitness %>%
     drop_na() %>%
     mutate(CommunityESV = paste0(Community, ESV_ID)) %>%
-    filter(CommunityESV %in% communities_abundance_ephemeral$CommunityESV) %>%
+    filter(CommunityESV %in% ESV_extinct$CommunityESV)
+
+# Spearman correlation
+cor_test_long <- function (long_data) cor.test(long_data$Relative_Abundance, long_data$Fitness, method = "spearman", exact = F, alternative = c("less"))
+tb_cor <- communities_abundance_fitness_extinct %>%
     nest(data = c(-Community, -ESV_ID)) %>%
     mutate(fit = map(data, ~ cor_test_long(.x)),
            tidied = map(fit, tidy)) %>%
     unnest(tidied)
 
-ESV_sig_ephermeral <- tb_cor_ephermeral %>%
+ESV_sig <- tb_cor %>%
     select(Community, ESV_ID, estimate, p.value) %>%
     filter(p.value < 0.05, estimate < 0) %>%
-    distinct(Community, ESV_ID) %>%
     mutate(CommunityESV = paste0(Community, ESV_ID)) %>%
     mutate(Significance = "p<0.05")
 
 
-p <- communities_abundance_fitness %>%
-    drop_na() %>%
-    mutate(CommunityESV = paste0(Community, ESV_ID)) %>%
-    filter(CommunityESV %in% communities_abundance_ephemeral$CommunityESV) %>%
-    left_join(ESV_sig_ephermeral) %>%
-    replace_na(list(Significance = "p>=0.05")) %>%
+p <- communities_abundance_fitness_extinct %>%
     ggplot() +
-    # geom_smooth(data = filter(communities_abundance_fitness_all, CommunityESV %in% ESV_sig$CommunityESV),
-    #             aes(x = Relative_Abundance, y = Fitness), method = "lm", formula = y~x, se = F) +
-    geom_smooth(aes(x = Relative_Abundance, y = Fitness, color = Significance),
-                method = stats::lm, formula = y ~ x, se = F) +
+    geom_smooth(data = communities_abundance_fitness_extinct %>% left_join(ESV_sig) %>% replace_na(list(Significance = "p>=0.05")),
+                aes(x = Relative_Abundance, y = Fitness, color = Significance),
+                method = "lm", formula = y ~ x, se = F) +
     geom_point(aes(x = Relative_Abundance, y = Fitness), shape = 21) +
     geom_hline(yintercept = 0, linetype = 2) +
-    scale_color_manual(values = c("p<0.05" = "pink", "p>=0.05" = grey(0.8))) +
-    scale_x_continuous(breaks = scales::pretty_breaks(n = 3)) +
-    scale_y_continuous(breaks = scales::pretty_breaks(n = 3)) +
-    facet_wrap(Community~ESV_ID, scales = "free", ncol = 9) +
+    scale_color_manual(values = c("p<0.05" = "maroon", "p>=0.05" = grey(0.8))) +
+    scale_x_continuous(breaks = c(0.001, 0.1, 1), trans = "log10") +
+    scale_y_continuous(breaks = scales::pretty_breaks(n = 4)) +
+    facet_wrap(Community~ESV_ID, ncol = 8) +
     theme_classic() +
     theme(
         axis.text = element_text(size = 8, angle = 30, hjust = 1),
         axis.title = element_text(size = 15),
-        strip.text = element_text(size = 8),
+        strip.text = element_text(size = 6),
         panel.border = element_rect(color = 1, fill = NA),
         legend.position = "top"
     ) +
-    guides(color = guide_legend(title = "spearman correlation")) +
+    guides(color = "none") +
     labs(x = expression(x[i]), y = expression(log(x[i+1]/x[i])))
 
-ggsave(here::here("plots/FigS4-species_fitness_all_transfers_linear_ephermeral.png"), p, width = 12, height = 9)
+
+ggsave(here::here("plots/FigS4-species_fitness_all_transfers_linear_ephermeral.png"), p, width = 10, height = 6)
 
 

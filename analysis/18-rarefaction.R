@@ -13,6 +13,8 @@ communities_abundance <- read_csv(paste0(folder_data, "raw/community_ESV/Emergen
     mutate(Community = factor(paste0("C", Inoculum, "R", Replicate), paste0("C", rep(1:12, each = 8), "R", rep(1:8, 12))))%>%
     arrange(Community, Family, Transfer, ESV)
 
+
+
 communities_abundance_T0 <- communities_abundance %>%
     filter(Transfer == 0) %>%
     filter(Relative_Abundance > 0.0001)
