@@ -13,15 +13,13 @@ source(here::here("simulation/02-generate_input_mono_comm.R"))
 # 1. generate mapping files ----
 input_parameters <- read_csv(here::here("simulation/01-input_parameters.csv"), col_types = cols())
 
-
 # Pairs from within communities
-n_comm <- input_parameters$n_communities
 input_parameters %>%
-    slice(rep(1, n_comm)) %>%
+    slice(rep(1, input_parameters$n_comm)) %>%
     mutate(save_timepoint = F) %>%
     mutate(output_dir = paste0(folder_simulation, "04a-withinCommunityTrios/")) %>%
-    mutate(init_N0 = paste0("withinCommunityTrios_W", 0:(n_comm-1), "-1-N_init.csv")) %>%
-    mutate(init_R0 = paste0("withinCommunityTrios_W", 0:(n_comm-1), "-1-R_init.csv")) %>%
+    mutate(init_N0 = paste0("withinCommunityTrios_W", 0:(input_parameters$n_comm-1), "-1-N_init.csv")) %>%
+    mutate(init_R0 = paste0("withinCommunityTrios_W", 0:(input_parameters$n_comm-1), "-1-R_init.csv")) %>%
     write_csv(here::here("simulation/04a-input_withinCommunityTrios.csv"))
 
 
@@ -78,6 +76,7 @@ N_community_split <- N_community %>%
     group_by(Community) %>%
     group_split()
 
+# Some communities only have two species. Skip those communities
 communities_richness <- N_community_split %>%
     bind_rows() %>%
     group_by(Community) %>%
@@ -88,9 +87,9 @@ communities_species <- N_community_split %>%
     select(Community, Family, Species) %>%
     arrange(Community, Family, Species)
 
-
 for (i in 1:length(N_community_split)) {
     cat("\n", paste0("Community W", i-1, " Richness=", communities_richness$Richness[i]))
+    if (communities_richness$Richness[i] <= 2) next
     # init_N0
     draw_trios_from_community(N_community_split[[i]]) %>%
         write_csv(paste0(input_withinCommunityTrios$output_dir[i], "withinCommunityTrios_W", i-1, "-1-N_init.csv"))
@@ -102,8 +101,7 @@ for (i in 1:length(N_community_split)) {
 
 }
 
+# Update the mapping file
 write_csv(input_withinCommunityTrios, here::here("simulation/04a-input_withinCommunityTrios.csv"))
-#write_csv(communities_richness, paste0(folder_simulation, "11-aggregated/communities_richness.csv"))
-#write_csv(communities_species, paste0(folder_simulation, "aggregated/04-communities_species.csv"))
 
 
