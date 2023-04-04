@@ -3,11 +3,11 @@ library(cowplot)
 library(broom)
 source(here::here("analysis/00-metadata.R"))
 
-isolates <- read_csv(paste0(folder_data, "output/isolates.csv"), show_col_types = F)
-communities <- read_csv(paste0(folder_data, "temp/00c-communities.csv"), show_col_types = F)
+isolates <- read_csv(paste0(folder_data, "output/isolates_remained.csv"), show_col_types = F)
+communities <- read_csv(paste0(folder_data, "output/communities_remained.csv"), show_col_types = F)
 isolates_growth_syl <- read_csv(paste0(folder_data, "raw/growth_rate/Estrela_2021_isolates_grmax.csv"), col_types = cols()) %>%
     filter(cs == "glucose") %>%
-    mutate(ID = as.character(SangerID))
+    rename(ID = SangerID)
 
 # Ranked glucose growth rate
 isolates <- isolates %>%

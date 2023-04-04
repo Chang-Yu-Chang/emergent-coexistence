@@ -101,7 +101,7 @@ p <- sequences_alignment %>%
     ggtitle("community")
 
 
-ggsave(here::here("plots/FigS6-Sanger_ESV_alignment.png"), p, width = 10, height = 10)
+ggsave(here::here("plots/FigS7-Sanger_ESV_alignment.png"), p, width = 10, height = 10)
 
 
 # ESV richness per community

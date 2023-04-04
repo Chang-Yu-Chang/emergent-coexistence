@@ -10,7 +10,6 @@ pairs <- read_csv(paste0(folder_data, "output/pairs_remained.csv"), show_col_typ
 pairs_freq <- read_csv(paste0(folder_data, "temp/93a-pairs_freq.csv"), show_col_types = F)
 pairs_boots <- read_csv(paste0(folder_data, "temp/93a-pairs_boots.csv"), show_col_types = F)
 pairs_freq <- pairs_freq %>% left_join(pairs) %>% remove_ineligible_pairs()
-load(paste0(folder_data, "temp/95-communities_network.Rdata"))
 communities_abundance_T12 <- read_csv(paste0(folder_data, "temp/32-communities_abundance_T12.csv"), show_col_types = F)
 
 # Figure 2A: cartoon----
@@ -33,37 +32,34 @@ pB <- pairs %>%
     ungroup() %>%
     ggplot() +
     geom_col(aes(x = CommunityLabel, fill = outcome, y = Fraction), color = 1, width = .8, linewidth = .5, position = position_stack(reverse = T)) +
-    # Number of distcint ESVs
-    annotate("text", x = 14, y = 1.25, label = "n. of ESVs", size = 4, hjust = 0) +
-    annotate("text", x = 1:13, y = 1.25, label = communities$ESVRichness, size = 4) +
-    annotate("segment", x = .5, xend = 18, y = 1.2, yend = 1.2, color = "black") +
+    # Number of distinct ESVs
+    annotate("text", x = 13, y = 1.25, label = "n. of ESVs", size = 4, hjust = 0) +
+    annotate("text", x = 1:12, y = 1.25, label = communities$ESVRichness, size = 4) +
+    annotate("segment", x = .5, xend = 16, y = 1.2, yend = 1.2, color = "black") +
     # Number of isolates
-    annotate("text", x = 14, y = 1.15, label = "n. of isolates", size = 4, hjust = 0) +
-    annotate("text", x = 1:13, y = 1.15, label = communities$CommunitySize, size = 4) +
-    annotate("segment", x = .5, xend = 18, y = 1.1, yend = 1.1, color = "black") +
+    annotate("text", x = 13, y = 1.15, label = "n. of isolates", size = 4, hjust = 0) +
+    annotate("text", x = 1:12, y = 1.15, label = communities$CommunitySize, size = 4) +
+    annotate("segment", x = .5, xend = 16, y = 1.1, yend = 1.1, color = "black") +
     # Number of tested pairs
-    annotate("text", x = 14, y = 1.05, label = "n. of tested pairs", size = 4, hjust = 0) +
+    annotate("text", x = 13, y = 1.05, label = "n. of tested pairs", size = 4, hjust = 0) +
     geom_text(aes(x = CommunityLabel, y = 1.05, label = TotalCount), size = 4) +
     scale_fill_manual(values = outcome_colors, breaks = names(outcome_colors), labels = outcome_labels) +
-    scale_x_continuous(breaks = 1:13, expand = c(0.01, 0)) +
+    scale_x_continuous(breaks = 1:12, expand = c(0.01, 0)) +
     scale_y_continuous(breaks = seq(0,1,0.2), limit = c(0, 1.45), expand = c(0,0)) +
-    coord_cartesian(xlim = c(0.5, 13.5), ylim = c(0, 1), clip = "off") +
+    coord_cartesian(xlim = c(0.5, 12.5), ylim = c(0, 1), clip = "off") +
     theme_classic() +
     theme(
         legend.text = element_text(size = 12),
         legend.title = element_blank(),
-        #legend.key.size = unit(5, "mm"),
         legend.key.width = unit(8, "mm"),
         legend.key.height = unit(8, "mm"),
         legend.spacing.x = unit(11, "mm"),
-        #legend.margin = margin(10,10,1,0, unit = "mm"),
         legend.position = "bottom",
         panel.border = element_rect(color = 1, fill = NA),
         axis.text = element_text(color = 1, size = 12),
         axis.title = element_text(color = 1, size = 12),
         plot.margin = unit(c(20, 30, 5, 5), "mm")
     ) +
-    #guides(fill = guide_legend(byrow = T, ncol = 2)) +
     guides(fill = guide_legend(byrow = T, nrow = 1)) +
     labs(x = "community", y = "fraction")
 
@@ -159,7 +155,7 @@ plot_category_freq <- function (pairs_freq, pairs_mean_eq_measures, outcome_cate
         scale_y_continuous(breaks = c(0, 1), expand = c(0, 0.1)) +
         scale_color_manual(values = frequency_color, label = c("95%", "50%", "5%")) +
         scale_fill_manual(values = outcome_colors, labels = outcome_labels) +
-        facet_wrap(.~PairID, nrow = 10, dir = "v") +
+        facet_wrap(.~PairID, nrow = 8, dir = "v") +
         theme_classic() +
         theme(
             panel.spacing = unit(0, "mm"),
@@ -167,42 +163,51 @@ plot_category_freq <- function (pairs_freq, pairs_mean_eq_measures, outcome_cate
             panel.grid.minor.y = element_blank(),
             axis.line = element_blank(),
             legend.position = "none",
+            legend.background = element_blank(),
             legend.title = element_text(size = 20),
             legend.text = element_text(size = 15),
             legend.key.size = unit(10, "mm"),
             legend.spacing.y = unit(5, "mm"),
             strip.text = element_blank(),
-            plot.background = element_rect(color = outcome_colors[outcome_category], fill = "white", linewidth = 3)
+            plot.title = element_text(color = outcome_colors[outcome_category], size = 13, face = "bold", margin = margin(0,0,0,0, "mm")),
+#            plot.background = element_rect(color = outcome_colors[outcome_category], fill = "white", linewidth = 3)
+            plot.background = element_blank()
         ) +
         guides(
             fill = guide_legend(title = "Pairwise competiton outcome", override.aes = list(alpha = 0.8), order = 1),
             color = guide_legend(title = "Inital frequencies", order = 2)
         ) +
-        labs(x = "transfer", y = "frequency")
+        labs(x = "transfer", y = "frequency") +
+        ggtitle(outcome_labels[which(names(outcome_colors) == outcome_category)])
 }
+outcome_labels <- c("competitive exclusion",
+                    "on the path to\ncompetitive exclusion",
+                    "stable coexistence\n(mutual invasibility)",
+                    "coexistence \nwithout\nevidence of\nmutual\ninvasibility",
+                    "inconclusive")
 
 p1 <- plot_category_freq(pairs_freq, pairs_mean_eq_measures, outcome_category = "1-exclusion")
-p2 <- plot_category_freq(pairs_freq, pairs_mean_eq_measures, outcome_category = "2-exclusion")
-p3 <- plot_category_freq(pairs_freq, pairs_mean_eq_measures, outcome_category = "3-coexistence")
-p4 <- plot_category_freq(pairs_freq, pairs_mean_eq_measures, outcome_category = "4-coexistence")
-p5 <- plot_category_freq(pairs_freq, pairs_mean_eq_measures, outcome_category = "5-inconclusive")
+p2 <- plot_category_freq(pairs_freq, pairs_mean_eq_measures, outcome_category = "2-exclusion") + theme(axis.title.y = element_blank())
+p3 <- plot_category_freq(pairs_freq, pairs_mean_eq_measures, outcome_category = "3-coexistence") + theme(axis.title.y = element_blank())
+p4 <- plot_category_freq(pairs_freq, pairs_mean_eq_measures, outcome_category = "4-coexistence") + theme(axis.title.y = element_blank())
+p5 <- plot_category_freq(pairs_freq, pairs_mean_eq_measures, outcome_category = "5-inconclusive") + theme(axis.title.y = element_blank())
 pC_legend <- get_legend(plot_category_freq(pairs_freq, pairs_mean_eq_measures, outcome_category = names(outcome_colors)) + theme(legend.position = "bottom", legend.text = element_text(size = 13), legend.title = element_text(size = 13)) + guides(fill = "none", color = guide_legend(title = "initial frequencies", override.aes = list(linewidth = 2))))
+
 
 pC <- plot_grid(
     plot_grid(
         p1, p2, p3, p4, p5, nrow = 1, axis = "tb", align = "h",
-        rel_widths = c(4, 4, 3, 3, 3), scale = 0.9,
-        labels = outcome_labels, label_x = 0.05, hjust = 0, label_y = .97, vjust = 0, label_size = 13
+        rel_widths = c(5, 9, 3, 1.5, 2), scale = .99
+        #labels = outcome_labels, label_x = 0.05, hjust = 0, label_y = .97, vjust = 0, label_size = 13
     ),
     pC_legend, ncol = 1, rel_heights = c(10, .5)
 ) + paint_white_background()
 
-
 # Assemble panels ----
-p_top <- plot_grid(pA, pB + guides(fill = "none"), nrow = 1, labels = c("A", "B"), scale = c(1, 0.85), rel_widths = c(1.3, 1), axis = "b")
+p_top <- plot_grid(pA, pB + guides(fill = "none"), nrow = 1, labels = c("A", "B"), scale = c(1, 0.95), rel_widths = c(1.3, 1), axis = "b")
 p <- plot_grid(p_top, NULL, pC, ncol = 1, labels = c("", "", "C"),
-               scale = c(1, 1, .9), rel_heights = c(1, 0, 2)) + paint_white_background()
-ggsave(here::here("plots/Fig2.png"), p, width = 15, height = 15)
+               scale = c(1, 1, .95), rel_heights = c(1, 0, 2)) + paint_white_background()
+ggsave(here::here("plots/Fig2.png"), p, width = 15, height = 10)
 
 
 
@@ -212,6 +217,7 @@ pairs %>%
     count(name = "Count") %>%
     ungroup() %>%
     mutate(Fraction = Count / sum(Count), TotalCount = sum(Count))
+
 
 
 

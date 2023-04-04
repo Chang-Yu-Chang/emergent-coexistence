@@ -1,79 +1,102 @@
 library(tidyverse)
 library(cowplot)
-library(broom)
-library(infer) # For tidyverse statistics
 source(here::here("analysis/00-metadata.R"))
 
 communities <- read_csv(paste0(folder_data, "output/communities_remained.csv"), show_col_types = F)
 isolates <- read_csv(paste0(folder_data, "output/isolates_remained.csv"), show_col_types = F)
 pairs <- read_csv(paste0(folder_data, "output/pairs_remained.csv"), show_col_types = F)
+communities_abundance_T12 <- read_csv(paste0(folder_data, "temp/32-communities_abundance_T12.csv"), show_col_types = F)
 
-# 16S mismatch versus probability of coexistence ----
-# Data with mismatch
-pairs_mismatch <- pairs %>%
-    filter(outcome != "5-inconclusive") %>%
-    #filter(!is.na(Mismatch)) %>%
-    mutate(MismatchGroup = case_when(
-        Mismatch < 90 ~ "<90",
-        Mismatch >= 90 ~ ">=90"
-    )) %>%
-    mutate(outcome = case_when(
-        outcome %in% c("1-exclusion", "2-exclusion") ~ "exclusion",
-        outcome %in% c("3-coexistence", "4-coexistence") ~ "coexistence"
-    )) %>%
-    mutate(outcomeBinary = ifelse(outcome == "coexistence", 1, 0))
+#
+isolates_abundant <- isolates %>% filter(RelativeAbundance > 0.05)
+nrow(isolates_abundant) # 49 isolates matched to abundant ESVs
 
-pairs_mismatch %>%
+isolates_abundant_richness <- isolates_abundant %>%
+    group_by(Community) %>%
+    summarize(CommunitySizeAbundant = n())
+
+pairs_abundant <- pairs %>%
+    select(PairID, Community, Isolate1, Isolate2, outcome) %>%
+    left_join(select(isolates_abundant, Community, Isolate1 = Isolate, RelativeAbundance1 = RelativeAbundance)) %>%
+    left_join(select(isolates_abundant, Community, Isolate2 = Isolate, RelativeAbundance2 = RelativeAbundance)) %>%
+    filter(!is.na(RelativeAbundance1), !is.na(RelativeAbundance2))
+nrow(pairs_abundant) # 84 pairs
+
+pairs_abundant_richness <- pairs_abundant %>%
+    group_by(Community) %>%
+    summarize(CommunityPairSizeAbundant = n())
+
+n_ESVs <- communities_abundance_T12 %>%
+    group_by(Community) %>%
+    count(name = "ESVRichness")
+
+communities_abundant <- communities %>%
+    left_join(isolates_abundant_richness) %>%
+    left_join(pairs_abundant_richness) %>%
+    left_join(n_ESVs) %>%
+    select(CommunityLabel, CommunitySize, CommunitySizeAbundant, CommunityPairSize, CommunityPairSizeAbundant, ESVRichness)
+
+sum(communities_abundant$CommunitySize) # 62 isolates
+sum(communities_abundant$CommunitySizeAbundant) # 49 abundant isolates
+sum(communities_abundant$CommunityPairSize) # 144 pairs
+sum(communities_abundant$CommunityPairSizeAbundant) # 84 pairs of abundant isolates
+
+#
+p <- pairs_abundant %>%
+    group_by(Community, outcome) %>%
+    count(name = "Count") %>%
+    # Total count
+    group_by(Community) %>% mutate(Fraction = Count / sum(Count), TotalCount = sum(Count)) %>%
+    left_join(communities, by = "Community") %>%
+    #mutate(outcome = factor(outcome, c("5-inconclusive", "1-exclusion", "2-exclusion", "3-coexistence", "4-coexistence"))) %>%
+    ungroup() %>%
+    ggplot() +
+    geom_col(aes(x = CommunityLabel, fill = outcome, y = Fraction), color = 1, width = .8, linewidth = .5, position = position_stack(reverse = T)) +
+    # Number of distcint ESVs
+    annotate("text", x = 14, y = 1.25, label = "n. of ESVs", size = 4, hjust = 0) +
+    annotate("text", x = 1:12, y = 1.25, label = communities_abundant$ESVRichness, size = 4) +
+    annotate("segment", x = .5, xend = 18, y = 1.2, yend = 1.2, color = "black") +
+    # Number of isolates
+    annotate("text", x = 14, y = 1.15, label = "n. of isolates", size = 4, hjust = 0) +
+    annotate("text", x = 1:12, y = 1.15, label = communities_abundant$CommunitySizeAbundant, size = 4) +
+    annotate("segment", x = .5, xend = 18, y = 1.1, yend = 1.1, color = "black") +
+    # Number of tested pairs
+    annotate("text", x = 14, y = 1.05, label = "n. of tested pairs", size = 4, hjust = 0) +
+    annotate("text", x = 1:12, y = 1.05, label = communities_abundant$CommunityPairSizeAbundant, size = 4) +
+    scale_fill_manual(values = outcome_colors, breaks = names(outcome_colors), labels = outcome_labels) +
+    scale_x_continuous(breaks = 1:12, expand = c(0.01, 0)) +
+    scale_y_continuous(breaks = seq(0,1,0.2), limit = c(0, 1.45), expand = c(0,0)) +
+    coord_cartesian(xlim = c(0.5, 12.5), ylim = c(0, 1), clip = "off") +
+    theme_classic() +
+    theme(
+        legend.text = element_text(size = 12),
+        legend.title = element_blank(),
+        legend.key.width = unit(8, "mm"),
+        legend.key.height = unit(8, "mm"),
+        legend.spacing.y = unit(4, "mm"),
+        legend.position = "right",
+        panel.border = element_rect(color = 1, fill = NA),
+        axis.text = element_text(color = 1, size = 12),
+        axis.title = element_text(color = 1, size = 12),
+        plot.margin = unit(c(40, 20, 5, 5), "mm")
+    ) +
+    #guides(fill = guide_legend(byrow = T, ncol = 2)) +
+    guides(fill = guide_legend(byrow = T, ncol = 1)) +
+    labs(x = "community", y = "fraction")
+
+ggsave(here::here("plots/FigS13-pairwise_competition_abundant.png"), p, width = 8, height = 5)
+
+
+# Stats
+nrow(pairs_abundant)
+pairs_abundant %>%
     group_by(outcome) %>%
-    count()
-
-pairs_mismatch_group <- pairs_mismatch %>%
-    group_by(MismatchGroup, outcome) %>%
-    summarize(Count = n()) %>%
-    group_by(MismatchGroup) %>%
+    count(name = "Count") %>%
+    ungroup() %>%
     mutate(Fraction = Count / sum(Count), TotalCount = sum(Count))
 
 
-# boxplot by mismatch
-p1 <- pairs_mismatch %>%
-    ggplot(aes(x = outcome, y = Mismatch, fill = outcome)) +
-    geom_boxplot(linewidth = 1, width = 0.4) +
-    geom_point(size = 2, stroke = .5, shape = 21, position = position_jitter(width = 0.2)) +
-    scale_fill_manual(values = interaction_color) +
-    coord_flip() +
-    theme_classic() +
-    theme(axis.title.y = element_blank()) +
-    guides(color = "none", fill = "none") +
-    labs(y = "# of nucleotide difference in 16S", y = "")
 
-t.test(
-    pairs_mismatch %>% filter(outcome == "coexistence") %>% pull(Mismatch),
-    pairs_mismatch %>% filter(outcome == "exclusion") %>% pull(Mismatch)
-)
 
-p2 <- pairs_mismatch %>%
-    mutate(outcome = factor(outcome, c("coexistence", "exclusion"))) %>%
-    group_by(MismatchGroup, outcome) %>%
-    summarize(Count = n()) %>%
-    mutate(Fraction = Count / sum(Count), TotalCount = sum(Count)) %>%
-    ggplot() +
-    geom_col(aes(x = outcome, y = Fraction, fill = outcome), color = 1, width = 0.7, position = position_dodge()) +
-    geom_text(aes(x = outcome, y = Fraction, label = Count), vjust = 2, position = position_dodge(width = 0.9)) +
-    scale_fill_manual(values = interaction_color) +
-    facet_grid(.~MismatchGroup) +
-    #scale_y_continuous(expand = c(0,0), breaks = seq(0, 1, 0.2), limits = c(0,0.8)) +
-    theme_classic() +
-    theme(panel.border = element_rect(color = 1, fill = NA),
-          axis.text.x = element_text(angle = 20, hjust = 1)) +
-    guides(fill = "none") +
-    labs(x = "")
-matrix(
-    pairs_mismatch_group %>% filter(MismatchGroup == "<90") %>% pull(Count),
-    pairs_mismatch_group %>% filter(MismatchGroup == ">=90") %>% pull(Count),
-    ncol = 2
-) %>%
-    chisq.test
 
-p <- plot_grid(p1, p2, nrow = 1, labels = LETTERS[1:2], scale = 0.9, axis = "tb", align = "h", rel_widths = c(1,1)) + paint_white_background()
-ggsave(here::here("plots/FigS13-mismatch_vs_coexistence.png"), p, width = 8, height = 4)
 

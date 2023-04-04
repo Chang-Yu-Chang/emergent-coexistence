@@ -8,38 +8,37 @@ communities <- read_csv(paste0(folder_data, "output/communities_remained.csv"), 
 isolates <- read_csv(paste0(folder_data, "output/isolates_remained.csv"), show_col_types = F)
 pairs <- read_csv(paste0(folder_data, "output/pairs_remained.csv"), show_col_types = F)
 
-make_network <- function(isolates, pairs) {
+make_network <- function(isolates_comm, pairs_comm) {
     # Nodes
-    nodes <- isolates %>%
+    nodes <- isolates_comm
+
+    # Edges
+    edges <- pairs_comm %>%
+        filter(outcome %in% c("1-exclusion", "2-exclusion", "3-coexistence", "4-coexistence", "5-inconclusive")) %>%
         #' tbl_graph cannot handle it when a link connects from 1 to 12 (In pairs.csv this means the Isolate)
         #' but there are only 10 isolates. For instance, C11R2 has 10 isolates from 1-12 but 9 and 11
         #' are removed because of bad Sanger-ESV alignments. This creates incontinuous numbered isolates.
-        #' In pairs.csv we still use the original numbered isolates to specify links
-        #'
-        #' Here I added dummy isolate rows just to allow tlb_graph to work. I then removed these
-        #' dummy rows after the networks are made
-        bind_rows(tibble(Isolate = which(!(c(1:12) %in% isolates$Isolate %in% 1:12)))) %>%
-        arrange(Isolate)
-
-    # Edges
-    edges <- pairs %>%
-        filter(outcome %in% c("1-exclusion", "2-exclusion", "3-coexistence", "4-coexistence", "5-inconclusive")) %>%
-        mutate(from = From, to = To) %>%
+        #' To account for this, the `from` and `to` in the edge tibble of network object means the `row` number in the node tibble
+        mutate(from = match(From, isolates_comm$Isolate), to = match(To, isolates_comm$Isolate)) %>%
         select(from, to, outcome, PairID)
     edges_coext <- edges[edges$outcome %in% c("3-coexistence","4-coexistence"),]
     edges_coext[,c("from", "to")] <- edges_coext[,c("to", "from")] # Add the mutual edges for coexistence links
     edges <- bind_rows(edges, edges_coext)
 
+    # Somehow it works
+    nodes <- nodes %>%
+        mutate(Isolate = 1:n())
+
     # Network
     graph <- tbl_graph(nodes = nodes, edges = edges, directed = T)
 
-    # Here the dummy numbered isolates are removed
-    graph <- graph %>%
-        activate(nodes) %>%
-        filter(!is.na(ExpID))
 
     return(graph)
 }
+
+isolates_comm <- filter(isolates, Community == "C11R2")
+pairs_comm <- filter(pairs, Community == "C11R2")
+# graph %>% activate(nodes) %>% filter(!is.na(Community))
 
 # Check to make network object from isolate and pair ----
 communities_network <- communities %>%
@@ -113,7 +112,7 @@ communities_network_exclusion <- communities_network %>%
     mutate(ExclusionNetworkPlot = plot_competitive_network_grey(ExclusionNetwork, NetworkPlotSize, NetworkPlotSize) %>% list())
 
 p_net_list <- communities_network_exclusion$ExclusionNetworkPlot
-p <- plot_grid(plotlist = p_net_list, nrow = 2, scale = .9, labels = 1:13) + paint_white_background()
+p <- plot_grid(plotlist = p_net_list, nrow = 2, scale = .9, labels = 1:12) + paint_white_background()
 
 ggsave(paste0(folder_data, "temp/38-02-graph_exclusion.png"), p, width = 13, height = 4)
 
@@ -172,8 +171,8 @@ communities_network_exclusion <- communities_network %>%
     mutate(ExclusionNetworkPlot = plot_competitive_network_family(ExclusionNetwork, NetworkPlotSize, NetworkPlotSize) %>% list())
 
 p_net_list <- communities_network_exclusion$ExclusionNetworkPlot
-p_net_list[[14]] <- get_legend(plot_competitive_network_family(bind_graphs(communities_network_exclusion$ExclusionNetwork), node_size = 2) + theme(legend.position = "right", legend.spacing.y = unit(2, "mm"), legend.key.size = unit(3, "mm")))
-p <- plot_grid(plotlist = p_net_list, nrow = 2, scale = .9, labels = 1:13) + paint_white_background()
+p_net_list[[13]] <- get_legend(plot_competitive_network_family(bind_graphs(communities_network_exclusion$ExclusionNetwork), node_size = 2) + theme(legend.position = "right", legend.spacing.y = unit(2, "mm"), legend.key.size = unit(3, "mm")))
+p <- plot_grid(plotlist = p_net_list, nrow = 2, scale = .9, labels = 1:12) + paint_white_background()
 ggsave(paste0(folder_data, "temp/38-03-graph_exclusion_family.png"), p, width = 13, height = 4)
 
 #

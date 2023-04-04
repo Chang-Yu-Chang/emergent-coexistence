@@ -65,77 +65,8 @@ interaction_type_finer <- c(
 
 
 # 3. For plotting ----
-assign_interaction_color <- function (level = "simple") {
-    if (level == "simple") {
-        interaction_type <- c("exclusion", "coexistence", "unknown")
-        interaction_color <- c("#DB7469", "#557BAA", grey(0.5))
-        names(interaction_color) <- interaction_type
-        return(interaction_color)
-    }
-
-    if (level == "NA data") {
-        interaction_type <- c("exclusion", "coexistence", "unknown", "no colony or low accuracy")
-        interaction_color <- c("#DB7469", "#557BAA", grey(0.5), grey(0.8))
-        names(interaction_color) <- interaction_type
-        return(interaction_color)
-
-    }
-
-    if (level == "hierarchy") {
-        interaction_type <- c("exclusion", "coexistence", "exclusion violating rank", "bistability", "neutrality", "self", "unknown")
-        interaction_color <- c("#DB7469", "#557BAA", "#8CB369", "#EECF6D", "#8650C4", "black", "grey50")
-        names(interaction_color) <- interaction_type
-        return(interaction_color)
-    }
-    if (level == "finer") {
-        interaction_type <- interaction_type_finer
-        #interaction_type <- c("competitive exclusion", "stable coexistence", "mutual exclusion", "frequency-dependent coexistence", "neutrality", "exclusion violating rank")
-        interaction_color <- c("#DB7469", "#557BAA",
-                               "#FFBC42", "#B9FAF8",
-                               "lightblue", "cyan",
-                               "#8650C4", "purple",
-                               grey(0.5))
-        names(interaction_color) <- interaction_type
-        return(interaction_color)
-    }
-}
-interaction_color <- assign_interaction_color()
-frequency_color <- c("95"="#292F36", "50"="#9F87AF", "5"="#7D7C7C")
-category_color <- c(sugar = "#ED6A5A", acid = "#03CEA4", fermenter = "#8A89C0", respirator = "#FFCB77")
 paint_white_background <- function () theme(plot.background = element_rect(fill = "white", color = NA))
-
-#
-# family_colors <- c(
-#     Others = grey(0.5),
-#     Enterobacteriaceae = "#397eb8",
-#     Pseudomonadaceae = "#e21e26",
-#     Aeromonadaceae = "#4fb148",
-#     Sphingobacteriaceae = "#984e9e",
-#     Moraxellaceae = "firebrick",
-#     Comamonadaceae = "yellow",
-#     Alcaligenaceae = "darkorchid2"
-# )
-#
-# genus_colors <- c(
-#     Others = grey(0.5),
-#     Enterobactor1 = "#225ea8",
-#     Klebsiella1 = "#3eb6c5",
-#     Raoultella1 = "#a3d6b2",
-#     Citrobacter1 = "#fcf8cf",
-#     Pseudomonas1 = "#7d1517",
-#     Pseudomonas2 = "#b31e24",
-#     Pseudomonas3 = "#d63226",
-#     Pseudomonas4 = "#e44b34",
-#     Pseudomonas5 = "#ec6448",
-#     Pseudomonas6 = "#f68d5c",
-#     Aeromonas1 = "#8fd1c6"
-# )
-
-# outcome_colors <- c("1-exclusion" = "#CC79A7",
-#                     "2-exclusion" = "#D55E00",
-#                     "3-coexistence" = "#0072B2",
-#                     "4-coexistence" = "#F0E442",
-#                     "5-inconclusive" = "#999999")
+frequency_color <- c("95"="#292F36", "50"="#9F87AF", "5"="#7D7C7C")
 
 outcome_colors <- c("1-exclusion" = "firebrick",
                     "2-exclusion" = "hotpink2",
@@ -146,9 +77,18 @@ outcome_colors <- c("1-exclusion" = "firebrick",
 outcome_labels <- c("competitive exclusion",
                     "on the path to\ncompetitive exclusion",
                     "stable coexistence\n(mutual invasibility)",
-                    "coexistence without evidence\nof mutual invasibility",
+                    "coexistence without\nevidence of mutual invasibility",
                     "inconclusive")
-
+family_colors <- c(
+    Others = grey(0.5),
+    Enterobacteriaceae = "#397eb8",
+    Pseudomonadaceae = "#e21e26",
+    Aeromonadaceae = "#4fb148",
+    Sphingobacteriaceae = "#984e9e",
+    Moraxellaceae = "firebrick",
+    Comamonadaceae = "yellow",
+    Alcaligenaceae = "darkorchid2"
+)
 # Process
 
 remove_ineligible_pairs <- function(pairs) {
@@ -161,30 +101,45 @@ remove_ineligible_pairs <- function(pairs) {
         filter(AccuracyMean > 0.9)
 }
 
-# flip_winner_species_freq <- function (pairs_freq) {
-#     temp_index <- which(pairs_freq$Isolate1IsLoser)
-#     if (length(temp_index) !=0) {
-#     pairs_freq_flipped <- pairs_freq[temp_index, ] %>%
-#         rename(temp = Isolate1, Isolate1 = Isolate2) %>%
-#         rename(Isolate2 = temp) %>%
-#         mutate(
-#             Isolate1CFUFreqMean = 1-Isolate1CFUFreqMean,
-#             Isolate1InitialODFreq = 100-Isolate1InitialODFreq,
-#             Isolate1CFUFreqMedian = 1-Isolate1CFUFreqMedian,
-#             Isolate1CFUFreqPercentile5 = 1-Isolate1CFUFreqPercentile5,
-#             Isolate1CFUFreqPercentile95 = 1-Isolate1CFUFreqPercentile95
-#         )
+
+
+
+
 #
-#     bind_rows(pairs_freq[-temp_index, ], pairs_freq_flipped) %>%
-#         arrange(Time, PairID) %>%
-#         return()
-#     } else if (length(temp_index) == 0) {
-#         return(pairs_freq)
+#
+# assign_interaction_color <- function (level = "simple") {
+#     if (level == "simple") {
+#         interaction_type <- c("exclusion", "coexistence", "unknown")
+#         interaction_color <- c("#DB7469", "#557BAA", grey(0.5))
+#         names(interaction_color) <- interaction_type
+#         return(interaction_color)
+#     }
+#
+#     if (level == "NA data") {
+#         interaction_type <- c("exclusion", "coexistence", "unknown", "no colony or low accuracy")
+#         interaction_color <- c("#DB7469", "#557BAA", grey(0.5), grey(0.8))
+#         names(interaction_color) <- interaction_type
+#         return(interaction_color)
+#
+#     }
+#
+#     if (level == "hierarchy") {
+#         interaction_type <- c("exclusion", "coexistence", "exclusion violating rank", "bistability", "neutrality", "self", "unknown")
+#         interaction_color <- c("#DB7469", "#557BAA", "#8CB369", "#EECF6D", "#8650C4", "black", "grey50")
+#         names(interaction_color) <- interaction_type
+#         return(interaction_color)
+#     }
+#     if (level == "finer") {
+#         interaction_type <- interaction_type_finer
+#         #interaction_type <- c("competitive exclusion", "stable coexistence", "mutual exclusion", "frequency-dependent coexistence", "neutrality", "exclusion violating rank")
+#         interaction_color <- c("#DB7469", "#557BAA",
+#                                         "#FFBC42", "#B9FAF8",
+#                                         "lightblue", "cyan",
+#                                         "#8650C4", "purple",
+#                                         grey(0.5))
+#         names(interaction_color) <- interaction_type
+#         return(interaction_color)
 #     }
 # }
-
-
-
-
-
-
+# interaction_color <- assign_interaction_color()
+# category_color <- c(sugar = "#ED6A5A", acid = "#03CEA4", fermenter = "#8A89C0", respirator = "#FFCB77")

@@ -2,103 +2,113 @@ library(tidyverse)
 library(cowplot)
 source(here::here("analysis/00-metadata.R"))
 
-communities <- read_csv(paste0(folder_data, "output/communities_remained.csv"), show_col_types = F)
-isolates <- read_csv(paste0(folder_data, "output/isolates_remained.csv"), show_col_types = F)
-pairs <- read_csv(paste0(folder_data, "output/pairs_remained.csv"), show_col_types = F)
-communities_abundance_T12 <- read_csv(paste0(folder_data, "temp/32-communities_abundance_T12.csv"), show_col_types = F)
+isolates <- read_csv(paste0(folder_data, "output/isolates.csv"), show_col_types = F) # 68 isolates
+pairs_T8_combined <- read_csv(paste0(folder_data, "temp/92-pairs_T8_combined.csv"), show_col_types = F) # 558 pairs
+accuracy <- read_csv(paste0(folder_data, "temp/91-accuracy.csv"), show_col_types = F)
+
+# Step 1: remove the pairs containing the four isolates
+isolates_removal <- isolates$ExpID[which(is.na(isolates$BasePairMismatch))] # Isolates that do not match ESV
+pairs_T8_combined <- pairs_T8_combined %>%
+    left_join(accuracy) %>%
+    # Remove the pairs containing the isolates that do not match ESV
+    left_join(select(isolates, Community, Isolate1 = Isolate, ExpID1 = ExpID)) %>%
+    left_join(select(isolates, Community, Isolate2 = Isolate, ExpID2 = ExpID)) %>%
+    filter(!(ExpID1 %in% isolates_removal) & !(ExpID2 %in% isolates_removal))
+
+nrow(pairs_T8_combined) # 186-26 = 160 pairs. 160*3=480 cocultures
+
+# Check numbers
+pairs_machine <- pairs_T8_combined %>%
+    select(Community, Isolate1, Isolate2, Isolate1InitialODFreq, Isolate1CFUFreq_machine) %>%
+    pivot_wider(names_from = Isolate1InitialODFreq, names_prefix = "F", values_from = Isolate1CFUFreq_machine) %>%
+    filter(!is.na(F5), !is.na(F50), !is.na(F95)) %>%
+    select(Community, Isolate1, Isolate2) %>%
+    mutate(ContainMachine = T)
+nrow(pairs_machine) # 154 pairs have machine result. 160 total - 6 pairs that have no colony = 154
+
+pairs_human <- pairs_T8_combined %>%
+    select(Community, Isolate1, Isolate2, Isolate1InitialODFreq, Isolate1CFUFreq_human) %>%
+    pivot_wider(names_from = Isolate1InitialODFreq, names_prefix = "F", values_from = Isolate1CFUFreq_human) %>%
+    filter(!is.na(F5), !is.na(F50), !is.na(F95)) %>%
+    select(Community, Isolate1, Isolate2) %>%
+    mutate(ContainHuman = T)
+nrow(pairs_human) # 130 pairs have human result. 160 total - 6 pairs that have no colony - 24 hard to distinguish by eyes = 130
+
+pairs_human_machine <- pairs_T8_combined %>%
+    select(Community, Isolate1, Isolate2, Isolate1InitialODFreq, machine = Isolate1CFUFreq_machine, human = Isolate1CFUFreq_human) %>%
+    pivot_wider(names_from = Isolate1InitialODFreq, names_prefix = "F", values_from = c(human, machine)) %>%
+    filter(!is.na(human_F5), !is.na(human_F50), !is.na(human_F95), !is.na(machine_F5), !is.na(machine_F50), !is.na(machine_F95)) %>%
+    select(Community, Isolate1, Isolate2) %>%
+    mutate(ContainHumanMachine = T)
+nrow(pairs_human_machine) # 130 pairs have both human and machine data
+
+pairs_machine %>%
+    left_join(pairs_human) %>%
+    left_join(filter(accuracy, Isolate1InitialODFreq == 5)) %>%
+    filter(ContainMachine, ContainHuman, Accuracy > 0.9) %>%
+    nrow() # 129 pairs that have both human and machine data, and the machine accurarcy is > 0.9
+
 
 #
-isolates_abundant <- isolates %>% filter(RelativeAbundance > 0.05)
-nrow(isolates_abundant) # 51 isolates matched to abundant ESVs
+pairs_T8_combined_cleaned1 <- pairs_T8_combined %>% # 160*3 = 480 cocultures
+    left_join(pairs_machine) %>%
+    filter(ContainMachine) %>% # 154 pairs that have machine result. 154*3 = 462 cocultures
+    # Remove those with low accuracy
+    left_join(accuracy) %>%
+    filter(Accuracy > 0.9) # 145 pairs that have human result. 145*3=435 cocultures
+nrow(pairs_T8_combined_cleaned1) # 145*3 = 135 cocultures that have high accurarcy machine result
 
-isolates_abundant_richness <- isolates_abundant %>%
-    group_by(Community) %>%
-    summarize(CommunitySizeAbundant = n())
+pairs_T8_combined_cleaned2 <- pairs_T8_combined_cleaned1 %>% # 145*3=435 cocultures
+    # Remove pairs that have no human results
+    left_join(pairs_human_machine) %>%
+    select(Community, Isolate1, Isolate2, Isolate1InitialODFreq,
+           Isolate1Count_machine, Isolate1Count_human,
+           TotalCount_machine, TotalCount_human,
+           Isolate1CFUFreq_machine, Isolate1CFUFreq_human,
+           ContainHumanMachine) %>%
+    filter(ContainHumanMachine)
+nrow(pairs_T8_combined_cleaned2) # 129*3 = 387 cocultures
 
-pairs_abundant <- pairs %>%
-    select(PairID, Community, Isolate1, Isolate2, outcome) %>%
-    left_join(select(isolates_abundant, Community, Isolate1 = Isolate, RelativeAbundance1 = RelativeAbundance)) %>%
-    left_join(select(isolates_abundant, Community, Isolate2 = Isolate, RelativeAbundance2 = RelativeAbundance)) %>%
-    filter(!is.na(RelativeAbundance1), !is.na(RelativeAbundance2))
-nrow(pairs_abundant) # 85 pairs
+pairs_T8_combined_cleaned3 <- pairs_T8_combined %>% # 160*3 = 480 cocultures
+    left_join(pairs_human) %>%
+    filter(ContainHuman)
+nrow(pairs_T8_combined_cleaned3) # 130 pairs that have human result. 130*3 = 390 cocultures
 
-pairs_abundant_richness <- pairs_abundant %>%
-    group_by(Community) %>%
-    summarize(CommunityPairSizeAbundant = n())
-
-n_ESVs <- communities_abundance_T12 %>%
-    group_by(Community) %>%
-    count(name = "ESVRichness")
-
-communities_abundant <- communities %>%
-    left_join(isolates_abundant_richness) %>%
-    left_join(pairs_abundant_richness) %>%
-    left_join(n_ESVs) %>%
-    select(CommunityLabel, CommunitySize, CommunitySizeAbundant, CommunityPairSize, CommunityPairSizeAbundant, ESVRichness)
-
-sum(communities_abundant$CommunitySize) # 64 isolates
-sum(communities_abundant$CommunitySizeAbundant) # 51 abundant isolates
-sum(communities_abundant$CommunityPairSize) # 145 pairs
-sum(communities_abundant$CommunityPairSizeAbundant) # 85 pairs of abundant isolates
 
 #
-p <- pairs_abundant %>%
-    group_by(Community, outcome) %>%
-    count(name = "Count") %>%
-    # Total count
-    group_by(Community) %>% mutate(Fraction = Count / sum(Count), TotalCount = sum(Count)) %>%
-    left_join(communities, by = "Community") %>%
-    #mutate(outcome = factor(outcome, c("5-inconclusive", "1-exclusion", "2-exclusion", "3-coexistence", "4-coexistence"))) %>%
-    ungroup() %>%
+p1 <- pairs_T8_combined_cleaned2 %>%
     ggplot() +
-    geom_col(aes(x = CommunityLabel, fill = outcome, y = Fraction), color = 1, width = .8, linewidth = .5, position = position_stack(reverse = T)) +
-    # Number of distcint ESVs
-    annotate("text", x = 14, y = 1.25, label = "n. of ESVs", size = 4, hjust = 0) +
-    annotate("text", x = 1:13, y = 1.25, label = communities_abundant$ESVRichness, size = 4) +
-    annotate("segment", x = .5, xend = 18, y = 1.2, yend = 1.2, color = "black") +
-    # Number of isolates
-    annotate("text", x = 14, y = 1.15, label = "n. of isolates", size = 4, hjust = 0) +
-    annotate("text", x = 1:13, y = 1.15, label = communities_abundant$CommunitySizeAbundant, size = 4) +
-    annotate("segment", x = .5, xend = 18, y = 1.1, yend = 1.1, color = "black") +
-    # Number of tested pairs
-    annotate("text", x = 14, y = 1.05, label = "n. of tested pairs", size = 4, hjust = 0) +
-    annotate("text", x = 1:13, y = 1.05, label = communities_abundant$CommunityPairSizeAbundant, size = 4) +
-    scale_fill_manual(values = outcome_colors, breaks = names(outcome_colors), labels = outcome_labels) +
-    scale_x_continuous(breaks = 1:13, expand = c(0.01, 0)) +
-    scale_y_continuous(breaks = seq(0,1,0.2), limit = c(0, 1.45), expand = c(0,0)) +
-    coord_cartesian(xlim = c(0.5, 13.5), ylim = c(0, 1), clip = "off") +
+    geom_abline(slope = 1, intercept = 0, color = "red", linetype = 2) +
+    geom_point(aes(x = TotalCount_human, y = TotalCount_machine), shape = 21, size = 2) +
+    geom_text(x = -Inf, y = Inf, label = paste0("N=", nrow(pairs_T8_combined_cleaned2)), vjust = 2, hjust = -1) +
+    scale_x_log10() +
+    scale_y_log10() +
     theme_classic() +
-    theme(
-        legend.text = element_text(size = 12),
-        legend.title = element_blank(),
-        #legend.key.size = unit(5, "mm"),
-        legend.key.width = unit(8, "mm"),
-        legend.key.height = unit(8, "mm"),
-        legend.spacing.y = unit(8, "mm"),
-        #legend.margin = margin(10,10,1,0, unit = "mm"),
-        legend.position = "right",
-        panel.border = element_rect(color = 1, fill = NA),
-        axis.text = element_text(color = 1, size = 12),
-        axis.title = element_text(color = 1, size = 12),
-        plot.margin = unit(c(40, 20, 5, 5), "mm")
-    ) +
-    #guides(fill = guide_legend(byrow = T, ncol = 2)) +
-    guides(fill = guide_legend(byrow = T, ncol = 1)) +
-    labs(x = "community", y = "fraction")
-
-ggsave(here::here("plots/FigS12-pairwise_competition_abundant.png"), p, width = 10, height = 6)
+    labs(x = "Segmentation CFU count", y = "Manual CFU count")
 
 
-# Stats
-nrow(pairs_abundant)
-pairs_abundant %>%
-    group_by(outcome) %>%
-    count(name = "Count") %>%
-    ungroup() %>%
-    mutate(Fraction = Count / sum(Count), TotalCount = sum(Count))
+p2 <- pairs_T8_combined_cleaned2 %>%
+    ggplot() +
+    geom_abline(slope = 1, intercept = 0, color = "red", linetype = 2) +
+    geom_hline(yintercept = c(0,1), color = gray(.8), linetype = 2) +
+    geom_vline(xintercept = c(0,1), color = gray(.8), linetype = 2) +
+    geom_point(aes(x = Isolate1CFUFreq_human, y = Isolate1CFUFreq_machine), shape = 21, size = 2, stroke = .4) +
+    geom_text(x = 0.5, y = 0.9, label = paste0("N=", nrow(pairs_T8_combined_cleaned2))) +
+    scale_shape_manual(values = c("TRUE" = 16, "FALSE" = 21)) +
+    theme_classic() +
+    labs(x = "Random Forest CFU frequency", y = "Manual CFU frequency")
 
+p <- plot_grid(p1, p2, nrow = 1, axis = "tblr", align = "h", scale = .9, labels = c("A", "B")) +
+    paint_white_background()
 
+ggsave(here::here("plots/FigS12-human_machine_comparison.png"), p, width = 8, height = 4)
 
-
-
-
+# R-squared
+pairs_T8_combined_cleaned2 %>%
+    filter(!is.na(Isolate1Count_human)) %>%
+    lm(TotalCount_human ~ TotalCount_machine, data = .) %>%
+    summary() # adjusted R-squared:  0.8478
+pairs_T8_combined_cleaned2 %>%
+    filter(!is.na(Isolate1Count_human)) %>%
+    lm(Isolate1CFUFreq_human ~ Isolate1CFUFreq_machine, data = .) %>%
+    summary() # adjusted R-squared:  0.8665

@@ -63,8 +63,12 @@ pairs_remained <- pairs_remained %>%
     # Remove low-accuracy model pairs. nine pairs
     filter(AccuracyMean > 0.9) # 145 pairs
 nrow(pairs_remained) # 145 pairs
-
+pairs_remained <- pairs_remained %>%
+    # Remove the community with only one pair
+    filter(Community != "C10R2")
+nrow(pairs_remained) # 144 pairs
 write_csv(pairs_remained, paste0(folder_data, "output/pairs_remained.csv"))
+
 
 # Remove the four isolates with bad sabger fgie  ----
 tournament_rank <- function(pairs_comm) {
@@ -111,6 +115,8 @@ tournament_rank <- function(pairs_comm) {
 }
 
 isolates_tournament <- communities %>%
+    # Remove the community with only one pair
+    filter(Community != "C10R2") %>%
     select(comm = Community, everything()) %>%
     rowwise() %>%
     mutate(pairs_comm = pairs_remained %>% filter(Community == comm) %>% list()) %>%
@@ -120,12 +126,16 @@ isolates_tournament <- communities %>%
 
 write_csv(isolates_tournament, paste0(folder_data, "temp/94-isolates_tournament.csv"))
 
-# Remove the 4 isolates with bad ESV-Sanger aligments
-nrow(isolates) # 68 pairs in pairwise competition
+# Remove the 4 isolates with bad ESV-Sanger alignment, and the two isolate from the removed community C10R2
+nrow(isolates) # 68 isolates in pairwise competition
 isolates_remained <- isolates %>%
     filter(!is.na(BasePairMismatch)) %>%
+    # Remove the community with only one pair
+    filter(Community != "C10R2") %>%
     left_join(isolates_tournament)
+nrow(isolates_remained)
 write_csv(isolates_remained, paste0(folder_data, "output/isolates_remained.csv"))
+
 
 # Update the community size
 pairs_tested_count <- pairs_remained %>%
@@ -138,13 +148,12 @@ communities_remained <- isolates_remained %>%
     summarize(CommunitySize = n()) %>%
     ungroup() %>%
     left_join(pairs_tested_count) %>%
-    #mutate(CommunityPairSize = count_pairs(CommunitySize)) %>%
     # Re order the communities according to communitiy size
     arrange(CommunitySize, CommunityPairSize) %>%
-    mutate(CommunityLabel = 1:13)
+    # Remove the community with only one pair
+    filter(Community != "C10R2") %>%
+    mutate(CommunityLabel = 1:12)
 write_csv(communities_remained, paste0(folder_data, "output/communities_remained.csv"))
-
-
 
 
 

@@ -399,7 +399,6 @@ eq_freq_stable <- communities_abundance_temporal %>%
 
 # Linear model predicted equilibrium frequency
 xintercept_stable <- communities_abundance_fitness_stable %>%
-    #filter(CommunityESV %in% ESV_sig_stable$CommunityESV) %>%
     nest(data = c(-Community, -ESV_ID, -CommunityESV)) %>%
     mutate(fit = map(data, ~ lm(Fitness ~ Relative_Abundance, data = .x)),
            tidied = map(fit, tidy)) %>%
@@ -413,6 +412,9 @@ xintercept_stable <- communities_abundance_fitness_stable %>%
     # Mark significant correlation
     left_join(select(tb_cor_stable, Community, ESV_ID, estimate, p.value))
 
+
+
+
 p <- communities_abundance_fitness_stable %>%
     ggplot() +
     geom_hline(yintercept = 0, linetype = 2) +
@@ -422,7 +424,7 @@ p <- communities_abundance_fitness_stable %>%
     # Linear model predicted
     geom_vline(data = xintercept_stable, aes(xintercept = Xintercept), color = "green", linetype = 2) +
     # Mean of T9-12
-    geom_vline(data = communities_eq_freq_stable, aes(xintercept = EquilibriumAbundance), color = "navyblue", linetype = 2) +
+    geom_vline(data = eq_freq_stable, aes(xintercept = EquilibriumAbundance), color = "navyblue", linetype = 2) +
     scale_color_manual(values = c("p<0.05" = "pink", "p>=0.05" = grey(0.8))) +
     scale_x_continuous(breaks = scales::pretty_breaks(n = 3)) +
     scale_y_continuous(breaks = scales::pretty_breaks(n = 3)) +
@@ -452,7 +454,7 @@ p <- communities_abundance_fitness_stable %>%
     # Linear model predicted
     geom_vline(data = xintercept_stable, aes(xintercept = Xintercept), color = "green", linetype = 2) +
     # Mean of T9-12
-    geom_vline(data = communities_eq_freq_stable, aes(xintercept = EquilibriumAbundance), color = "navyblue", linetype = 2) +
+    geom_vline(data = eq_freq_stable, aes(xintercept = EquilibriumAbundance), color = "navyblue", linetype = 2) +
     scale_color_manual(values = c("p<0.05" = "pink", "p>=0.05" = grey(0.8))) +
     scale_x_continuous(breaks = scales::pretty_breaks(n = 3)) +
     scale_y_continuous(breaks = scales::pretty_breaks(n = 3)) +
@@ -506,7 +508,6 @@ range(ESV_sig_ephemeral$estimate) # range of correlation [-1, -0.714]
 
 # Linear model predicted equilibrium frequency
 xintercept_ephemeral <- communities_abundance_fitness_ephemeral %>%
-    #filter(CommunityESV %in% ESV_sig_ephemeral$CommunityESV) %>%
     nest(data = c(-Community, -ESV_ID, -CommunityESV)) %>%
     mutate(fit = map(data, ~ lm(Fitness ~ Relative_Abundance, data = .x)),
            tidied = map(fit, tidy)) %>%
@@ -516,9 +517,12 @@ xintercept_ephemeral <- communities_abundance_fitness_ephemeral %>%
     # X intercept
     mutate(Xintercept = -`(Intercept)` / Relative_Abundance) %>%
     select(Community, ESV_ID, CommunityESV, Xintercept, Slope = Relative_Abundance, Yintercept = `(Intercept)`) %>%
+    rename(Slope = Fitness, Xintercept = `(Intercept)`) %>%
     mutate(ESVType = "transient") %>%
     # Mark significant correlation
     left_join(select(tb_cor_ephemeral, Community, ESV_ID, estimate, p.value))
+
+
 
 
 p <- communities_abundance_fitness_ephemeral %>%
@@ -665,11 +669,11 @@ ggsave(paste0(folder_data, "temp/35-13-lm_eq_stable_vs_transient.png"), p, width
 # x: the equilibrium frequency calculated as mean of T9-T12 vs.
 # y: the equilibrium frequency predicted by the negative linear model
 
-eq_freq_stable <- communities_eq_freq_stable %>%
+eq_freq_stable_both <- eq_freq_stable %>%
     left_join(xintercept_stable) %>%
     drop_na(Xintercept)
 
-p <- eq_freq_stable %>%
+p <- eq_freq_stable_both %>%
     mutate(ShowNegFreqDep = case_when(
         estimate < 0 & p.value < 0.05 ~ "neg freq dep",
         T ~ "no evidence of neg freq dep"
@@ -699,25 +703,30 @@ cor.test(eq_freq_stable$EquilibriumAbundance, eq_freq_stable$Xintercept, method 
 # x: the equilibrium frequency calculated as mean of T9-T12 vs.
 # y: the equilibrium frequency predicted by the negative linear model
 
-eq_freq_stable_comm <- eq_freq_stable %>%
+eq_freq_stable_comm <- eq_freq_stable_both %>%
     mutate(InThisStudy = case_when(
         Community %in% communities$Community ~ "four communities in current study",
         T ~ "other 22 communities"
     )) %>%
-    arrange(desc(InThisStudy))
+    arrange(desc(InThisStudy)) # 99 ESVs
 
-eq_freq_stable_comm %>%
+eq_freq_stable_comm_filtered <- eq_freq_stable_comm %>%
+    # Negative slope
+    filter(Slope < 0)  # 95 ESVs
+    filter(Xintercept > 0) # 91 ESVs
+
+eq_freq_stable_comm_filtered %>%
     group_by(InThisStudy, Community) %>%
     count() %>%
     pull(InThisStudy) %>%
     table() # 4 communities in current study, 22 other communities
 
-eq_freq_stable_comm %>%
+eq_freq_stable_comm_filtered %>%
     group_by(InThisStudy, Community) %>%
     count() # 18 red points. Or 18 ESVs in the current study
 
 
-p <- eq_freq_stable_comm %>%
+p <- eq_freq_stable_comm_filtered %>%
     ggplot() +
     geom_abline(intercept = 0, slope = 1, linetype = 2, color = "black") +
     geom_point(aes(x = EquilibriumAbundance, y = Xintercept, color = InThisStudy), shape = 21, size = 2, stroke = 1) +
@@ -726,16 +735,24 @@ p <- eq_freq_stable_comm %>%
     scale_y_continuous(limits = c(0,1)) +
     theme_classic() +
     theme(
-        panel.border = element_rect(color = 1, fill = NA, linewidth = 0.5),
-        #legend.position = c(0.7, 0.2),
-        legend.background = element_rect(color = NA, fill = NA)
+        panel.border = element_rect(color = 1, fill = NA, linewidth = 1),
+        axis.text = element_text(color = 1),
+        legend.position = c(0.68, 0.15),
+        legend.title = element_blank(),
+        legend.margin = margin(0,3,1,1, unit = "mm"),
+        legend.box.margin = margin(0,0,0,0, unit = "mm"),
+        legend.text = element_text(size = 6),
+        legend.key.size = unit(5, "mm"),
+        legend.spacing.x = unit(1, "mm"),
+        legend.spacing.y = unit(2, "mm"),
+        legend.background = element_rect(color = 1, fill = NA)
     ) +
-    guides() +
-    labs(x = "mean of T9-T12", y = "predicetd by linear model")
+    guides(color = guide_legend()) +
+    labs(x = "empirical equilibrium abundance", y = "equilibrium abundance\npredicted from assembly dynamics")
 # There are 16 red points because two points have negative predicted ESV eq freq from the linear model
-ggsave(paste0(folder_data, "temp/35-15-ESV_eq_freq_predicted_comm.png"), p, width = 6, height = 4)
+ggsave(paste0(folder_data, "temp/35-15-ESV_eq_freq_predicted_comm.png"), p, width = 4, height = 4)
 
-cor.test(eq_freq_stable$EquilibriumAbundance, eq_freq_stable$Xintercept, method = "pearson") %>%
+cor.test(eq_freq_stable_comm$EquilibriumAbundance, eq_freq_stable_comm$Xintercept, method = "pearson") %>%
     tidy()
 
 table(eq_freq_stable_comm$Slope < 0) # 95 ESVs have slope <0, 4 ESVs have slope > 0
@@ -748,42 +765,212 @@ eq_freq_stable_comm %>%
     count()
 
 # For both stable and ephemeral ESVs, compare average fitness value vs. equilibirum freq ----
+ESV_ephemeral2 <- communities_abundance_fitness %>%
+    drop_na() %>%
+    mutate(CommunityESV = paste0(Community, ESV_ID)) %>%
+    filter(!(CommunityESV %in% ESV_stable$CommunityESV)) %>%
+    group_by(CommunityESV, Community, ESV_ID) %>%
+    count() %>%
+    # Include the ESVs with >=3 data points
+    filter(n>=3) %>%
+    # Remove the artifact C10R4 Stenotrophomonas
+    filter(CommunityESV != "C10R4Stenotrophomonas")
+
+communities_abundance_fitness_ephemeral2 <- communities_abundance_fitness %>%
+    drop_na() %>%
+    mutate(CommunityESV = paste0(Community, ESV_ID)) %>%
+    filter(CommunityESV %in% ESV_ephemeral2$CommunityESV)
+
+# Correlation
+tb_cor_ephemeral2 <- communities_abundance_fitness_ephemeral2 %>%
+    nest(data = c(-Community, -ESV_ID)) %>%
+    mutate(fit = map(data, ~ cor_test_long(.x)),
+           tidied = map(fit, tidy)) %>%
+    unnest(tidied)
+
+ESV_sig_ephemeral2 <- tb_cor_ephemeral2 %>%
+    select(Community, ESV_ID, estimate, p.value) %>%
+    filter(p.value < 0.05, estimate < 0) %>%
+    mutate(CommunityESV = paste0(Community, ESV_ID)) %>%
+    mutate(Significance = "p<0.05")
+
+nrow(tb_cor_ephemeral2) # 110 ephemeral ESVs
+nrow(ESV_sig_ephemeral2) # 21 ephemeral ESVs shows significant negative correlation
+range(ESV_sig_ephemeral2$estimate) # range of correlation [-1, -0.714]
+
+# Linear model predicted equilibrium frequency
+xintercept_ephemeral2 <- communities_abundance_fitness_ephemeral2 %>%
+    #filter(CommunityESV %in% ESV_sig_ephemeral$CommunityESV) %>%
+    nest(data = c(-Community, -ESV_ID, -CommunityESV)) %>%
+    mutate(fit = map(data, ~ lm(Fitness ~ Relative_Abundance, data = .x)),
+           tidied = map(fit, tidy)) %>%
+    unnest(tidied) %>%
+    select(Community, ESV_ID, CommunityESV, term, estimate) %>%
+    pivot_wider(names_from = term, values_from = estimate) %>%
+    # X intercept
+    mutate(Xintercept = -`(Intercept)` / Relative_Abundance) %>%
+    select(Community, ESV_ID, CommunityESV, Xintercept, Slope = Relative_Abundance, Yintercept = `(Intercept)`) %>%
+    mutate(ESVType = "transient") %>%
+    # Mark significant correlation
+    left_join(select(tb_cor_ephemeral2, Community, ESV_ID, estimate, p.value))
+
+
+if (FALSE) {
+# Check if the linera model matches
+test <- communities_abundance_fitness_ephemeral2 %>%
+    filter(CommunityESV == "C1R4Pseudomonas.14")
+
+test %>%
+    lm(Fitness ~ Relative_Abundance, data = .) %>%
+    tidy()
+
+model_params <- test %>%
+    lm(Fitness ~ Relative_Abundance, data = .) %>%
+    tidy()
+
+
+a <- model_params$estimate[model_params$term == "Relative_Abundance"]
+b <- model_params$estimate[model_params$term == "(Intercept)"]
+sigma_a <- model_params$std.error[model_params$term == "Relative_Abundance"]
+sigma_b <- model_params$std.error[model_params$term == "(Intercept)"]
+covar_ab <- var(test$Relative_Abundance, test$Fitness)
+X = -b/a
+
+sqrt((sigma_a/a)^2 + (sigma_b/b)^2 - 2*(covar_ab/ (a*b)))*X
+
+
+select(term, estimate) %>%
+    pivot_wider(names_from = term, values_from = estimate) %>%
+    mutate(Xintercept = -`(Intercept)` / Relative_Abundance)
+
+test %>%
+    ggplot(aes(x = Relative_Abundance, y = Fitness)) +
+    geom_hline(yintercept = 0, linetype = 2) +
+    geom_vline(xintercept = 0, linetype = 2) +
+    geom_point() +
+    geom_smooth(method = "lm", fullrange = T) +
+    scale_x_continuous(limits = c(-0.01, 0.03)) +
+    theme_classic() +
+    theme() +
+    guides() +
+    labs()
+
+}
+
+if (FALSE) {
+
+# Calculate the CIs of F=0
+xintercept_CI_ephemeral2 <- communities_abundance_fitness_ephemeral2 %>%
+    nest(data = c(-Community, -ESV_ID, -CommunityESV)) %>%
+    mutate(model = map(data, ~ lm(Relative_Abundance ~ Fitness, data = .x)),
+           Xintercept = map(model, function(x) as_tibble(predict(x, newdata = tibble(Fitness = 0), interval = "prediction", level = 0.95))),
+           tidied = map(model, tidy)) %>%
+    # X intercept
+    unnest(Xintercept) %>%
+    rename(Xintercept_fit = fit, Xintercept_lwr = lwr, Xintercept_upr = upr) %>%
+    unnest(tidied) %>%
+    select(Community, ESV_ID, CommunityESV, Xintercept_fit, Xintercept_lwr, Xintercept_upr, term, estimate) %>%
+    pivot_wider(names_from = term, values_from = estimate) %>%
+    rename(Slope2 = Fitness, Xintercept2 = `(Intercept)`) %>%
+    mutate(ESVType = "transient")
+
+left_join(xintercept_ephemeral2, xintercept_CI_ephemeral2) %>%
+    ggplot() +
+    geom_point(aes(x = Xintercept, y = Xintercept_fit)) +
+    theme_classic() +
+    theme() +
+    guides() +
+    labs()
+
+
+# Check if the linera model matches
+test <- communities_abundance_fitness_ephemeral2 %>%
+    filter(CommunityESV == "C1R4Pseudomonas.20")
+
+test %>%
+    lm(Fitness ~ Relative_Abundance, data = .) %>%
+    tidy() %>%
+    select(term, estimate) %>%
+    pivot_wider(names_from = term, values_from = estimate) %>%
+    mutate(Xintercept = -`(Intercept)` / Relative_Abundance)
+
+test %>%
+    lm(Relative_Abundance ~ Fitness, data = .) %>%
+    predict(newdata = tibble(Fitness = 0), interval = "prediction", level = 0.95)
+# tidy() %>%
+#     select(term, estimate) %>%
+#     pivot_wider(names_from = term, values_from = estimate) %>%
+#     mutate(Xintercept = -`(Intercept)` / Relative_Abundance)
+test %>%
+    ggplot(aes(x = Relative_Abundance, y = Fitness)) +
+    geom_hline(yintercept = 0, linetype = 2) +
+    geom_vline(xintercept = 0, linetype = 2) +
+    geom_point() +
+    geom_smooth(method = "lm", se = F, fullrange = T) +
+    scale_x_continuous(limits = c(-.13, .1)) +
+    theme_classic() +
+    theme() +
+    guides() +
+    labs()
+
+test %>%
+    ggplot(aes(x = Fitness, y = Relative_Abundance)) +
+    geom_hline(yintercept = 0, linetype = 2) +
+    geom_vline(xintercept = 0, linetype = 2) +
+    geom_point() +
+    geom_smooth(method = "lm", se = F, fullrange = T) +
+    #scale_x_continuous(limits = c(-.1, .1)) +
+    theme_classic() +
+    theme() +
+    guides() +
+    labs()
+}
+
+
+
 # Fitness
 communities_abundance_fitness_mean <- bind_rows(
     communities_abundance_fitness_stable %>% mutate(ESVType = "stable"),
-    communities_abundance_fitness_ephemeral %>% mutate(ESVType = "transient")
+    communities_abundance_fitness_ephemeral2 %>% mutate(ESVType = "transient")
 ) %>%
     group_by(ESVType, Community, ESV_ID) %>%
     summarize(MeanFitness = mean(Fitness), NumberPoint = n(), SdFitness = sd(Fitness))
-table(communities_abundance_fitness_mean$ESVType) # 99 stable ESVs and 46 transient ESVs
+table(communities_abundance_fitness_mean$ESVType) # 99 stable ESVs and 110 transient ESVs
 
-# Linear model predicted equilibrium frequency
-xintercept <- bind_rows(xintercept_stable, xintercept_ephemeral)
-table(xintercept$ESVType) # 99 stable ESVs and 46 transient ESVs
+# Linear model predicted equilibrium frequency ----
+xintercept <- bind_rows(xintercept_stable, xintercept_ephemeral2)
+#xintercept <- bind_rows(xintercept_CI_stable, xintercept_CI_ephemeral2)
+table(xintercept$ESVType) # 99 stable ESVs and 110 transient ESVs
 
 fitness_eq_freq <- left_join(communities_abundance_fitness_mean, xintercept)
-nrow(fitness_eq_freq) # 99+46 = 145 rows
+nrow(fitness_eq_freq) # 99+110 = 209 rows
 
-p <- fitness_eq_freq %>%
+fitness_eq_freq_filtered <- fitness_eq_freq %>%
+    filter(Slope < 0)
+nrow(fitness_eq_freq_filtered) # 175 ESVs
+table(fitness_eq_freq_filtered$ESVType) # 95 stable ESVs and 80 transient ESVs
+
+
+p <- fitness_eq_freq_filtered %>%
+    arrange(ESVType) %>%
     ggplot() +
-    geom_point(aes(x = MeanFitness, y = Xintercept, color = ESVType), shape = 21, size = 2, stroke = 1) +
+    geom_vline(xintercept = 0, linewidth = 0.1, linetype = 2) +
+    geom_hline(yintercept = 0, linewidth = 0.1, linetype = 2) +
+    geom_point(aes(x = MeanFitness, y = Xintercept, color = ESVType), shape = 21, size = 2, stroke = .5) +
     #geom_segment(aes(x = MeanFitness - 2*SdFitness, xend = MeanFitness + 2*SdFitness, y = Xintercept, yend = Xintercept, color = ESVType)) +
-    geom_vline(xintercept = 0, linewidth = 0.1) +
-    geom_hline(yintercept = 0, linewidth = 0.1) +
-    scale_color_manual(values = RColorBrewer::brewer.pal(3, "Set1"), label = c(stable = "stable ESV", transient = "transient ESV")) +
+    scale_color_manual(values = c(stable = "firebrick1", transient = grey(0.7)), label = c(stable = "stable ESV", transient = "transient ESV")) +
     theme_classic() +
     theme(
-        panel.border = element_rect(color = 1, fill = NA, linewidth = .5)
+        panel.border = element_rect(color = 1, fill = NA, linewidth = 1)
     ) +
-    guides() +
-    labs(x = "average fitness value", y = "predicted equilibrium frequency from linear model")
-
+    guides(color = guide_legend(title = "", override.aes = list(stroke = 1))) +
+    labs(x = "average fitness value", y = "equilibrium frequency\npredicted from assembly dynamics")
 ggsave(paste0(folder_data, "temp/35-16-stable_vs_transient.png"), p, width = 5, height = 4)
 
 
-# The number of data points in each ESV panel
-p <- fitness_eq_freq %>%
-    mutate(NumberPoint = factor(NumberPoint, 5:11)) %>%
+# The number of data points in each ESV panel ----
+p <- fitness_eq_freq_filtered %>%
+    mutate(NumberPoint = factor(NumberPoint, 3:11)) %>%
     mutate(ESVType = factor(ESVType)) %>%
     group_by(ESVType, NumberPoint, .drop = F) %>%
     summarize(Count = n()) %>%
@@ -796,47 +983,64 @@ p <- fitness_eq_freq %>%
     labs()
 ggsave(paste0(folder_data, "temp/35-17-stable_vs_transient_samplesize.png"), p, width = 5, height = 4)
 
-# Distribution of fitness value without error bar
-p1 <- fitness_eq_freq %>%
-    arrange(ESVType) %>%
-    mutate(CommunityESV = factor(CommunityESV)) %>%
-    ggplot() +
-    geom_point(aes(x = CommunityESV, y = MeanFitness, color = ESVType), shape = 21, size = 2, stroke = 1) +
-    #geom_segment(aes(x = CommunityESV, xend = CommunityESV, y = MeanFitness - SdFitness, yend = MeanFitness + SdFitness, color = ESVType)) +
-    scale_color_manual(values = RColorBrewer::brewer.pal(3, "Set1"), label = c(stable = "stable ESV", transient = "transient ESV")) +
-    coord_flip() +
-    scale_x_discrete(position = "top") +
-    theme_classic() +
-    theme(
-        panel.grid.major.y = element_line(color = grey(0.9)),
-        legend.position = "top",
-        axis.text.y = element_text(hjust = 0)
-        #axis.text.x = element_text(size = 6, angle = 45, hjust = 0)
-    ) +
-    guides() +
-    labs()
-
-# Distribution of fitness value with error bar
-p2 <- fitness_eq_freq %>%
+# Distribution of fitness value with error bar----
+p1 <- fitness_eq_freq_filtered %>%
     arrange(ESVType) %>%
     mutate(CommunityESV = factor(CommunityESV)) %>%
     ggplot() +
     geom_point(aes(x = CommunityESV, y = MeanFitness, color = ESVType), shape = 21, size = 2, stroke = 1) +
     geom_segment(aes(x = CommunityESV, xend = CommunityESV, y = MeanFitness - SdFitness, yend = MeanFitness + SdFitness, color = ESVType)) +
-    scale_color_manual(values = RColorBrewer::brewer.pal(3, "Set1"), label = c(stable = "stable ESV", transient = "transient ESV")) +
+    geom_hline(yintercept = 0, linewidth = 0.5, linetype = 2) +
+    scale_color_manual(values = c(stable = "firebrick1", transient = grey(0.7)), label = c(stable = "stable ESV", transient = "transient ESV")) +
     coord_flip() +
     scale_x_discrete(position = "top") +
     theme_classic() +
     theme(
+        panel.border = element_rect(fill = NA, color = 1, linewidth = 1),
         panel.grid.major.y = element_line(color = grey(0.9)),
-        legend.position = "top",
-        axis.text.y = element_text(hjust = 0)
+        legend.position = "none",
+        axis.title = element_text(size = 15),
+        axis.title.y = element_blank(),
+        axis.text.x = element_text(size = 10),
+        axis.text.y = element_blank()
         #axis.text.x = element_text(size = 6, angle = 45, hjust = 0)
     ) +
     guides() +
-    labs()
+    labs(x = "", y = "invasion fitness")
 
-p <- plot_grid(p1, p2, nrow = 1, align = "h", axis = "tb")
+# predicted equilibirum fitness
+p2 <- fitness_eq_freq_filtered %>%
+    arrange(ESVType) %>%
+    mutate(CommunityESV = factor(CommunityESV)) %>%
+    ggplot() +
+    geom_point(aes(x = CommunityESV, y = Xintercept, color = ESVType), shape = 21, size = 2, stroke = 1) +
+    #geom_segment(aes(x = CommunityESV, xend = CommunityESV, y = MeanFitness - SdFitness, yend = MeanFitness + SdFitness, color = ESVType)) +
+    geom_hline(yintercept = 0, linewidth = 0.5, linetype = 2) +
+    scale_color_manual(values = c(stable = "firebrick1", transient = grey(0.7)), label = c(stable = "stable ESV", transient = "transient ESV")) +
+    coord_flip() +
+    scale_x_discrete(position = "top") +
+    theme_classic() +
+    theme(
+        panel.border = element_rect(fill = NA, color = 1, linewidth = 1),
+        panel.grid.major.y = element_line(color = grey(0.9)),
+        legend.position = "top",
+        legend.title = element_blank(),
+        legend.margin = margin(0,3,1,1, unit = "mm"),
+        legend.box.margin = margin(0,0,0,0, unit = "mm"),
+        legend.text = element_text(size = 15),
+        legend.key.size = unit(10, "mm"),
+        legend.spacing.x = unit(1, "mm"),
+        legend.spacing.y = unit(2, "mm"),
+        legend.background = element_rect(color = NA, fill = NA),
+        axis.title = element_text(size = 15),
+        axis.text.x = element_text(size = 10),
+        axis.text.y = element_text(size = 8, hjust = 0)
+        #axis.text.x = element_text(size = 6, angle = 45, hjust = 0)
+    ) +
+    guides() +
+    labs(x = "ESV", y = "predicted equilibrium frequency")
+
+p <- plot_grid(p1, p2, nrow = 1, align = "h", axis = "tb", rel_widths = c(1,1.2))
 ggsave(paste0(folder_data, "temp/35-18-stable_vs_transient_fitness_value.png"), p, width = 10, height = 15)
 
 

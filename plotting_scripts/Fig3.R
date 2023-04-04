@@ -13,7 +13,7 @@ load(paste0(folder_data, "temp/38-communities_network.Rdata"))
 
 
 # Plot individual networks ----
-set.seed(1)
+set.seed(2)
 node_size = 3
 edge_width = .8
 plot_network_hierarchy <- function(net, n_rank = 10, n_break = 10) {
@@ -63,6 +63,7 @@ plot_network_hierarchy <- function(net, n_rank = 10, n_break = 10) {
         ggraph(layout = "nicely") +
         geom_hline(yintercept = c(-n_rank:-1), color = "grey90") +
         geom_node_point(size = node_size, shape = 21, fill = "grey", stroke = node_size/5, color = "black") +
+        #geom_node_text(aes(label = Isolate)) +
         geom_edge_arc(strength = strength_angle, alpha = 0.5,
                       aes(color = outcome), width = edge_width,
                       arrow = arrow(length = unit(edge_width, "mm"), type = "closed", angle = 30, ends = "last"),
@@ -87,19 +88,18 @@ communities_network_hierarchy <- communities_network %>%
     arrange(CommunityLabel) %>%
     rowwise() %>%
     mutate(NetworkHierarchyPlot = plot_network_hierarchy(Network, n_rank = CommunitySize) %>% list())
-plot_network_hierarchy(communities_network_hierarchy$Network[[13]])
+#plot_network_hierarchy(communities_network_hierarchy$Network[[13]])
 
 # Check the isolate identity in hierarchy ----
 p_net_hierarchy_list <- communities_network_hierarchy$NetworkHierarchyPlot
-#for (i in 1:13) p_net_hierarchy_list[[i]] <- p_net_hierarchy_list + theme(legend.position = "none")
-p_net_hierarchy_list[[13]] <- p_net_hierarchy_list[[13]] +
+p_net_hierarchy_list[[12]] <- p_net_hierarchy_list[[12]] +
     scale_y_continuous(limits = c(-10-1, 0), breaks = -10:-1, labels = 10:1, position = "right") +
     theme(axis.title.y = element_text(color = 1, size = 10, angle = 270, margin = margin(l = 2, unit = "mm")),
           axis.text.y = element_text(color = 1, size = 10, margin = margin(l = 1, unit = "mm")))
 p_axistitle <- ggdraw() + draw_label("Community", fontface = 'plain', x = .5, hjust = .5) + theme(plot.margin = margin(5, 0, 5, 7))
 p_temp <- plot_grid(plotlist = p_net_hierarchy_list,
                     rel_widths = c(communities_network_hierarchy$CommunitySize / max(communities_network_hierarchy$CommunitySize))^1.5,
-                    labels = 1:13, label_fontface = "plain", label_x = c(rep(0.5, 12), 0.45), hjust = c(rep(.5, 12), 1),
+                    labels = 1:12, label_fontface = "plain", label_x = c(rep(0.5, 11), 0.45), hjust = c(rep(.5, 11), 1),
                     nrow = 1, axis = "tb", align = "h") + paint_white_background()
 p1 <- plot_grid(p_axistitle, p_temp, ncol = 1, rel_heights = c(.1, 1)) + paint_white_background()
 
@@ -107,7 +107,7 @@ p1 <- plot_grid(p_axistitle, p_temp, ncol = 1, rel_heights = c(.1, 1)) + paint_w
 # line legend
 edge_width = 0.5
 p_legend <- get_legend({
-    p_net_hierarchy_list[[13]] +
+    p_net_hierarchy_list[[12]] +
         geom_edge_arc(strength = 10,
                       aes(color = outcome), width = edge_width*1.3,
                       arrow = arrow(length = unit(edge_width*5, "mm"), type = "closed", angle = 30, ends = "last"),
@@ -126,7 +126,7 @@ p_legend <- get_legend({
 })
 
 p1 <- ggdraw(p1) +
-    draw_plot(p_legend, x = 0.5, y = 0.15, width = 0.1, height = 0.1,  hjust = 0, vjust = 0)
+    draw_plot(p_legend, x = 0.4, y = 0.15, width = 0.1, height = 0.1,  hjust = 0, vjust = 0)
 
 
 # Bionomial distribution of nontranistivity ----
@@ -138,35 +138,17 @@ subset_exclusion_network <- function (net) {
 
 communities_network <- communities_network %>%
     rowwise() %>%
-    mutate(ExclusionNetwork = list(subset_exclusion_network(Network)))
-
-networks <- union(
-    communities_network$Network[[1]], communities_network$Network[[2]],
-    communities_network$Network[[3]], communities_network$Network[[4]],
-    communities_network$Network[[5]], communities_network$Network[[6]],
-    communities_network$Network[[7]], communities_network$Network[[8]],
-    communities_network$Network[[9]], communities_network$Network[[10]],
-    communities_network$Network[[11]], communities_network$Network[[12]],
-    communities_network$Network[[13]], byname = "auto")
-
-triad_census(networks) %>% sum() # 120 possible triads with 0, 1, 2, or 3 links
-triad_census(networks) %>% `[`(c(9, 10, 12:16)) %>% sum() # 90 fully connected nodes
-
-exclusion_networks <- union(
-    communities_network$ExclusionNetwork[[1]], communities_network$ExclusionNetwork[[2]],
-    communities_network$ExclusionNetwork[[3]], communities_network$ExclusionNetwork[[4]],
-    communities_network$ExclusionNetwork[[5]], communities_network$ExclusionNetwork[[6]],
-    communities_network$ExclusionNetwork[[7]], communities_network$ExclusionNetwork[[8]],
-    communities_network$ExclusionNetwork[[9]], communities_network$ExclusionNetwork[[10]],
-    communities_network$ExclusionNetwork[[11]], communities_network$ExclusionNetwork[[12]],
-    communities_network$ExclusionNetwork[[13]], byname = "auto")
-
-n_triads <- triad_census(exclusion_networks) %>% `[`(c(9, 10, 12:16)) %>% sum() # 45 fully connected nodes
+    mutate(ExclusionNetwork = list(subset_exclusion_network(Network))) %>%
+    mutate(TriadCensus = sum(triad_census(Network))) %>%
+    mutate(TriadCensusFull = sum(triad_census(Network) %>% `[`(c(9, 10, 12:16)))) %>%
+    mutate(TriadCensusFullExclusion = sum(triad_census(ExclusionNetwork) %>% `[`(c(9, 10, 12:16)))) %>%
+    select(-CommunityPairSize, -Network, -ExclusionNetwork)
 
 
-union(communities_network$ExclusionNetwork[[1]], communities_network$ExclusionNetwork[[2]],
-      communities_network$ExclusionNetwork[[3]], communities_network$ExclusionNetwork[[4]]) %>%
-    triad_census() %>% `[`(c(9, 10, 12:16)) %>% sum() # These small networks should only have 0 fully connected triads
+sum(communities_network$TriadCensus) # 284 possible triads with 0, 1, 2, or 3 links in exclusion-coexistence network
+sum(communities_network$TriadCensusFull) # 200 fully connected nodes (3 links) in exclusion-coexistence network
+sum(communities_network$TriadCensusFullExclusion) # 77 fully connected nodes in exclusion-only network
+n_triads <- sum(communities_network$TriadCensusFullExclusion)
 
 set.seed(2)
 N = 10000
@@ -179,20 +161,21 @@ range(tb$NumberExpectedRPS)
 
 p2 <- tb %>%
     ggplot() +
-    geom_histogram(aes(x = NumberExpectedRPS), color = "black", fill = "white") +
+    geom_histogram(aes(x = NumberExpectedRPS), color = "black", fill = "white", binwidth = 1) +
     #scale_x_continuous(limits = c(0, max(tb$NumberExpectedRPS)+2)) +
-    annotate("text", x = Inf, y = Inf, label = paste0("Binomial(n=, ", n_triads, ", p = 1/4)"), vjust = 2, hjust = 1, size = 2.5) +
+    annotate("text", x = 22, y = 960, label = paste0("Binomial(n= ", n_triads, ", p = 1/4)"), size = 2.5, hjust = 0) +
     theme_classic() +
-    theme() +
+    theme(
+        plot.background = element_blank()
+    ) +
     guides() +
     labs(x = "number of expected nontransitivity", y = "count")
-
 #
 p <- ggdraw(plot_grid(p1, labels = "A")) +
     draw_plot(plot_grid(p2, labels = "B") , x = 0, y = 0, width = 0.3, height = 0.5, hjust = 0, vjust = 0)
 
 
-ggsave(here::here("plots/Fig4.png"), p, width = 10, height = 5)
+ggsave(here::here("plots/Fig3.png"), p, width = 10, height = 5)
 
 
 
