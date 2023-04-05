@@ -97,6 +97,8 @@ xintercept_stable <- communities_abundance_fitness_stable %>%
     # Mark significant correlation
     left_join(select(tb_cor_stable, Community, ESV_ID, estimate, p.value))
 
+table(xintercept_stable$Slope < 0) # 95 ESVs have negative slopes, 4 have positive slope
+
 p <- communities_abundance_fitness_stable %>%
     ggplot() +
     geom_hline(yintercept = 0, linetype = 2) +
@@ -129,9 +131,11 @@ ggsave(here::here("plots/FigS3-species_fitness_all_transfers_linear.png"), p, wi
 ESV_ephemeral <- communities_abundance_fitness %>%
     drop_na() %>%
     mutate(CommunityESV = paste0(Community, ESV_ID)) %>%
+    # Not in the list of stable ESVs
     filter(!(CommunityESV %in% ESV_stable$CommunityESV)) %>%
     group_by(CommunityESV, Community, ESV_ID) %>%
     count() %>%
+    # At least five data points
     filter(n>=5) %>%
     # Remove the artifact C10R4 Stenotrophomonas
     filter(CommunityESV != "C10R4Stenotrophomonas")

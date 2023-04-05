@@ -1,11 +1,9 @@
 library(tidyverse)
 library(cowplot)
-library(tidygraph)
-library(ggraph)
 source(here::here("analysis/00-metadata.R"))
 
 communities <- read_csv(paste0(folder_data, "output/communities_remained.csv"), show_col_types = F)
-isolates <- read_csv(paste0(folder_data, "output/isolates_remained.csv"), show_col_types = F)
+#isolates <- read_csv(paste0(folder_data, "output/isolates_remained.csv"), show_col_types = F)
 pairs <- read_csv(paste0(folder_data, "output/pairs_remained.csv"), show_col_types = F)
 pairs_freq <- read_csv(paste0(folder_data, "temp/93a-pairs_freq.csv"), show_col_types = F)
 pairs_boots <- read_csv(paste0(folder_data, "temp/93a-pairs_boots.csv"), show_col_types = F)
@@ -31,7 +29,7 @@ pB <- pairs %>%
     #mutate(outcome = factor(outcome, c("5-inconclusive", "1-exclusion", "2-exclusion", "3-coexistence", "4-coexistence"))) %>%
     ungroup() %>%
     ggplot() +
-    geom_col(aes(x = CommunityLabel, fill = outcome, y = Fraction), color = 1, width = .8, linewidth = .5, position = position_stack(reverse = T)) +
+    geom_col(aes(x = CommunityLabel, fill = outcome, y = Fraction), width = .8, linewidth = .5, position = position_stack(reverse = T)) +
     # Number of distinct ESVs
     annotate("text", x = 13, y = 1.25, label = "n. of ESVs", size = 4, hjust = 0) +
     annotate("text", x = 1:12, y = 1.25, label = communities$ESVRichness, size = 4) +
@@ -209,6 +207,11 @@ p <- plot_grid(p_top, NULL, pC, ncol = 1, labels = c("", "", "C"),
                scale = c(1, 1, .95), rel_heights = c(1, 0, 2)) + paint_white_background()
 ggsave(here::here("plots/Fig2.png"), p, width = 15, height = 10)
 
+# Save vector based
+p_top <- plot_grid(ggdraw(), pB + guides(fill = "none"), nrow = 1, labels = c("A", "B"), scale = c(1, 0.95), rel_widths = c(1.3, 1), axis = "b")
+p <- plot_grid(p_top, NULL, pC, ncol = 1, labels = c("", "", "C"),
+               scale = c(1, 1, .95), rel_heights = c(1, 0, 2)) + paint_white_background()
+ggsave(here::here("plots/Fig2_no_cartoon.pdf"), p, width = 15, height = 10)
 
 
 # Stat

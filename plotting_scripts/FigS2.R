@@ -135,9 +135,8 @@ communities_abundance_T0_for_plot <- bind_rows(
 )
 
 
-p2 <- communities_abundance_temporal_26 %>%
+p <- communities_abundance_temporal_26 %>%
     bind_rows(communities_abundance_T0_for_plot) %>%
-    #mutate(Community = factor(paste0("C", Inoculum, "R", Replicate), paste0("C", rep(1:12, each = 8), "R", rep(1:8, 12))))%>%
     mutate(Community = factor(Community, c(paste0("C", rep(c(2,6), each = 8), "R", rep(1:8,2)), paste0("C", c(1,3:5, 7:12),"R", 4)))) %>%
     mutate(ESV_ID = ifelse(ESV_ID %in% names(ESV_colors[-length(ESV_colors)]), ESV_ID, "Other")) %>%
     mutate(ESV_ID = factor(ESV_ID, rev(names(ESV_colors)))) %>%
@@ -151,13 +150,14 @@ p2 <- communities_abundance_temporal_26 %>%
     theme(
         strip.background = element_rect(fill = NA, color = NA),
         panel.border = element_rect(fill = NA, color = 1, linewidth = 1),
-        legend.key.size = unit(6, "mm"),
-        legend.position = "right"
+        legend.position = "right",
+        legend.key.width = unit(6, "mm"),
+        legend.key.height = unit(4, "mm"),
+        legend.spacing.y = unit(2, "mm")
     ) +
-    guides(color = "none", fill = guide_legend(title = "ESV", ncol = 1)) +
+    guides(color = "none", fill = guide_legend(title = "ESV", ncol = 1, override.aes = list(color = 1, linewidth = .5))) +
     labs(x = "transfer", y = "relative abundance")
 
-p <- p2
 ggsave(here::here("plots/FigS2-temporal_dynamics.png"), p, width = 8, height = 8)
 
 

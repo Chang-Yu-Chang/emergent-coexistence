@@ -51,18 +51,18 @@ p <- pairs_abundant %>%
     #mutate(outcome = factor(outcome, c("5-inconclusive", "1-exclusion", "2-exclusion", "3-coexistence", "4-coexistence"))) %>%
     ungroup() %>%
     ggplot() +
-    geom_col(aes(x = CommunityLabel, fill = outcome, y = Fraction), color = 1, width = .8, linewidth = .5, position = position_stack(reverse = T)) +
+    geom_col(aes(x = CommunityLabel, fill = outcome, y = Fraction), width = .8, linewidth = .5, position = position_stack(reverse = T)) +
     # Number of distcint ESVs
-    annotate("text", x = 14, y = 1.25, label = "n. of ESVs", size = 4, hjust = 0) +
-    annotate("text", x = 1:12, y = 1.25, label = communities_abundant$ESVRichness, size = 4) +
+    annotate("text", x = 14, y = 1.25, label = "n. of ESVs", size = 6, hjust = 0) +
+    annotate("text", x = 1:12, y = 1.25, label = communities_abundant$ESVRichness, size = 6) +
     annotate("segment", x = .5, xend = 18, y = 1.2, yend = 1.2, color = "black") +
     # Number of isolates
-    annotate("text", x = 14, y = 1.15, label = "n. of isolates", size = 4, hjust = 0) +
-    annotate("text", x = 1:12, y = 1.15, label = communities_abundant$CommunitySizeAbundant, size = 4) +
+    annotate("text", x = 14, y = 1.15, label = "n. of isolates", size = 6, hjust = 0) +
+    annotate("text", x = 1:12, y = 1.15, label = communities_abundant$CommunitySizeAbundant, size = 6) +
     annotate("segment", x = .5, xend = 18, y = 1.1, yend = 1.1, color = "black") +
     # Number of tested pairs
-    annotate("text", x = 14, y = 1.05, label = "n. of tested pairs", size = 4, hjust = 0) +
-    annotate("text", x = 1:12, y = 1.05, label = communities_abundant$CommunityPairSizeAbundant, size = 4) +
+    annotate("text", x = 14, y = 1.05, label = "n. of tested pairs", size = 6, hjust = 0) +
+    annotate("text", x = 1:12, y = 1.05, label = communities_abundant$CommunityPairSizeAbundant, size = 6) +
     scale_fill_manual(values = outcome_colors, breaks = names(outcome_colors), labels = outcome_labels) +
     scale_x_continuous(breaks = 1:12, expand = c(0.01, 0)) +
     scale_y_continuous(breaks = seq(0,1,0.2), limit = c(0, 1.45), expand = c(0,0)) +
@@ -71,6 +71,7 @@ p <- pairs_abundant %>%
     theme(
         legend.text = element_text(size = 12),
         legend.title = element_blank(),
+        legend.box.margin = margin(0,0,0,8, "mm"),
         legend.key.width = unit(8, "mm"),
         legend.key.height = unit(8, "mm"),
         legend.spacing.y = unit(4, "mm"),
@@ -78,13 +79,13 @@ p <- pairs_abundant %>%
         panel.border = element_rect(color = 1, fill = NA),
         axis.text = element_text(color = 1, size = 12),
         axis.title = element_text(color = 1, size = 12),
-        plot.margin = unit(c(40, 20, 5, 5), "mm")
+        plot.margin = unit(c(35, 15, 5, 5), "mm")
     ) +
     #guides(fill = guide_legend(byrow = T, ncol = 2)) +
     guides(fill = guide_legend(byrow = T, ncol = 1)) +
     labs(x = "community", y = "fraction")
 
-ggsave(here::here("plots/FigS13-pairwise_competition_abundant.png"), p, width = 8, height = 5)
+ggsave(here::here("plots/FigS13-pairwise_competition_abundant.png"), p, width = 10, height = 5)
 
 
 # Stats

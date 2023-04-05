@@ -13,7 +13,7 @@ load(paste0(folder_data, "temp/38-communities_network.Rdata"))
 
 
 # Plot individual networks ----
-set.seed(2)
+set.seed(3)
 node_size = 3
 edge_width = .8
 plot_network_hierarchy <- function(net, n_rank = 10, n_break = 10) {
@@ -55,7 +55,9 @@ plot_network_hierarchy <- function(net, n_rank = 10, n_break = 10) {
         ungroup() %>%
         # Filter out coexistence edges
         activate(edges) %>%
-        filter((outcome == "1-exclusion" | outcome == "2-exclusion")) %>%
+#        filter(outcome != "5-inconclusive", !is.na(outcome)) %>%
+#        filter(outcome == "1-exclusion" | outcome == "2-exclusion" | outcome == "3-coexistence" | outcome == "4-coexistence") %>%
+        filter(outcome == "1-exclusion" | outcome == "2-exclusion") %>%
         mutate(Temp = sample(c(-1, 1), size = n(), replace = T))
     strength_angle <- as_tibble(temp)$Temp * 0.06
 
@@ -63,7 +65,7 @@ plot_network_hierarchy <- function(net, n_rank = 10, n_break = 10) {
         ggraph(layout = "nicely") +
         geom_hline(yintercept = c(-n_rank:-1), color = "grey90") +
         geom_node_point(size = node_size, shape = 21, fill = "grey", stroke = node_size/5, color = "black") +
-        #geom_node_text(aes(label = Isolate)) +
+        geom_node_text(aes(label = Isolate), size = 3) +
         geom_edge_arc(strength = strength_angle, alpha = 0.5,
                       aes(color = outcome), width = edge_width,
                       arrow = arrow(length = unit(edge_width, "mm"), type = "closed", angle = 30, ends = "last"),
@@ -142,6 +144,7 @@ communities_network <- communities_network %>%
     mutate(TriadCensus = sum(triad_census(Network))) %>%
     mutate(TriadCensusFull = sum(triad_census(Network) %>% `[`(c(9, 10, 12:16)))) %>%
     mutate(TriadCensusFullExclusion = sum(triad_census(ExclusionNetwork) %>% `[`(c(9, 10, 12:16)))) %>%
+    mutate(NTCensusFullExclusion = triad_census(ExclusionNetwork) %>% `[`(c(10))) %>%
     select(-CommunityPairSize, -Network, -ExclusionNetwork)
 
 
@@ -149,6 +152,7 @@ sum(communities_network$TriadCensus) # 284 possible triads with 0, 1, 2, or 3 li
 sum(communities_network$TriadCensusFull) # 200 fully connected nodes (3 links) in exclusion-coexistence network
 sum(communities_network$TriadCensusFullExclusion) # 77 fully connected nodes in exclusion-only network
 n_triads <- sum(communities_network$TriadCensusFullExclusion)
+n_NT <- sum(communities_network$NTCensusFullExclusion) # Number of nontransitive triad
 
 set.seed(2)
 N = 10000
@@ -162,21 +166,23 @@ range(tb$NumberExpectedRPS)
 p2 <- tb %>%
     ggplot() +
     geom_histogram(aes(x = NumberExpectedRPS), color = "black", fill = "white", binwidth = 1) +
+    annotate("point", x = n_NT, y = 0, shape = 21, size = 2, stroke = 1, color = "maroon") +
     #scale_x_continuous(limits = c(0, max(tb$NumberExpectedRPS)+2)) +
-    annotate("text", x = 22, y = 960, label = paste0("Binomial(n= ", n_triads, ", p = 1/4)"), size = 2.5, hjust = 0) +
+    annotate("text", x = 0, y = 1020, label = paste0("Binomial(n= ", n_triads, ", p = 1/4)"), size = 2.5, hjust = 0) +
     theme_classic() +
     theme(
         plot.background = element_blank()
     ) +
     guides() +
     labs(x = "number of expected nontransitivity", y = "count")
+
 #
 p <- ggdraw(plot_grid(p1, labels = "A")) +
     draw_plot(plot_grid(p2, labels = "B") , x = 0, y = 0, width = 0.3, height = 0.5, hjust = 0, vjust = 0)
 
 
 ggsave(here::here("plots/Fig3.png"), p, width = 10, height = 5)
-
+#ggsave(here::here("plots/Fig3_2.svg"), p, width = 10, height = 5)
 
 
 

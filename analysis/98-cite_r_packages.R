@@ -28,7 +28,7 @@ citeRpacks <- function(pkg_list, filename, RStudio = FALSE) {
 
 }
 
-my_packs <- c("ggplot2", "base", "rRDP", "Biostrings", "EBImage", "randomForest", "caret")
+my_packs <- c("ggplot2", "base", "rRDP", "Biostrings", "EBImage", "randomForest", "caret", "igraph")
 citeRpacks(my_packs, "citeR", RStudio = TRUE)
 
 
