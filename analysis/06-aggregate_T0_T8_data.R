@@ -1,8 +1,6 @@
-#' This script convert the T0 OD to CFU and bootstrapping both T0 andT8 frequencies
-#' 1. Calculate epsilon for T0, and convert T0 OD to CFU
-#' 2. Bootstrap T0 CFU frequency. Output meta/06-pairs_T0_boots.csv
-#' 3. Aggregate T8 CFU frequency from random forest outputs and clean column names. Output meta/06-pairs_T8.csv
-#' 4. Bootstrap T8 CFU frequencies. Output meta/06-pairs_T8_boots.csv
+#' This script convert the T0 OD to CFU and read the image processing T8 data
+#' 1. Calculate epsilon for T0, and convert T0 OD to CFU. Output temp/06-isolate_epsilon.csv and temp/06-pairs_T0.csv
+#' 2. Aggregate T8 CFU frequency from random forest outputs and clean column names. Output temp/06-pairs_T8.csv
 
 library(tidyverse)
 library(cowplot)
@@ -37,21 +35,22 @@ for (j in 1:length(batch_names)) {
 isolates_CFU <- bind_rows(temp) %>%
     separate(image_name, into = c("Batch", "Time", "Community", "Isolate"), sep = "_", remove = F)
 
-# Manually C2 C11R1 isolate 1
 isolates_CFU <- isolates_CFU %>%
+    # This image is used to train the model because it has many colonies, but it does not have OD data
     filter(image_name != "C_stock_C11R1_1") %>%
+    # To use the OD data, add the image C_T0_C11R1_1 that has OD data but does not have high resolution. Manually count colony
     bind_rows(tibble(image_name = "C_T0_C11R1_1", Batch = "C", Time = "T0", Community = "C11R1", Isolate = "1", ColonyCount = 8))
 
 
 # 1.2 Read OD data ----
-# Remove the contaminated data: B2 community C11R1 isolate1 and C2 C11R2 isolate 13 (streplococcus contamination)
+# Remove the contaminated data: B2 C11R1 isolate1 and C2 C11R2 isolate 13 (streplococcus contamination)
 OD_B2 <- read_csv(paste0(folder_data, "raw/OD/OD_B2.csv"), col_types = cols()) %>%
     mutate(Batch = "B2", Layout = as.character(Layout), Isolate1Freq = as.character(Isolate1Freq), Isolate2Freq = as.character(Isolate2Freq)) %>%
     filter(!((Community == "C11R1" & Isolate1 == 1) | (Community == "C11R1" & Isolate2 == 1)))
-OD_C <- read_csv(paste0(folder_data, "raw/OD/OD_C.csv"), col_types = cols()) %>% # Data from batch C C11R1 plate is also included
+OD_C <- read_csv(paste0(folder_data, "raw/OD/OD_C.csv"), col_types = cols()) %>%
     mutate(Batch = "C", Isolate1 = as.character(Isolate1), Isolate2 = as.character(Isolate2)) %>%
     mutate(Isolate1Freq = as.character(Isolate1Freq), Isolate2Freq = as.character(Isolate2Freq))
-OD_C2 <- read_csv(paste0(folder_data, "raw/OD/OD_C2.csv"), col_types = cols()) %>% # Data from batch C C11R1 plate is also included
+OD_C2 <- read_csv(paste0(folder_data, "raw/OD/OD_C2.csv"), col_types = cols()) %>%
     mutate(Batch = "C2", Isolate1 = as.character(Isolate1), Isolate2 = as.character(Isolate2)) %>%
     filter(!((Community == "C11R2" & Isolate1 == 13) | (Community == "C11R2" & Isolate2 == 13)))
 OD_D <- read_csv(paste0(folder_data, "raw/OD/OD_D.csv"), col_types = cols()) %>%
@@ -67,8 +66,6 @@ OD <- bind_rows(OD_B2, OD_C, OD_C2, OD_D) %>%
     arrange(Community, Time, Isolate1, Isolate2, Isolate1Freq) %>%
     filter(Wavelength == 620) %>%
     rename(OD620 = Abs)
-
-
 
 # Subset single culture that are not mixed
 isolates_OD <- OD %>%
@@ -89,13 +86,14 @@ isolates_OD_CFU <- isolates_CFU %>%
     left_join(isolates_OD, by = "image_name") %>%
     #' I do not have the T8 OD data for batch C. Remove them
     filter(!(Batch == "C" & Community == "C11R1" & Isolate != 1)) %>%
+    # Remove B2 C11R1 1 contamination
     filter(!(Batch == "B2" & Community == "C11R1" & Isolate == 1)) %>%
-    # Remove staph contamination
+    # Remove C C11R2 13 staph contamination
     filter(!(Community == "C11R2" & Isolate == 13)) %>%
     mutate(Community = factor(Community, paste0("C", rep(1:12, each = 8), "R", rep(1:8, 12)))) %>%
     mutate(Isolate = factor(Isolate, 1:13)) %>%
     arrange(Community, Isolate) %>%
-    # For T0 monoculture, I do not have OD data, but instead they are standardized to OD=0.1, so assign 0.1 to them
+    # For T0 inoculum, the OD was standardized to OD=0.1, so assign 0.1 to them
     mutate(OD620 = ifelse(Time == "T0", 0.1, OD620)) %>%
     # Dilution factor for these plates are 5
     mutate(DilutionFactor = 5)
@@ -146,9 +144,8 @@ isolates_epsilon <- isolates_OD_CFU %>%
     mutate(Isolate = as.numeric(Isolate))
 write_csv(isolates_epsilon, paste0(folder_data, "temp/06-isolates_epsilon.csv"))
 
-
 # 1.5 Convert T0 OD to CFU ----
-pairs_epsilon <- pairs_freq_ID %>%
+pairs_T0 <- pairs_freq_ID %>%
     left_join(select(isolates_epsilon, Community, Isolate1 = Isolate, Epsilon1 = Epsilon, ErrorEpsilon1 = ErrorEpsilon), by = c("Community", "Isolate1")) %>%
     left_join(select(isolates_epsilon, Community, Isolate2 = Isolate, Epsilon2 = Epsilon, ErrorEpsilon2 = ErrorEpsilon), by = c("Community", "Isolate2"))
 
@@ -156,30 +153,16 @@ pairs_epsilon <- pairs_freq_ID %>%
 #' and use cfu_A as the mean the parameterize poisson. Draw n_A ~ Pois(cfu_A).
 #' Repeat it for type B and obtain n_B. The bootstrapped freq_A = n_A / (n_A + n_B)
 #' here I am using dilution factor 10^-4 such that the CFU count is no smaller than 10
-pairs_epsilon <- pairs_epsilon %>%
+pairs_T0 <- pairs_T0 %>%
     mutate(cfu_A = 0.1 * (Isolate1InitialODFreq / 100) * 10^(-4) * 20 * Epsilon1,
-           cfu_B = 0.1 * (Isolate2InitialODFreq / 100) * 10^(-4) * 20 * Epsilon2)
+           cfu_B = 0.1 * (Isolate2InitialODFreq / 100) * 10^(-4) * 20 * Epsilon2) %>%
+    select(Batch, Community, Isolate1, Isolate2, Isolate1InitialODFreq, Isolate2InitialODFreq, cfu_A, cfu_B)
 
-# 2. Bootstrap T0 freq_A from Poisson ----
-n_bootstraps = 1000
-set.seed(1)
-pairs_T0_boots <- pairs_epsilon %>%
-    select(Batch, Community, Isolate1, Isolate2, Isolate1InitialODFreq, Isolate2InitialODFreq, cfu_A, cfu_B) %>%
-    mutate(Time = "T0", RawDataType = "ODtoCFU") %>%
-    rowwise() %>%
-    mutate(bootstrap = list(
-        tibble(BootstrapID = 1:n_bootstraps,
-               n_A = rpois(n_bootstraps, cfu_A),
-               n_B = rpois(n_bootstraps, cfu_B),
-               Isolate1CFUFreq = n_A / (n_A + n_B))
-    )) %>%
-    unnest(cols = c(bootstrap)) %>%
-    select(Batch, Community, Isolate1, Isolate2, Isolate1InitialODFreq, Isolate2InitialODFreq,
-           Time, RawDataType, BootstrapID, Isolate1CFUFreq)
-write_csv(pairs_T0_boots, paste0(folder_data, "temp/06-pairs_T0_boots.csv"))
+write_csv(pairs_T0, paste0(folder_data, "temp/06-pairs_T0.csv"))
 
 
-# 3. Aggregate T8 predicted results ----
+
+# 2. Aggregate T8 predicted results ----
 temp <- rep(list(NA), nrow(pairs_freq_ID))
 for (i in 1:nrow(pairs_freq_ID)) {
     # Skip images with no colony
@@ -222,31 +205,6 @@ pairs_T8 <- bind_rows(temp[which(!is.na(temp))]) %>%
     ungroup()
 
 write_csv(pairs_T8, paste0(folder_data, "temp/06-pairs_T8.csv"))
-
-# 4. Bootstrap T8 freq_A from Poisson -----
-temp <- rep(list(NA), nrow(pairs_T8))
-for (i in 1:nrow(pairs_T8)) {
-    bootstrap_freq <- function (total_count, cfu_freq) sum(runif(total_count, 0, 1) < cfu_freq)/total_count
-    cfu_freqs <- NULL
-    for (k in 1:n_bootstraps)  cfu_freqs[k] <- bootstrap_freq(pairs_T8$TotalCount[i], pairs_T8$Isolate1CFUFreq[i])
-
-    temp[[i]] <- tibble(
-        Batch = pairs_T8$Batch[i],
-        Community = pairs_T8$Community[i],
-        Isolate1 = pairs_T8$Isolate1[i],
-        Isolate2 = pairs_T8$Isolate2[i],
-        Isolate1InitialODFreq = pairs_T8$Isolate1InitialODFreq[i],
-        Isolate2InitialODFreq = pairs_T8$Isolate2InitialODFreq[i],
-        Time = "T8",
-        RawDataType = "CFU",
-        BootstrapID = 1:n_bootstraps,
-        Isolate1CFUFreq = cfu_freqs
-    )
-    cat("\t", i)
-}
-
-pairs_T8_boots <- bind_rows(temp)
-write_csv(pairs_T8_boots, paste0(folder_data, "temp/06-pairs_T8_boots.csv"))
 
 
 

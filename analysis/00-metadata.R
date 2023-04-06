@@ -10,7 +10,7 @@ folder_data <- "/Users/cychang/Dropbox/lab/emergent-coexistence/data/" # Enter t
 folder_simulation <-  "/Users/cychang/Dropbox/lab/emergent-coexistence/simulation/" # Enter the directory of simulation data
 
 # 2. For image processing pipeline ----
-list_folders <- c("01-channel", "02-rolled", "03-threshold", "04-round", "05-watershed", "06-transect", "07-feature", "08-random_forest", "09-bootstrap", "10-images_and_random_forest")
+list_folders <- c("01-channel", "02-rolled", "03-threshold", "04-round", "05-watershed", "06-transect", "07-feature", "08-random_forest", "09-bootstrap")
 list_channels <- c("red", "green", "blue")
 list_pipeline_scripts <- c("01-channel.R", "02-rolling_ball.py", "03-segmentation.R", "04-feature.R", "04a-merge_features.R", "05-random_forest.R")
 batch_names <- c("B2", "C", "C2", "D")
@@ -32,9 +32,9 @@ plates_no_colony <- c(
     "B2_T8_C11R1_50-50_2_8",
     "B2_T8_C11R1_50-50_2_9",
     "C2_T8_C11R2_50-50_2_10",
-    "C2_T8_C11R2_50-50_9_13",
-    "C_T8_C11R1_50-50_1_2", # no plate
-    "C_T8_C11R1_50-50_1_3" # no plate
+    #"C2_T8_C11R2_50-50_9_13",
+    "C_T8_C11R1_50-50_1_2",
+    "C_T8_C11R1_50-50_1_3"
 )
 
 # Random forest

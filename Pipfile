@@ -6,6 +6,8 @@ name = "pypi"
 [packages]
 scipy = "*"
 pandas = "*"
+imageio = "*"
+scikit-image = "*"
 
 [dev-packages]
 

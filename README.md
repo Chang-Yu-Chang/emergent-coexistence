@@ -68,6 +68,7 @@ $ cd analysis/
 $ Rscript 00a-folder_structure.R
 $ Rscript 00b-generate_mapping_files.R
 $ Rscript 00c-generate_pairs_ID.R
+$ Rscript 00d-assemble_colony_images.R # for making figure S5
 ```
 
 Two groups of mapping files are generated:
@@ -87,7 +88,7 @@ $ cd analysis/
 $ Rscript 01-channel.R mapping_files/00-list_images-B2-red.csv
 $ Rscript 01-channel.R mapping_files/00-list_images-B2-green.csv
 $ Rscript 01-channel.R mapping_files/00-list_images-B2-blue.csv
-$ python 02-rolling_ball.py mapping_files/00-list_images-B2-red.csv
+$ python 02-rolling_ball.py mapping_files/00-list_images-B2-red.csv # background subtration takes long
 $ python 02-rolling_ball.py mapping_files/00-list_images-B2-green.csv
 $ python 02-rolling_ball.py mapping_files/00-list_images-B2-blue.csv
 $ Rscript 03-segmentation.R mapping_files/00-list_images-B2-green.csv
@@ -167,7 +168,8 @@ $ convert -quality 60 D_*.png random_forest-D.pdf
 To execute all steps decribed above, from the raw data to ready-for-paper figures, basically run all scripts using terminal commands saved in a master shell script `analysis/00e-commands.sh`. Note that for the shell script to work, the working directory has to be the project directory (where `emergent-coexistence.Rproj` is located)
 
 ```
-$ zsh analysis/00e-commands.sh
+$ Rscrip analysis/99-generate_commands.R
+$ zsh analysis/99a-commands.sh
 ```
 
 

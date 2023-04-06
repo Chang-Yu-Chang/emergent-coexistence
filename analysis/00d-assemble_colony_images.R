@@ -1,5 +1,6 @@
 library(EBImage)
 library(tidyverse)
+source(here::here("analysis/00-metadata.R"))
 
 paste0(folder_pipeline, "images/")
 communities <- read_csv(paste0(folder_data, "temp/00c-communities.csv"), show_col_types = F)
@@ -13,6 +14,9 @@ list_image_mapping_folder_master %>%
 #' C11R2 isolate 13 is a contaminant
 #' B2 C11R1 isolate 1 is contaminated so Batch C C11R1 isolates 1-9 is to replace all B2 pairs with isolate 1
 #' 78 - 1 - 9 = 68 isolates
+
+if (!dir.exists(paste0(folder_pipeline, "images/isolate_colony/"))) dir.create(paste0(folder_pipeline, "images/isolate_colony/"))
+if (!dir.exists(paste0(folder_pipeline, "images/isolate_plate/"))) dir.create(paste0(folder_pipeline, "images/isolate_plate/"))
 
 list_image_isolates <- list_image_mapping_folder_master %>%
     distinct(image_name_isolate1, .keep_all = T) %>%

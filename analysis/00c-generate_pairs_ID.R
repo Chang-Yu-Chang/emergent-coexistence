@@ -48,39 +48,33 @@ pairs_freq_ID <- list_image_mapping_folder_master %>%
     ) %>%
     mutate(temp = min(Isolate1,Isolate2), Isolate2 = max(Isolate1, Isolate2), Isolate1 = temp) %>%
     select(-temp) %>%
-    mutate(Community = factor(Community, paste0("C", rep(1:12, each = 8), "R", rep(1:8, 12)))) %>%
-    arrange(Community, Isolate1, Isolate2, Isolate1InitialODFreq) %>%
+    #mutate(Community = factor(Community, paste0("C", rep(1:12, each = 8), "R", rep(1:8, 12)))) %>%
+    #arrange(Community, Isolate1, Isolate2, Isolate1InitialODFreq) %>%
     ungroup() %>%
     select(-FlipOrder) %>%
     # Remove staph contamination
     filter(!(Community == "C11R2" & Isolate1 == 13)) %>%
     filter(!(Community == "C11R2" & Isolate2 == 13)) %>%
+    # Remove batch B2 C11R1 isolate 1 contamination
     filter(!(Batch == "B2" & Community == "C11R1" & Isolate1 == 1)) %>%
-    filter(!(Batch == "C" & Community == "C11R1" & Isolate1 == 5))
-
-
-## Two species pairs do not have the 50-50 data
-pairs_freq_ID %>%
-    group_by(Batch, Community, Isolate1, Isolate2) %>%
-    count() %>%
-    filter(n != 3)
-#   Batch Community Isolate1 Isolate2     n
-#   <chr> <fct>        <dbl>    <dbl> <int>
-# 1 C     C11R1            1        2     2
-# 2 C     C11R1            1        3     2
-
-## Append these two frequencies back
-pairs_freq_ID <- tibble(Batch = c("C", "C"), Community = c("C11R1", "C11R1"),
-                        Isolate1 = c(1,1), Isolate2 = c(2,3),
-                        Isolate1InitialODFreq = c(50, 50), Isolate2InitialODFreq = c(50, 50)) %>%
-    bind_rows(pairs_freq_ID) %>%
+    # Remove batch C C11R1 isolate 5. The same isolate was included already in batch B2
+    filter(!(Batch == "C" & Community == "C11R1" & Isolate1 == 5)) %>%
+    bind_rows(tibble(
+        ## Append two missing images
+        Batch = c("C", "C"), Community = c("C11R1", "C11R1"),
+        Isolate1 = c(1,1), Isolate2 = c(2,3),
+        Isolate1InitialODFreq = c(50, 50), Isolate2InitialODFreq = c(50, 50)
+    )) %>%
     mutate(Community = factor(Community, paste0("C", rep(1:12, each = 8), "R", rep(1:8, 12)))) %>%
     mutate(Isolate1 = factor(Isolate1, 1:13), Isolate2 = factor(Isolate2, 1:13)) %>%
     arrange(Community, Isolate1, Isolate2, Isolate1InitialODFreq)
+nrow(pairs_freq_ID) # 186*3 = 558
+
 pairs_ID <- pairs_freq_ID %>%
     distinct(Batch, Community, Isolate1, Isolate2) %>%
     mutate(PairID = 1:n()) %>%
     select(PairID, everything())
+nrow(pairs_ID)
 
 write_csv(pairs_freq_ID, paste0(folder_data, "temp/00c-pairs_freq_ID.csv"))
 cat("\n", paste0(folder_data, "temp/00c-pairs_freq_ID.csv"), "\tcreated")

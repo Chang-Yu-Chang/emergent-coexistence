@@ -1,5 +1,5 @@
 #' This script creates the folder structure associated with the image processing pipeline
-#' This script only need to run once
+#' This script only needs to run once
 
 library(tidyverse)
 source(here::here("analysis/00-metadata.R"))
@@ -10,8 +10,6 @@ temp_level2 <- rep(list(NA), length(batch_names))
 # Create the list of folder directory
 for (j in 1:length(batch_names)) {
     temp_level1[[j]] <- c(
-        paste0(folder_pipeline, "examples/"),
-        paste0(folder_pipeline, "meta/"),
         paste0(folder_pipeline, "images/", batch_names[[j]], "-", list_folders, "/")
     )
     temp_level2[[j]] <- c(
@@ -30,6 +28,7 @@ list_folder_level1 <- unlist(temp_level1) %>% unique
 list_folder_level2 <- unlist(temp_level2) %>% unique
 
 # Create folders
+if (!dir.exists(paste0(folder_pipeline, "images/"))) dir.create(paste0(folder_pipeline, "images/")) # pipeline/mages/
 for (k in 1:length(list_folder_level1)) {
     if (!dir.exists(list_folder_level1[k])) {
         dir.create(list_folder_level1[k])
@@ -45,7 +44,7 @@ for (k in 1:length(list_folder_level2)) {
 }
 
 
-# Remove folders. DO NOT DO THIS UNLESS CERTAIN
+# Remove folders. DO NOT DO THIS UNLESS VERY CERTAIN
 # if (FALSE) {
 #     for (k in 1:length(list_folder_level1)) {
 #         unlink(list_folder_level1[k], recursive = TRUE)

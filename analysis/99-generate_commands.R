@@ -25,7 +25,7 @@ commands <- unlist(temp_commands)
 
 commands <- c(paste0("cd ", folder_script), commands)
 # Write the commands into a bash script
-writeLines(commands, here::here("analysis/00e-commands.sh"))
+writeLines(commands, here::here("analysis/99a-commands.sh"))
 
 
 "
