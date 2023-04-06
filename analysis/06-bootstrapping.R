@@ -164,6 +164,7 @@ pairs_epsilon <- pairs_epsilon %>%
 n_bootstraps = 1000
 set.seed(1)
 pairs_T0_boots <- pairs_epsilon %>%
+    select(Batch, Community, Isolate1, Isolate2, Isolate1InitialODFreq, Isolate2InitialODFreq, cfu_A, cfu_B) %>%
     mutate(Time = "T0", RawDataType = "ODtoCFU") %>%
     rowwise() %>%
     mutate(bootstrap = list(
@@ -172,8 +173,9 @@ pairs_T0_boots <- pairs_epsilon %>%
                n_B = rpois(n_bootstraps, cfu_B),
                Isolate1CFUFreq = n_A / (n_A + n_B))
     )) %>%
-    unnest(cols = c(bootstrap))
-
+    unnest(cols = c(bootstrap)) %>%
+    select(Batch, Community, Isolate1, Isolate2, Isolate1InitialODFreq, Isolate2InitialODFreq,
+           Time, RawDataType, BootstrapID, Isolate1CFUFreq)
 write_csv(pairs_T0_boots, paste0(folder_data, "temp/06-pairs_T0_boots.csv"))
 
 
