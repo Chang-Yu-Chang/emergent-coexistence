@@ -115,7 +115,10 @@ $ cd analysis/
 $ Rscript 11-align_isolate_sequences.R
 $ Rscript 12-assign_isolate_RDP.R
 $ Rscript 13-match_community_abundance.R
-$ Rscript 14-pairwise_16s_mismatch.py
+
+# A folder is need temp/21-needle/
+$ python 21-pairwise_16s_mismatch.py PATH_TO_DATA/
+
 $ Rscript 15-samebug_pairs.R
 $ Rscript 16-match_pair_RDP.R
 ```

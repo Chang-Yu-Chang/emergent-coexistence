@@ -32,7 +32,7 @@ plates_no_colony <- c(
     "B2_T8_C11R1_50-50_2_8",
     "B2_T8_C11R1_50-50_2_9",
     "C2_T8_C11R2_50-50_2_10",
-    #"C2_T8_C11R2_50-50_9_13",
+    "C2_T8_C11R2_50-50_9_13",
     "C_T8_C11R1_50-50_1_2",
     "C_T8_C11R1_50-50_1_3"
 )
@@ -103,43 +103,3 @@ remove_ineligible_pairs <- function(pairs) {
 
 
 
-
-
-#
-#
-# assign_interaction_color <- function (level = "simple") {
-#     if (level == "simple") {
-#         interaction_type <- c("exclusion", "coexistence", "unknown")
-#         interaction_color <- c("#DB7469", "#557BAA", grey(0.5))
-#         names(interaction_color) <- interaction_type
-#         return(interaction_color)
-#     }
-#
-#     if (level == "NA data") {
-#         interaction_type <- c("exclusion", "coexistence", "unknown", "no colony or low accuracy")
-#         interaction_color <- c("#DB7469", "#557BAA", grey(0.5), grey(0.8))
-#         names(interaction_color) <- interaction_type
-#         return(interaction_color)
-#
-#     }
-#
-#     if (level == "hierarchy") {
-#         interaction_type <- c("exclusion", "coexistence", "exclusion violating rank", "bistability", "neutrality", "self", "unknown")
-#         interaction_color <- c("#DB7469", "#557BAA", "#8CB369", "#EECF6D", "#8650C4", "black", "grey50")
-#         names(interaction_color) <- interaction_type
-#         return(interaction_color)
-#     }
-#     if (level == "finer") {
-#         interaction_type <- interaction_type_finer
-#         #interaction_type <- c("competitive exclusion", "stable coexistence", "mutual exclusion", "frequency-dependent coexistence", "neutrality", "exclusion violating rank")
-#         interaction_color <- c("#DB7469", "#557BAA",
-#                                         "#FFBC42", "#B9FAF8",
-#                                         "lightblue", "cyan",
-#                                         "#8650C4", "purple",
-#                                         grey(0.5))
-#         names(interaction_color) <- interaction_type
-#         return(interaction_color)
-#     }
-# }
-# interaction_color <- assign_interaction_color()
-# category_color <- c(sugar = "#ED6A5A", acid = "#03CEA4", fermenter = "#8A89C0", respirator = "#FFCB77")
