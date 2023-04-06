@@ -200,40 +200,34 @@ xintercept_transient2 <- fitness_transient2 %>%
     select(Community, ESV_ID, CommunityESV, PredictedEqAbundance, Slope = Relative_Abundance) %>%
     mutate(ESVType = "transient")
 
-# 5. Bind fitness data ----
+# 5. Save fitness data ----
 eq_freq_stable <- communities_eq_freq_stable %>%
     left_join(select(ESV_sig_stable, CommunityESV, Significance, rho = estimate)) %>%
     left_join(xintercept_stable) %>%
     mutate(ESVType = "stable")
 fitness_stable <- fitness_stable %>% mutate(ESVType = "stable")
-
+nrow(eq_freq_stable) # 99 ESVs
+write_csv(eq_freq_stable, paste0(folder_data, 'temp/15-eq_freq_stable.csv'))
+write_csv(fitness_stable, paste0(folder_data, 'temp/15-fitness_stable.csv'))
 
 eq_freq_transient <- xintercept_transient %>%
     left_join(select(ESV_sig_transient, CommunityESV, Significance, rho = estimate)) %>%
     mutate(ESVType = "transient")
-ESV_eq_freq <- bind_rows(eq_freq_stable, eq_freq_transient)
-nrow(ESV_eq_freq) # 99+46 = 145 ESVs
-
 fitness_transient <- fitness_transient %>% mutate(ESVType = "transient")
-fitness <- bind_rows(fitness_stable, fitness_transient)  # complete fitness for both stable and transient ESVs at different transfers
-fitness %>% distinct(CommunityESV) %>% nrow()  # 145 ESVs
+nrow(eq_freq_transient) # 46 ESV
+write_csv(eq_freq_transient, paste0(folder_data, 'temp/15-eq_freq_transient.csv'))
+write_csv(fitness_transient, paste0(folder_data, 'temp/15-fitness_transient.csv'))
 
-write_csv(ESV_eq_freq, paste0(folder_data, 'temp/15-ESV_eq_freq.csv'))
-write_csv(fitness, paste0(folder_data, 'temp/15-fitness.csv'))
 
 # For Fig S5
 eq_freq_transient2 <- xintercept_transient2 %>%
     left_join(select(ESV_sig_transient, CommunityESV, Significance, rho = estimate)) %>%
     mutate(ESVType = "transient")
-ESV_eq_freq2 <- bind_rows(eq_freq_stable, eq_freq_transient2)
-nrow(ESV_eq_freq2) # 99+110=209 ESVs
-
 fitness_transient2 <- fitness_transient2 %>% mutate(ESVType = "transient")
-fitness2 <- bind_rows(fitness_stable, fitness_transient2)  # complete fitness for both stable and transient ESVs at different transfers
-fitness2 %>% distinct(CommunityESV) %>% nrow()  # 209 ESVs
+nrow(eq_freq_transient2) # 110 ESVs
 
-write_csv(fitness2, paste0(folder_data, 'temp/15-fitness2.csv'))
-write_csv(ESV_eq_freq2, paste0(folder_data, 'temp/15-ESV_eq_freq2.csv'))
+write_csv(eq_freq_transient2, paste0(folder_data, 'temp/15-eq_freq_transient2.csv'))
+write_csv(fitness_transient2, paste0(folder_data, 'temp/15-fitness_transient2.csv'))
 
 
 

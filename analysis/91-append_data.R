@@ -134,7 +134,7 @@ nrow(isolates_remained) # 62 isolates
 write_csv(isolates_remained, paste0(folder_data, "output/isolates_remained.csv"))
 
 
-# Update the community size
+# Update the communities metadata ----
 pairs_tested_count <- pairs_remained %>%
     group_by(Community) %>%
     count(name = "CommunityPairSize")
@@ -150,6 +150,15 @@ communities_remained <- isolates_remained %>%
     # Remove the community with only one pair
     filter(Community != "C10R2") %>%
     mutate(CommunityLabel = 1:12)
+
+communities_abundance <- read_csv(paste0(folder_data, "temp/14-communities_abundance.csv"), show_col_types = F)
+n_ESVs <- communities_abundance %>%
+    filter(Community %in% communities_remained$Community, Transfer == 12) %>%
+    group_by(Community) %>%
+    count(name = "ESVRichness")
+
+communities_remained <- left_join(communities_remained, n_ESVs)
+
 write_csv(communities_remained, paste0(folder_data, "output/communities_remained.csv"))
 
 

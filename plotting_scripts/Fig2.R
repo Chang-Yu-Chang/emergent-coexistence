@@ -5,21 +5,15 @@ source(here::here("analysis/00-metadata.R"))
 communities <- read_csv(paste0(folder_data, "output/communities_remained.csv"), show_col_types = F)
 #isolates <- read_csv(paste0(folder_data, "output/isolates_remained.csv"), show_col_types = F)
 pairs <- read_csv(paste0(folder_data, "output/pairs_remained.csv"), show_col_types = F)
-pairs_freq <- read_csv(paste0(folder_data, "temp/93a-pairs_freq.csv"), show_col_types = F)
-pairs_boots <- read_csv(paste0(folder_data, "temp/93a-pairs_boots.csv"), show_col_types = F)
+pairs_freq <- read_csv(paste0(folder_data, "temp/25-pairs_freq.csv"), show_col_types = F)
+pairs_boots <- read_csv(paste0(folder_data, "temp/07-pairs_boots.csv"), show_col_types = F)
 pairs_freq <- pairs_freq %>% left_join(pairs) %>% remove_ineligible_pairs()
-communities_abundance_T12 <- read_csv(paste0(folder_data, "temp/32-communities_abundance_T12.csv"), show_col_types = F)
+
 
 # Figure 2A: cartoon----
 pA <- ggdraw() + draw_image(here::here("plots/cartoons/Fig2A.png")) + paint_white_background()
 
 # Figure 2B: pairwise outcomes per community ----
-n_ESVs <- communities_abundance_T12 %>%
-    group_by(Community) %>%
-    count(name = "ESVRichness")
-
-communities <- left_join(communities, n_ESVs)
-
 pB <- pairs %>%
     group_by(Community, outcome) %>%
     count(name = "Count") %>%
@@ -64,16 +58,6 @@ pB <- pairs %>%
 pB_legend <- get_legend(pB)
 
 # Figure 2C: the frequency plot ----
-pairs_mean_eq_mean <- pairs_boots %>%
-    filter(Time == "T8") %>%
-    group_by(Community, Isolate1, Isolate2, BootstrapID) %>%
-    # Mean of the three equilibrium frequencies
-    summarize(MeanIsolate1CFUFreq = mean(Isolate1CFUFreq)) %>%
-    arrange(Community, Isolate1, Isolate2, MeanIsolate1CFUFreq) %>%
-    summarize(MeanMeanIsolate1CFUFreq = mean(MeanIsolate1CFUFreq)) %>%
-    # Flip the frequency if the mean equilibirum freq > 0.5
-    mutate(FlipFreq = ifelse(MeanMeanIsolate1CFUFreq > 0.5, T, F))
-
 flip_winner_species_freq <- function (pairs_freq, pairs_mean_eq_mean) {
     #' Flip the frequency if the mean equilibrium frequency is > 0.5
     pairs_freq <- pairs_freq %>%
@@ -121,10 +105,13 @@ flip_winner_species_freq_shade <- function (pairs_mean_eq_measures, pairs_mean_e
     }
 }
 
-pairs_mean_eq_measures <- read_csv(paste0(folder_data, "temp/34-pairs_mean_eq_measures.csv"), show_col_types = F) %>%
+pairs_mean_eq_measures <- read_csv(paste0(folder_data, "temp/25-pairs_mean_eq_measures.csv"), show_col_types = F) %>%
     right_join(select(pairs, PairID, outcome)) %>%
     filter(outcome %in% c("3-coexistence", "4-coexistence")) %>%
-    flip_winner_species_freq_shade(pairs_mean_eq_mean)
+    mutate(FlipFreq = ifelse(MeanMeanIsolate1CFUFreq > 0.5, T, F)) %>%
+    flip_winner_species_freq_shade(., pairs_mean_eq_mean = .)
+
+
 line_size = 1
 plot_category_freq <- function (pairs_freq, pairs_mean_eq_measures, outcome_category = "1-exclusion") {
     pairs_mean_eq_measures <- pairs_mean_eq_measures %>%
@@ -168,7 +155,6 @@ plot_category_freq <- function (pairs_freq, pairs_mean_eq_measures, outcome_cate
             legend.spacing.y = unit(5, "mm"),
             strip.text = element_blank(),
             plot.title = element_text(color = outcome_colors[outcome_category], size = 13, face = "bold", margin = margin(0,0,0,0, "mm")),
-#            plot.background = element_rect(color = outcome_colors[outcome_category], fill = "white", linewidth = 3)
             plot.background = element_blank()
         ) +
         guides(

@@ -6,18 +6,16 @@ source(here::here("analysis/00-metadata.R"))
 
 factorize_communities <- function (x) x %>% mutate(Community = factor(Community, paste0("C", rep(1:12, each = 8), "R", rep(1:8, 12))))
 communities <- read_csv(paste0(folder_data, "temp/00c-communities.csv"), show_col_types = F) %>% mutate(Community = factor(Community, Community))
-fitness <- read_csv(paste0(folder_data, "temp/15-fitness.csv"), show_col_types = F) %>% factorize_communities
-fitness2 <- read_csv(paste0(folder_data, "temp/15-fitness2.csv"), show_col_types = F) %>% factorize_communities
-ESV_eq_freq <- read_csv(paste0(folder_data, "temp/15-ESV_eq_freq.csv"), show_col_types = F) %>% factorize_communities
-ESV_eq_freq2 <- read_csv(paste0(folder_data, "temp/15-ESV_eq_freq2.csv"), show_col_types = F) %>% factorize_communities
+fitness_stable <- read_csv(paste0(folder_data, "temp/15-fitness_stable.csv"), show_col_types = F) %>% factorize_communities
+fitness_transient <- read_csv(paste0(folder_data, "temp/15-fitness_transient.csv"), show_col_types = F) %>% factorize_communities
+fitness_transient2 <- read_csv(paste0(folder_data, "temp/15-fitness_transient2.csv"), show_col_types = F) %>% factorize_communities
+eq_freq_stable <- read_csv(paste0(folder_data, "temp/15-eq_freq_stable.csv"), show_col_types = F) %>% factorize_communities
+eq_freq_transient <- read_csv(paste0(folder_data, "temp/15-eq_freq_transient.csv"), show_col_types = F) %>% factorize_communities
+eq_freq_transient2 <- read_csv(paste0(folder_data, "temp/15-eq_freq_transient2.csv"), show_col_types = F) %>% factorize_communities
 
 
-fitness_stable <- fitness %>% filter(ESVType == "stable") %>% left_join(ESV_eq_freq) %>% replace_na(list(Significance = "p>=0.05"))
-ESV_eq_freq_stable <- ESV_eq_freq %>% filter(ESVType == "stable")
-fitness_transient <- fitness %>% filter(ESVType == "transient") %>% left_join(ESV_eq_freq) %>% replace_na(list(Significance = "p>=0.05"))
-ESV_eq_freq_transient <- ESV_eq_freq %>% filter(ESVType == "transient")
-fitness_transient2 <- fitness2 %>% filter(ESVType == "transient") %>% left_join(ESV_eq_freq) %>% replace_na(list(Significance = "p>=0.05"))
-ESV_eq_freq_transient2 <- ESV_eq_freq2 %>% filter(ESVType == "transient")
+fitness_stable <- fitness_stable %>% left_join(eq_freq_stable) %>% replace_na(list(Significance = "p>=0.05"))
+fitness_transient <- fitness_transient %>% left_join(eq_freq_transient) %>% replace_na(list(Significance = "p>=0.05"))
 
 # 1. Check abundance vs. invasion fitness, ESVs present in stable communities, linear fit ----
 p <- fitness_stable %>%
@@ -26,9 +24,9 @@ p <- fitness_stable %>%
     geom_point(aes(x = Relative_Abundance, y = Fitness), shape = 21) +
     geom_smooth(data = fitness_stable, aes(x = Relative_Abundance, y = Fitness, color = Significance), method = stats::lm, formula = y ~ x, se = F) +
     # Linear model predicted
-    geom_vline(data = ESV_eq_freq_stable, aes(xintercept = PredictedEqAbundance), color = "green", linetype = 2) +
+    geom_vline(data = eq_freq_stable, aes(xintercept = PredictedEqAbundance), color = "green", linetype = 2) +
     # Mean of T9-12
-    geom_vline(data = ESV_eq_freq_stable, aes(xintercept = EmpiricalEqAbundance), color = "navyblue", linetype = 2) +
+    geom_vline(data = eq_freq_stable, aes(xintercept = EmpiricalEqAbundance), color = "navyblue", linetype = 2) +
     scale_color_manual(values = c("p<0.05" = "pink", "p>=0.05" = grey(0.8))) +
     scale_x_continuous(breaks = scales::pretty_breaks(n = 3)) +
     scale_y_continuous(breaks = scales::pretty_breaks(n = 3)) +
@@ -54,9 +52,9 @@ p <- fitness_stable %>%
     geom_smooth(data = fitness_stable, aes(x = Relative_Abundance, y = Fitness, color = Significance),
                 method = stats::loess, span = 0.9, formula = y ~ x, se = F) +
     # Linear model predicted
-    geom_vline(data = ESV_eq_freq_stable, aes(xintercept = PredictedEqAbundance), color = "green", linetype = 2) +
+    geom_vline(data = eq_freq_stable, aes(xintercept = PredictedEqAbundance), color = "green", linetype = 2) +
     # Mean of T9-12
-    geom_vline(data = ESV_eq_freq_stable, aes(xintercept = EmpiricalEqAbundance), color = "navyblue", linetype = 2) +
+    geom_vline(data = eq_freq_stable, aes(xintercept = EmpiricalEqAbundance), color = "navyblue", linetype = 2) +
     scale_color_manual(values = c("p<0.05" = "pink", "p>=0.05" = grey(0.8))) +
     scale_x_continuous(breaks = scales::pretty_breaks(n = 3)) +
     scale_y_continuous(breaks = scales::pretty_breaks(n = 3)) +
@@ -104,10 +102,10 @@ ggsave(paste0(folder_data, "temp/15a-03-species_fitness_extinct.png"), p, width 
 plot_comm_ESV <- function (fitness_stable, comm) {
     n_facets = 9
     fitness_stable_comm <- fitness_stable %>%
-        left_join(ESV_eq_freq_stable) %>%
+        left_join(eq_freq_stable) %>%
         replace_na(list(Significance = "p>=0.05")) %>%
         filter(Community %in% comm)
-    ESV_eq_freq_stable_comm <- ESV_eq_freq_stable %>%
+    eq_freq_stable_comm <- eq_freq_stable %>%
         filter(Community %in% comm)
 
 
@@ -119,9 +117,9 @@ plot_comm_ESV <- function (fitness_stable, comm) {
         geom_point(aes(x = Relative_Abundance, y = Fitness), shape = 21) +
         geom_smooth(data = fitness_stable_comm, aes(x = Relative_Abundance, y = Fitness, color = Significance), method = stats::lm, formula = y ~ x, se = F) +
         # Linear model predicted
-        geom_vline(data = ESV_eq_freq_stable_comm, aes(xintercept = PredictedEqAbundance), color = "green", linetype = 2) +
+        geom_vline(data = eq_freq_stable_comm, aes(xintercept = PredictedEqAbundance), color = "green", linetype = 2) +
         # Mean of T9-12
-        geom_vline(data = ESV_eq_freq_stable_comm, aes(xintercept = EmpiricalEqAbundance), color = "navyblue", linetype = 2) +
+        geom_vline(data = eq_freq_stable_comm, aes(xintercept = EmpiricalEqAbundance), color = "navyblue", linetype = 2) +
         scale_color_manual(values = c("p<0.05" = "maroon", "p>=0.05" = grey(0.8))) +
         scale_x_continuous(breaks = c(0.001, 0.01, 0.1, 1), trans = "log10") +
         scale_y_continuous(breaks = scales::pretty_breaks(n = 3)) +
@@ -154,12 +152,13 @@ ggsave(paste0(folder_data, "temp/15a-04-species_fitness_stable_comm_ordered.png"
 
 
 # 5. Histogram: linear model predicted equilibrium frequency of stable vs. transient ESVs ----
-ESV_eq_freq %>%
+eq_freq <- bind_rows(eq_freq_stable, eq_freq_transient)
+eq_freq %>%
     filter(rho < 0) %>%
     pull(ESVType) %>%
     table() # For siginficant negaative correlation, 52 stable ESVs, 10 transient ESVs
 
-p <- ESV_eq_freq %>%
+p <- eq_freq %>%
     filter(rho < 0) %>%
     ggplot() +
     geom_histogram(aes(x = PredictedEqAbundance, fill = ESVType), color = 1, binwidth = 0.05) +
@@ -179,7 +178,7 @@ ggsave(paste0(folder_data, "temp/15a-05-lm_eq_stable_vs_transient.png"), p, widt
 # x: the equilibrium frequency calculated as mean of T9-T12 vs.
 # y: the equilibrium frequency predicted by the negative linear model
 
-p <- ESV_eq_freq_stable %>%
+p <- eq_freq_stable %>%
     mutate(ShowNegFreqDep = case_when(
         rho < 0 ~ "neg freq dep",
         T ~ "no evidence of neg freq dep"
@@ -201,7 +200,7 @@ p <- ESV_eq_freq_stable %>%
 
 ggsave(paste0(folder_data, "temp/15a-06-ESV_eq_freq_predicted.png"), p, width = 6, height = 4)
 
-cor.test(ESV_eq_freq_stable$EmpiricalEqAbundance, ESV_eq_freq_stable$PredictedEqAbundance, method = "pearson") %>%
+cor.test(eq_freq_stable$EmpiricalEqAbundance, eq_freq_stable$PredictedEqAbundance, method = "pearson") %>%
     tidy()
 
 
@@ -209,30 +208,30 @@ cor.test(ESV_eq_freq_stable$EmpiricalEqAbundance, ESV_eq_freq_stable$PredictedEq
 # x: the equilibrium frequency calculated as mean of T9-T12 vs.
 # y: the equilibrium frequency predicted by the negative linear model
 
-ESV_eq_freq_stable_comm <- ESV_eq_freq_stable %>%
+eq_freq_stable_comm <- eq_freq_stable %>%
     mutate(InThisStudy = case_when(
         Community %in% communities$Community ~ "four communities in current study",
         T ~ "other 22 communities"
     )) %>%
     arrange(desc(InThisStudy)) # 99 ESVs
 
-ESV_eq_freq_stable_comm_filtered <- ESV_eq_freq_stable_comm %>%
+eq_freq_stable_comm_filtered <- eq_freq_stable_comm %>%
     # Negative slope
     filter(Slope < 0)  # 95 ESVs
 
-ESV_eq_freq_stable_comm_filtered %>%
+eq_freq_stable_comm_filtered %>%
     group_by(InThisStudy, Community) %>%
     count() %>%
     pull(InThisStudy) %>%
     table() # 4 communities in current study, 22 other communities
 
-ESV_eq_freq_stable_comm_filtered %>%
+eq_freq_stable_comm_filtered %>%
     filter(InThisStudy == "four communities in current study") %>%
     count() %>%
     sum() # 16 red points. 18 ESVs in the current study and two of them have positive correlation
 
 
-p <- ESV_eq_freq_stable_comm_filtered %>%
+p <- eq_freq_stable_comm_filtered %>%
     ggplot() +
     geom_abline(intercept = 0, slope = 1, linetype = 2, color = "black") +
     geom_point(aes(x = EmpiricalEqAbundance, y = PredictedEqAbundance, color = InThisStudy), shape = 21, size = 2, stroke = 1) +
@@ -258,13 +257,13 @@ p <- ESV_eq_freq_stable_comm_filtered %>%
 # There are 16 red points because two points have negative predicted ESV eq freq from the linear model
 ggsave(paste0(folder_data, "temp/15a-07-ESV_eq_freq_predicted_comm.png"), p, width = 4, height = 4)
 
-cor.test(ESV_eq_freq_stable_comm_filtered$EmpiricalEqAbundance, ESV_eq_freq_stable_comm_filtered$PredictedEqAbundance, method = "pearson") %>%
+cor.test(eq_freq_stable_comm_filtered$EmpiricalEqAbundance, eq_freq_stable_comm_filtered$PredictedEqAbundance, method = "pearson") %>%
     tidy()
 
-table(ESV_eq_freq_stable_comm$Slope < 0) # 95 ESVs have slope <0, 4 ESVs have slope > 0
-table(ESV_eq_freq_stable_comm$PredictedEqAbundance > 0) # 94 ESVs have the predicted x intercept >0 , 5 ESVs have x intercept < 0
+table(eq_freq_stable_comm$Slope < 0) # 95 ESVs have slope <0, 4 ESVs have slope > 0
+table(eq_freq_stable_comm$PredictedEqAbundance > 0) # 94 ESVs have the predicted x intercept >0 , 5 ESVs have x intercept < 0
 
-ESV_eq_freq_stable_comm %>%
+eq_freq_stable_comm %>%
     mutate(NegativeSlope = Slope < 0) %>%
     mutate(PositiveXintercept = PredictedEqAbundance > 0) %>%
     group_by(NegativeSlope, PositiveXintercept) %>%
@@ -280,9 +279,10 @@ fitness_mean <- bind_rows(
     summarize(MeanFitness = mean(Fitness), NumberPoint = n(), SdFitness = sd(Fitness))
 table(fitness_mean$ESVType) # 99 stable ESVs and 110 transient ESVs
 
-nrow(ESV_eq_freq2) # 99+110 = 209 rows
+eq_freq2 <- bind_rows(eq_freq_stable, eq_freq_transient2)
+nrow(eq_freq2) # 99+110 = 209 rows
 
-fitness_eq_freq2 <- left_join(fitness_mean, ESV_eq_freq2)
+fitness_eq_freq2 <- left_join(fitness_mean, eq_freq2)
 fitness_eq_freq2_filtered <- fitness_eq_freq2 %>% filter(Slope < 0)
 nrow(fitness_eq_freq2_filtered) # 175 ESVs
 table(fitness_eq_freq2_filtered$ESVType) # 95 stable ESVs and 80 transient ESVs

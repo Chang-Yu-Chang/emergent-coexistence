@@ -43,3 +43,30 @@ pairs_freq <- left_join(pairs_boots_mean, pairs_boots_percentile) %>%
 nrow(pairs_freq) # 1107 coclutures. 558 at T0 and 549 at T8
 write_csv(pairs_freq, paste0(folder_data, "temp/25-pairs_freq.csv"))
 
+
+# Find CIs and menas for means of equilibrium frequencies ----
+pairs_mean_eq <- pairs_boots %>% # 185000 rows
+    filter(Time == "T8") %>%
+    group_by(Community, Isolate1, Isolate2, BootstrapID) %>%
+    # Mean of the three equilibrium frequencies
+    summarize(MeanIsolate1CFUFreq = mean(Isolate1CFUFreq))
+## 5th and 95th percentile
+pairs_mean_eq_percentile <- pairs_mean_eq %>% # 185 rows
+    arrange(Community, Isolate1, Isolate2, MeanIsolate1CFUFreq) %>%
+    mutate(Percentile = paste0("Percentile", 0.1 * (1:1000))) %>%
+    filter(Percentile %in% c("Percentile5", "Percentile95")) %>%
+    ungroup() %>%
+    select(Community, Isolate1, Isolate2, MeanIsolate1CFUFreq, Measure = Percentile) %>%
+    pivot_wider(names_from = Measure, names_prefix = "MeanIsolate1CFUFreq", values_from = MeanIsolate1CFUFreq)
+## mean
+pairs_mean_eq_mean <- pairs_mean_eq %>% # 185 rows
+    arrange(Community, Isolate1, Isolate2, MeanIsolate1CFUFreq) %>%
+    #group_by(Community, Isolate1, Isolate2) %>%
+    summarize(MeanMeanIsolate1CFUFreq = mean(MeanIsolate1CFUFreq))
+
+pairs_mean_eq_measures <- pairs_mean_eq_mean %>% left_join(pairs_mean_eq_percentile) %>%
+    left_join(pairs_ID)
+
+nrow(pairs_mean_eq_measures) # 185 pairs with incomplete coculture data because of no colony
+write_csv(pairs_mean_eq_measures, paste0(folder_data, "temp/25-pairs_mean_eq_measures.csv"))
+

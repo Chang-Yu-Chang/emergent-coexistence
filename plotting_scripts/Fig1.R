@@ -4,15 +4,11 @@ library(broom)
 library(grid) # For drawing polygon
 source(here::here("analysis/00-metadata.R"))
 
-
 communities <- read_csv(paste0(folder_data, "output/communities_remained.csv"), show_col_types = F)
 isolates <- read_csv(paste0(folder_data, "output/isolates_remained.csv"), show_col_types = F)
-pairs <- read_csv(paste0(folder_data, "output/pairs_remained.csv"), show_col_types = F)
-communities_abundance <- read_csv(paste0(folder_data, "raw/community_ESV/Emergent_Comunity_Data.csv"), show_col_types = F) %>%
-    filter(Carbon_Source == "Glucose" | Carbon_Source == "Original") %>%
-    mutate(Community = factor(paste0("C", Inoculum, "R", Replicate), paste0("C", rep(1:12, each = 8), "R", rep(1:8, 12))))%>%
-    arrange(Community, Family, Transfer, ESV)
-isolates_abundance <- read_csv(paste0(folder_data, "temp/32-isolates_abundance.csv"), col_types = cols())
+communities_abundance <- read_csv(paste0(folder_data, "temp/14-communities_abundance.csv"), show_col_types = F)
+eq_freq_stable <- read_csv(paste0(folder_data, "temp/15-eq_freq_stable.csv"), show_col_types = F)
+fitness_stable <- read_csv(paste0(folder_data, "temp/15-fitness_stable.csv"), show_col_types = F)
 
 comm = "C8R4"
 
@@ -22,7 +18,7 @@ communities_abundance_comm <- communities_abundance %>%
     bind_rows(filter(communities_abundance, Inoculum == str_sub(comm, 2, 2), Transfer == 0)) %>%
     select(Transfer, Family, ESV_ID, Relative_Abundance) %>%
     arrange(Transfer, Family, ESV_ID)
-isolates_abundance_factor <- isolates_abundance %>%
+isolates_abundance_factor <- isolates %>%
     distinct(Community, CommunityESVID, .keep_all = T) %>%
     drop_na() %>%
     rename(ESV_ID = CommunityESVID)
@@ -36,7 +32,7 @@ ESV_comm <- bind_rows(
     distinct(Family, ESV_ID) %>%
     mutate(ESV_colors = c(rev(RColorBrewer::brewer.pal(8, "YlGnBu")),
                           rev(RColorBrewer::brewer.pal(8, "OrRd")),
-                          rev(RColorBrewer::brewer.pal(4, "Purples")),
+                          rev(RColorBrewer::brewer.pal(5, "Purples")),
                           "gold2","forestgreen", "hotpink2", "salmon4")
     )
 
@@ -109,115 +105,19 @@ pB2 <- isolates_abundance_factor %>%
 
 
 # Panel C ----
-communities_abundance_temporal <- communities_abundance %>%
-    filter(Transfer != 0) %>%
-    # Filter for those that has temporal data
-    filter(Inoculum %in% c(2,6) | Replicate == 4) %>%
-    select(Community, Transfer, ESV_ID, Relative_Abundance) %>%
-    arrange(Community, Transfer, ESV_ID)
-
-# A complete list of ESV-Transfer
-communities_abundance_temporal_complete <- communities_abundance_temporal %>%
-    distinct(Community, ESV_ID) %>%
-    slice(rep(1:n(), each = 12)) %>%
-    mutate(Transfer = rep(1:12, n()/12))
-nrow(distinct(communities_abundance_temporal_complete, Community, ESV_ID)) # 755 unique ESVs
-nrow(communities_abundance_temporal_complete) # 755 ESVs * 12 transfers = 9060 rows
-
-# Calculate fitness
-communities_abundance_fitness <- communities_abundance_temporal %>%
-    right_join(communities_abundance_temporal_complete) %>%
-    group_by(Community, ESV_ID) %>%
-    arrange(Community, ESV_ID, Transfer) %>%
-    mutate(Fitness = log(lead(Relative_Abundance) / Relative_Abundance))
-ESV_stable <- communities_abundance_temporal %>%
-    filter(Transfer %in% c(9:12)) %>%
-    pivot_wider(id_cols = c(Community, ESV_ID), names_from = Transfer, names_prefix = "T", values_from = Relative_Abundance) %>%
-    filter(
-        # Species with complete presence at T8-12
-        (!is.na(T9) & !is.na(T10) & !is.na(T11) & !is.na(T12) ) |
-            # Community C4R4, C9R4 have missing time points at T11. For these communities, add back the species
-            (Community %in% c("C4R4", "C9R4") & (!is.na(T9) & !is.na(T10) & !is.na(T12))) |
-            # Community C5R4 have missing time points at T9. For these communities, add back the species
-            (Community %in% c("C5R4") & (!is.na(T10) & !is.na(T11) & !is.na(T12)))
-    ) %>%
-    distinct(Community, ESV_ID) %>%
-    mutate(CommunityESV = paste0(Community, ESV_ID))
-
-communities_abundance_fitness_stable <- communities_abundance_fitness %>%
-    drop_na() %>%
-    mutate(CommunityESV = paste0(Community, ESV_ID)) %>%
-    filter(CommunityESV %in% ESV_stable$CommunityESV)
-
-# Correlation
-cor_test_long <- function (long_data) cor.test(long_data$Relative_Abundance, long_data$Fitness, method = "spearman", exact = F, alternative = c("less"))
-tb_cor_stable <- communities_abundance_fitness_stable %>%
-    nest(data = c(-Community, -ESV_ID)) %>%
-    mutate(fit = map(data, ~ cor_test_long(.x)),
-           tidied = map(fit, tidy)) %>%
-    unnest(tidied)
-ESV_sig_stable <- tb_cor_stable %>%
-    select(Community, ESV_ID, estimate, p.value) %>%
-    filter(p.value < 0.05, estimate < 0) %>%
-    mutate(CommunityESV = paste0(Community, ESV_ID)) %>%
-    mutate(Significance = "p<0.05")
-
-nrow(tb_cor_stable) # 99 stable ESVs
-nrow(ESV_sig_stable) # 52 shows significant negative correlation
-range(ESV_sig_stable$estimate) # range of correlation [-0.95, -0.53]
-tb_cor_stable %>% filter(Community %in% c("C4R4", "C5R4", "C9R4")) %>% nrow() # 9 ESVs from C4R4, C5R4, C9R4 have only three time points
-
-# Empirical equilibrium frequency
-eq_freq_stable <- communities_abundance_temporal %>%
-    mutate(CommunityESV = paste0(Community, ESV_ID)) %>%
-    filter(Transfer %in% 9:12) %>%
-    filter(CommunityESV %in% ESV_stable$CommunityESV) %>%
-    arrange(Community, ESV_ID, CommunityESV, Transfer) %>%  # 387 rows. 99 * 4 - 9 = 387. 9 ESVs from C4R4, C5R4, C9R4 have only three time points
-    group_by(Community, ESV_ID, CommunityESV) %>%
-    summarize(EquilibriumAbundance = mean(Relative_Abundance)) # 99 ESVs
-
-# Linear model predicted equilibrium frequency
-xintercept_stable <- communities_abundance_fitness_stable %>%
-    nest(data = c(-Community, -ESV_ID, -CommunityESV)) %>%
-    mutate(fit = map(data, ~ lm(Fitness ~ Relative_Abundance, data = .x)),
-           tidied = map(fit, tidy)) %>%
-    unnest(tidied) %>%
-    select(Community, ESV_ID, CommunityESV, term, estimate) %>%
-    pivot_wider(names_from = term, values_from = estimate) %>%
-    # X intercept
-    mutate(Xintercept = -`(Intercept)` / Relative_Abundance) %>%
-    select(Community, ESV_ID, CommunityESV, Xintercept, Slope = Relative_Abundance, Yintercept = `(Intercept)`) %>%
-    mutate(ESVType = "stable") %>%
-    # Mark significant correlation
-    left_join(select(tb_cor_stable, Community, ESV_ID, estimate, p.value))
-
-
-eq_freq_stable_both <- eq_freq_stable %>%
-    left_join(xintercept_stable) %>%
-    drop_na(Xintercept)
-
-eq_freq_stable_comm <- eq_freq_stable_both %>%
+eq_freq_stable_comm_filtered <- eq_freq_stable %>%
     mutate(InThisStudy = case_when(
         Community %in% communities$Community ~ "four communities\nin current study",
         T ~ "other 22 communities"
     )) %>%
-    arrange(desc(InThisStudy)) # 99 ESVs
-
-eq_freq_stable_comm_filtered <- eq_freq_stable_comm %>%
+    arrange(desc(InThisStudy)) %>% # 99 ESVs
     # Negative slope
-    filter(Slope < 0)  # 95 ESVs
-
-eq_freq_stable_comm_filtered %>%
-    group_by(InThisStudy, Community) %>%
-    count() %>%
-    pull(InThisStudy) %>%
-    table() # 4 communities in current study, 22 other communities
-
+    filter(Slope < 0) # 95 ESVs
 
 pC <- eq_freq_stable_comm_filtered %>%
     ggplot() +
     geom_abline(intercept = 0, slope = 1, linetype = 2, color = "black") +
-    geom_point(aes(x = EquilibriumAbundance, y = Xintercept, color = InThisStudy), shape = 21, size = 2, stroke = 1) +
+    geom_point(aes(x = EmpiricalEqAbundance, y = PredictedEqAbundance, color = InThisStudy), shape = 21, size = 2, stroke = 1) +
     scale_color_manual(values = c("four communities\nin current study" = "red", "other 22 communities" = grey(0.8))) +
     scale_x_continuous(limits = c(0,1), breaks = seq(0,1,0.25)) +
     scale_y_continuous(limits = c(0,1), breaks = seq(0,1,0.25)) +
@@ -241,13 +141,13 @@ pC <- eq_freq_stable_comm_filtered %>%
     guides(color = guide_legend(nrow = 1)) +
     labs(x = "empirical equilibrium abundance", y = "equilibrium abundance\npredicted from\nassembly dynamics")
 
-cor.test(eq_freq_stable_comm$EquilibriumAbundance, eq_freq_stable_comm$Xintercept, method = "pearson") %>%
+cor.test(eq_freq_stable_comm_filtered$EmpiricalEqAbundance, eq_freq_stable_comm_filtered$PredictedEqAbundance, method = "pearson") %>%
     tidy()
 
-xintercept_stable %>% filter(Community == "C8R4")
+eq_freq_stable_comm_filtered %>% filter(Community == "C8R4")
 # Pseudo: y = -11.8x + 2.05, p<0.001, R^2= 0.9212
 # Klebsi: y = -1.81x + 1.38, p<0.001, R^2 = 0.7089
-fit <- communities_abundance_fitness_stable %>%
+fit <- fitness_stable %>%
     nest(data = c(-Community, -ESV_ID, -CommunityESV)) %>%
     mutate(fit = map(data, ~ lm(Fitness ~ Relative_Abundance, data = .x)),
            tidied = map(fit, tidy)) %>%
@@ -257,7 +157,7 @@ summary(fit$fit[3][[1]]) # R^2= 0.9212
 summary(fit$fit[1][[1]]) # R^2 = 0.7089
 
 # Panel D: Negative frequency dependent selection of 2 ESVs from C8R4 ----
-pD <- communities_abundance_fitness_stable %>%
+pD <- fitness_stable %>%
     filter(Community == "C8R4") %>%
     mutate(ESV_ID = factor(ESV_ID, c("Pseudomonas.10", "Klebsiella"))) %>%
     ggplot() +
