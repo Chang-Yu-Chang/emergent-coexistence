@@ -9,6 +9,12 @@ isolates_rank <- isolates %>%
     group_by(Community) %>%
     select(ExpID, Community, Isolate, CommunityESVID, Rank, RelativeAbundance)
 
+
+isol <- isolates_rank %>% mutate(Rank_Abundance = rank(-RelativeAbundance, ties.method = "average"))
+cor.test(isol$Rank_Abundance, isol$Rank, method = "spearman", alternative = "two.sided", exact = FALSE) %>%
+    tidy()
+
+#
 set.seed(1)
 list_rho <- rep(NA, 1000)
 for (i in 1:1000) {
@@ -43,8 +49,9 @@ p2 <- tibble(rho = list_rho, BootStrapID = 1:1000) %>%
     guides() +
     labs(x = expression(rho))
 
-p <- plot_grid(p1, p2, nrow = 1, scale = 0.85, labels = c("A", "B")) + paint_white_background()
-ggsave(here::here("plots/FigS16-abundance_vs_rank.png"), p, width = 8, height = 4)
+#p <- plot_grid(p1, p2, nrow = 1, scale = 0.85, labels = c("A", "B")) + paint_white_background()
+p <- p2
+ggsave(here::here("plots/FigS16-abundance_vs_rank.png"), p, width = 4, height = 4)
 
 
 # Range of

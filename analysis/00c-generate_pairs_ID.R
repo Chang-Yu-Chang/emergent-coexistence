@@ -14,6 +14,10 @@ isolates_ID <- read_csv(paste0(folder_data, "raw/isolates1.csv"), col_types = co
 isolates_ID$ID[isolates_ID$ExpID == "10.2.C.4"] <- "10.2.C.4"
 isolates_ID$ID[isolates_ID$ExpID == "2.6.A.5"] <- "2.6.A.5"
 
+write_csv(isolates_ID, paste0(folder_data, "temp/00c-isolates_ID.csv"))
+cat("\n", paste0(folder_data, "temp/00c-isolates_ID.csv"), "\tcreated")
+
+
 # 2. Communities ----
 communities_name <- c("C1R2", "C1R4", "C1R6", "C1R7", "C2R6", "C2R8", "C4R1", "C7R1", "C8R4", "C10R2", "C11R1", "C11R2", "C11R5")
 communities_size <- c(4,5,5,7,4,4,3,4,3,3,9,12,5)
@@ -32,8 +36,8 @@ communities <- data.frame(
 write_csv(communities, paste0(folder_data, "temp/00c-communities.csv"))
 cat("\n", paste0(folder_data, "temp/00c-communities.csv"), "\tcreated")
 
-write_csv(isolates_ID, paste0(folder_data, "temp/00c-isolates_ID.csv"))
-cat("\n", paste0(folder_data, "temp/00c-isolates_ID.csv"), "\tcreated")
+
+
 
 
 

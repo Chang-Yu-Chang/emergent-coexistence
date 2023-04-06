@@ -5,12 +5,42 @@ library(ggraph)
 library(igraph)
 source(here::here("analysis/00-metadata.R"))
 
-isolates <- read_csv(paste0(folder_data, "output/isolates.csv"), show_col_types = F)
-pairs <- read_csv(paste0(folder_data, "output/pairs.csv"), show_col_types = F)
+isolates <- read_csv(paste0(folder_data, "output/isolates_remained.csv"), show_col_types = F)
+pairs <- read_csv(paste0(folder_data, "output/pairs_remained.csv"), show_col_types = F)
 communities <- read_csv(paste0(folder_data, "temp/00c-communities.csv"), show_col_types = F)
-pairs_freq <- read_csv(paste0(folder_data, "temp/93a-pairs_freq.csv"), show_col_types = F)
-load(paste0(folder_data, "temp/95-communities_network.Rdata"))
+pairs_freq <- read_csv(paste0(folder_data, "temp_old/93a-pairs_freq.csv"), show_col_types = F)
+load(paste0(folder_data, "temp_old/95-communities_network.Rdata"))
 #communities_hierarchy <- read_csv(paste0(folder_data, "temp/95-communities_hierarchy.csv"), show_col_types = F)
+
+
+# Check if for all exclusion pairs, it's the higher ranked species excluding the lower rank
+pairs_exclusion <- pairs %>%
+    filter(outcome %in% c("1-exclusion", "2-exclusion")) %>%  # 103 exclusion pairs
+    select(Community, From, To, outcome)
+
+isolates_rank <- isolates %>%
+    select(Community, Isolate, Rank)
+
+
+pairs_exclusion %>%
+    left_join(rename(isolates_rank, From = Isolate, FromRank = Rank)) %>%
+    left_join(rename(isolates_rank, To = Isolate, ToRank = Rank)) %>%
+    filter(FromRank > ToRank)
+
+
+isolates %>%
+    select(Community, Isolate, Rank, Win, Draw, Lose, Game, Score) %>%
+    filter(Community == "C11R1")
+
+#
+pairs_freq %>%
+    filter(Community == "C11R1", Isolate1 == 3, Isolate2 == 9) %>%
+    ggplot() +
+    geom_line(aes(x = Time, y = Isolate1CFUFreqMean, color = factor(Isolate1InitialODFreq), group = Isolate1InitialODFreq)) +
+    theme_classic() +
+    theme() +
+    guides() +
+    labs()
 
 
 # Plot individual networks
