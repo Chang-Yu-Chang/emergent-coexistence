@@ -8,8 +8,8 @@ source(here::here("processing_scripts/00-metadata.R"))
 communities <- read_csv(paste0(folder_data, "output/communities_remained.csv"), show_col_types = F)
 isolates <- read_csv(paste0(folder_data, "output/isolates_remained.csv"), show_col_types = F)
 pairs <- read_csv(paste0(folder_data, "output/pairs_remained.csv"), show_col_types = F)
-pairs_freq <- read_csv(paste0(folder_data, "temp/93a-pairs_freq.csv"), show_col_types = F)
-load(paste0(folder_data, "temp/38-communities_network.Rdata"))
+load(paste0(folder_data, "output/communities_network.Rdata"))
+pairs_freq <- read_csv(paste0(folder_data, "temp/25-pairs_freq.csv"), show_col_types = F)
 
 
 # Plot individual networks ----
@@ -51,13 +51,13 @@ plot_network_hierarchy <- function(net, n_rank = 10, n_break = 10) {
         activate(nodes) %>%
         mutate(y = -Rank) %>%
         group_by(Rank) %>%
-        mutate(x = {seq(0, 1, length.out = n() + 2) %>% `[`(c(-1, -length(.)))}) %>% # + rnorm(n(), 0, .5)) %>%
+        mutate(x = {seq(0, 1, length.out = n() + 2) %>% `[`(c(-1, -length(.)))}) %>%
         ungroup() %>%
         # Filter out coexistence edges
         activate(edges) %>%
 #        filter(outcome != "5-inconclusive", !is.na(outcome)) %>%
-#        filter(outcome == "1-exclusion" | outcome == "2-exclusion" | outcome == "3-coexistence" | outcome == "4-coexistence") %>%
-        filter(outcome == "1-exclusion" | outcome == "2-exclusion") %>%
+        filter(outcome == "1-exclusion" | outcome == "2-exclusion" | outcome == "3-coexistence" | outcome == "4-coexistence") %>%
+#        filter(outcome == "1-exclusion" | outcome == "2-exclusion") %>%
         mutate(Temp = sample(c(-1, 1), size = n(), replace = T))
     strength_angle <- as_tibble(temp)$Temp * 0.06
 
@@ -65,7 +65,7 @@ plot_network_hierarchy <- function(net, n_rank = 10, n_break = 10) {
         ggraph(layout = "nicely") +
         geom_hline(yintercept = c(-n_rank:-1), color = "grey90") +
         geom_node_point(size = node_size, shape = 21, fill = "grey", stroke = node_size/5, color = "black") +
-        geom_node_text(aes(label = Isolate), size = 3) +
+#        geom_node_text(aes(label = Isolate), size = 3) +
         geom_edge_arc(strength = strength_angle, alpha = 0.5,
                       aes(color = outcome), width = edge_width,
                       arrow = arrow(length = unit(edge_width, "mm"), type = "closed", angle = 30, ends = "last"),
@@ -181,8 +181,8 @@ p <- ggdraw(plot_grid(p1, labels = "A")) +
     draw_plot(plot_grid(p2, labels = "B") , x = 0, y = 0, width = 0.3, height = 0.5, hjust = 0, vjust = 0)
 
 
-ggsave(here::here("plots/Fig3.png"), p, width = 10, height = 5)
-#ggsave(here::here("plots/Fig3_2.svg"), p, width = 10, height = 5)
+#ggsave(here::here("plots/Fig3.png"), p, width = 10, height = 5)
+ggsave(here::here("plots/Fig3_no_cartoon.pdf"), p, width = 10, height = 5)
 
 
 

@@ -28,7 +28,6 @@ import skimage
 from skimage import data, restoration, util, io, color
 
 list_images = pd.read_csv(str(sys.argv[1]))
-#list_images = pd.read_csv('/Users/chang-yu/Desktop/lab/emergent-coexistence/analysis/00-list_images-D-red.csv')
 
 def rolling_ball_light(image):
     # invert the image

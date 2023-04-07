@@ -6,17 +6,16 @@
 library(tidyverse)
 source(here::here("processing_scripts/00-metadata.R"))
 
-list_image_mapping_folder_master <- read_csv(paste0(folder_script, "mapping_files/", "00-list_image_mapping_folder_master.csv"), show_col_types = F)
+list_image_mapping_folder_master <- read_csv(paste0("image_scripts/mapping_files/", "00-list_image_mapping_folder_master.csv"), show_col_types = F)
 
 # 1. Isolates ----
 # This one reads the old, hand-curated csv to generate ID
 isolates_ID <- read_csv(paste0(folder_data, "raw/isolates1.csv"), col_types = cols())
 isolates_ID$ID[isolates_ID$ExpID == "10.2.C.4"] <- "10.2.C.4"
 isolates_ID$ID[isolates_ID$ExpID == "2.6.A.5"] <- "2.6.A.5"
-
+nrow(isolates_ID)
 write_csv(isolates_ID, paste0(folder_data, "temp/00c-isolates_ID.csv"))
 cat("\n", paste0(folder_data, "temp/00c-isolates_ID.csv"), "\tcreated")
-
 
 # 2. Communities ----
 communities_name <- c("C1R2", "C1R4", "C1R6", "C1R7", "C2R6", "C2R8", "C4R1", "C7R1", "C8R4", "C10R2", "C11R1", "C11R2", "C11R5")
@@ -32,7 +31,7 @@ communities <- data.frame(
     arrange(CommunitySize) %>%
     mutate(CommunityLabel = 1:13) %>%
     select(Community, CommunityLabel, everything())
-
+nrow(communities)
 write_csv(communities, paste0(folder_data, "temp/00c-communities.csv"))
 cat("\n", paste0(folder_data, "temp/00c-communities.csv"), "\tcreated")
 
@@ -78,7 +77,7 @@ pairs_ID <- pairs_freq_ID %>%
     distinct(Batch, Community, Isolate1, Isolate2) %>%
     mutate(PairID = 1:n()) %>%
     select(PairID, everything())
-nrow(pairs_ID)
+nrow(pairs_ID) # 186 pairs in the image pipeline
 
 write_csv(pairs_freq_ID, paste0(folder_data, "temp/00c-pairs_freq_ID.csv"))
 cat("\n", paste0(folder_data, "temp/00c-pairs_freq_ID.csv"), "\tcreated")

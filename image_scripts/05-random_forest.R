@@ -57,9 +57,6 @@ read_feature <- function (type, color_channel) {
             select(image_name, ObjectID, Group, everything())
     }
 
-    # # Remove dark objects that are too dark to be colonies
-    # object_feature_combined <- object_feature_combined %>% filter(b.mean > 0)
-
     return(object_feature)
 }
 create_customRF <- function (){

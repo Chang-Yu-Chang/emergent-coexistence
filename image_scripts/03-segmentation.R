@@ -10,7 +10,6 @@ library(tidyverse)
 library(EBImage)
 
 list_images <- read_csv(commandArgs(trailingOnly = T)[1], show_col_types = F)
-#list_images <- read_csv("~/Desktop/lab/emergent-coexistence/analysis/00-list_images-D-green.csv", show_col_types = F)
 paste_folder_name <- function (image_type = "channel", channel = "green") {
     paste0(list_images[i,paste0("folder_", image_type)], channel, "/")
 }
@@ -28,9 +27,9 @@ compute_feature <- function (image_object, image_intensity) {
         rename_with(function(x) str_replace(x,"x.Ba.", ""), starts_with("x.Ba")) %>%
         select(ObjectID, starts_with("b."), starts_with("s."), starts_with("m."))
 }
-detect_nonround_object <- function (image_object, image_intensity = NULL, watershed = F) {
+detect_nonround_object <- function (image_object, image_intensity = NULL, after_watershed = F) {
     # Remove too large or too small objects before watershed to reduce computational load
-    if (!watershed) {
+    if (!after_watershed) {
         # Check if the are away from the image border (use 100 pixel)
         oc <- ocontour(image_object)
         inside <- sapply(oc, function (x) {
@@ -49,9 +48,8 @@ detect_nonround_object <- function (image_object, image_intensity = NULL, waters
     }
 
     # Filter for circularity only after watershed segmentation
-    if (watershed) {
+    if (after_watershed) {
         object_feature <- compute_feature(image_object, image_intensity)
-        #object_feature <- compute_feature(image_watershed, image_rolled)
 
         # Remove segmented objects based on shape
         object_shape_round <- object_feature %>%
@@ -62,16 +60,7 @@ detect_nonround_object <- function (image_object, image_intensity = NULL, waters
             filter(Circularity > 0.7) %>%
             # Remove tape and label that has really large variation in radius
             filter(s.radius.sd/s.radius.mean < 0.2)
-        #filter(m.eccentricity < 0.9) # Circle eccentricity=0, straight line eccentricity=1
 
-
-        # Remove outliers by b.sd/b.mean ratio
-        # object_shape_round <- object_shape_round %>%
-        #     ungroup() %>%
-        #     mutate(b.sd_over_mean = b.sd/b.mean) %>%
-        #     mutate(b.sd_over_mean.up = quantile(b.sd_over_mean, .75) + 5 * IQR(b.sd_over_mean),
-        #            b.sd_over_mean.low = quantile(b.sd_over_mean, .25) - 5 * IQR(b.sd_over_mean)) %>%
-        #     filter(b.sd_over_mean < b.sd_over_mean.up & b.sd_over_mean > b.sd_over_mean.low)
     }
 
     # Arrange by area size
@@ -79,7 +68,6 @@ detect_nonround_object <- function (image_object, image_intensity = NULL, waters
     object_ID_nonround <- object_feature$ObjectID[!(object_feature$ObjectID %in% object_shape_round$ObjectID)]
     return(object_ID_nonround)
 }
-#i = which(list_images$image_name %in% c("B2_T1_C11R1_3"))
 
 for (i in 1:nrow(list_images)) {
     image_name <- list_images$image_name[i]
@@ -93,13 +81,14 @@ for (i in 1:nrow(list_images)) {
     #' thresh() applies a sliding window to calculate the local threshold
     #' opening() brushes the image to remove very tiny objects
     image_threshold <- thresh(-image_rolled, w = 150, h = 150, offset = 0.01) %>%
+        # Brushing
         opening(makeBrush(11, shape='disc'))
     writeImage(image_threshold, paste0(paste_folder_name("threshold", color_channel), image_name, ".tiff"))
     cat("\tthreshold")
 
     # 4. Detect round shaped object and remove super small size
     image_object <- bwlabel(image_threshold)
-    object_ID_nonround <- detect_nonround_object(image_object, watershed = F)
+    object_ID_nonround <- detect_nonround_object(image_object, after_watershed = F)
     image_round <- rmObjects(image_object, object_ID_nonround, reenumerate = T)
     writeImage(image_round, paste0(paste_folder_name("round", color_channel), image_name, ".tiff"))
     cat("\tround object")
@@ -118,7 +107,7 @@ for (i in 1:nrow(list_images)) {
     ## Execute when there is at least one object
     if (!all(image_watershed == 0)){
         ## After watershed, apply a second filter removing objects that are too small to be colonies
-        object_ID_nonround2 <- detect_nonround_object(image_watershed, image_rolled, watershed = T)
+        object_ID_nonround2 <- detect_nonround_object(image_watershed, image_rolled, after_watershed = T)
         image_watershed2 <- rmObjects(image_watershed, object_ID_nonround2, reenumerate = T)
 
         if (all(image_watershed2 == 0)) {

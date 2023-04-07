@@ -5,10 +5,13 @@ Scripts and data for the manuscript entitled "Emergent coexistence in multispeci
 
 `pipeline/` stores the original colony plate images (TIFF), the processed images (i.e., grey-scaled images, background subtracted images, segmented images), object features (CSV), random forest results (CSV).
 
-`data/` stores all other datasets 
+`data/` stores all other datasets. It includes three folders: 
 
 - `raw`: includes sequences, ESV table, human colony counts, isolate growth rate, and OD. These data are CSV or AB1 for sequences.
-- `temp`: includes processed CSV. The prefix of the file name is numbered corresponding to the scripts generating them. 
+- `temp`: includes processed CSV. The file name is numbered corresponding to the script that generates it. 
+    - `00c-communities.csv`: mapping file for communities. 13
+    - `00c-isolates_ID.csv`: mapping file for isolates. 68 isolates
+    - `00c-pairs_freq_ID.csv`: mapping file for coculture in image processing. 186 pairs
 - `output`: includes the seven main datasets
     - `communities.csv` `isolates.csv`, and `pairs.csv` contains 68 isolates
     - `communities_remained.csv` `isolates_remained.csv`, and `pairs_remained.csv` are used to generate contain 62 isolates after removing four isolates with bad alignment and C10R1
@@ -47,10 +50,10 @@ Edit this script to specify three folders for the scripts to work:
 Once the directories are specified, navigate to `image_scripts/` and execute the following scripts to set up the subfolders in `pipeline/` for image processing and mapping files.
 
 ```
-$ cd image_scripts/
-$ mkdir mapping_files/
-$ Rscript 00a-folder_structure.R
-$ Rscript 00b-generate_mapping_files.R
+cd image_scripts/
+mkdir mapping_files/
+Rscript 00a-folder_structure.R
+Rscript 00b-generate_mapping_files.R
 ```
 
 Two groups of mapping files are generated:
@@ -66,20 +69,73 @@ The scripts for image files are wrapped into command-line tools that takes the m
 For instance, implementing the image processing pipeline and random forest classification for all cocultures in the batch B2 requires executing the following scripts in order.
 
 ```
-$ cd image_scripts
-$ Rscript 01-channel.R mapping_files/00-list_images-B2-red.csv
-$ Rscript 01-channel.R mapping_files/00-list_images-B2-green.csv
-$ Rscript 01-channel.R mapping_files/00-list_images-B2-blue.csv
-$ python 02-rolling_ball.py mapping_files/00-list_images-B2-red.csv
-$ python 02-rolling_ball.py mapping_files/00-list_images-B2-green.csv
-$ python 02-rolling_ball.py mapping_files/00-list_images-B2-blue.csv
-$ Rscript 03-segmentation.R mapping_files/00-list_images-B2-green.csv
-$ Rscript 04-feature.R mapping_files/00-list_images-B2-red.csv
-$ Rscript 04-feature.R mapping_files/00-list_images-B2-green.csv
-$ Rscript 04-feature.R mapping_files/00-list_images-B2-blue.csv
-$ Rscript 04a-merge_features.R mapping_files/00-list_images-B2-green.csv
-$ Rscript 05-random_forest.R mapping_files/00-list_images-B2-green.csv mapping_files/00-list_image_mapping-B2.csv
+cd image_scripts
+Rscript 01-channel.R mapping_files/00-list_images-B2-red.csv
+Rscript 01-channel.R mapping_files/00-list_images-B2-green.csv
+Rscript 01-channel.R mapping_files/00-list_images-B2-blue.csv
+python 02-rolling_ball.py mapping_files/00-list_images-B2-red.csv
+python 02-rolling_ball.py mapping_files/00-list_images-B2-green.csv
+python 02-rolling_ball.py mapping_files/00-list_images-B2-blue.csv
+Rscript 03-segmentation.R mapping_files/00-list_images-B2-green.csv
+Rscript 04-feature.R mapping_files/00-list_images-B2-red.csv
+Rscript 04-feature.R mapping_files/00-list_images-B2-green.csv
+Rscript 04-feature.R mapping_files/00-list_images-B2-blue.csv
+Rscript 04a-merge_features.R mapping_files/00-list_images-B2-green.csv
+Rscript 05-random_forest.R mapping_files/00-list_images-B2-green.csv mapping_files/00-list_image_mapping-B2.csv
 ```
+
+Batch C
+
+```
+Rscript 01-channel.R mapping_files/00-list_images-C-red.csv
+Rscript 01-channel.R mapping_files/00-list_images-C-green.csv
+Rscript 01-channel.R mapping_files/00-list_images-C-blue.csv
+python 02-rolling_ball.py mapping_files/00-list_images-C-red.csv
+python 02-rolling_ball.py mapping_files/00-list_images-C-green.csv
+python 02-rolling_ball.py mapping_files/00-list_images-C-blue.csv
+Rscript 03-segmentation.R mapping_files/00-list_images-C-green.csv
+Rscript 04-feature.R mapping_files/00-list_images-C-red.csv
+Rscript 04-feature.R mapping_files/00-list_images-C-green.csv
+Rscript 04-feature.R mapping_files/00-list_images-C-blue.csv
+Rscript 04a-merge_features.R mapping_files/00-list_images-C-green.csv
+Rscript 05-random_forest.R mapping_files/00-list_images-C-green.csv mapping_files/00-list_image_mapping-C.csv
+```
+
+Batch C2
+
+```
+Rscript 01-channel.R mapping_files/00-list_images-C2-red.csv
+Rscript 01-channel.R mapping_files/00-list_images-C2-green.csv
+Rscript 01-channel.R mapping_files/00-list_images-C2-blue.csv
+python 02-rolling_ball.py mapping_files/00-list_images-C2-red.csv
+python 02-rolling_ball.py mapping_files/00-list_images-C2-green.csv
+python 02-rolling_ball.py mapping_files/00-list_images-C2-blue.csv
+Rscript 03-segmentation.R mapping_files/00-list_images-C2-green.csv
+Rscript 04-feature.R mapping_files/00-list_images-C2-red.csv
+Rscript 04-feature.R mapping_files/00-list_images-C2-green.csv
+Rscript 04-feature.R mapping_files/00-list_images-C2-blue.csv
+Rscript 04a-merge_features.R mapping_files/00-list_images-C2-green.csv
+Rscript 05-random_forest.R mapping_files/00-list_images-C2-green.csv mapping_files/00-list_image_mapping-C2.csv
+```
+
+
+Batch D
+
+```
+Rscript 01-channel.R mapping_files/00-list_images-D-red.csv
+Rscript 01-channel.R mapping_files/00-list_images-D-green.csv
+Rscript 01-channel.R mapping_files/00-list_images-D-blue.csv
+python 02-rolling_ball.py mapping_files/00-list_images-D-red.csv
+python 02-rolling_ball.py mapping_files/00-list_images-D-green.csv
+python 02-rolling_ball.py mapping_files/00-list_images-D-blue.csv
+Rscript 03-segmentation.R mapping_files/00-list_images-D-green.csv
+Rscript 04-feature.R mapping_files/00-list_images-D-red.csv
+Rscript 04-feature.R mapping_files/00-list_images-D-green.csv
+Rscript 04-feature.R mapping_files/00-list_images-D-blue.csv
+Rscript 04a-merge_features.R mapping_files/00-list_images-D-green.csv
+Rscript 05-random_forest.R mapping_files/00-list_images-D-green.csv mapping_files/00-list_image_mapping-D.csv
+```
+
 
 Below is the overview for the image processing pipeline. The resulting dataset such as the object features are stored in `BATCH-07-feature/` and the random forest results are stored in `BATCH-08-random_forest/`. These csv are later aggregated using the scripts below.
 
@@ -91,8 +147,8 @@ Below is the overview for the image processing pipeline. The resulting dataset s
 
 
 ```
-$ Rscript 00c-generate_pairs_ID.R
-$ Rscript 00d-assemble_colony_images.R # for making figure S5
+Rscript 00c-generate_pairs_ID.R
+Rscript 00d-assemble_colony_images.R # for making figure S5
 ```
 
 In this step, we take data from either the 16S sequences or those data generated from the command-line as described above. These data are cleaned up and stored in the folder `~/Dropbox/lab/emergent-coexistence/data/temp/` with the file name prefix matched to the numbered script that generates it.
@@ -100,32 +156,32 @@ In this step, we take data from either the 16S sequences or those data generated
 From the raw `.ab1` of 16S Sanger sequences, we aligned the raw reads, identified isolate taxonomy, and matched the community amplicon sequences (ESVs). See the Methods section for details. The following scripts do what has described.
 
 ```
-$ cd processing_scripts
-$ Rscript 11-align_isolate_sequences.R
-$ Rscript 12-assign_isolate_RDP.R
-$ Rscript 13-match_community_abundance.R
+cd processing_scripts
+Rscript 11-align_isolate_sequences.R
+Rscript 12-assign_isolate_RDP.R
+Rscript 13-match_community_abundance.R
 
 # A folder is need temp/21-needle/
-$ python 21-pairwise_16s_mismatch.py PATH_TO_DATA/
+python 21-pairwise_16s_mismatch.py PATH_TO_DATA/
 
-$ Rscript 15-samebug_pairs.R
-$ Rscript 16-match_pair_RDP.R
+Rscript 15-samebug_pairs.R
+Rscript 16-match_pair_RDP.R
 ```
 
 Once the image processing and sequence analysis are done, we extracted the Random Forest model accuracy, compared the machine results to human results, as well as determined the pairwise competition outcome through bootstrapping. These results are appended to one two processed tables: `isolates` with 68 row representing isolates and `pairs` with 186 row representing species pairs.
 
 
 ```
-$ Rscript 91-model_accuracy.R
-$ Rscript 92-compare_machine_human.R
-$ Rscript 93-determine_competition.R
-$ Rscript 94-append_data.R
+Rscript 91-model_accuracy.R
+Rscript 92-compare_machine_human.R
+Rscript 93-determine_competition.R
+Rscript 94-append_data.R
 ```
 
 We generated network objects for plotting the competitive networks as well as calculating the network hierarchy.
 
 ```
-$ Rscript 95-randomize_networks.R
+Rscript 95-randomize_networks.R
 ```
 
 
@@ -134,9 +190,9 @@ $ Rscript 95-randomize_networks.R
 Finally, with the processed tabular data and networks, we made Figure 1-4, Supplementary Figures S4-6, and Supplementary Tables S1-4 using the following scripts.
 
 ```
-$ cd processing_scripts
-$ Rscript 96-figures.R
-$ Rscript 96a-supp_figures.R
+cd processing_scripts
+Rscript 96-figures.R
+Rscript 96a-supp_figures.R
 ```
 
 Cartoons and Fig.S1-2 are generated using Adobe Illustrator.
@@ -144,15 +200,15 @@ Cartoons and Fig.S1-2 are generated using Adobe Illustrator.
 The four supplementary PDFs that contain the images and random forest results are generated using the script. The command-line function `convert` is from `imagemagick`. An example of one page in these PDFs is shown in Figure S3.
 
 ```
-$ cd processing_scripts
-$ Rscript 97-combine_images_and_random_forest.R
+cd processing_scripts
+Rscript 97-combine_images_and_random_forest.R
 
 # Once the individual pngs are generated, merge them into multi-page PDFs
-$ cd ~/Dropbox/lab/emergent-coexistence/plate_scan_pipeline/random_forest/
-$ convert -quality 60 B2_*.png random_forest-B2.pdf
-$ convert -quality 60 C_*.png random_forest-C.pdf
-$ convert -quality 60 C2_*.png random_forest-C2.pdf
-$ convert -quality 60 D_*.png random_forest-D.pdf
+cd ~/Dropbox/lab/emergent-coexistence/plate_scan_pipeline/random_forest/
+convert -quality 60 B2_*.png random_forest-B2.pdf
+convert -quality 60 C_*.png random_forest-C.pdf
+convert -quality 60 C2_*.png random_forest-C2.pdf
+convert -quality 60 D_*.png random_forest-D.pdf
 ```
 
 ## Sum up
@@ -160,8 +216,8 @@ $ convert -quality 60 D_*.png random_forest-D.pdf
 To execute all steps decribed above, from the raw data to ready-for-paper figures, basically run all scripts using terminal commands saved in a master shell script `processing_scripts00e-commands.sh`. Note that for the shell script to work, the working directory has to be the project directory (where `emergent-coexistence.Rproj` is located)
 
 ```
-$ Rscrip processing_scripts99-generate_commands.R
-$ zsh processing_scripts99a-commands.sh
+Rscrip processing_scripts99-generate_commands.R
+zsh processing_scripts99a-commands.sh
 ```
 
 

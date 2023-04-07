@@ -104,6 +104,20 @@ pB2 <- isolates_abundance_factor %>%
     guides(alpha = "none") +
     labs(x = "community", y = "relative abundance")
 
+# Mean ESV abundance isolated
+isolates %>%
+    distinct(Community, CommunityESVID, .keep_all = T) %>%
+    group_by(Community) %>%
+    summarize(Total = sum(RelativeAbundance, na.rm = T)) %>%
+    summarize(Mean = mean(Total))
+
+# ESV richness
+communities_abundance %>%
+    filter(Community %in% communities$Community, Transfer == 12) %>%
+    group_by(Community) %>%
+    count() %>%
+    arrange(n)
+
 
 # Panel C ----
 eq_freq_stable_comm_filtered <- eq_freq_stable %>%
@@ -237,20 +251,6 @@ p <- ggdraw() +
 ggsave(here::here("plots/Fig1_no_cartoon.pdf"), p, width = 15, height = 12)
 
 
-
-# Mean ESV abundance isolated
-isolates %>%
-    distinct(Community, CommunityESVID, .keep_all = T) %>%
-    group_by(Community) %>%
-    summarize(Total = sum(RelativeAbundance, na.rm = T)) %>%
-    summarize(Mean = mean(Total))
-
-# ESV richness
-communities_abundance %>%
-    filter(Community %in% communities$Community, Transfer == 12) %>%
-    group_by(Community) %>%
-    count() %>%
-    arrange(n)
 
 
 

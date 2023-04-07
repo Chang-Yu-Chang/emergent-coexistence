@@ -10,27 +10,7 @@ source(here::here("processing_scripts/00-metadata.R"))
 for (j in 1:length(batch_names)) {
     # 0.1 list of existing original images ----
     folder_original <- paste0(folder_pipeline, "images/", batch_names[j], "-00-original/")
-    image_names <-
-        list.files(folder_original) %>%
-        # Remove all mixing pairs, for example with suffix 1_1, 2_2, etc
-        #str_subset(paste0("^((?!", paste(paste0("_", 1:13, "_", 1:13), collapse = "|"), ").)*$")) %>%
-        str_subset(paste0("^((?!", paste(paste0("_", 3:13, "_", 3:13), collapse = "|"), ").)*$")) %>%
-        str_subset(paste0("^((?!_1_1\\.).)*$")) %>%
-        str_subset(paste0("^((?!_2_2\\.).)*$")) %>%
-        # Remove folders
-        str_subset(".tiff") %>%
-        #str_subset("T8") %>%
-        str_replace(".tiff", "") %>%
-        # Remove all that contain _-, which was a naming convention for the different dilution factors on the same plate
-        str_subset("^((?!_-).)*$") %>%
-        sort()
-
-    # Manual key in plates using different naming convention
-    if (batch_names[j] == "D") {
-        image_names <- c(image_names, "D_T8_C4R1_50-50_1_3_-4") %>% sort
-    } else if (batch_names[j] == "C2") {
-
-    }
+    image_names <- list.files(folder_original) %>% str_replace(".tiff", "")
 
     # 0.2 list of image files and the folders to store them ----
     n_images <- length(image_names)
@@ -56,8 +36,8 @@ for (j in 1:length(batch_names)) {
         list_images %>%
             mutate(color_channel = color) %>%
             select(image_name, color_channel, everything()) %>%
-            write_csv(paste0("", "mapping_files/00-list_images-", batch_names[j], "-", color, ".csv"))
-        cat("\n", paste0("", "mapping_files/00-list_images-", batch_names[j], "-", color, ".csv"), "\tcreated")
+            write_csv(paste0("mapping_files/00-list_images-", batch_names[j], "-", color, ".csv"))
+        cat("\n", paste0("mapping_files/00-list_images-", batch_names[j], "-", color, ".csv"), "\tcreated")
     }
 
 
@@ -86,8 +66,8 @@ for (j in 1:length(batch_names)) {
         left_join(rename(list_image_isolates, Isolate1 = Isolate, image_name_isolate1 = image_name_isolate), by = c("Batch", "Community", "Isolate1")) %>%
         left_join(rename(list_image_isolates, Isolate2 = Isolate, image_name_isolate2 = image_name_isolate), by = c("Batch", "Community", "Isolate2"))
 
-    write_csv(list_image_mapping, paste0("", "mapping_files/00-list_image_mapping-", batch_names[j], ".csv"))
-    cat("\n", paste0("", "mapping_files/00-list_image_mapping-", batch_names[j], ".csv"), "\tcreated")
+    write_csv(list_image_mapping, paste0("mapping_files/00-list_image_mapping-", batch_names[j], ".csv"))
+    cat("\n", paste0("mapping_files/00-list_image_mapping-", batch_names[j], ".csv"), "\tcreated")
 
 }
 
@@ -95,8 +75,8 @@ for (j in 1:length(batch_names)) {
 list_images_master <- rep(list(NA), length(batch_names))
 list_image_mapping_master <- rep(list(NA), length(batch_names))
 for (j in 1:length(batch_names)) {
-    list_images_master[[j]] <- read_csv(paste0("", "mapping_files/00-list_images-", batch_names[j], "-green.csv") , show_col_types = F)
-    list_image_mapping_master[[j]] <- read_csv(paste0("", "mapping_files/00-list_image_mapping-", batch_names[j], ".csv") , show_col_types = F)
+    list_images_master[[j]] <- read_csv(paste0("mapping_files/00-list_images-", batch_names[j], "-green.csv") , show_col_types = F)
+    list_image_mapping_master[[j]] <- read_csv(paste0("mapping_files/00-list_image_mapping-", batch_names[j], ".csv") , show_col_types = F)
 }
 list_images_master <- bind_rows(list_images_master)
 list_image_mapping_master <- bind_rows(list_image_mapping_master)
@@ -106,7 +86,7 @@ list_image_mapping_folder_master <- list_image_mapping_master %>%
     left_join(select(list_images_master, image_name_isolate1 = image_name), by = "image_name_isolate1") %>%
     left_join(select(list_images_master, image_name_isolate2 = image_name), by = "image_name_isolate2")
 
-write_csv(list_image_mapping_folder_master, paste0("", "mapping_files/00-list_image_mapping_folder_master.csv"))
-cat("\n", paste0("", "mapping_files/00-list_image_mapping_folder_master.csv"), "\tcreated")
+write_csv(list_image_mapping_folder_master, paste0("mapping_files/00-list_image_mapping_folder_master.csv"))
+cat("\n", paste0("mapping_files/00-list_image_mapping_folder_master.csv"), "\tcreated")
 
 

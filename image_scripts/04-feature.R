@@ -288,7 +288,6 @@ for (i in 1:nrow(list_images)) {
     image_transect <- image_rolled %>%
         draw_pixels(transect_smooth$x, transect_smooth$y, color = "red") %>% # Draw transects of normal objects
         draw_pixels(transect_smooth_outlier$x, transect_smooth_outlier$y, color = "blue") # Draw transects of outliers
-    #display(image_transect, method = "raster")
     ## Contour
     image_watershed3_outliers <- rmObjects(image_watershed2, unique(transect_smooth$ObjectID), reenumerate = F)
     image_watershed3 <- rmObjects(image_watershed2, unique(transect_smooth_outlier$ObjectID), reenumerate = F)
