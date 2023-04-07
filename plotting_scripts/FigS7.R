@@ -13,6 +13,7 @@ isolates <- read_csv(paste0(folder_data, "output/isolates.csv"), show_col_types 
 clean_isolate_names <- function (x) {
     y <- x %>%
         group_by(Community) %>%
+        arrange(Isolate) %>%
         mutate(ExpIDGenus = paste0(ExpID, "-", Genus)) %>%
         mutate(IsolateGenus = paste0(Isolate, "-", Genus))
     y %>%
@@ -66,24 +67,16 @@ p <- sequences_alignment %>%
 
 ggsave(here::here("plots/FigS7-Sanger_ESV_alignment.png"), p, width = 10, height = 12)
 
+#
+sequences_alignment %>% distinct(Community, CommunityESVID) %>% nrow() # 112 ESVs
+sequences_alignment %>% distinct(Community, ExpID) %>% nrow() # 68 isolates
 
-# ESV richness per community
-communities_abundance <- read_csv(paste0(folder_data, "temp/14-communities_abundance.csv"), show_col_types = F) %>% factorize_communities
-
-communities_abundance %>%
-    filter(Community %in% communities$Community) %>%
-    filter(Transfer == 12) %>%
-    #filter(Relative_Abundance > 0.01) %>%
-    group_by(Community) %>%
-    count() %>%
-    left_join(communities) %>%
-    arrange(CommunityLabel)
-
-# Matched ESV richness per community
 isolates %>%
-    drop_na(BasePairMismatch) %>%
-    group_by(Community) %>%
-    count()
+    drop_na(CommunityESVID) %>%
+    group_by(Community, CommunityESVID) %>%
+    count() %>%
+    pull(n) %>%
+    table # 34 ESVs match 1 isolate, 8 ESVs match 2 isolates, 2 ESVs match 3 isolates, 2 ESVs match 4 isolates
 
 
 

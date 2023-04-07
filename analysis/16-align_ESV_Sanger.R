@@ -109,7 +109,7 @@ write_csv(sequences_alignment, paste0(folder_data, "temp/16-sequences_alignment.
 sequences_alignment <- read_csv(paste0(folder_data, "temp/16-sequences_alignment.csv"), show_col_types = F)
 # Apply filter and find match
 algn_Sanger_ESV <- sequences_alignment %>%
-    filter(ConsensusLength >= 200, BasePairMismatch <= 4) %>%
+    filter(ConsensusLength >= 200, BasePairMismatch <= 4) %>% # 133 alignments
     # For each Sanger, find the ESV which it has least base pair mismatch with
     group_by(ExpID) %>%
     filter(BasePairMismatch == min(BasePairMismatch)) %>%
@@ -118,7 +118,7 @@ algn_Sanger_ESV <- sequences_alignment %>%
     ungroup()
 
 nrow(algn_Sanger_ESV) # The number of data points should be 64 because 4 isolates did not align well
-table(algn_Sanger_ESV$BasePairMismatch)
+table(algn_Sanger_ESV$BasePairMismatch) #
 
 isolates_abundance <- algn_Sanger_ESV %>%
     select(Community, RelativeAbundance, CommunityESVID, ESV, ESVFamily, ESVGenus, ExpID, ID, Isolate, Family, Genus, Sequence, AlignmentType, ConsensusLength, BasePairGap, BasePairMismatch, AlignmentScore)

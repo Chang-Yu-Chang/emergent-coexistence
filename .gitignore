@@ -38,6 +38,7 @@ vignettes/*.pdf
 .Rproj
 
 #
-deprecated/
+*/deprecated/
+*/deprecated2/
 renv/
 .gitattributes
