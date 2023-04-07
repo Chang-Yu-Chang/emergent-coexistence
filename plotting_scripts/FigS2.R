@@ -3,13 +3,7 @@ library(cowplot)
 library(broom)
 source(here::here("analysis/00-metadata.R"))
 
-communities <- read_csv(paste0(folder_data, "temp/00c-communities.csv"), show_col_types = F) %>%
-    mutate(Community = factor(Community, Community))
-communities_abundance <- read_csv(paste0(folder_data, "raw/community_ESV/Emergent_Comunity_Data.csv"), show_col_types = F) %>%
-    filter(Carbon_Source == "Glucose" | Carbon_Source == "Original") %>%
-    mutate(Community = factor(paste0("C", Inoculum, "R", Replicate), paste0("C", rep(1:12, each = 8), "R", rep(1:8, 12))))%>%
-    arrange(Community, Family, Transfer, ESV)
-
+communities_abundance <- read_csv(paste0(folder_data, "temp/14-communities_abundance.csv"), show_col_types = F)
 
 curate_abundant_genus <- function () {
     abundant_genus <- c(
@@ -116,8 +110,6 @@ ESV_colors <- communities_abundance %>%
     get_ESV_colors
 
 
-
-# Temporal dynamics of all 26 communities -----
 communities_abundance_temporal <- communities_abundance %>%
     distinct(Community, Transfer) %>%
     arrange(Community, Transfer) %>%

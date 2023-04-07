@@ -4,6 +4,7 @@ library(broom)
 library(grid) # For drawing polygon
 source(here::here("analysis/00-metadata.R"))
 
+
 communities <- read_csv(paste0(folder_data, "output/communities_remained.csv"), show_col_types = F)
 isolates <- read_csv(paste0(folder_data, "output/isolates_remained.csv"), show_col_types = F)
 communities_abundance <- read_csv(paste0(folder_data, "temp/14-communities_abundance.csv"), show_col_types = F)

@@ -5,7 +5,10 @@ source(here::here("analysis/00-metadata.R"))
 communities <- read_csv(paste0(folder_data, "output/communities_remained.csv"), show_col_types = F)
 isolates <- read_csv(paste0(folder_data, "output/isolates_remained.csv"), show_col_types = F)
 pairs <- read_csv(paste0(folder_data, "output/pairs_remained.csv"), show_col_types = F)
-communities_abundance_T12 <- read_csv(paste0(folder_data, "temp/32-communities_abundance_T12.csv"), show_col_types = F)
+communities_abundance_T12 <- read_csv(paste0(folder_data, "temp/14-communities_abundance.csv"), show_col_types = F) %>%
+    filter(Community %in% communities$Community) %>%
+    filter(Transfer == 12)
+
 
 #
 isolates_abundant <- isolates %>% filter(RelativeAbundance > 0.05)

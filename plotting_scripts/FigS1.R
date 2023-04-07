@@ -3,11 +3,11 @@ library(cowplot)
 library(broom)
 source(here::here("analysis/00-metadata.R"))
 
-communities_abundance_T0_10000_reads <- read_csv(paste0(folder_data, "temp/41-communities_abundance_T0_10000_reads.csv"), show_col_types = F)
-communities_rarefaction_T0 <- read_csv(paste0(folder_data, "temp/41-communities_rarefaction_T0.csv"), col_types = cols())
+communities_abundance_T0 <- read_csv(paste0(folder_data, "temp/13-communities_abundance_T0.csv"), show_col_types = F)
+rarefaction <- read_csv(paste0(folder_data, "temp/13-rarefaction.csv"), show_col_types = F)
 
 # Panel A: T0 soil sample composition ----
-communities_abundance_T0_order <- communities_abundance_T0_10000_reads %>%
+communities_abundance_T0_order <- communities_abundance_T0 %>%
     group_by(Inoculum, Order) %>%
     summarize(Relative_Abundance = sum(Relative_Abundance)) %>%
     filter(Relative_Abundance > 0.01) %>%
@@ -18,7 +18,7 @@ communities_abundance_T0_order <- communities_abundance_T0_10000_reads %>%
 order_colors <- c(RColorBrewer::brewer.pal(9, "Set1"), RColorBrewer::brewer.pal(8, "Set3"), RColorBrewer::brewer.pal(8, "Dark2"))[1:(length(communities_abundance_T0_order$Order))]
 order_colors <- c(setNames(order_colors, communities_abundance_T0_order$Order), "Others" = "snow")
 
-p1 <- communities_abundance_T0_10000_reads %>%
+p1 <- communities_abundance_T0 %>%
     mutate(Order = ifelse(Order %in% communities_abundance_T0_order$Order, Order, "Others")) %>%
     mutate(Order = factor(Order, c(communities_abundance_T0_order$Order, "Others"))) %>%
     mutate(Inoculum = factor(Inoculum, c(1:10, 12))) %>%
@@ -42,7 +42,7 @@ p1 <- communities_abundance_T0_10000_reads %>%
     labs(x = "inoculum", y = "relative abundance")
 
 # Panel B: Rarefaction ----
-p2 <- communities_rarefaction_T0 %>%
+p2 <- rarefaction %>%
     mutate(Inoculum = factor(Inoculum, 1:12)) %>%
     ggplot() +
     scale_y_log10(
@@ -70,9 +70,9 @@ p <- plot_grid(p1, p2, nrow = 1, labels = LETTERS[1:2], scale = .9, rel_widths =
 ggsave(here::here("plots/FigS1-inoculum_diversity.png"), p, width = 8, height = 3)
 
 # T0 samples
-aux = read_csv(paste0(folder_data, 'raw/community_ESV/metadata.csv'))
-Taxonomy_Data = read_csv(paste0(folder_data, 'raw/community_ESV/taxonomy.csv'))
-Abundance_Data = read_csv(paste0(folder_data, 'raw/community_ESV/otu_table.csv')) #Data is actually at an ESV level
+aux = read_csv(paste0(folder_data, 'raw/community_ESV/metadata.csv'), show_col_types = F)
+Taxonomy_Data = read_csv(paste0(folder_data, 'raw/community_ESV/taxonomy.csv'), show_col_types = F)
+Abundance_Data = read_csv(paste0(folder_data, 'raw/community_ESV/otu_table.csv'), show_col_types = F) #Data is actually at an ESV level
 
 aux = aux %>% filter(Transfer == 0)
 Abundance_Data = Abundance_Data[,aux$ID]

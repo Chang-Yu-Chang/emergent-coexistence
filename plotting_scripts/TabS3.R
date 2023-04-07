@@ -7,7 +7,7 @@ source(here::here("analysis/00-metadata.R"))
 # Table S2 community overview and labels ----
 isolates <- read_csv(paste0(folder_data, "output/isolates.csv"), show_col_types = F)
 pairs <- read_csv(paste0(folder_data, "output/pairs.csv"), show_col_types = F)
-communities <- read_csv(paste0(folder_data, "temp/00c-communities.csv"), show_col_types = F)
+communities <- read_csv(paste0(folder_data, "output/communities.csv"), show_col_types = F)
 
 # Table S3 list of isolates, images used for monocultures, CFU, OD ----
 isolates_epsilon <- read_csv(paste0(folder_data, "temp/06-isolates_epsilon.csv"), show_col_types = F) %>%
