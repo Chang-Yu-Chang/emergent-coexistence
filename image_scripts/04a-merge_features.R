@@ -5,7 +5,7 @@
 
 
 library(tidyverse)
-source(here::here("analysis/00-metadata.R"))
+source(here::here("processing_scripts/00-metadata.R"))
 
 list_images <- read_csv(commandArgs(trailingOnly = T)[1], show_col_types = F)
 

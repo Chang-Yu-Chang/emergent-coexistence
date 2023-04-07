@@ -3,7 +3,7 @@
 #' 2. Append the mapping files to create one single master mapping csv
 
 library(tidyverse)
-source(here::here("analysis/00-metadata.R"))
+source(here::here("processing_scripts/00-metadata.R"))
 
 # 1. Generate mapping files for each batch ----
 #' The mapping file is based on the TIFF images presented in the folder `BATCH-00-original/`
@@ -56,8 +56,8 @@ for (j in 1:length(batch_names)) {
         list_images %>%
             mutate(color_channel = color) %>%
             select(image_name, color_channel, everything()) %>%
-            write_csv(paste0(folder_script, "mapping_files/00-list_images-", batch_names[j], "-", color, ".csv"))
-        cat("\n", paste0(folder_script, "mapping_files/00-list_images-", batch_names[j], "-", color, ".csv"), "\tcreated")
+            write_csv(paste0("", "mapping_files/00-list_images-", batch_names[j], "-", color, ".csv"))
+        cat("\n", paste0("", "mapping_files/00-list_images-", batch_names[j], "-", color, ".csv"), "\tcreated")
     }
 
 
@@ -86,8 +86,8 @@ for (j in 1:length(batch_names)) {
         left_join(rename(list_image_isolates, Isolate1 = Isolate, image_name_isolate1 = image_name_isolate), by = c("Batch", "Community", "Isolate1")) %>%
         left_join(rename(list_image_isolates, Isolate2 = Isolate, image_name_isolate2 = image_name_isolate), by = c("Batch", "Community", "Isolate2"))
 
-    write_csv(list_image_mapping, paste0(folder_script, "mapping_files/00-list_image_mapping-", batch_names[j], ".csv"))
-    cat("\n", paste0(folder_script, "mapping_files/00-list_image_mapping-", batch_names[j], ".csv"), "\tcreated")
+    write_csv(list_image_mapping, paste0("", "mapping_files/00-list_image_mapping-", batch_names[j], ".csv"))
+    cat("\n", paste0("", "mapping_files/00-list_image_mapping-", batch_names[j], ".csv"), "\tcreated")
 
 }
 
@@ -95,8 +95,8 @@ for (j in 1:length(batch_names)) {
 list_images_master <- rep(list(NA), length(batch_names))
 list_image_mapping_master <- rep(list(NA), length(batch_names))
 for (j in 1:length(batch_names)) {
-    list_images_master[[j]] <- read_csv(paste0(folder_script, "mapping_files/00-list_images-", batch_names[j], "-green.csv") , show_col_types = F)
-    list_image_mapping_master[[j]] <- read_csv(paste0(folder_script, "mapping_files/00-list_image_mapping-", batch_names[j], ".csv") , show_col_types = F)
+    list_images_master[[j]] <- read_csv(paste0("", "mapping_files/00-list_images-", batch_names[j], "-green.csv") , show_col_types = F)
+    list_image_mapping_master[[j]] <- read_csv(paste0("", "mapping_files/00-list_image_mapping-", batch_names[j], ".csv") , show_col_types = F)
 }
 list_images_master <- bind_rows(list_images_master)
 list_image_mapping_master <- bind_rows(list_image_mapping_master)
@@ -106,7 +106,7 @@ list_image_mapping_folder_master <- list_image_mapping_master %>%
     left_join(select(list_images_master, image_name_isolate1 = image_name), by = "image_name_isolate1") %>%
     left_join(select(list_images_master, image_name_isolate2 = image_name), by = "image_name_isolate2")
 
-write_csv(list_image_mapping_folder_master, paste0(folder_script, "mapping_files/00-list_image_mapping_folder_master.csv"))
-cat("\n", paste0(folder_script, "mapping_files/00-list_image_mapping_folder_master.csv"), "\tcreated")
+write_csv(list_image_mapping_folder_master, paste0("", "mapping_files/00-list_image_mapping_folder_master.csv"))
+cat("\n", paste0("", "mapping_files/00-list_image_mapping_folder_master.csv"), "\tcreated")
 
 

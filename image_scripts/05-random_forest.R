@@ -10,7 +10,7 @@ library(tidyverse)
 library(cowplot)
 library(caret) # for streamlining the model training process for complex classification and regression
 library(randomForest) # For implementing random forest algorithm
-source(here::here("analysis/00-metadata.R"))
+source(here::here("processing_scripts/00-metadata.R"))
 
 list_images <- read_csv(commandArgs(trailingOnly = T)[1], show_col_types = F)
 list_image_mapping <- read_csv(commandArgs(trailingOnly = T)[2], show_col_types = F)

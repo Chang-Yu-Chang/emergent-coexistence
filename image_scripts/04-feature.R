@@ -10,7 +10,7 @@ library(tidyverse)
 library(EBImage)
 library(EBImageExtra) # for the bresenham algorithm. `devtools::install_github("ornelles/EBImageExtra")`
 library(purrr) # for applying functional programming to transect curve smoothing
-source(here::here("analysis/00-metadata.R"))
+source(here::here("processing_scripts/00-metadata.R"))
 
 list_images <- read_csv(commandArgs(trailingOnly = T)[1], show_col_types = F)
 #list_images <- read_csv("~/Desktop/lab/emergent-coexistence/analysis/00-list_images-D-green.csv", show_col_types = F)

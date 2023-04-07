@@ -1,13 +1,10 @@
 # This script stores the metadata shared by all scripts
 
-library(tidyverse)
-
 # 1. Directories
 # This main folder depends on your home directory and user name
-folder_script <- "/Users/cychang/Desktop/lab/emergent-coexistence/analysis/" # Enter the directory of analysis scripts
+folder_script <- "/Users/cychang/Desktop/lab/emergent-coexistence/processing_scripts/" # Enter the directory of analysis scripts
 folder_pipeline <- "/Users/cychang/Dropbox/lab/emergent-coexistence/pipeline/" # Enter the directory of image processing pipeline
 folder_data <- "/Users/cychang/Dropbox/lab/emergent-coexistence/data/" # Enter the directory of data
-folder_simulation <-  "/Users/cychang/Dropbox/lab/emergent-coexistence/simulation/" # Enter the directory of simulation data
 
 # 2. For image processing pipeline ----
 list_folders <- c("01-channel", "02-rolled", "03-threshold", "04-round", "05-watershed", "06-transect", "07-feature", "08-random_forest", "09-bootstrap")
@@ -52,17 +49,6 @@ feature_candidates <- c(
     ), "_green"),
     paste0(c("b.mean", "b.sd", "b.mad"), rep(c("_red", "_blue"), each = 3))
 )
-
-
-# For determining the competition outcomes
-interaction_type_finer <- c(
-    "competitive exclusion", "stable coexistence",
-    "mutual exclusion", "frequency-dependent coexistence",
-    "coexistence at 5%", "coexistence at 95%",
-    "2-freq neutrality", "3-freq neutrality",
-    "unknown"
-)
-
 
 # 3. For plotting ----
 paint_white_background <- function () theme(plot.background = element_rect(fill = "white", color = NA))

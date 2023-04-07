@@ -2,7 +2,7 @@
 #' This script only needs to run once
 
 library(tidyverse)
-source(here::here("analysis/00-metadata.R"))
+source(here::here("processing_scripts/00-metadata.R"))
 
 temp_level1 <- rep(list(NA), length(batch_names))
 temp_level2 <- rep(list(NA), length(batch_names))

@@ -1,14 +1,14 @@
 
-Scripts for the preprint entitled [Emergent coexistence in multispecies microbial communities](https://www.biorxiv.org/content/10.1101/2022.05.20.492860v2)
+Scripts and data for the manuscript entitled "Emergent coexistence in multispecies microbial communities"
 
 # Data
 
 - `pipeline/` stores the original colony plate images, the processed images (i.e., grey-scaled images, background subtracted images, segmented images), and random forest results.
 
-- `data/` stores other datasets
-    - `raw`: includes sequences,  and OD, as well as the processed image data. These data are csv or Rdata formats.
-    - `temp`: includes temporal dataset,  and OD, as well as the processed image data. These data are csv or Rdata formats.
-    - `output`: includes the ,  and OD, as well as the processed image data. These data are csv or Rdata formats.
+- `data/` stores all other datasets
+    - `raw`: includes sequences, ESV table, growth rate data, and OD. These data are csv or ab1 for sequences.
+    - `temp`: includes processed data csv. The prefix of the file name is numbered corresponding to the scripts generating them.
+    - `output`: includes the three main datasets `communities_remained.csv`, `communities_remained.csv`, and `communities_remained.csv`
 
 
 # Scripts
@@ -16,7 +16,7 @@ Scripts for the preprint entitled [Emergent coexistence in multispecies microbia
 This repository includes three types of scripts:
 
 1. `image_scripts/` contains command-line tools for image segmentation and random forest classification. The resulting processed images are stored in `pipeline/`.
-2. `processing_scripts/` processes the data from `data/raw` and `pipeline/`. The processed data are numbered with regard to the scripts generating them. The processed data are stored in `data/temp/` and `data/output/`. 
+2. `processing_scripts/` processes the data from `data/raw` and `pipeline/`. The scripts are numbered corresponding to the processed data. The processed data are stored in `data/temp/` and `data/output/`. 
 3. `plotting_scripts/`: generates the figures for main text and supplements. The resulting figures are stored in `plots/`.
 
 
@@ -25,20 +25,18 @@ This repository includes three types of scripts:
 
 ## Step 0.1 Specifying metadata
 
-`00-metadata.R` stores all metadata used for analysis, including the folder directory, pipeline scripts, feature names, etc.
+`processing_scripts/00-metadata.R` stores all metadata used for analysis, including the folder directory, pipeline scripts, feature names, etc.
 
 Edit this script to specify three folders for the scripts to work:
 
-- `folder_script` is the directory of analysis scripts
+- `folder_script` is the directory of processing scripts
 - `folder_pipeline` is the full path directory of `pipeline/` described above.
 - `folder_data` is the full path directory of `data/` described above. 
 
-For this project on my local end, I specified the directory as followed. I will abbreviate the directory `"~/Desktop/lab/emergent-coexistence/processing_scripts"` into `"processing_scripts`, otherwise the full path is specified if I refer to another directory.
-
 ```
-> folder_script <- "~/Desktop/lab/emergent-coexistence/processing_scripts" 
-> folder_pipeline <- "~/Dropbox/lab/emergent-coexistence/pipeline/" 
-> folder_data <- "~/Dropbox/lab/emergent-coexistence/data/"
+> folder_script <- "processing_scripts/" 
+> folder_pipeline <- "pipeline/" 
+> folder_data <- "data/"
 ```
 
 
@@ -62,16 +60,16 @@ Two groups of mapping files are generated:
 
 ## Step 1. Command-line tools
 
-These scripts are wrapped into command-line tools that takes the mapping files stored in `processing_scriptsmapping_files/` as input. All temporary output images and data are stored in the subfolders under `folder_pipeline`.
+The scripts for processing image files are wrapped into command-line tools that takes the mapping files stored in `processing_scripts/mapping_files/` as input. All temporary output images and data are stored in the subfolders under `pipeline/images/`.
 
 For instance, implementing the image processing pipeline and random forest classification for all cocultures in the batch B2 requires executing the following scripts in order.
 
 ```
-$ cd processing_scripts
+$ cd image_scripts
 $ Rscript 01-channel.R mapping_files/00-list_images-B2-red.csv
 $ Rscript 01-channel.R mapping_files/00-list_images-B2-green.csv
 $ Rscript 01-channel.R mapping_files/00-list_images-B2-blue.csv
-$ python 02-rolling_ball.py mapping_files/00-list_images-B2-red.csv # background subtration takes long
+$ python 02-rolling_ball.py mapping_files/00-list_images-B2-red.csv
 $ python 02-rolling_ball.py mapping_files/00-list_images-B2-green.csv
 $ python 02-rolling_ball.py mapping_files/00-list_images-B2-blue.csv
 $ Rscript 03-segmentation.R mapping_files/00-list_images-B2-green.csv
