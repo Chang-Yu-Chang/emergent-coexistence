@@ -6,8 +6,8 @@ Scripts and data for the manuscript entitled "Emergent coexistence in multispeci
 - `pipeline/` stores the original colony plate images, the processed images (i.e., grey-scaled images, background subtracted images, segmented images), and random forest results.
 
 - `data/` stores all other datasets
-    - `raw`: includes sequences, ESV table, growth rate data, and OD. These data are csv or ab1 for sequences.
-    - `temp`: includes processed data csv. The prefix of the file name is numbered corresponding to the scripts generating them.
+    - `raw`: includes sequences, ESV table, human colony counts, isolate growth rate, and OD. These data are csv or ab1 for sequences.
+    - `temp`: includes processed data csv. The prefix of the file name is numbered corresponding to the scripts generating them. 
     - `output`: includes the three main datasets `communities_remained.csv`, `communities_remained.csv`, and `communities_remained.csv`
 
 
