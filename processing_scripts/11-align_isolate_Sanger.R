@@ -7,7 +7,7 @@ if (FALSE) {
 
 library(tidyverse)
 library(sangeranalyseR)
-source(here::here("analysis/00-metadata.R"))
+source(here::here("processing_scripts/00-metadata.R"))
 
 alignment1 <- sangeranalyseR::SangerAlignment(
     ABIF_Directory = paste0(folder_data, "raw/sanger/sanger_seq_16S_communities"),

@@ -5,7 +5,7 @@
 
 library(tidyverse)
 library(cowplot)
-source(here::here("analysis/00-metadata.R"))
+source(here::here("processing_scripts/00-metadata.R"))
 
 factorize_communities <- function (x) x %>% mutate(Community = factor(Community, paste0("C", rep(1:12, each = 8), "R", rep(1:8, 12))))
 communities <- read_csv(paste0(folder_data, "temp/00c-communities.csv"), col_types = cols())

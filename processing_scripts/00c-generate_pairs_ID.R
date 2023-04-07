@@ -4,7 +4,7 @@
 #' those that may be contamination
 
 library(tidyverse)
-source(here::here("analysis/00-metadata.R"))
+source(here::here("processing_scripts/00-metadata.R"))
 
 list_image_mapping_folder_master <- read_csv(paste0(folder_script, "mapping_files/", "00-list_image_mapping_folder_master.csv"), show_col_types = F)
 

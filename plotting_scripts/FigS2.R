@@ -1,7 +1,7 @@
 library(tidyverse)
 library(cowplot)
 library(broom)
-source(here::here("analysis/00-metadata.R"))
+source(here::here("processing_scripts/00-metadata.R"))
 
 communities_abundance <- read_csv(paste0(folder_data, "temp/14-communities_abundance.csv"), show_col_types = F)
 

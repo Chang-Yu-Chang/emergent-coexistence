@@ -7,7 +7,7 @@ library(tidyverse)
 library(EBImage)
 library(cowplot)
 library(magick)
-source(here::here("analysis/00-metadata.R"))
+source(here::here("processing_scripts/00-metadata.R"))
 
 folder_mapping_files <- "mapping_files/"
 # 1. Append the master mapping file with the file directory ----

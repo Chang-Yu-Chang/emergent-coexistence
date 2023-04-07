@@ -7,7 +7,7 @@
 #' 3. example pairs for plotting the frequencies
 
 library(tidyverse)
-source(here::here("analysis/00-metadata.R"))
+source(here::here("processing_scripts/00-metadata.R"))
 
 # 0. Communities ----
 communities <- read_csv(paste0(folder_data, "temp/00c-communities.csv"), show_col_types = F)

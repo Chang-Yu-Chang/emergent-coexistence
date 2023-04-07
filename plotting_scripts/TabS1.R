@@ -1,7 +1,7 @@
 library(tidyverse)
 library(cowplot)
 library(flextable)
-source(here::here("analysis/00-metadata.R"))
+source(here::here("processing_scripts/00-metadata.R"))
 
 # Table S1 image object features ----
 features_example <- read_csv(paste0(folder_pipeline, "images/D-07-feature/merged/D_T8_C1R2_1.csv"), show_col_types = F)

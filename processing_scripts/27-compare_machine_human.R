@@ -2,7 +2,7 @@
 
 library(tidyverse)
 library(cowplot)
-source(here::here("analysis/00-metadata.R"))
+source(here::here("processing_scripts/00-metadata.R"))
 
 pairs_freq_ID <- read_csv(paste0(folder_data, "temp/00c-pairs_freq_ID.csv"), show_col_types = F)
 isolates_duplicate <- tibble(ID = as.character(c(462, 355, 356, 461, 452, 446, 305, 435, 444, 348, 460, 454)), Duplicated = T)

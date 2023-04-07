@@ -3,33 +3,34 @@ Scripts and data for the manuscript entitled "Emergent coexistence in multispeci
 
 # Data
 
-- `pipeline/` stores the original colony plate images, the processed images (i.e., grey-scaled images, background subtracted images, segmented images), and random forest results.
+`pipeline/` stores the original colony plate images (TIFF), the processed images (i.e., grey-scaled images, background subtracted images, segmented images), object features (CSV), random forest results (CSV).
 
-- `data/` stores all other datasets
-    - `raw`: includes sequences, ESV table, human colony counts, isolate growth rate, and OD. These data are csv or ab1 for sequences.
-    - `temp`: includes processed data csv. The prefix of the file name is numbered corresponding to the scripts generating them. 
-    - `output`: includes the three main datasets `communities_remained.csv`, `communities_remained.csv`, and `communities_remained.csv`
+`data/` stores all other datasets 
+
+- `raw`: includes sequences, ESV table, human colony counts, isolate growth rate, and OD. These data are CSV or AB1 for sequences.
+- `temp`: includes processed CSV. The prefix of the file name is numbered corresponding to the scripts generating them. 
+- `output`: includes the seven main datasets
+    - `communities.csv` `isolates.csv`, and `pairs.csv` contains 68 isolates
+    - `communities_remained.csv` `isolates_remained.csv`, and `pairs_remained.csv` are used to generate contain 62 isolates after removing four isolates with bad alignment and C10R1
+
 
 
 # Scripts
 
 This repository includes three types of scripts:
 
-1. `image_scripts/` contains command-line tools for image segmentation and random forest classification. The resulting processed images are stored in `pipeline/`.
+1. `image_scripts/` contains command-line tools for image segmentation and random forest classification. The resulting processed images and random forest CSV are stored in `pipeline/`.
 2. `processing_scripts/` processes the data from `data/raw` and `pipeline/`. The scripts are numbered corresponding to the processed data. The processed data are stored in `data/temp/` and `data/output/`. 
 3. `plotting_scripts/`: generates the figures for main text and supplements. The resulting figures are stored in `plots/`.
 
 
-# Setup to reproduce the analysis
-
-
-## Step 0.1 Specifying metadata
+# Specifying directory in metadata
 
 `processing_scripts/00-metadata.R` stores all metadata used for analysis, including the folder directory, pipeline scripts, feature names, etc.
 
 Edit this script to specify three folders for the scripts to work:
 
-- `folder_script` is the directory of processing scripts
+- `folder_script` is the directory of processing scripts `processing_scripts/`.
 - `folder_pipeline` is the full path directory of `pipeline/` described above.
 - `folder_data` is the full path directory of `data/` described above. 
 
@@ -39,17 +40,17 @@ Edit this script to specify three folders for the scripts to work:
 > folder_data <- "data/"
 ```
 
+# Image processing
 
-## Step 0.2 Generating folder structure and mapping files
+### Generating folder structure and mapping files
 
-Once the directories are specified, navigate to `processing_scripts` and execute the following scripts to set up the subfolders in `folder_pipeline` for image processing pipeline, mapping files, and ID for pairs and cocultures.
+Once the directories are specified, navigate to `image_scripts/` and execute the following scripts to set up the subfolders in `pipeline/` for image processing and mapping files.
 
 ```
-$ cd processing_scripts
+$ cd image_scripts/
+$ mkdir mapping_files/
 $ Rscript 00a-folder_structure.R
 $ Rscript 00b-generate_mapping_files.R
-$ Rscript 00c-generate_pairs_ID.R
-$ Rscript 00d-assemble_colony_images.R # for making figure S5
 ```
 
 Two groups of mapping files are generated:
@@ -58,9 +59,9 @@ Two groups of mapping files are generated:
 - `00-list_image_mapping-BATCH.csv`: is used for matching coculture to monocultures. Each row is one coculture pair and the columns specify the batch, community, isolates, mixing frequencies, and the image file name of both isolates. For example `00-list_image_mapping-B2.csv` matches the cocultures to monocultures in batch B2.
 
 
-## Step 1. Command-line tools
+### Command-line tools
 
-The scripts for processing image files are wrapped into command-line tools that takes the mapping files stored in `processing_scripts/mapping_files/` as input. All temporary output images and data are stored in the subfolders under `pipeline/images/`.
+The scripts for image files are wrapped into command-line tools that takes the mapping files stored in `image_scripts/mapping_files/` as input. All temporary output images and data are stored in the subfolders under `pipeline/images/`.
 
 For instance, implementing the image processing pipeline and random forest classification for all cocultures in the batch B2 requires executing the following scripts in order.
 
@@ -80,12 +81,19 @@ $ Rscript 04a-merge_features.R mapping_files/00-list_images-B2-green.csv
 $ Rscript 05-random_forest.R mapping_files/00-list_images-B2-green.csv mapping_files/00-list_image_mapping-B2.csv
 ```
 
-Below is the overview for the image processing pipeline
+Below is the overview for the image processing pipeline. The resulting dataset such as the object features are stored in `BATCH-07-feature/` and the random forest results are stored in `BATCH-08-random_forest/`. These csv are later aggregated using the scripts below.
 
 ![](plots/cartoons/image_processing.png)
 
 
-## Step 2. Data wrangling and analysis
+# Data wrangling and analysis
+
+
+
+```
+$ Rscript 00c-generate_pairs_ID.R
+$ Rscript 00d-assemble_colony_images.R # for making figure S5
+```
 
 In this step, we take data from either the 16S sequences or those data generated from the command-line as described above. These data are cleaned up and stored in the folder `~/Dropbox/lab/emergent-coexistence/data/temp/` with the file name prefix matched to the numbered script that generates it.
 

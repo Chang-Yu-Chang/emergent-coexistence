@@ -2,7 +2,7 @@
 
 library(tidyverse)
 library(cowplot)
-source(here::here("analysis/00-metadata.R"))
+source(here::here("processing_scripts/00-metadata.R"))
 
 folder_mapping_files <- "mapping_files/"
 # 1. Read accuracy data ----

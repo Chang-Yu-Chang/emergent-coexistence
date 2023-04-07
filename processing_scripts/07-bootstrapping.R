@@ -4,7 +4,7 @@
 
 library(tidyverse)
 library(cowplot)
-source(here::here("analysis/00-metadata.R"))
+source(here::here("processing_scripts/00-metadata.R"))
 
 pairs_T0 <- read_csv(paste0(folder_data, "temp/06-pairs_T0.csv"), show_col_types = F)
 pairs_T8 <- read_csv(paste0(folder_data, "temp/06-pairs_T8.csv"), show_col_types = F)

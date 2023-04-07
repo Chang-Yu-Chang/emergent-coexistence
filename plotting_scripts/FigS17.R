@@ -1,7 +1,7 @@
 library(tidyverse)
 library(ggstats)
 library(data.table)
-source(here::here("analysis/00-metadata.R"))
+source(here::here("processing_scripts/00-metadata.R"))
 
 # ESVs
 #pairs <- fread('pairs_remained.csv')

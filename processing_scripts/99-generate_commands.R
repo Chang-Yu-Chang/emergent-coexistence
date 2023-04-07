@@ -1,7 +1,7 @@
 #' This Rscript generates a shell script containing bash commands
 
 library(tidyverse)
-source(here::here("analysis/00-metadata.R"))
+source(here::here("processing_scripts/00-metadata.R"))
 
 create_commands <- function (batch_name) {
     c( paste0("# Batch ", batch_name),

@@ -1,6 +1,6 @@
 library(tidyverse)
 library(cowplot)
-source(here::here("analysis/00-metadata.R"))
+source(here::here("processing_scripts/00-metadata.R"))
 
 isolates <- read_csv(paste0(folder_data, "output/isolates.csv"), show_col_types = F) # 68 isolates
 pairs_freq_machine_human <- read_csv(paste0(folder_data, "temp/27-pairs_freq_machine_human.csv"), show_col_types = F) # 558 pairs

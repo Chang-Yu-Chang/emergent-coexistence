@@ -1,7 +1,7 @@
 library(tidyverse)
 library(cowplot)
 library(broom)
-source(here::here("analysis/00-metadata.R"))
+source(here::here("processing_scripts/00-metadata.R"))
 
 communities_abundance_T0 <- read_csv(paste0(folder_data, "temp/13-communities_abundance_T0.csv"), show_col_types = F)
 rarefaction <- read_csv(paste0(folder_data, "temp/13-rarefaction.csv"), show_col_types = F)

@@ -2,7 +2,7 @@
 #' with 0 mismatch and remove them from the list of pairs
 
 library(tidyverse)
-source(here::here("analysis/00-metadata.R"))
+source(here::here("processing_scripts/00-metadata.R"))
 
 # 1. Run jean's python script to obtain the mismatch matrix ----
 #' I modified the script so that it only takes the folder I created in the previous step

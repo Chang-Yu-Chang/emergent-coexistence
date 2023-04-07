@@ -12,7 +12,7 @@ library(tidyverse)
 library(cowplot)
 library(data.table)
 library(readr)
-source(here::here("analysis/00-metadata.R"))
+source(here::here("processing_scripts/00-metadata.R"))
 
 #Script 1 for Extract data  from DADA2 output and rarefies to constant read depth.
 # Stores into a melted data.frame with standardized columns for subsequent analysis.

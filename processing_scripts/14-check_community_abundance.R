@@ -1,6 +1,6 @@
 #' This script checks the community abundance data
 library(tidyverse)
-source(here::here("analysis/00-metadata.R"))
+source(here::here("processing_scripts/00-metadata.R"))
 
 # communities <- read_csv(paste0(folder_data, "temp/00c-communities.csv"), show_col_types = F) %>%
 #     mutate(Community = factor(Community, Community))

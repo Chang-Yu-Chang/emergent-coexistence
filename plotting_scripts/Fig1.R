@@ -2,7 +2,7 @@ library(tidyverse)
 library(cowplot)
 library(broom)
 library(grid) # For drawing polygon
-source(here::here("analysis/00-metadata.R"))
+source(here::here("processing_scripts/00-metadata.R"))
 
 
 communities <- read_csv(paste0(folder_data, "output/communities_remained.csv"), show_col_types = F)
