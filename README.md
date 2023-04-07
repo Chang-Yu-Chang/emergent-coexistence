@@ -1,44 +1,27 @@
 
 Scripts for the preprint entitled [Emergent coexistence in multispecies microbial communities](https://www.biorxiv.org/content/10.1101/2022.05.20.492860v2)
 
+# Data
 
-This repository includes three types of scripts for:
+- `pipeline/` stores the original colony plate images, the processed images (i.e., grey-scaled images, background subtracted images, segmented images), and random forest results.
 
-1. Command-line tools for image segmentation and random forest classification
-2. Implementing analyses including 16S sequences, bootstrapping, and networks
-3. Generating the figures for main text and supplements, as well as the supplementary PDFs
-
-
-# Cloning this repository
-
-Change the current working directory to the location where you want the cloned directory
-
-```
-$ cd /directory/to/where/you/want/
-$ git clone https://github.com/Chang-Yu-Chang/emergent-coexistence
-```
-
-# Downloading the raw data to Dropbox
-
-- `pipeline/` stores both the raw and temporary images. For this project, a minimum space of 200 GB is required. [Dropbox link](https://www.dropbox.com/sh/he4ekndjew60kot/AAAUCWZp3GeUOgOPQKc6MT1Ma?dl=0)
-- `data/` stores the raw data from sequencing and OD, as well as the processed image data. These data are csv or Rdata formats. [Dropbox link](https://www.dropbox.com/sh/oec7rz4wvmlitrp/AADFUvMF9Xzj4LLmzUmjPMJTa?dl=0)
+- `data/` stores other datasets
+    - `raw`: includes sequences,  and OD, as well as the processed image data. These data are csv or Rdata formats.
+    - `temp`: includes temporal dataset,  and OD, as well as the processed image data. These data are csv or Rdata formats.
+    - `output`: includes the ,  and OD, as well as the processed image data. These data are csv or Rdata formats.
 
 
-# Dependency
+# Scripts
 
+This repository includes three types of scripts:
 
-Python environment
+1. `image_scripts/` contains command-line tools for image segmentation and random forest classification. The resulting processed images are stored in `pipeline/`.
+2. `processing_scripts/` processes the data from `data/raw` and `pipeline/`. The processed data are numbered with regard to the scripts generating them. The processed data are stored in `data/temp/` and `data/output/`. 
+3. `plotting_scripts/`: generates the figures for main text and supplements. The resulting figures are stored in `plots/`.
 
-```
-```
-
-R environment
-
-```
-BiocManager::install("Biostrings")
-```
 
 # Setup to reproduce the analysis
+
 
 ## Step 0.1 Specifying metadata
 
@@ -50,10 +33,10 @@ Edit this script to specify three folders for the scripts to work:
 - `folder_pipeline` is the full path directory of `pipeline/` described above.
 - `folder_data` is the full path directory of `data/` described above. 
 
-For this project on my local end, I specified the directory as followed. I will abbreviate the directory `"~/Desktop/lab/emergent-coexistence/analysis/"` into `"analysis/`, otherwise the full path is specified if I refer to another directory.
+For this project on my local end, I specified the directory as followed. I will abbreviate the directory `"~/Desktop/lab/emergent-coexistence/processing_scripts"` into `"processing_scripts`, otherwise the full path is specified if I refer to another directory.
 
 ```
-> folder_script <- "~/Desktop/lab/emergent-coexistence/analysis/" 
+> folder_script <- "~/Desktop/lab/emergent-coexistence/processing_scripts" 
 > folder_pipeline <- "~/Dropbox/lab/emergent-coexistence/pipeline/" 
 > folder_data <- "~/Dropbox/lab/emergent-coexistence/data/"
 ```
@@ -61,10 +44,10 @@ For this project on my local end, I specified the directory as followed. I will 
 
 ## Step 0.2 Generating folder structure and mapping files
 
-Once the directories are specified, navigate to `analysis/` and execute the following scripts to set up the subfolders in `folder_pipeline` for image processing pipeline, mapping files, and ID for pairs and cocultures.
+Once the directories are specified, navigate to `processing_scripts` and execute the following scripts to set up the subfolders in `folder_pipeline` for image processing pipeline, mapping files, and ID for pairs and cocultures.
 
 ```
-$ cd analysis/
+$ cd processing_scripts
 $ Rscript 00a-folder_structure.R
 $ Rscript 00b-generate_mapping_files.R
 $ Rscript 00c-generate_pairs_ID.R
@@ -79,12 +62,12 @@ Two groups of mapping files are generated:
 
 ## Step 1. Command-line tools
 
-These scripts are wrapped into command-line tools that takes the mapping files stored in `analysis/mapping_files/` as input. All temporary output images and data are stored in the subfolders under `folder_pipeline`.
+These scripts are wrapped into command-line tools that takes the mapping files stored in `processing_scriptsmapping_files/` as input. All temporary output images and data are stored in the subfolders under `folder_pipeline`.
 
 For instance, implementing the image processing pipeline and random forest classification for all cocultures in the batch B2 requires executing the following scripts in order.
 
 ```
-$ cd analysis/
+$ cd processing_scripts
 $ Rscript 01-channel.R mapping_files/00-list_images-B2-red.csv
 $ Rscript 01-channel.R mapping_files/00-list_images-B2-green.csv
 $ Rscript 01-channel.R mapping_files/00-list_images-B2-blue.csv
@@ -111,7 +94,7 @@ In this step, we take data from either the 16S sequences or those data generated
 From the raw `.ab1` of 16S Sanger sequences, we aligned the raw reads, identified isolate taxonomy, and matched the community amplicon sequences (ESVs). See the Methods section for details. The following scripts do what has described.
 
 ```
-$ cd analysis/
+$ cd processing_scripts
 $ Rscript 11-align_isolate_sequences.R
 $ Rscript 12-assign_isolate_RDP.R
 $ Rscript 13-match_community_abundance.R
@@ -145,7 +128,7 @@ $ Rscript 95-randomize_networks.R
 Finally, with the processed tabular data and networks, we made Figure 1-4, Supplementary Figures S4-6, and Supplementary Tables S1-4 using the following scripts.
 
 ```
-$ cd analysis/
+$ cd processing_scripts
 $ Rscript 96-figures.R
 $ Rscript 96a-supp_figures.R
 ```
@@ -155,7 +138,7 @@ Cartoons and Fig.S1-2 are generated using Adobe Illustrator.
 The four supplementary PDFs that contain the images and random forest results are generated using the script. The command-line function `convert` is from `imagemagick`. An example of one page in these PDFs is shown in Figure S3.
 
 ```
-$ cd analysis/
+$ cd processing_scripts
 $ Rscript 97-combine_images_and_random_forest.R
 
 # Once the individual pngs are generated, merge them into multi-page PDFs
@@ -168,11 +151,11 @@ $ convert -quality 60 D_*.png random_forest-D.pdf
 
 ## Sum up
 
-To execute all steps decribed above, from the raw data to ready-for-paper figures, basically run all scripts using terminal commands saved in a master shell script `analysis/00e-commands.sh`. Note that for the shell script to work, the working directory has to be the project directory (where `emergent-coexistence.Rproj` is located)
+To execute all steps decribed above, from the raw data to ready-for-paper figures, basically run all scripts using terminal commands saved in a master shell script `processing_scripts00e-commands.sh`. Note that for the shell script to work, the working directory has to be the project directory (where `emergent-coexistence.Rproj` is located)
 
 ```
-$ Rscrip analysis/99-generate_commands.R
-$ zsh analysis/99a-commands.sh
+$ Rscrip processing_scripts99-generate_commands.R
+$ zsh processing_scripts99a-commands.sh
 ```
 
 

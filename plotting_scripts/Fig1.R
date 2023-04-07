@@ -142,20 +142,13 @@ pC <- eq_freq_stable_comm_filtered %>%
     guides(color = guide_legend(nrow = 1)) +
     labs(x = "empirical equilibrium abundance", y = "equilibrium abundance\npredicted from\nassembly dynamics")
 
-cor.test(eq_freq_stable_comm_filtered$EmpiricalEqAbundance, eq_freq_stable_comm_filtered$PredictedEqAbundance, method = "pearson") %>%
-    tidy()
+#
+model <- lm(PredictedEqAbundance ~ EmpiricalEqAbundance, data = eq_freq_stable_comm_filtered)
+# R2
+summary(model)$r.squared
+# RMSD; root mean square deviation
+sqrt(mean(model$residuals^2))
 
-eq_freq_stable_comm_filtered %>% filter(Community == "C8R4")
-# Pseudo: y = -11.8x + 2.05, p<0.001, R^2= 0.9212
-# Klebsi: y = -1.81x + 1.38, p<0.001, R^2 = 0.7089
-fit <- fitness_stable %>%
-    nest(data = c(-Community, -ESV_ID, -CommunityESV)) %>%
-    mutate(fit = map(data, ~ lm(Fitness ~ Relative_Abundance, data = .x)),
-           tidied = map(fit, tidy)) %>%
-    unnest(tidied) %>%
-    filter(Community == "C8R4")
-summary(fit$fit[3][[1]]) # R^2= 0.9212
-summary(fit$fit[1][[1]]) # R^2 = 0.7089
 
 # Panel D: Negative frequency dependent selection of 2 ESVs from C8R4 ----
 pD <- fitness_stable %>%
@@ -181,6 +174,18 @@ pD <- fitness_stable %>%
     ) +
     guides(color = "none", fill = "none") +
     labs(x = "relative abundance", y = "invasion fitness")
+
+eq_freq_stable_comm_filtered %>% filter(Community == "C8R4")
+# Pseudo: y = -11.8x + 2.05, p<0.001, R^2= 0.9212
+# Klebsi: y = -1.81x + 1.38, p<0.001, R^2 = 0.7089
+fit <- fitness_stable %>%
+    nest(data = c(-Community, -ESV_ID, -CommunityESV)) %>%
+    mutate(fit = map(data, ~ lm(Fitness ~ Relative_Abundance, data = .x)),
+           tidied = map(fit, tidy)) %>%
+    unnest(tidied) %>%
+    filter(Community == "C8R4")
+summary(fit$fit[3][[1]]) # R^2= 0.9212
+summary(fit$fit[1][[1]]) # R^2 = 0.7089
 
 
 # Assemble panels ----
