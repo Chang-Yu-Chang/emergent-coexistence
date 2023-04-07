@@ -1,5 +1,0 @@
-*.pyc
-.ipynb_checkpoints
-.gitattributes
-.DS_Store
-community_simulator.egg-info
