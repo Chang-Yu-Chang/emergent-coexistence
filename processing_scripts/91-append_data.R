@@ -24,7 +24,7 @@ isolates <- isolates_ID %>%
     #left_join(isolates_tournament, by = c("Community", "Isolate")) %>%
     left_join(mutate(isolates_abundance, ID = as.character(ID))) %>%
     mutate(Community = ordered(Community, levels = communities$Community))
-nrow(isolates) # 68 isolates
+nrow(isolates) # 65 isolates
 write_csv(isolates, paste0(folder_data, "output/isolates.csv"))
 
 # 2. pairs metadata ----
@@ -48,22 +48,18 @@ pairs <- pairs_ID %>%
 
 write_csv(pairs, paste0(folder_data, "output/pairs.csv"))
 
-# 3. Remove pairs containing the 4 isolates with bad ESV-Sanger alignments ----
+# 3. Remove pairs containing the 3 isolates with bad ESV-Sanger alignments ----
 # WE need this section to get updated pairs and to compute the isolate rank with correct number of isolates per community
-nrow(pairs) # 186 pairs in pairwise competition
+nrow(pairs) # 159 pairs in pairwise competition
 isolates_removal <- isolates$ExpID[which(is.na(isolates$BasePairMismatch))] # Isolates that do not match to ESVs
 pairs_remained <- pairs %>%
     filter(!(ExpID1 %in% isolates_removal) & !(ExpID2 %in% isolates_removal))
-nrow(pairs_remained) # 160 pairs. 186=26 pairs
+nrow(pairs_remained) # 159 pairs
 pairs_remained <- pairs_remained %>%
     # Remove no-colony pairs. six pairs
-    drop_na(outcome) %>% # 154 pairs
+    drop_na(outcome) %>% # 153 pairs
     # Remove low-accuracy model pairs. nine pairs
-    filter(AccuracyMean > 0.9) # 145 pairs
-nrow(pairs_remained) # 145 pairs
-pairs_remained <- pairs_remained %>%
-    # Remove the community with only one remaining pair
-    filter(Community != "C10R2")
+    filter(AccuracyMean > 0.9) # 144pairs
 nrow(pairs_remained) # 144 pairs
 write_csv(pairs_remained, paste0(folder_data, "output/pairs_remained.csv"))
 
@@ -113,22 +109,17 @@ tournament_rank <- function(pairs_comm) {
 }
 
 isolates_tournament <- communities %>%
-    # Remove the community with only one pair
-    filter(Community != "C10R2") %>%
     select(comm = Community, everything()) %>%
     rowwise() %>%
     mutate(pairs_comm = pairs_remained %>% filter(Community == comm) %>% list()) %>%
     mutate(tournaments_comm = pairs_comm %>% tournament_rank() %>% list()) %>%
     select(Community = comm, tournaments_comm) %>%
     unnest(cols = tournaments_comm)
-#write_csv(isolates_tournament, paste0(folder_data, "temp/28-isolates_tournament.csv"))
 
-# Remove the 4 isolates with bad ESV-Sanger alignment, and the two isolate from the removed community C10R2
-nrow(isolates) # 68 isolates in pairwise competition
+# Remove the 3 isolates with bad ESV-Sanger alignment, and the two isolate from the removed community C10R2
+nrow(isolates) # 65 isolates in pairwise competition
 isolates_remained <- isolates %>%
     filter(!is.na(BasePairMismatch)) %>%
-    # Remove the community with only one pair
-    filter(Community != "C10R2") %>%
     left_join(isolates_tournament)
 nrow(isolates_remained) # 62 isolates
 write_csv(isolates_remained, paste0(folder_data, "output/isolates_remained.csv"))
@@ -147,8 +138,6 @@ communities_remained <- isolates_remained %>%
     left_join(pairs_tested_count) %>%
     # Re order the communities according to communitiy size
     arrange(CommunitySize, CommunityPairSize) %>%
-    # Remove the community with only one pair
-    filter(Community != "C10R2") %>%
     mutate(CommunityLabel = 1:12)
 
 communities_abundance <- read_csv(paste0(folder_data, "temp/14-communities_abundance.csv"), show_col_types = F)
@@ -159,6 +148,7 @@ n_ESVs <- communities_abundance %>%
 
 communities_remained <- left_join(communities_remained, n_ESVs)
 
+write_csv(communities, paste0(folder_data, "output/communities.csv"))
 write_csv(communities_remained, paste0(folder_data, "output/communities_remained.csv"))
 
 

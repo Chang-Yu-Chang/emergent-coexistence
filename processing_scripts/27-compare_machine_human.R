@@ -1,4 +1,4 @@
-#' This script compare the random forest prediction to the human eye counts
+#' This script compares the random forest prediction to the human eye counts
 
 library(tidyverse)
 library(cowplot)

@@ -142,5 +142,7 @@ pairs_outcome <- pairs_outcome %>%
         PairID %in% pairs_ID_others ~ NA,
     ))
 
+pairs_outcome <- pairs_outcome %>%
+    drop_na(outcome)
 
 write_csv(pairs_outcome, paste0(folder_data, "temp/26-pairs_outcome.csv"))

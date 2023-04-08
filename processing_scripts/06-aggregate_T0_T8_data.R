@@ -83,18 +83,14 @@ isolates_OD <- OD %>%
 # Manually key in dilution factors
 isolates_OD_CFU <- isolates_CFU %>%
     left_join(isolates_OD, by = "image_name") %>%
-    #' I do not have the T8 OD data for batch C. Remove them
-    filter(!(Batch == "C" & Community == "C11R1" & Isolate != 1)) %>%
-    # Remove B2 C11R1 1 contamination
-    filter(!(Batch == "B2" & Community == "C11R1" & Isolate == 1)) %>%
-    # Remove C C11R2 13 staph contamination
-    filter(!(Community == "C11R2" & Isolate == 13)) %>%
+    # For C11R1, use the better plate in either batch B2 and C
+    filter(!(Batch == "C" & Community == "C11R1" & Time == "T8")) %>%
+    filter(!(image_name %in% c("B2_T0_C11R1_2", "B2_T1_C11R1_8", "B2_T0_C11R1_9"))) %>%
     mutate(Community = factor(Community, paste0("C", rep(1:12, each = 8), "R", rep(1:8, 12)))) %>%
-    #mutate(Isolate = factor(Isolate, 1:13)) %>%
     arrange(Community, Isolate) %>%
     # For T0 monoculture (inoculum), OD was standardized to OD=0.1
     mutate(OD620 = ifelse(Time == "T0", 0.1, OD620)) %>%
-    # Dilution factor for all plating practive is 10^-5
+    # Dilution factor for all plating practice is 10^-5
     mutate(DilutionFactor = 10^-5)
 
 # 1.4 Calculate the OD-CFU conversion coefficient epsilon for each isolate ----
@@ -156,7 +152,6 @@ pairs_T8 <- bind_rows(temp[which(!is.na(temp))]) %>%
     ungroup() %>%
     # Correct the isolate order
     separate(col = image_name_pair, into = c("Batch", "Time", "Community", "Isolate2InitialODFreq", "Isolate1InitialODFreq", "Isolate1", "Isolate2"), remove = F, convert = T) %>%
-    #separate(col = Freqs, sep = "-", into = c("Isolate2InitialODFreq", "Isolate1InitialODFreq"), convert = T) %>%
     rowwise() %>%
     mutate(Isolate1InitialODFreq = ifelse(Isolate1 > Isolate2, 5, Isolate1InitialODFreq),
            Isolate2InitialODFreq = ifelse(Isolate1 > Isolate2, 95, Isolate2InitialODFreq),

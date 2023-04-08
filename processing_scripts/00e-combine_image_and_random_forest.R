@@ -1,4 +1,4 @@
-#' This script combines the transect image with the random forest results
+#' This script combines the plate images with the random forest results
 #' 1. Append the master mapping files with the file directory
 #' 2. combine images and random forest results
 #' 3. merge png from a folder into a single pdf. Use imagemagick. Go to the folder and convert *.jpg XXX.pdf
@@ -25,21 +25,19 @@ list_image_mapping_master <- read_csv(here::here("image_scripts/mapping_files/00
     arrange(Community, Isolate1, Isolate2, Isolate1InitialODFreq) %>%
     ungroup() %>%
     select(-FlipOrder)
-# pairs_freq <- read_csv(paste0(folder_data, "temp/-pairs_freq.csv"), show_col_types = F) %>%
-#     filter(Time == "T0") %>%
-#     select(PairFreqID, Batch, Community, Isolate1, Isolate2, Isolate1InitialODFreq)
-
-# list_image_mapping_master <- list_image_mapping_master %>%
-#     right_join(pairs_freq)
 
 # 2. Combine image pngs with random forest results -----
 for (i in 1:nrow(list_image_mapping_master)) {
     folder_original <- list_image_mapping_master$folder_original[i]
     folder_rolled <- paste0(list_image_mapping_master$folder_rolled[i], list_image_mapping_master$color_channel[i], "/")
     image_name <- list_image_mapping_master$image_name_pair[i]
+    comm <- list_image_mapping_master$Community[i]
+    iso1 <- list_image_mapping_master$Isolate1[i]
+    iso2 <- list_image_mapping_master$Isolate2[i]
 
     coculture_image_name <- paste0(folder_rolled, list_image_mapping_master$image_name_pair[i], ".tiff")
     random_forest_image_name <- paste0(list_image_mapping_master$folder_random_forest[i], list_image_mapping_master$image_name_pair[i], ".png")
+    if (paste0(comm, "_", iso1, "_", iso2) %in% pairs_no_colony) next
     if (!file.exists(coculture_image_name)) {
         cat(coculture_image_name, "does not exist")
         next
@@ -71,7 +69,7 @@ for (i in 1:nrow(list_image_mapping_master)) {
         annotate("text", x = .83, y = .93, label = "Coculture", size = 5, hjust = .5, fontface = "bold") +
         theme(plot.background = element_rect(color = NA, fill = "white"))
 
-    ggsave(paste0(folder_pipeline, "random_forest2/", image_name, ".png"), plot = p, width = 10, height = 9, dpi = 300)
+    ggsave(paste0(folder_pipeline, "random_forest/", image_name, ".png"), plot = p, width = 10, height = 9, dpi = 300)
 
     cat("\n", image_name, "\t", i, "/", nrow(list_image_mapping_master))
 }

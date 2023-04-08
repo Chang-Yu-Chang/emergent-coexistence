@@ -41,33 +41,19 @@ df_seq <- bind_rows(consensus1, .id = "temp") %>%
     dplyr::select(ID, Sequence) %>%
     dplyr::mutate(ConsensusLength = nchar(Sequence))
 
-# Read the two isolates using the CASEU amplified sequences
+# Read the C2R6 data using the CASEU amplified sequences
 # C2R6 isolate 4: CASEU_RN5_Dec2021_30-623993045_ab1/B2_T7_444_P2_28-27F.ab1
-# C10R2 isolate 3: CASEU_RN5_Dec2021_30-623993045_ab1/B2_T7_444_P2_90-27F.ab1
 
 seq_C2R6 <- SangerRead(
     printLevel = "SangerRead",
     inputSource = "ABIF",
     readFeature = "Forward Read",
-    #readFileName = paste0(folder_data, "raw/sanger/two_isolates/B2_T7_444_P2_28-27F.ab1")
     readFileName = paste0(folder_data, "raw/sanger/2.6.A.5-27F.ab1")
 )
 
+iso_c2r6 <- tibble(ID = "2.6.A.5", Sequence = seq_C2R6@primarySeq)
 
-seq_C10R2 <- SangerRead(
-    printLevel = "SangerRead",
-    inputSource = "ABIF",
-    readFeature = "Forward Read",
-    #readFileName = paste0(folder_data, "raw/sanger/two_isolates/B2_T7_444_P2_90-27F.ab1")
-    readFileName = paste0(folder_data, "raw/sanger/10.2.C.4-27F.ab1")
-)
-
-isolates_16S_two <- tibble(
-    ID = c("2.6.A.5", "10.2.C.4"),
-    Sequence = c(as.character(seq_C2R6@primarySeq), as.character(seq_C10R2@primarySeq))
-)
-
-isolates_16S <- bind_rows(df_seq, isolates_16S_two)
+isolates_16S <- bind_rows(df_seq, iso_c2r6)
 
 write_csv(isolates_16S, paste0(folder_data, "temp/11-isolates_16S.csv"))
 

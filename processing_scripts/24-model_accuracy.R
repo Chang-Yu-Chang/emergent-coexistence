@@ -1,4 +1,4 @@
-#' This scripts aggregates the random forest model prediction value
+#' This script aggregates the random forest model prediction value and accuracy
 
 library(tidyverse)
 library(cowplot)
@@ -7,7 +7,7 @@ source(here::here("processing_scripts/00-metadata.R"))
 folder_mapping_files <- "mapping_files/"
 # 1. Read accuracy data ----
 ## Pairs mapping file
-list_image_mapping_folder_master <- read_csv(paste0(folder_script, folder_mapping_files, "00-list_image_mapping_folder_master.csv"), show_col_types = F)
+list_image_mapping_folder_master <- read_csv(here::here("image_scripts/mapping_files/00-list_image_mapping_folder_master.csv"), show_col_types = F)
 
 ## pairs of mismatch
 pairs_mismatch <- read_csv(paste0(folder_data, "temp/22-pairs_mismatch.csv"), show_col_types = F)
@@ -21,8 +21,8 @@ isolates_duplicate <- tibble(ID = as.character(c(462, 355, 356, 461, 452, 446, 3
 ## Random forest accuracy
 temp <- rep(list(NA), length(batch_names))
 for (j in 1:length(batch_names)) {
-    list_images <- read_csv(paste0(folder_script, folder_mapping_files, "00-list_images-", batch_names[j], "-green.csv"), show_col_types = F)
-    list_image_mapping <- read_csv(paste0(folder_script, folder_mapping_files, "00-list_image_mapping-", batch_names[j], ".csv") , show_col_types = F)
+    list_images <- read_csv(paste0(here::here("image_scripts/mapping_files/"), "00-list_images-", batch_names[j], "-green.csv"), show_col_types = F)
+    list_image_mapping <- read_csv(paste0(here::here("image_scripts/mapping_files/"), "00-list_image_mapping-", batch_names[j], ".csv") , show_col_types = F)
 
     list_image_mapping_folder <- list_image_mapping %>%
         left_join(rename(list_images, image_name_pair = image_name), by = "image_name_pair") %>%
@@ -58,12 +58,6 @@ isolates_ID <- read_csv(paste0(folder_data, "temp/00c-isolates_ID.csv"), show_co
 ## Append the column and remove duplicated isolates in the accuracy table
 accuracy <- accuracy_validation_batch %>%
     filter(FinalModel) %>%
-    # Remove C11R2 isolate 13, which is a Staph. It's also not included in isolates_ID_match
-    filter(!((Community == "C11R2" & Isolate1 == 13) | ((Community == "C11R2" & Isolate2 == 13)))) %>%
-    # Remove batch B2 C11R1 pairs that contains isolate 1
-    filter(!(Batch == "B2" & Community == "C11R1" & (Isolate1 == 1 | Isolate2 == 1))) %>%
-    # Keep batch C C11R1 pairs that contains isolate 1
-    filter(!(Batch == "C" & Community == "C11R1" & (Isolate1 != 1 & Isolate2 != 1))) %>%
     # Label pairs containing duplicates
     left_join(rename(isolates_ID, ID1 = ID, Isolate1 = Isolate, Duplicated1 = Duplicated), by = c("Community", "Isolate1")) %>%
     left_join(rename(isolates_ID, ID2 = ID, Isolate2 = Isolate, Duplicated2 = Duplicated), by = c("Community", "Isolate2")) %>%
@@ -91,11 +85,6 @@ accuracy <- accuracy_validation_batch %>%
     arrange(Community, Isolate1, Isolate2, Isolate1InitialODFreq) %>%
     ungroup() %>%
     select(-FlipOrder) %>%
-    # Remove staph contamination
-    filter(!(Community == "C11R2" & Isolate1 == 13)) %>%
-    filter(!(Community == "C11R2" & Isolate2 == 13)) %>%
-    filter(!(Batch == "B2" & Community == "C11R1" & Isolate1 == 1)) %>%
-    filter(!(Batch == "C" & Community == "C11R1" & Isolate1 == 5)) %>%
     select(image_name_pair, Community, Isolate1, Isolate2, Isolate1InitialODFreq,
            Accuracy, AccuracyPassThreshold, PairType)
 
@@ -109,13 +98,13 @@ accuracy %>%
     group_by(PairType) %>%
     mutate(Fraction = Count / sum(Count))
 
-#   PairType       AccuracyPassThreshold Count Fraction
-#   <fct>          <lgl>                 <int>    <dbl>
-# 1 clean          TRUE                    357    1
-# 2 one duplicate  FALSE                    24    0.140
-# 3 one duplicate  TRUE                    147    0.860
-# 4 both duplicate FALSE                     3    0.143
-# 5 both duplicate TRUE                     18    0.857
+# PairType      AccuracyPassThreshold Count Fraction
+# <fct>         <lgl>                 <int>    <dbl>
+#     1 clean         TRUE                    294    1
+# 2 one duplicate FALSE                    24    0.157
+# 3 one duplicate TRUE                    129    0.843
+# 4 both duplica… FALSE                     3    0.143
+# 5 both duplica… TRUE                     18    0.857
 
 
 pairs_accuracy <- accuracy %>%

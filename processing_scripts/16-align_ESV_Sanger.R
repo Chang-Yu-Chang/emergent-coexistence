@@ -1,6 +1,6 @@
-#' This scripts align the isolate Sanger and community ESV
+#' This script aligns the isolate Sanger and community ESV
 #'
-#' The alignment is performed within the 13 communities
+#' The alignment is performed within the 12 communities
 #'
 
 library(tidyverse)
@@ -117,14 +117,14 @@ algn_Sanger_ESV <- sequences_alignment %>%
     slice(1) %>%
     ungroup()
 
-nrow(algn_Sanger_ESV) # The number of data points should be 64 because 4 isolates did not align well
-table(algn_Sanger_ESV$BasePairMismatch) #
+nrow(algn_Sanger_ESV) # The number of data points should be 62
+table(algn_Sanger_ESV$BasePairMismatch)
+# 0  1  2  3  4
+# 40 11  6  2  3
 
 isolates_abundance <- algn_Sanger_ESV %>%
     select(Community, RelativeAbundance, CommunityESVID, ESV, ESVFamily, ESVGenus, ExpID, ID, Isolate, Family, Genus, Sequence, AlignmentType, ConsensusLength, BasePairGap, BasePairMismatch, AlignmentScore)
 write_csv(isolates_abundance, paste0(folder_data, "temp/16-isolates_abundance.csv"))
-
-
 
 
 
@@ -139,39 +139,6 @@ n_align_comm <- n_Sanger_comm %>%
 
 sum(n_align_comm$n_algn) # expected number of alignments
 nrow(sequences_alignment) # actual number of alignments
-
-# Check the bp distribution
-sequences_alignment %>%
-    ggplot() +
-    geom_histogram(aes(x = BasePairMismatch), binwidth = 1, color = "black", fill = "white") +
-    scale_x_continuous(breaks = seq(0, 50, 5)) +
-    theme_classic() +
-    theme() +
-    guides() +
-    labs()
-
-# Check the consensus length distribution
-all(str_count(sequences_alignment$ESV) == 233) # All ESVs have 233 bp
-table(sequences_alignment$ConsensusLength) # Some alignment has very short consensus
-sort(unique(sequences_alignment$ConsensusLength))
-sequences_alignment %>%
-    ggplot() +
-    geom_histogram(aes(x = ConsensusLength), binwidth = 1, color = "black", fill = "white") +
-    #geom_point(aes(x = ConsensusLength, y = str_count(ESV)), size = 2, shape = 21) +
-    #scale_x_continuous(breaks = seq(0, 50, 5)) +
-    theme_classic() +
-    theme() +
-    guides() +
-    labs()
-
-# Check the alignment score distribution
-sequences_alignment %>%
-    ggplot() +
-    geom_histogram(aes(x = AlignmentScore), binwidth = 5, color = "black", fill = "white") +
-    theme_classic() +
-    theme() +
-    guides() +
-    labs()
 
 # Check the number of alignments pass the first criteria
 sequences_alignment %>%

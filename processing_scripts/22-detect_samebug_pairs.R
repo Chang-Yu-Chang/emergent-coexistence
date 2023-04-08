@@ -1,5 +1,5 @@
-#' This script takes the outcome from Jean's script to identify pairs of isolates
-#' with 0 mismatch and remove them from the list of pairs
+#' This script takes the outcome from 21-pairwsie_16s_mismatch.R and identifies pairs of isolates
+#' with 0 mismatch and removes them from the list of pairs
 
 library(tidyverse)
 source(here::here("processing_scripts/00-metadata.R"))
@@ -18,8 +18,11 @@ mismatch_matrix <- read_csv(paste0(folder_data, "temp/21-mismatch_matrix_communi
     mutate(ID_row = as.character(ID_row)) %>%
     mutate(ID_col = as.character(ID_col))
 
+isolates_abundance <- read_csv(paste0(folder_data, "temp/16-isolates_abundance.csv"), show_col_types = F)
 isolates_ID <- read_csv(paste0(folder_data, "temp/00c-isolates_ID.csv"), show_col_types = F) %>%
-    select(ID, Community, Isolate)
+    select(ID, Community, Isolate) %>%
+    # Subset for 62 isolates
+    filter(ID %in% isolates_abundance$ID)
 
 pairs_mismatch <- mismatch_matrix %>%
     filter(ID_row != ID_col) %>%
@@ -29,7 +32,7 @@ pairs_mismatch <- mismatch_matrix %>%
     filter(Community1 == Community2) %>%
     select(Community = Community1, ID_row, ID_col, Mismatch) %>%
     arrange(Community) %>%
-    # Reomve duplicate pairs
+    # Remove duplicate pairs
     left_join(select(isolates_ID, ID_row = ID, Isolate_row = Isolate), by = "ID_row") %>%
     left_join(select(isolates_ID, ID_col = ID, Isolate_col = Isolate), by = "ID_col") %>%
     filter(Isolate_row < Isolate_col) %>%

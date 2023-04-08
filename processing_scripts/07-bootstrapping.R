@@ -53,9 +53,9 @@ pairs_T8_boots <- bind_rows(temp)
 pairs_boots <- bind_rows(pairs_T0_boots, pairs_T8_boots) %>%
     select(Community, Isolate1, Isolate2, Isolate1InitialODFreq, Time, BootstrapID, Isolate1CFUFreq)
 
-nrow(pairs_T0_boots)/1000 # 186*3=558
-nrow(pairs_T8_boots)/1000 # 558-9=549 because 9 images do not have colony
-nrow(pairs_boots)/1000 # 558+549=1107
+nrow(pairs_T0_boots)/1000 # 159*3=477
+nrow(pairs_T8_boots)/1000 # 477-9=468 because 9 images do not have colony
+nrow(pairs_boots)/1000 # 477+468=945
 
 write_csv(pairs_boots, paste0(folder_data, "temp/07-pairs_boots.csv"))
 
