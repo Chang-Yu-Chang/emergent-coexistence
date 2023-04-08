@@ -41,11 +41,13 @@ Scripts and data for the manuscript entitled "Emergent coexistence in multispeci
     - `27-pairs_freq_machine_human.csv` contains the 549 cocultures with either human count, machine count, or both
     
 - `output`: includes the seven main datasets
-    - `communities.csv` `isolates.csv`, and `pairs.csv` contains 68 isolates
-    - `communities_remained.csv` `isolates_remained.csv`, and `pairs_remained.csv` are used to generate contain 62 isolates after removing four isolates with bad alignment and C10R1
-
-
-
+    - `communities.csv` 12 communities 
+    - `isolates.csv` contains 65 isolates
+    - `pairs.csv` contains 159 pairs
+    - `communities_remained.csv` contains 12 communities reordered according to the number of isolates after removing three isolates with bad alignment
+    - `isolates_remained.csv` has 62 isolates after removing three isolates with bad alignment
+    - `pairs_remained.csv` has 144 pairs after removing the 6 pairs with no colony, and 9 with low random forest model accuracy
+    - `communities_network.Rdata` includes a tibble containing a list of the 12 tidygraph networks based on the 12 communities
 
 
 # Scripts
@@ -74,7 +76,7 @@ This repository includes three types of scripts:
     - `12-assign_isolate_RDP.R` reads isolate 16S sequences and assigns taxonomy using RDP
     - `13-rarefaction.R` performs rarefaction. The script is adapted from the rarefaction script in Vila et al 2020
     - `14-filter_community_abundance.R` subsets only the glucose communities which are relevant to the current study
-    - `15-calculate_invasion_fitness.R` calculates the invasion communities_fitness for ESVs in the 26 glucose communities that have temporal data
+    - `15-calculate_invasion_fitness.R` calculates the invasion fitness for ESVs in the 26 glucose communities that have temporal data
     - `16-align_ESV_Sanger.R` aligns the isolate Sanger and community ESV within the 12 communities
     - `21-pairwise_16s_mismatch.py` runs merging paired sequences from Genewiz 
     - `22-detect_samebug_pairs.R` makes a long format of pairwise mismatch between pairs of isolate sanger sequences
@@ -90,9 +92,6 @@ This repository includes three types of scripts:
     - `99a-commands.sh`
 
 3. `plotting_scripts/`: generates the figures for main text and supplements. The resulting figures are stored in `plots/`. Figs S6, 10, 11 were generated using Illustrator.
-
-
-
 
 
 
@@ -139,11 +138,6 @@ For instance, implementing the image processing pipeline and random forest class
 
 ```
 cd image_scripts
-```
-
-Batch B2
-
-```
 Rscript 01-channel.R mapping_files/00-list_images-B2-red.csv
 Rscript 01-channel.R mapping_files/00-list_images-B2-green.csv
 Rscript 01-channel.R mapping_files/00-list_images-B2-blue.csv
@@ -165,80 +159,33 @@ Below is the overview for the image processing pipeline. The resulting dataset s
 
 # Data wrangling and analysis
 
-
-```
-Rscript 00c-generate_pairs_ID.R
-Rscript 00d-assemble_colony_images.R # for making figure S5
-```
-
-In this step, we take data from either the 16S sequences or those data generated from the command-line as described above. These data are cleaned up and stored in the folder `~/Dropbox/lab/emergent-coexistence/data/temp/` with the file name prefix matched to the numbered script that generates it.
-
-From the raw `.ab1` of 16S Sanger sequences, we aligned the raw reads, identified isolate taxonomy, and matched the community amplicon sequences (ESVs). See the Methods section for details. The following scripts do what has described.
+In this step, we take data from either the 16S sequences or those data generated from the command-line as described above. These data are cleaned up and stored in the folder `data/temp/` with the file name prefix matched to the numbered script that generates it.
 
 ```
 cd processing_scripts
-Rscript 11-align_isolate_sequences.R
+Rscript 00c-generate_ID.R
+Rscript 00d-assemble_colony_images.R
+Rscript 00e-combine_image_and_random_forest.R
+Rscript 06-aggregate_T0_T8_data.R
+Rscript 07-bootstrapping.R
+Rscript 11-align_isolate_Sanger.R
 Rscript 12-assign_isolate_RDP.R
-Rscript 13-match_community_abundance.R
-
-# A folder is need temp/21-needle/
-python 21-pairwise_16s_mismatch.py PATH_TO_DATA/
-
-Rscript 15-samebug_pairs.R
-Rscript 16-match_pair_RDP.R
+Rscript 13-rarefaction.R
+Rscript 14-filter_community_abundance.R
+Rscript 15-calculate_invasion_fitness.R
+Rscript 16-align_ESV_Sanger.R
+python 21-pairwise_16s_mismatch.py
+Rscript 22-detect_samebug_pairs.R
+Rscript 23-match_pairs_RDP.R
+Rscript 24-model_accuracy.R
+Rscript 25-calculate_pairs_frequency.R
+Rscript 26-determine_competition_outcomes.R
+Rscript 27-compare_machine_human.R
+Rscript 28-combine_images_and_random_forest.R
+Rscript 91-append_data.R
+Rscript 92-create_networks.R
 ```
 
-Once the image processing and sequence analysis are done, we extracted the Random Forest model accuracy, compared the machine results to human results, as well as determined the pairwise competition outcome through bootstrapping. These results are appended to one two processed tables: `isolates` with 68 row representing isolates and `pairs` with 186 row representing species pairs.
-
-
-```
-Rscript 91-model_accuracy.R
-Rscript 92-compare_machine_human.R
-Rscript 93-determine_competition.R
-Rscript 94-append_data.R
-```
-
-We generated network objects for plotting the competitive networks as well as calculating the network hierarchy.
-
-```
-Rscript 95-randomize_networks.R
-```
-
-
-## Step 3. Generating the figures and supplementary PDFs
-
-Finally, with the processed tabular data and networks, we made Figure 1-4, Supplementary Figures S4-6, and Supplementary Tables S1-4 using the following scripts.
-
-```
-cd processing_scripts
-Rscript 96-figures.R
-Rscript 96a-supp_figures.R
-```
-
-Cartoons and Fig.S1-2 are generated using Adobe Illustrator.
-
-The four supplementary PDFs that contain the images and random forest results are generated using the script. The command-line function `convert` is from `imagemagick`. An example of one page in these PDFs is shown in Figure S3.
-
-```
-cd processing_scripts
-Rscript 97-combine_images_and_random_forest.R
-
-# Once the individual pngs are generated, merge them into multi-page PDFs
-cd ~/Dropbox/lab/emergent-coexistence/plate_scan_pipeline/random_forest/
-convert -quality 60 B2_*.png random_forest-B2.pdf
-convert -quality 60 C_*.png random_forest-C.pdf
-convert -quality 60 C2_*.png random_forest-C2.pdf
-convert -quality 60 D_*.png random_forest-D.pdf
-```
-
-## Sum up
-
-To execute all steps decribed above, from the raw data to ready-for-paper figures, basically run all scripts using terminal commands saved in a master shell script `processing_scripts00e-commands.sh`. Note that for the shell script to work, the working directory has to be the project directory (where `emergent-coexistence.Rproj` is located)
-
-```
-Rscrip processing_scripts99-generate_commands.R
-zsh processing_scripts99a-commands.sh
-```
 
 
 

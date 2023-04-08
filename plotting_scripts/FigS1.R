@@ -67,7 +67,7 @@ p2 <- rarefaction %>%
     labs(x = "sampling size [number of reads]", y = "richness")
 
 p <- plot_grid(p1, p2, nrow = 1, labels = LETTERS[1:2], scale = .9, rel_widths = c(1.3, 1)) + paint_white_background()
-ggsave(here::here("plots/FigS1-inoculum_diversity.png"), p, width = 8, height = 3)
+ggsave(here::here("plots/FigS1.png"), p, width = 8, height = 3)
 
 # T0 samples
 aux = read_csv(paste0(folder_data, 'raw/community_ESV/metadata.csv'), show_col_types = F)

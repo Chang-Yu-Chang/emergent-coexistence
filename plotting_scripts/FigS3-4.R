@@ -37,7 +37,7 @@ p <- fitness_stable %>%
     guides(color = "none") +
     labs(x = expression(x[i]), y = expression(log(x[i+1]/x[i])))
 
-ggsave(here::here("plots/FigS3-species_fitness_all_transfers_linear.png"), p, width = 12, height = 15)
+ggsave(here::here("plots/FigS3.png"), p, width = 12, height = 15)
 
 # Fig S4
 p <- fitness_transient %>%
@@ -60,5 +60,5 @@ p <- fitness_transient %>%
     ) +
     guides(color = "none") +
     labs(x = expression(x[i]), y = expression(log(x[i+1]/x[i])))
-ggsave(here::here("plots/FigS4-species_fitness_all_transfers_linear_ephemeral.png"), p, width = 12, height = 9)
+ggsave(here::here("plots/FigS4.png"), p, width = 12, height = 9)
 

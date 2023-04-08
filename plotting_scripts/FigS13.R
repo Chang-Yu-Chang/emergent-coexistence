@@ -88,7 +88,7 @@ p <- pairs_abundant %>%
     guides(fill = guide_legend(byrow = T, ncol = 1)) +
     labs(x = "community", y = "fraction")
 
-ggsave(here::here("plots/FigS13-pairwise_competition_abundant.png"), p, width = 10, height = 5)
+ggsave(here::here("plots/FigS13.png"), p, width = 10, height = 5)
 
 
 # Stats

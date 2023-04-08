@@ -110,7 +110,8 @@ pairs_mean_eq_measures <- read_csv(paste0(folder_data, "temp/25-pairs_mean_eq_me
     filter(outcome %in% c("3-coexistence", "4-coexistence")) %>%
     mutate(FlipFreq = ifelse(MeanMeanIsolate1CFUFreq > 0.5, T, F)) %>%
     flip_winner_species_freq_shade(., pairs_mean_eq_mean = .)
-
+pairs_mean_eq_mean <- pairs_mean_eq_measures
+pairs_freq <- mutate(pairs_freq, PairID = as.numeric(PairID))
 
 line_size = 1
 plot_category_freq <- function (pairs_freq, pairs_mean_eq_measures, outcome_category = "1-exclusion") {

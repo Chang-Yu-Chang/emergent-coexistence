@@ -50,10 +50,13 @@ accuracy_validation_batch <- bind_rows(temp)
 
 # 2. Clean up pairs of contamination/ duplication ----
 ## Append ID of Duplicated isolates to my internal ID
+isolates_abundance <- read_csv(paste0(folder_data, "temp/16-isolates_abundance.csv"), show_col_types = F)
 isolates_ID <- read_csv(paste0(folder_data, "temp/00c-isolates_ID.csv"), show_col_types = F) %>%
     select(ID, Community, Isolate) %>%
     left_join(isolates_duplicate, by = "ID") %>%
-    replace_na(list(Duplicated = F))
+    replace_na(list(Duplicated = F)) %>%
+    # Subset for 62 isolates
+    filter(ID %in% isolates_abundance$ID)
 
 ## Append the column and remove duplicated isolates in the accuracy table
 accuracy <- accuracy_validation_batch %>%

@@ -93,5 +93,5 @@ p <- plot_grid(
     labels = LETTERS[1:2], scale = c(.95, .95),
     nrow = 1, align = "h", axis = "tb", rel_widths = c(1,1.2)) +
     paint_white_background()
-ggsave(here::here("plots/FigS5-transient_negative_fitness.png"), p, width = 10, height = 13)
+ggsave(here::here("plots/FigS5.png"), p, width = 10, height = 13)
 

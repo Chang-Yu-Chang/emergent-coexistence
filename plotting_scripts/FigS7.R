@@ -49,13 +49,13 @@ p <- sequences_alignment %>%
     scale_fill_manual(values = rev(RColorBrewer::brewer.pal(n = 6, "Blues"))) +
     scale_x_discrete(expand = c(0,0)) +
     scale_y_discrete(expand = c(0,0)) +
-    facet_wrap(.~CommunityLabel2, scales = "free", ncol = 4) +
+    facet_wrap(.~CommunityLabel2, scales = "free", ncol = 3) +
     theme_classic() +
     theme(
         panel.border = element_rect(fill = NA, color = 1, linewidth = 0.5),
         axis.text.x = element_text(angle = 45, vjust = 1.05, hjust = 1, size = 6),
         axis.text.y = element_text(size = 6),
-        legend.position = c(.6, .05),
+        legend.position = "bottom",
         legend.spacing.x = unit(4, "mm"),
         strip.background = element_blank(),
         plot.title = element_text(hjust = 0.5)
@@ -65,7 +65,7 @@ p <- sequences_alignment %>%
     ggtitle("community")
 
 
-ggsave(here::here("plots/FigS7-Sanger_ESV_alignment.png"), p, width = 10, height = 12)
+ggsave(here::here("plots/FigS7.png"), p, width = 10, height = 12)
 
 #
 sequences_alignment %>% distinct(Community, CommunityESVID) %>% nrow() # 112 ESVs

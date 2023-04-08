@@ -150,6 +150,6 @@ p <- communities_abundance_temporal_26 %>%
     guides(color = "none", fill = guide_legend(title = "ESV", ncol = 1, override.aes = list(color = 1, linewidth = .5))) +
     labs(x = "transfer", y = "relative abundance")
 
-ggsave(here::here("plots/FigS2-temporal_dynamics.png"), p, width = 8, height = 8)
+ggsave(here::here("plots/FigS2.png"), p, width = 8, height = 8)
 
 

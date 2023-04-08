@@ -50,7 +50,7 @@ p2 <- tibble(rho = list_rho, BootStrapID = 1:1000) %>%
 
 #p <- plot_grid(p1, p2, nrow = 1, scale = 0.85, labels = c("A", "B")) + paint_white_background()
 p <- p2
-ggsave(here::here("plots/FigS14-abundance_vs_rank.png"), p, width = 4, height = 4)
+ggsave(here::here("plots/FigS14.png"), p, width = 4, height = 4)
 
 
 # Range of rho

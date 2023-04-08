@@ -15,7 +15,7 @@ pairs_freq_machine_human <- pairs_freq_machine_human %>%
     left_join(select(isolates, Community, Isolate2 = Isolate, ExpID2 = ExpID)) %>%
     filter(!(ExpID1 %in% isolates_removal) & !(ExpID2 %in% isolates_removal))
 
-nrow(pairs_freq_machine_human) # 186-26 = 160 pairs. 160*3=480 cocultures
+nrow(pairs_freq_machine_human) # 159*3=477 cocultures
 
 # Check numbers
 pairs_machine <- pairs_freq_machine_human %>%
@@ -24,7 +24,7 @@ pairs_machine <- pairs_freq_machine_human %>%
     filter(!is.na(F5), !is.na(F50), !is.na(F95)) %>%
     select(Community, Isolate1, Isolate2) %>%
     mutate(ContainMachine = T)
-nrow(pairs_machine) # 154 pairs have machine result. 160 total - 6 pairs that have no colony = 154
+nrow(pairs_machine) # 153 pairs have machine result. 159 total - 6 pairs that have no colony = 154
 
 pairs_human <- pairs_freq_machine_human %>%
     select(Community, Isolate1, Isolate2, Isolate1InitialODFreq, Isolate1CFUFreq_human) %>%
@@ -32,7 +32,7 @@ pairs_human <- pairs_freq_machine_human %>%
     filter(!is.na(F5), !is.na(F50), !is.na(F95)) %>%
     select(Community, Isolate1, Isolate2) %>%
     mutate(ContainHuman = T)
-nrow(pairs_human) # 130 pairs have human result. 160 total - 6 pairs that have no colony - 24 hard to distinguish by eyes = 130
+nrow(pairs_human) # 129 pairs have human result. 159 total - 6 pairs that have no colony - 24 hard to distinguish by eyes = 130
 
 pairs_human_machine <- pairs_freq_machine_human %>%
     select(Community, Isolate1, Isolate2, Isolate1InitialODFreq, machine = Isolate1CFUFreq_machine, human = Isolate1CFUFreq_human) %>%
@@ -40,25 +40,25 @@ pairs_human_machine <- pairs_freq_machine_human %>%
     filter(!is.na(human_F5), !is.na(human_F50), !is.na(human_F95), !is.na(machine_F5), !is.na(machine_F50), !is.na(machine_F95)) %>%
     select(Community, Isolate1, Isolate2) %>%
     mutate(ContainHumanMachine = T)
-nrow(pairs_human_machine) # 130 pairs have both human and machine data
+nrow(pairs_human_machine) # 129 pairs have both human and machine data
 
 pairs_machine %>%
     left_join(pairs_human) %>%
     left_join(filter(accuracy, Isolate1InitialODFreq == 5)) %>%
     filter(ContainMachine, ContainHuman, Accuracy > 0.9) %>%
-    nrow() # 129 pairs that have both human and machine data, and the machine accurarcy is > 0.9
+    nrow() # 128 pairs that have both human and machine data, and the machine accurarcy is > 0.9
 
 
 #
-pairs_freq_machine_human_cleaned1 <- pairs_freq_machine_human %>% # 160*3 = 480 cocultures
+pairs_freq_machine_human_cleaned1 <- pairs_freq_machine_human %>% # 159*3 = 477 cocultures
     left_join(pairs_machine) %>%
-    filter(ContainMachine) %>% # 154 pairs that have machine result. 154*3 = 462 cocultures
+    filter(ContainMachine) %>% # 153 pairs that have machine result. 153*3 = 459 cocultures
     # Remove those with low accuracy
     left_join(accuracy) %>%
-    filter(Accuracy > 0.9) # 145 pairs that have human result. 145*3=435 cocultures
-nrow(pairs_freq_machine_human_cleaned1) # 145*3 = 135 cocultures that have high accurarcy machine result
+    filter(Accuracy > 0.9) # 144 pairs that have human result. 145*3=432 cocultures
+nrow(pairs_freq_machine_human_cleaned1) # 144*3 = 432 cocultures that have high accurarcy machine result
 
-pairs_freq_machine_human_cleaned2 <- pairs_freq_machine_human_cleaned1 %>% # 145*3=435 cocultures
+pairs_freq_machine_human_cleaned2 <- pairs_freq_machine_human_cleaned1 %>% # 144*3=432 cocultures
     # Remove pairs that have no human results
     left_join(pairs_human_machine) %>%
     select(Community, Isolate1, Isolate2, Isolate1InitialODFreq,
@@ -67,12 +67,12 @@ pairs_freq_machine_human_cleaned2 <- pairs_freq_machine_human_cleaned1 %>% # 145
            Isolate1CFUFreq_machine, Isolate1CFUFreq_human,
            ContainHumanMachine) %>%
     filter(ContainHumanMachine)
-nrow(pairs_freq_machine_human_cleaned2) # 129*3 = 387 cocultures
+nrow(pairs_freq_machine_human_cleaned2) # 128*3 = 384 cocultures
 
-pairs_freq_machine_human_cleaned3 <- pairs_freq_machine_human %>% # 160*3 = 480 cocultures
+pairs_freq_machine_human_cleaned3 <- pairs_freq_machine_human %>% # 159*3 = 477 cocultures
     left_join(pairs_human) %>%
     filter(ContainHuman)
-nrow(pairs_freq_machine_human_cleaned3) # 130 pairs that have human result. 130*3 = 390 cocultures
+nrow(pairs_freq_machine_human_cleaned3) # 129 pairs that have human result. 129*3 = 387 cocultures
 
 
 #
@@ -101,7 +101,7 @@ p2 <- pairs_freq_machine_human_cleaned2 %>%
 p <- plot_grid(p1, p2, nrow = 1, axis = "tblr", align = "h", scale = .9, labels = c("A", "B")) +
     paint_white_background()
 
-ggsave(here::here("plots/FigS12-human_machine_comparison.png"), p, width = 8, height = 4)
+ggsave(here::here("plots/FigS12.png"), p, width = 8, height = 4)
 
 # R-squared
 pairs_freq_machine_human_cleaned2 %>%

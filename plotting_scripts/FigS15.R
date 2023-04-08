@@ -11,7 +11,7 @@ isol <- isol[,c('Community', 'Isolate', 'ESV', 'BasePairMismatch', 'ID')]
 #
 #communities_abundance <- fread("Emergent_Comunity_Data.csv")
 communities_abundance <- fread(paste0(folder_data, "temp/14-communities_abundance.csv"))
-communities_abundance <- fread(paste0(folder_data, "raw/community_ESV/Emergent_Comunity_Data.csv"))
+#communities_abundance <- fread(paste0(folder_data, "raw/community_ESV/Emergent_Comunity_Data.csv"))
 communities_abundance[, Community := factor(paste0("C", Inoculum, "R", Replicate),
                                             paste0("C", rep(1:12, each = 8), "R", rep(1:8, 12)))]
 
