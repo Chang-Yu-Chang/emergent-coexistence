@@ -11,7 +11,6 @@ list_image_mapping_folder_master <- read_csv(paste0("image_scripts/mapping_files
 # 1. Isolates ----
 # This one reads the old, hand-curated csv to generate ID
 isolates_ID <- read_csv(paste0(folder_data, "raw/isolates1.csv"), col_types = cols())
-isolates_ID$ID[isolates_ID$ExpID == "2.6.A.5"] <- "2.6.A.5"
 
 nrow(isolates_ID) # 65 isolates
 write_csv(isolates_ID, paste0(folder_data, "temp/00c-isolates_ID.csv"))

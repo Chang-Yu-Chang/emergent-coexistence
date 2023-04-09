@@ -10,7 +10,7 @@ source(here::here("processing_scripts/00-metadata.R"))
 for (j in 1:length(batch_names)) {
     # 0.1 list of existing original images ----
     folder_original <- paste0(folder_pipeline, "images/", batch_names[j], "-00-original/")
-    image_names <- list.files(folder_original) %>% str_replace(".tiff", "")
+    image_names <- list.files(folder_original, pattern = ".tiff") %>% str_replace(".tiff", "")
 
     # 0.2 list of image files and the folders to store them ----
     n_images <- length(image_names)

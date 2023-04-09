@@ -34,12 +34,13 @@ for (j in 1:length(batch_names)) {
 isolates_CFU <- bind_rows(temp) %>%
     separate(image_name, into = c("Batch", "Time", "Community", "Isolate"), sep = "_", remove = F)
 
+isolates_CFU
+
 isolates_CFU <- isolates_CFU %>%
-    # This image is used to train the model because it has many colonies, but it does not have OD data
+    # C_stock_C11R1_1.tiff is used to train the model because it has many colonies, but it does not have OD data
     filter(image_name != "C_stock_C11R1_1") %>%
     # To use the OD data, add the image C_T0_C11R1_1 that has OD data but does not have high resolution. Manually count colony
     bind_rows(tibble(image_name = "C_T0_C11R1_1", Batch = "C", Time = "T0", Community = "C11R1", Isolate = "1", ColonyCount = 8))
-
 
 # 1.2 Read OD data ----
 # Remove the contaminated data: B2 C11R1 isolate1 and C2 C11R2 isolate 13 (streplococcus contamination)

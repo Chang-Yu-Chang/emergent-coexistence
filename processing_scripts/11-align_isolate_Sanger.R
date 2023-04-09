@@ -41,9 +41,6 @@ df_seq <- bind_rows(consensus1, .id = "temp") %>%
     dplyr::select(ID, Sequence) %>%
     dplyr::mutate(ConsensusLength = nchar(Sequence))
 
-# Read the C2R6 data using the CASEU amplified sequences
-# C2R6 isolate 4: CASEU_RN5_Dec2021_30-623993045_ab1/B2_T7_444_P2_28-27F.ab1
-
 seq_C2R6 <- SangerRead(
     printLevel = "SangerRead",
     inputSource = "ABIF",
