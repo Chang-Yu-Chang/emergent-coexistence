@@ -1,12 +1,10 @@
 # This script stores the metadata shared by all scripts
 
 # 1. Directories
-# This main folder depends on your home directory and user name
-folder_script <- "/Users/cychang/Desktop/lab/emergent-coexistence/processing_scripts/" # Enter the directory of analysis scripts
-# folder_pipeline <- "/Users/cychang/Dropbox/lab/emergent-coexistence/pipeline/" # Enter the directory of image processing pipeline
-# folder_data <- "/Users/cychang/Dropbox/lab/emergent-coexistence/data/" # Enter the directory of data
-folder_pipeline <- "/Users/cychang/Dropbox/lab/emergent-coexistence/pipeline_upload/" # Enter the directory of image processing pipeline
-folder_data <- "/Users/cychang/Dropbox/lab/emergent-coexistence/data_upload/" # Enter the directory of data
+# This main folder depends on your home directory
+folder_script <- "processing_scripts/" # Enter the directory of processing scripts
+folder_pipeline <- "pipeline/" # Enter the directory of image processing pipeline
+folder_data <- "data/" # Enter the directory of data
 
 
 # 2. For image processing pipeline ----
@@ -47,7 +45,6 @@ feature_candidates <- c(
         "b.tran.mean", "b.tran.sd", "b.tran.mad",
         "b.center", "b.periphery", "b.diff.cp",
         "b.tran.q005", "b.tran.q01", "b.tran.q05", "b.tran.q09", "b.tran.q095"
-        #"t.bump.number"
     ), "_green"),
     paste0(c("b.mean", "b.sd", "b.mad"), rep(c("_red", "_blue"), each = 3))
 )
@@ -77,7 +74,7 @@ family_colors <- c(
     Comamonadaceae = "yellow",
     Alcaligenaceae = "darkorchid2"
 )
-# Process
+
 
 remove_ineligible_pairs <- function(pairs) {
     pairs %>%

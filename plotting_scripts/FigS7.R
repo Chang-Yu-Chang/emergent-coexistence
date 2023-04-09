@@ -68,15 +68,30 @@ p <- sequences_alignment %>%
 ggsave(here::here("plots/FigS7.png"), p, width = 10, height = 12)
 
 #
-sequences_alignment %>% distinct(Community, CommunityESVID) %>% nrow() # 112 ESVs
-sequences_alignment %>% distinct(Community, ExpID) %>% nrow() # 68 isolates
+sequences_alignment %>% distinct(Community, CommunityESVID) %>% nrow() # 102 ESVs
+sequences_alignment %>% distinct(Community, ExpID) %>% nrow() # 65 isolates
 
+# 62 isolates, the mismatches
+isolates %>%
+    drop_na(BasePairMismatch) %>%
+    pull(BasePairMismatch) %>%
+    table()
+
+# 0  1  2  3  4
+# 40 11  6  2  3
+# 40 isolates has full match, 11 has one mismatch, 6 has two mismatches, 2 has three mismatches, and 3 has four mismatches
+
+#
 isolates %>%
     drop_na(CommunityESVID) %>%
     group_by(Community, CommunityESVID) %>%
     count() %>%
     pull(n) %>%
-    table # 34 ESVs match 1 isolate, 8 ESVs match 2 isolates, 2 ESVs match 3 isolates, 2 ESVs match 4 isolates
+    table
+
+# 1  2  3  4
+# 32  8  2  2
+# 32 ESVs match 1 isolate, 8 ESVs match 2 isolates, 2 ESVs match 3 isolates, 2 ESVs match 4 isolates
 
 
 

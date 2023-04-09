@@ -4,9 +4,6 @@ library(officer)
 library(flextable)
 source(here::here("processing_scripts/00-metadata.R"))
 
-# Table S2 community overview and labels ----
-isolates <- read_csv(paste0(folder_data, "output/isolates.csv"), show_col_types = F)
-pairs <- read_csv(paste0(folder_data, "output/pairs.csv"), show_col_types = F)
 communities <- read_csv(paste0(folder_data, "output/communities.csv"), show_col_types = F)
 
 # Table S3 list of isolates, images used for monocultures, CFU, OD ----

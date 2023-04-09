@@ -4,106 +4,26 @@ library(data.table)
 source(here::here("processing_scripts/00-metadata.R"))
 
 # ESVs
-isol <- fread(paste0(folder_data, "output/isolates_remained.csv"))
-#isol <- fread('isolates_remained.csv')
-isol <- isol[,c('Community', 'Isolate', 'ESV', 'BasePairMismatch', 'ID')]
+#pairs <- fread('pairs_remained.csv')
+pairs <- fread(paste0(folder_data, "output/pairs_remained.csv"))
+pairs <- pairs[,c(1:4, 9, 11, 12, 17, 19, 20, 23, 24, 25)]
 
-#
-#communities_abundance <- fread("Emergent_Comunity_Data.csv")
-communities_abundance <- fread(paste0(folder_data, "temp/14-communities_abundance.csv"))
-#communities_abundance <- fread(paste0(folder_data, "raw/community_ESV/Emergent_Comunity_Data.csv"))
-communities_abundance[, Community := factor(paste0("C", Inoculum, "R", Replicate),
-                                            paste0("C", rep(1:12, each = 8), "R", rep(1:8, 12)))]
+#outc <- fread('pairs_outcome.csv')
+outc <- fread(paste0(folder_data, 'temp/26-pairs_outcome.csv'))
 
-communities_abundance <- communities_abundance[, .(ESV_ID, ESV, Relative_Abundance,
-                                                   Carbon_Source, Community, Transfer)]
-communities_abundance <- communities_abundance[Carbon_Source == "Glucose" & Transfer %in% 9:12]
-
-# average 4 last transfers
-eq_abundance <- communities_abundance[, .(eq_abundance = mean(Relative_Abundance, na.rm=TRUE)),
-                                          by=c('ESV_ID', 'ESV', 'Community')]
-
-# merge by ESV sequence
-isol <- merge(isol, eq_abundance, by=c('ESV', 'Community'), all.x=TRUE)
-isol[, ESV:=NULL]
-
-# determine coexistence score for each isolate
-#outcomes <- fread(paste0(folder_data, 'output/pairs_remained.csv'))
-outcomes <- fread(paste0(folder_data, 'temp/26-pairs_outcome.csv'))
-#outcomes <- fread(paste0(folder_data, 'raw/test/pairs_outcome.csv'))
-outcomes <- outcomes[outcome %like% 'coexistence' | outcome %like% 'exclusion']
-outcomes[, outc := ifelse(outcome %like% 'coexistence', 'coexistence', 'exclusion')]
-
-# compute with averaged ranks
-isol[, rank_ab := rank(-eq_abundance), by='Community']
-
-isol1 <- isol
-names(isol1)[c(2, 7)] <- c('Isolate1', 'rank_ab_1')
-isol1 <- isol1[, c(1, 2,7)]
-
-isol2 <- isol
-names(isol2)[c(2, 7)] <- c('Isolate2', 'rank_ab_2')
-isol2 <- isol2[, c(1,2,7)]
-
-res <- merge(outcomes, isol1, by=c('Community', 'Isolate1'), all.x=TRUE)
-res <- merge(res, isol2, by=c('Community', 'Isolate2'), all.x=TRUE)
-
-res[, involves_top := rank_ab_1<2 | rank_ab_2<2]
+pairs <- merge(outc, pairs, all.x=TRUE)
+pairs[, out := ifelse(outcome %like% 'coexistence', 'coexistence',
+               ifelse(outcome %like% 'excl', 'exclusion', 'inconclusive'))]
 
 
-# bootstrap because 1 ESV sometimes maps to multiple isolates
-r <- matrix(NA, ncol=3, nrow=1000)
-set.seed(1)
-# sample one isolate/ESV
-for (i in 1:1000) {
-    isol[, rank_ab := rank(-eq_abundance, ties.method='random'), by='Community']
+# Fig S17
 
-    isol1 <- isol
-    names(isol1)[c(2, 7)] <- c('Isolate1', 'rank_ab_1')
-    isol1 <- isol1[, c(1, 2,7)]
-
-    isol2 <- isol
-    names(isol2)[c(2, 7)] <- c('Isolate2', 'rank_ab_2')
-    isol2 <- isol2[, c(1,2,7)]
-
-    res <- merge(outcomes, isol1, by=c('Community', 'Isolate1'), all.x=TRUE)
-    res <- merge(res, isol2, by=c('Community', 'Isolate2'), all.x=TRUE)
-
-    res[, involves_top := rank_ab_1<2 | rank_ab_2<2]
-
-    res <- res[,table(involves_top, outc)]
-
-    r[i,1] <- res[2,1]/sum(res[2,])
-    r[i,2] <- res[1,1]/sum(res[1,])
-    r[i, 3] <- fisher.test(res)$p.value
-}
-
-colnames(r) <- c('Rank = 1', 'Rank > 1', 'p')
-res <- as.data.table(r)
-res[, id:=1:1000]
-res <- melt(res[,-3], id.vars='id')
-res[, .(m = mean(value), sd = sd(value)), by='variable']
-
-p <- ggplot(res, aes(value, fill=variable)) +
-    geom_histogram(bins=15, color='black', position = "identity", alpha = 0.8) +
-    scale_fill_manual(values = RColorBrewer::brewer.pal(3, "Set1"), name = 'Pairs containing:') +
-    theme_classic() + xlim(0, .4) +
-    labs(x = "% Coexistence among pairs", y = 'Count (# bootstrap samples)')
+p <- ggplot(pairs[out!='inconclusive'], aes(x = Mismatch, fill=out)) +
+  geom_histogram(alpha=.4, position="identity", bins=20) +
+  theme_classic() + labs(x='Mismatch (bp)', y=' Number of pairs') +
+  scale_fill_manual(values=c('blue', 'red'), name = "Outcome")
 
 ggsave(here::here('plots/FigS15.png'), p, width = 6, height = 4)
 
-
-t.test(pull(filter(res, variable == "Rank = 1"), value),
-       pull(filter(res, variable == "Rank > 1"), value)) %>% broom::tidy()
-
-
-
-
-
-
-
-
-
-
-
+with(pairs[out!='inconclusive'], wilcox.test(Mismatch~out))
 

@@ -81,7 +81,7 @@ for (j in 1:length(batch_names)) {
 list_images_master <- bind_rows(list_images_master)
 list_image_mapping_master <- bind_rows(list_image_mapping_master)
 list_image_mapping_folder_master <- list_image_mapping_master %>%
-    left_join(tibble(image_name_pair = plates_no_colony, Undecided = "no colony"), by = "image_name_pair") %>%
+    left_join(tibble(image_name_pair = plates_no_colony), by = "image_name_pair") %>%
     left_join(rename(list_images_master, image_name_pair = image_name), by = "image_name_pair") %>%
     left_join(select(list_images_master, image_name_isolate1 = image_name), by = "image_name_isolate1") %>%
     left_join(select(list_images_master, image_name_isolate2 = image_name), by = "image_name_isolate2")

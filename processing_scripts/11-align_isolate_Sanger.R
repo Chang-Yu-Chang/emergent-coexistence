@@ -10,7 +10,7 @@ library(sangeranalyseR)
 source(here::here("processing_scripts/00-metadata.R"))
 
 alignment1 <- sangeranalyseR::SangerAlignment(
-    ABIF_Directory = paste0(folder_data, "raw/sanger/sanger_seq_16S_communities"),
+    ABIF_Directory = paste0(folder_data, "raw/sanger/sanger_seq_16S"),
     REGEX_SuffixForward = "F.ab1$",
     REGEX_SuffixReverse = "R.ab1$"
 )
@@ -18,13 +18,13 @@ alignment1 <- sangeranalyseR::SangerAlignment(
 # This generates a merged sanger fa file: sanger_contigs_alignment.fa
 sangeranalyseR::writeFasta(
     alignment1,
-    outputDir = paste0(folder_data, "raw/sanger/sanger_seq_16S_communities"),
+    outputDir = paste0(folder_data, "raw/sanger/sanger_seq_16S"),
     compress = FALSE,
     compression_level = NA,
     selection = "all"
 )
 
-consensus1 <- seqinr::read.fasta(paste0(folder_data, "raw/sanger/sanger_seq_16S_communities/Sanger_contigs_alignment.fa"), seqtype = "DNA")
+consensus1 <- seqinr::read.fasta(paste0(folder_data, "raw/sanger/sanger_seq_16S/Sanger_contigs_alignment.fa"), seqtype = "DNA")
 consensus1 <- consensus1 %>% lapply(function(x) {
     contig <- x %>% as.character()
     contig[contig=="a"] <- "A"

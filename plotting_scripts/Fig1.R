@@ -105,7 +105,8 @@ pB2 <- isolates_abundance_factor %>%
     labs(x = "community", y = "relative abundance")
 
 # Mean ESV abundance isolated
-isolates %>%
+isolates_abundance <- isolates %>% select(Community, Isolate, CommunityESVID, RelativeAbundance)
+isolates_abundance %>%
     distinct(Community, CommunityESVID, .keep_all = T) %>%
     group_by(Community) %>%
     summarize(Total = sum(RelativeAbundance, na.rm = T)) %>%
@@ -154,7 +155,8 @@ pC <- eq_freq_stable_comm_filtered %>%
         plot.background = element_blank()
     ) +
     guides(color = guide_legend(nrow = 1)) +
-    labs(x = "empirical equilibrium abundance", y = "equilibrium abundance\npredicted from\nassembly dynamics")
+    labs(x = "average of the last four transfers", y = "Predicted from frequency dependent selection (x*)") +
+    ggtitle("ESV equilibrium frequency")
 
 #
 model <- lm(PredictedEqAbundance ~ EmpiricalEqAbundance, data = eq_freq_stable_comm_filtered)
@@ -239,7 +241,7 @@ ggsave(here::here("plots/Fig1.png"), p, width = 15, height = 12)
 
 # Save vector based
 p <- ggdraw() +
-    #draw_image(here::here("plots/cartoons/Fig1_cartoon.png")) +
+    draw_image(here::here("plots/cartoons/Fig1_cartoon.png")) +
     draw_grob(zoom_polygon1) +
     draw_grob(zoom_polygon2) +
     draw_plot(pB1 + guides(fill = "none"), x = 0.50, y = 0.40, width = 0.25, height = 0.26) +
@@ -248,7 +250,7 @@ p <- ggdraw() +
     draw_plot(plot_grid(pD, labels = "D", label_size = 20, scale = .9), x = 0.79, y = 0.39, width = 0.18, height = 0.3) +
     draw_plot(p_legend_ESV, x = 0.85, y = 0.2, width = 0.08, height = 0.1)
 
-ggsave(here::here("plots/Fig1_no_cartoon.pdf"), p, width = 15, height = 12)
+ggsave(here::here("plots/Fig1.pdf"), p, width = 15, height = 12)
 
 
 

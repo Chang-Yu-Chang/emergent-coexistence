@@ -29,6 +29,8 @@ communities_abundance_temporal_complete <- communities_abundance_temporal %>%
     distinct(Community, ESV_ID) %>%
     slice(rep(1:n(), each = 12)) %>%
     mutate(Transfer = rep(1:12, n()/12))
+    # slice(rep(1:n(), each = 13)) %>%
+    # mutate(Transfer = rep(1:13, n()/13))
 nrow(distinct(communities_abundance_temporal_complete, Community, ESV_ID)) # 755 unique ESVs
 nrow(communities_abundance_temporal_complete) # 755 ESVs * 12 transfers = 9060 rows
 

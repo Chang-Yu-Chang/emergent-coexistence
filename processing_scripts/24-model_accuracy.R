@@ -77,6 +77,8 @@ accuracy <- accuracy_validation_batch %>%
     )) %>%
     # Correct the isolate order
     rename(Isolate1InitialODFreq = Freq1, Isolate2InitialODFreq = Freq2) %>%
+    filter(!(paste0(Community, "_", Isolate1, "_", Isolate2) %in% pairs_no_colony),
+           !(paste0(Community, "_", Isolate2, "_", Isolate1) %in% pairs_no_colony)) %>%
     rowwise() %>%
     mutate(Isolate1InitialODFreq = ifelse(Isolate1 > Isolate2, 5, Isolate1InitialODFreq),
            Isolate2InitialODFreq = ifelse(Isolate1 > Isolate2, 95, Isolate2InitialODFreq),
@@ -101,13 +103,13 @@ accuracy %>%
     group_by(PairType) %>%
     mutate(Fraction = Count / sum(Count))
 
-# PairType      AccuracyPassThreshold Count Fraction
-# <fct>         <lgl>                 <int>    <dbl>
-#     1 clean         TRUE                    294    1
-# 2 one duplicate FALSE                    24    0.157
-# 3 one duplicate TRUE                    129    0.843
-# 4 both duplica… FALSE                     3    0.143
-# 5 both duplica… TRUE                     18    0.857
+# PairType       AccuracyPassThreshold Count Fraction
+# <fct>          <lgl>                 <int>    <dbl>
+#     1 clean          TRUE                    288    1
+# 2 one duplicate  FALSE                    24    0.16
+# 3 one duplicate  TRUE                    126    0.84
+# 4 both duplicate FALSE                     3    0.143
+# 5 both duplicate TRUE                     18    0.857
 
 
 pairs_accuracy <- accuracy %>%

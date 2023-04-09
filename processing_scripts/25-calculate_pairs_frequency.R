@@ -10,7 +10,9 @@ pairs_freq_ID <- read_csv(paste0(folder_data, "temp/00c-pairs_freq_ID.csv"), sho
     mutate(PairFreqID = 1:n()) %>%
     select(PairFreqID, Community, Isolate1, Isolate2, Isolate1InitialODFreq)
 pairs_boots <- read_csv(paste0(folder_data, "temp/07-pairs_boots.csv"), show_col_types = F)
-
+# pairs_T0_boots <- read_csv(paste0(folder_data, "temp/07-pairs_T0_boots.csv"), show_col_types = F)
+# pairs_T8_boots <- read_csv(paste0(folder_data, "temp/07-pairs_T8_boots.csv"), show_col_types = F)
+# pairs_boots <- bind_rows(pairs_T0_boots, pairs_T8_boots)
 
 # Find 5% and 95%
 pairs_boots_percentile <- pairs_boots %>%
@@ -40,12 +42,19 @@ pairs_freq <- left_join(pairs_boots_mean, pairs_boots_percentile) %>%
     #mutate(PairFreqID = 1:n()) %>%
     select(PairFreqID, Batch, PairID, everything())
 
-nrow(pairs_freq) # 945 coclutures. 477 at T0 and 468 at T8
+pairs_freq <- pairs_freq %>%
+    filter(Community != "C10R2") %>%
+    filter(!(Community == "C2R6" & Isolate2 == 4)) %>%
+    filter(!(Community == "C11R2" & Isolate1 == 9) & !(Community == "C11R2" & Isolate2 == 9)) %>%
+    filter(!(Community == "C11R2" & Isolate1 == 11) & !(Community == "C11R2" & Isolate2 == 11)) %>%
+    filter(!(paste0(Community, Isolate1, Isolate2) == pairs_no_colony))
+
+nrow(pairs_freq) # 936 coclutures. 477 at T0 and 459 at T8
 write_csv(pairs_freq, paste0(folder_data, "temp/25-pairs_freq.csv"))
 
 
 # Find CIs and menas for means of equilibrium frequencies ----
-pairs_mean_eq <- pairs_boots %>% # 153000 rows
+pairs_mean_eq <- pairs_boots %>%
     filter(Time == "T8") %>%
     group_by(Community, Isolate1, Isolate2, BootstrapID) %>%
     # Mean of the three equilibrium frequencies
@@ -54,7 +63,7 @@ pairs_mean_eq <- pairs_boots %>% # 153000 rows
     unite(col = "temp", Community, Isolate1, Isolate2, remove = F) %>%
     filter(!(temp %in% pairs_no_colony))
 ## 5th and 95th percentile
-pairs_mean_eq_percentile <- pairs_mean_eq %>% # 153 rows
+pairs_mean_eq_percentile <- pairs_mean_eq %>%
     arrange(Community, Isolate1, Isolate2, MeanIsolate1CFUFreq) %>%
     mutate(Percentile = paste0("Percentile", 0.1 * (1:1000))) %>%
     filter(Percentile %in% c("Percentile5", "Percentile95")) %>%
@@ -62,7 +71,7 @@ pairs_mean_eq_percentile <- pairs_mean_eq %>% # 153 rows
     select(Community, Isolate1, Isolate2, MeanIsolate1CFUFreq, Measure = Percentile) %>%
     pivot_wider(names_from = Measure, names_prefix = "MeanIsolate1CFUFreq", values_from = MeanIsolate1CFUFreq)
 ## mean
-pairs_mean_eq_mean <- pairs_mean_eq %>% # 153 rows
+pairs_mean_eq_mean <- pairs_mean_eq %>%
     arrange(Community, Isolate1, Isolate2, MeanIsolate1CFUFreq) %>%
     summarize(MeanMeanIsolate1CFUFreq = mean(MeanIsolate1CFUFreq))
 

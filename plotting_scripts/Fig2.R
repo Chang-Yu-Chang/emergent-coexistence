@@ -3,11 +3,9 @@ library(cowplot)
 source(here::here("processing_scripts/00-metadata.R"))
 
 communities <- read_csv(paste0(folder_data, "output/communities_remained.csv"), show_col_types = F)
-#isolates <- read_csv(paste0(folder_data, "output/isolates_remained.csv"), show_col_types = F)
 pairs <- read_csv(paste0(folder_data, "output/pairs_remained.csv"), show_col_types = F)
 pairs_freq <- read_csv(paste0(folder_data, "temp/25-pairs_freq.csv"), show_col_types = F)
 pairs_boots <- read_csv(paste0(folder_data, "temp/07-pairs_boots.csv"), show_col_types = F)
-pairs_freq <- pairs_freq %>% left_join(pairs) %>% remove_ineligible_pairs()
 
 
 # Figure 2A: cartoon----
@@ -105,13 +103,24 @@ flip_winner_species_freq_shade <- function (pairs_mean_eq_measures, pairs_mean_e
     }
 }
 
+pairs_mean_eq_mean <- pairs_boots %>%
+    filter(Time == "T8") %>%
+    group_by(Community, Isolate1, Isolate2, BootstrapID) %>%
+    # Mean of the three equilibrium frequencies
+    summarize(MeanIsolate1CFUFreq = mean(Isolate1CFUFreq)) %>%
+    arrange(Community, Isolate1, Isolate2, MeanIsolate1CFUFreq) %>%
+    summarize(MeanMeanIsolate1CFUFreq = mean(MeanIsolate1CFUFreq)) %>%
+    # Flip the frequency if the mean equilibirum freq > 0.5
+    mutate(FlipFreq = ifelse(MeanMeanIsolate1CFUFreq > 0.5, T, F))
+
+
 pairs_mean_eq_measures <- read_csv(paste0(folder_data, "temp/25-pairs_mean_eq_measures.csv"), show_col_types = F) %>%
     right_join(select(pairs, PairID, outcome)) %>%
     filter(outcome %in% c("3-coexistence", "4-coexistence")) %>%
-    mutate(FlipFreq = ifelse(MeanMeanIsolate1CFUFreq > 0.5, T, F)) %>%
-    flip_winner_species_freq_shade(., pairs_mean_eq_mean = .)
-pairs_mean_eq_mean <- pairs_mean_eq_measures
-pairs_freq <- mutate(pairs_freq, PairID = as.numeric(PairID))
+    flip_winner_species_freq_shade(pairs_mean_eq_mean)
+pairs_freq <- mutate(pairs_freq, -PairID) %>%
+    left_join(select(pairs, PairID, outcome, AccuracyMean)) %>%
+    remove_ineligible_pairs()
 
 line_size = 1
 plot_category_freq <- function (pairs_freq, pairs_mean_eq_measures, outcome_category = "1-exclusion") {
@@ -195,10 +204,10 @@ p <- plot_grid(p_top, NULL, pC, ncol = 1, labels = c("", "", "C"),
 ggsave(here::here("plots/Fig2.png"), p, width = 15, height = 10)
 
 # Save vector based
-p_top <- plot_grid(ggdraw(), pB + guides(fill = "none"), nrow = 1, labels = c("A", "B"), scale = c(1, 0.95), rel_widths = c(1.3, 1), axis = "b")
+p_top <- plot_grid(pA, pB + guides(fill = "none"), nrow = 1, labels = c("A", "B"), scale = c(1, 0.95), rel_widths = c(1.3, 1), axis = "b")
 p <- plot_grid(p_top, NULL, pC, ncol = 1, labels = c("", "", "C"),
                scale = c(1, 1, .95), rel_heights = c(1, 0, 2)) + paint_white_background()
-ggsave(here::here("plots/Fig2_no_cartoon.pdf"), p, width = 15, height = 10)
+ggsave(here::here("plots/Fig2.pdf"), p, width = 15, height = 10)
 
 
 # Stat

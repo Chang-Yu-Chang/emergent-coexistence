@@ -5,6 +5,7 @@ source(here::here("processing_scripts/00-metadata.R"))
 
 pairs_ID <- read_csv(paste0(folder_data, "temp/00c-pairs_ID.csv"), show_col_types = F)
 pairs_boots <- read_csv(paste0(folder_data, "temp/07-pairs_boots.csv"), show_col_types = F)
+
 pairs_freq <- read_csv(paste0(folder_data, "temp/25-pairs_freq.csv"), show_col_types = F)
 
 boots_T0 <- pairs_boots %>% filter(Time == "T0") %>% as.data.table
@@ -18,6 +19,7 @@ names(pairs_I1)[6:7] <- c('T0_I1_mean', 'T8_I1_mean')
 pairs_I1 <- as.data.table(pairs_I1)
 pairs_I1[, change := NA]
 pairs_I1 <- pairs_I1[!is.na(T8_I1_mean)]
+
 
 # assign how frequency of isolate 1 changes
 for (i in 1:nrow(pairs_I1)) {
@@ -49,8 +51,6 @@ for (i in 1:nrow(pairs_I1)) {
 pairs_outcome <- unique(pairs_I1[, 2:4])
 pairs_outcome[, outcome := NA]
 
-#read_csv(paste0(folder_data, "temp/26-pairs_freq.csv"), show_col_types = F)
-#isol <- fread(paste0(folder_data, "output/pairs_remained.csv"))
 isol <- fread(paste0(folder_data, "temp/00c-pairs_ID.csv"))
 pairs_outcome <- merge(isol[, 3:5], pairs_outcome, all.x=TRUE)
 
@@ -100,8 +100,6 @@ for (i in 1:nrow(pairs_outcome)) {
         pairs_outcome$outcome[i] <- '5-inconclusive'
     }
 }
-
-pairs_outcome <- pairs_outcome[Community!='C10R2']
 
 # Determine the direction of exclusion
 pairs_outcome <- pairs_outcome %>%

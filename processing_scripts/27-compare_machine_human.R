@@ -14,6 +14,7 @@ isolates_ID <- read_csv(paste0(folder_data, "temp/00c-isolates_ID.csv"), show_co
 # Human result
 pairs_freq_human <- read_csv(paste0(folder_data, "raw/pairs_freq_human.csv"), show_col_types = F) # human-eye results
 pairs_freq_human <- pairs_freq_human %>%
+    drop_na(ColonyCount) %>%
     mutate(Experiment = str_replace(Experiment, "Transitivity_", "")) %>%
     select(Batch = Experiment, Community, Isolate1, Isolate2, Isolate1InitialODFreq = Isolate1Freq, Isolate1Count = ColonyCount1, TotalCount = ColonyCount) %>%
     group_by(Batch, Community, Isolate1, Isolate2, Isolate1InitialODFreq) %>%
@@ -35,6 +36,9 @@ pairs_freq_machine_human <- pairs_freq_machine %>%
     # Label pairs containing duplicated
     left_join(rename(isolates_ID, ID1 = ID, Isolate1 = Isolate, Duplicated1 = Duplicated)) %>%
     left_join(rename(isolates_ID, ID2 = ID, Isolate2 = Isolate, Duplicated2 = Duplicated)) %>%
+    # Remove the pairs with no colony count
+    filter(!(paste0(Community, "_", Isolate1, "_", Isolate2) %in% pairs_no_colony),
+           !(paste0(Community, "_", Isolate2, "_", Isolate1) %in% pairs_no_colony)) %>%
     mutate(PairType = case_when(
         Duplicated1 == F & Duplicated2 == F ~ "clean",
         Duplicated1 == T & Duplicated2 == F ~ "one duplicate",
