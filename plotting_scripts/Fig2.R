@@ -18,7 +18,6 @@ pB <- pairs %>%
     # Total count
     group_by(Community) %>% mutate(Fraction = Count / sum(Count), TotalCount = sum(Count)) %>%
     left_join(communities, by = "Community") %>%
-    #mutate(outcome = factor(outcome, c("5-inconclusive", "1-exclusion", "2-exclusion", "3-coexistence", "4-coexistence"))) %>%
     ungroup() %>%
     ggplot() +
     geom_col(aes(x = CommunityLabel, fill = outcome, y = Fraction), width = .8, linewidth = .5, position = position_stack(reverse = T)) +
@@ -39,18 +38,19 @@ pB <- pairs %>%
     coord_cartesian(xlim = c(0.5, 12.5), ylim = c(0, 1), clip = "off") +
     theme_classic() +
     theme(
-        legend.text = element_text(size = 12),
+        legend.text = element_text(size = 10),
         legend.title = element_blank(),
         legend.key.width = unit(8, "mm"),
         legend.key.height = unit(8, "mm"),
         legend.spacing.x = unit(11, "mm"),
-        legend.position = "bottom",
+        legend.position = "right",
+        legend.box.margin = margin(0,0,0,0),
         panel.border = element_rect(color = 1, fill = NA),
         axis.text = element_text(color = 1, size = 12),
         axis.title = element_text(color = 1, size = 12),
-        plot.margin = unit(c(20, 30, 5, 5), "mm")
+        plot.margin = unit(c(20, 0, 5, 5), "mm")
     ) +
-    guides(fill = guide_legend(byrow = T, nrow = 1)) +
+    guides(fill = guide_legend(byrow = F)) +
     labs(x = "community", y = "fraction")
 
 pB_legend <- get_legend(pB)
@@ -177,7 +177,7 @@ plot_category_freq <- function (pairs_freq, pairs_mean_eq_measures, outcome_cate
 outcome_labels <- c("competitive exclusion",
                     "on the path to\ncompetitive exclusion",
                     "stable coexistence\n(mutual invasibility)",
-                    "coexistence \nwithout\nevidence of\nmutual\ninvasibility",
+                    "coexistence without\nevidence of mutual invasibility",
                     "inconclusive")
 
 p1 <- plot_category_freq(pairs_freq, pairs_mean_eq_measures, outcome_category = "1-exclusion")
@@ -198,15 +198,12 @@ pC <- plot_grid(
 ) + paint_white_background()
 
 # Assemble panels ----
-p_top <- plot_grid(pA, pB + guides(fill = "none"), nrow = 1, labels = c("A", "B"), scale = c(1, 0.95), rel_widths = c(1.3, 1), axis = "b")
+p_top <- plot_grid(pA, pB, nrow = 1, labels = c("A", "B"), scale = c(1, 0.95), rel_widths = c(1.3, 1), axis = "b")
 p <- plot_grid(p_top, NULL, pC, ncol = 1, labels = c("", "", "C"),
                scale = c(1, 1, .95), rel_heights = c(1, 0, 2)) + paint_white_background()
 ggsave(here::here("plots/Fig2.png"), p, width = 15, height = 10)
 
 # Save vector based
-p_top <- plot_grid(pA, pB + guides(fill = "none"), nrow = 1, labels = c("A", "B"), scale = c(1, 0.95), rel_widths = c(1.3, 1), axis = "b")
-p <- plot_grid(p_top, NULL, pC, ncol = 1, labels = c("", "", "C"),
-               scale = c(1, 1, .95), rel_heights = c(1, 0, 2)) + paint_white_background()
 ggsave(here::here("plots/Fig2.pdf"), p, width = 15, height = 10)
 
 

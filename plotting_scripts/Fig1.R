@@ -70,7 +70,7 @@ pB1 <- communities_abundance_comm %>%
         legend.title = element_blank(),
     ) +
     guides(alpha = "none", color = "none", fill = guide_legend(ncol = 1, byrow = F)) +
-    labs(x = "transfer", y = "relative abundance")
+    labs(x = "transfer", y = "frequency")
 
 # Panel B Inset 2: isolate abundance in community ----
 isolates_abundance_other <- isolates_abundance_factor %>%
@@ -102,7 +102,7 @@ pB2 <- isolates_abundance_factor %>%
         panel.background = element_blank()
     ) +
     guides(alpha = "none") +
-    labs(x = "community", y = "relative abundance")
+    labs(x = "community", y = "frequency")
 
 # Mean ESV abundance isolated
 isolates_abundance <- isolates %>% select(Community, Isolate, CommunityESVID, RelativeAbundance)
@@ -155,7 +155,7 @@ pC <- eq_freq_stable_comm_filtered %>%
         plot.background = element_blank()
     ) +
     guides(color = guide_legend(nrow = 1)) +
-    labs(x = "average of the last four transfers", y = "Predicted from frequency dependent selection (x*)") +
+    labs(x = "average frequency over the last four transfers", y = "predicted from frequency dependent selection (x*)") +
     ggtitle("ESV equilibrium frequency")
 
 #
@@ -189,7 +189,7 @@ pD <- fitness_stable %>%
         plot.background = element_blank()
     ) +
     guides(color = "none", fill = "none") +
-    labs(x = "relative abundance", y = "invasion fitness")
+    labs(x = "frequency", y = "invasion fitness")
 
 eq_freq_stable_comm_filtered %>% filter(Community == "C8R4")
 # Pseudo: y = -11.8x + 2.05, p<0.001, R^2= 0.9212

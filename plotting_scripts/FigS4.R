@@ -15,7 +15,7 @@ p <- fitness_transient %>%
     scale_color_manual(values = c("p<0.05" = "pink", "p>=0.05" = grey(0.8))) +
     scale_x_continuous(breaks = scales::pretty_breaks(n = 3)) +
     scale_y_continuous(breaks = scales::pretty_breaks(n = 3)) +
-    facet_wrap(Community~ESV_ID, scales = "free", ncol = 9) +
+    facet_wrap(Community~ESV_ID, scales = "free", ncol = 8) +
     theme_classic() +
     theme(
         axis.text = element_text(size = 8, angle = 30, hjust = 1),
@@ -27,7 +27,7 @@ p <- fitness_transient %>%
     guides(color = "none") +
     labs(x = expression(x[i]), y = expression("F="~log(x[i]/x[i-1])))
 
-ggsave(here::here("plots/FigS4.png"), p, width = 12, height = 9)
+ggsave(here::here("plots/FigS4.png"), p, width = 12, height = 10)
 
 #
 nrow(eq_freq_transient) # 46 ESVs
