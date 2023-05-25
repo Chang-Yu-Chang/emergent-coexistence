@@ -1,31 +1,28 @@
 library(tidyverse)
-library(cowplot)
-library(broom)
+library(ggstats)
+library(data.table)
 source(here::here("processing_scripts/00-metadata.R"))
 
-isolates <- read_csv(paste0(folder_data, "output/isolates_remained.csv"), show_col_types = F)
+# ESVs
+#pairs <- fread('pairs_remained.csv')
+pairs <- fread(paste0(folder_data, "output/pairs_remained.csv"))
+pairs <- pairs[,c(1:4, 9, 11, 12, 17, 19, 20, 23, 24, 25)]
 
-k1 <- isolates %>% filter(Fermenter) %>% pull(Rank)
-mean(k1) # 2.54
-k2 <- isolates %>% filter(!Fermenter) %>% pull(Rank)
-mean(k2) # 4.72
+#outc <- fread('pairs_outcome.csv')
+outc <- fread(paste0(folder_data, 'temp/26-pairs_outcome.csv'))
 
-isolates %>%
-    mutate(Rank_Abundance = rank(-RelativeAbundance, ties.method = "average")) %>%
-    wilcox.test(Rank ~ Fermenter, data = ., exact = F) %>%
-    tidy() # p=0.000167
+pairs <- merge(outc, pairs, all.x=TRUE)
+pairs[, out := ifelse(outcome %like% 'coexistence', 'coexistence',
+               ifelse(outcome %like% 'excl', 'exclusion', 'inconclusive'))]
 
-p <- isolates %>%
-    mutate(Fermenter = ifelse(Fermenter, "respiro-fermenter", "respirer")) %>%
-    ggplot() +
-    geom_boxplot(aes(x = Fermenter, y = Rank), outlier.shape = NA) +
-    geom_jitter(aes(x = Fermenter, y = Rank), width = 0.3, shape = 21, size = 2) +
-    scale_y_continuous(breaks = 1:10) +
-    theme_classic() +
-    theme() +
-    guides() +
-    labs(x = "", y = "competitive rank")
 
-ggsave(here::here("plots/FigS17.png"), p, width = 4, height = 4)
+# Fig S17
+p <- ggplot(pairs[out!='inconclusive'], aes(x = Mismatch, fill=out)) +
+  geom_histogram(alpha=.4, position="identity", bins=20) +
+  theme_classic() + labs(x='Mismatch (bp)', y=' Number of pairs') +
+  scale_fill_manual(values=c('blue', 'red'), name = "Outcome")
 
-table(isolates$Fermenter)
+ggsave(here::here('plots/FigS17.png'), p, width = 6, height = 4)
+
+with(pairs[out!='inconclusive'], wilcox.test(Mismatch~out))
+

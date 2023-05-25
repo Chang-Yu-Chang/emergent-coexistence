@@ -9,10 +9,6 @@ isolates_rank <- isolates %>%
     group_by(Community) %>%
     select(ExpID, Community, Isolate, CommunityESVID, Rank, RelativeAbundance)
 
-isol <- isolates_rank %>% mutate(Rank_Abundance = rank(-RelativeAbundance, ties.method = "average"))
-cor.test(isol$Rank_Abundance, isol$Rank, method = "spearman", alternative = "two.sided", exact = FALSE) %>%
-    tidy() # rho = 0.425, p = 0.000583
-
 # 1000 resampling
 set.seed(1)
 list_rho <- rep(NA, 1000)
@@ -32,9 +28,25 @@ p1 <- tibble(rho = list_rho, BootStrapID = 1:1000) %>%
     guides() +
     labs(x = expression(rho), y = "count (# of bootstrap samples)")
 
+# all 62 isolates
+isol <- isolates_rank %>% mutate(Rank_Abundance = rank(-RelativeAbundance, ties.method = "average"))
+p2 <- isol %>%
+    ggplot(aes(x = Rank_Abundance, y = Rank)) +
+    geom_point(shape = 21, size = 2, stroke = 1, position = position_jitter(width = 0.1, height = 0.1)) +
+    geom_abline(slope = 1, intercept = 0, linetype = 2, color = "red") +
+    scale_x_continuous(breaks = 1:10, limits = c(0.5,10.5)) +
+    scale_y_continuous(breaks = 1:10, limits = c(0.5,10.5)) +
+    theme_classic() +
+    labs(x = "ranked matched ESV abundance", y = "competition rank")
+
+count(isol)
+cor.test(isol$Rank_Abundance, isol$Rank, method = "spearman", alternative = "two.sided", exact = FALSE) %>%
+    tidy() # rho = 0.425, p = 0.000583
+nrow(isol) # 62
+
 # Small communities (n<=7)
 isol1 <- isol %>% filter(n() <= 7)
-p2 <- isol1 %>%
+p3 <- isol1 %>%
     ggplot(aes(x = Rank_Abundance, y = Rank)) +
     geom_point(shape = 21, size = 2, stroke = 1, position = position_jitter(width = 0.1, height = 0.1)) +
     geom_abline(slope = 1, intercept = 0, linetype = 2, color = "red") +
@@ -50,7 +62,7 @@ nrow(isol1) # 43
 
 # Large communities (n= 9, 10)
 isol2 <- isol %>% filter(n() > 7)
-p3 <- isol2 %>%
+p4 <- isol2 %>%
     ggplot() +
     geom_jitter(aes(x = Rank_Abundance, y = Rank), shape = 21, size = 2, stroke = 1, width = 0.1, height = 0.1) +
     geom_abline(slope = 1, intercept = 0, linetype = 2, color = "red") +
@@ -64,7 +76,7 @@ cor.test(isol2$Rank_Abundance, isol2$Rank, method = "spearman", alternative = "t
     tidy() # rho = 0.0848; p = 0.73
 nrow(isol2) # 19
 
-p <- plot_grid(p1, p2, p3, nrow = 2, scale = 0.9, labels = LETTERS[1:3]) + paint_white_background()
+p <- plot_grid(p1, p2, p3, p4, nrow = 2, scale = 0.9, labels = LETTERS[1:4]) + paint_white_background()
 ggsave(here::here("plots/FigS14.png"), p, width = 6, height = 6)
 
 

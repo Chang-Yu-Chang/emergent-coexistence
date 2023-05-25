@@ -1,29 +1,93 @@
 library(tidyverse)
-library(ggstats)
-library(data.table)
+library(cowplot)
+library(broom)
 source(here::here("processing_scripts/00-metadata.R"))
 
-# ESVs
-#pairs <- fread('pairs_remained.csv')
-pairs <- fread(paste0(folder_data, "output/pairs_remained.csv"))
-pairs <- pairs[,c(1:4, 9, 11, 12, 17, 19, 20, 23, 24, 25)]
+isolates <- read_csv(paste0(folder_data, "output/isolates_remained.csv"), show_col_types = F)
+communities <- read_csv(paste0(folder_data, "output/communities_remained.csv"), show_col_types = F)
+isolates_growth_syl <- read_csv(paste0(folder_data, "raw/growth_rate/Estrela_2021_isolates_grmax.csv"), col_types = cols()) %>%
+    filter(cs == "glucose") %>%
+    rename(ID = SangerID)
 
-#outc <- fread('pairs_outcome.csv')
-outc <- fread(paste0(folder_data, 'temp/26-pairs_outcome.csv'))
+# Ranked glucose growth rate
+isolates_rank <- isolates %>%
+    left_join(isolates_growth_syl) %>%
+    group_by(Community) %>%
+    # Rank glucose maximum growth rate
+    drop_na(gr_max) %>%
+    select(ExpID, Community, Isolate, Family, Genus, Game, Win, Lose, Score, Rank, gr_max) %>%
+    #mutate(Rank_intersect = rank(Rank, ties.method = "average")) %>%
+    #mutate(Rank = rank(Rank, ))
+    mutate(rank_gr_max = rank(-gr_max, ties.method = "average")) # Top growth rate is rank 1
 
-pairs <- merge(outc, pairs, all.x=TRUE)
-pairs[, out := ifelse(outcome %like% 'coexistence', 'coexistence',
-               ifelse(outcome %like% 'excl', 'exclusion', 'inconclusive'))]
+nrow(isolates_rank) # 56 strains have growth rate data
+
+# Growth vs. rank, normalized within community
+# isolates_norm <- isolates_rank %>%
+#     group_by(Community) %>%
+#     mutate(RankNorm = Rank_intersect / n(), rank_gr_max_norm = rank_gr_max / n(), nn = n())
+# p <- isolates_norm %>%
+#     ggplot(aes(x = rank_gr_max_norm, y = RankNorm)) +
+#     geom_abline(slope = 1, intercept = 0, color = "red", linetype = 2) +
+#     geom_point(shape = 21, size = 2, stroke = 1) +
+#     scale_x_continuous(limits = c(0,1)) +
+#     scale_y_continuous(limits = c(0,1)) +
+#     theme_classic() +
+#     theme() +
+#     guides() +
+#     labs(x = "ranked growth rate (normalized)", y = "competition rank (normalized)")
+
+# growth rate
+p1 <- isolates_rank %>%
+    ggplot(aes(x = gr_max)) +
+    geom_histogram(color = "black", fill = "white", binwidth = 0.1) +
+    theme_classic() +
+    theme() +
+    guides() +
+    labs(x = expression(growth~rate(h^-1)))
+
+# comeptitive rank vs grwoth rate rank
+p2 <- isolates_rank %>%
+    ggplot(aes(x = rank_gr_max, y = Rank)) +
+    geom_abline(slope = 1, intercept = 0, color = "red", linetype = 2) +
+    #geom_point(shape = 21, size = 2, stroke = 1) +
+    geom_point(shape = 21, size = 2, stroke = 1, position = position_jitter(width = 0.1, height = 0.1)) +
+    scale_x_continuous(breaks = 1:10, limits = c(0.5,10.5)) +
+    scale_y_continuous(breaks = 1:10, limits = c(0.5,10.5)) +
+    theme_classic() +
+    theme() +
+    guides() +
+    labs(x = "ranked growth rate", y = "competition rank")
+
+p <- plot_grid(p1, p2, nrow = 1, scale = 0.9, labels = LETTERS[1:2]) + paint_white_background()
+ggsave(here::here("plots/FigS15.png"), p, width = 8, height = 4)
+cor.test(isolates_rank$Rank, isolates_rank$rank_gr_max, method = "spearman", alternative = "two.sided", exact = F)
 
 
-# Fig S17
+if (FALSE) {
+# Sylvie's data show all but one
+isolates_rank %>%
+    ggplot(aes(x = Family, y = gr_max)) +
+    geom_boxplot() +
+    geom_jitter() +
+    theme_classic() +
+    theme() +
+    guides() +
+    labs()
 
-p <- ggplot(pairs[out!='inconclusive'], aes(x = Mismatch, fill=out)) +
-  geom_histogram(alpha=.4, position="identity", bins=20) +
-  theme_classic() + labs(x='Mismatch (bp)', y=' Number of pairs') +
-  scale_fill_manual(values=c('blue', 'red'), name = "Outcome")
+# THe rest 6 strains without growth rate data
+isolates %>%
+    anti_join(isolates_growth_syl)
 
-ggsave(here::here('plots/FigS15.png'), p, width = 6, height = 4)
+isolates_rank %>%
+    ggplot() +
+    geom_point(aes(x = rank_gr_max, y = gr_max, color = Family)) +
+    facet_wrap(~Community, scales = "free_x") +
+    scale_x_continuous(breaks = 1:10) +
+    theme_classic() +
+    theme() +
+    guides() +
+    labs()
 
-with(pairs[out!='inconclusive'], wilcox.test(Mismatch~out))
 
+}
