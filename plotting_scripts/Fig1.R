@@ -24,21 +24,47 @@ isolates_abundance_factor <- isolates %>%
     drop_na() %>%
     rename(ESV_ID = CommunityESVID)
 ESV_comm <- bind_rows(
-    communities_abundance_comm %>% filter(Relative_Abundance > 0.02) %>% distinct(Family, ESV_ID),
+    communities_abundance_comm %>% filter(Relative_Abundance > 0.01) %>% distinct(Family, ESV_ID), # 1% threshold for ESV abundance
     distinct(isolates_abundance_factor, Family, ESV_ID)
 ) %>%
     mutate(Family = factor(Family, c("Enterobacteriaceae", "Pseudomonadaceae", "Comamonadaceae", "Aeromonadaceae", "Moraxellaceae", "Alcaligenaceae"))) %>%
     arrange(Family, ESV_ID) %>%
     drop_na() %>%
     distinct(Family, ESV_ID) %>%
-    mutate(ESV_colors = c(rev(RColorBrewer::brewer.pal(8, "YlGnBu")),
-                          rev(RColorBrewer::brewer.pal(8, "OrRd")),
-                          rev(RColorBrewer::brewer.pal(5, "Purples")),
-                          "gold2","forestgreen", "hotpink2", "salmon4")
+    mutate(ESV_colors = c(rev(RColorBrewer::brewer.pal(9, "YlGnBu")),
+                          rev(RColorBrewer::brewer.pal(9, "OrRd")), "maroon",
+                          rev(RColorBrewer::brewer.pal(6, "Purples")),
+                          "gold2","forestgreen", "hotpink2", "hotpink4", "salmon4")
     )
 
 ESV_colors1 <- ESV_comm$ESV_colors %>% setNames(ESV_comm$ESV_ID)
 ESV_colors1 <- c(ESV_colors1, Other = "snow", `Not isolated` = "#999998")
+
+# communities_abundance_comm <- communities_abundance %>%
+#     filter(Community == comm) %>%
+#     bind_rows(filter(communities_abundance, Inoculum == str_sub(comm, 2, 2), Transfer == 0)) %>%
+#     select(Transfer, Family, ESV_ID, Relative_Abundance) %>%
+#     arrange(Transfer, Family, ESV_ID)
+# isolates_abundance_factor <- isolates %>%
+#     distinct(Community, CommunityESVID, .keep_all = T) %>%
+#     drop_na() %>%
+#     rename(ESV_ID = CommunityESVID)
+# ESV_comm <- bind_rows(
+#     communities_abundance_comm %>% filter(Relative_Abundance > 0.02) %>% distinct(Family, ESV_ID),
+#     distinct(isolates_abundance_factor, Family, ESV_ID)
+# ) %>%
+#     mutate(Family = factor(Family, c("Enterobacteriaceae", "Pseudomonadaceae", "Comamonadaceae", "Aeromonadaceae", "Moraxellaceae", "Alcaligenaceae"))) %>%
+#     arrange(Family, ESV_ID) %>%
+#     drop_na() %>%
+#     distinct(Family, ESV_ID) %>%
+#     mutate(ESV_colors = c(rev(RColorBrewer::brewer.pal(8, "YlGnBu")),
+#                           rev(RColorBrewer::brewer.pal(8, "OrRd")),
+#                           rev(RColorBrewer::brewer.pal(5, "Purples")),
+#                           "gold2","forestgreen", "hotpink2", "salmon4")
+#     )
+#
+# ESV_colors1 <- ESV_comm$ESV_colors %>% setNames(ESV_comm$ESV_ID)
+# ESV_colors1 <- c(ESV_colors1, Other = "snow", `Not isolated` = "#999998")
 
 
 # Panel B Inset 1: temporal dynamics of C8R4 ----
@@ -110,14 +136,14 @@ isolates_abundance %>%
     distinct(Community, CommunityESVID, .keep_all = T) %>%
     group_by(Community) %>%
     summarize(Total = sum(RelativeAbundance, na.rm = T)) %>%
-    summarize(Mean = mean(Total))
+    summarize(Mean = mean(Total)) # mean abundance is 0.894
 
 # ESV richness
-communities_abundance %>%
+xx <- communities_abundance %>%
     filter(Community %in% communities$Community, Transfer == 12) %>%
     group_by(Community) %>%
-    count() %>%
-    arrange(n)
+    count()
+range(xx$n) # ESV abundance is 5-13
 
 
 # Panel C ----
@@ -161,9 +187,9 @@ pC <- eq_freq_stable_comm_filtered %>%
 #
 model <- lm(PredictedEqAbundance ~ EmpiricalEqAbundance, data = eq_freq_stable_comm_filtered)
 # R2
-summary(model)$r.squared
+summary(model)$r.squared # R2 = 0.91
 # RMSD; root mean square deviation
-sqrt(mean(model$residuals^2))
+sqrt(mean(model$residuals^2)) # RMSD=0.089
 
 
 # Panel D: Negative frequency dependent selection of 2 ESVs from C8R4 ----

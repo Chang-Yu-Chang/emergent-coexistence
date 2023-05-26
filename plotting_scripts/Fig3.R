@@ -147,14 +147,15 @@ p1 <- ggdraw(p1) +
     draw_plot(p_legend, x = 0.4, y = 0.15, width = 0.1, height = 0.1,  hjust = 0, vjust = 0)
 
 
-#
+# How many pairwise outcome is that a lower-rank strain beats a higher-rank strain?
 pairs %>%
     select(Community, From, To, outcome) %>%
     left_join(select(isolates, Community, From = Isolate, FromRank = Rank)) %>%
     left_join(select(isolates, Community, To = Isolate, ToRank = Rank)) %>%
     filter(outcome %in% c("1-exclusion", "2-exclusion")) %>%
     # A low-rank beats higher-rank
-    filter(FromRank > ToRank)
+    filter(FromRank > ToRank) %>%
+    nrow() # only one pair
 
 
 
@@ -209,9 +210,9 @@ communities_network_exclusion <- communities_network %>%
 
 sum(communities_network_exclusion$TriadCensus) # 284 possible triads with 0, 1, 2, or 3 links in exclusion-coexistence network
 sum(communities_network_exclusion$TriadCensusFull) # 200 fully connected nodes (3 links) in exclusion-coexistence network
-sum(communities_network_exclusion$TriadCensusFullExclusion) # 77 fully connected nodes in exclusion-only network
-n_triads <- sum(communities_network_exclusion$TriadCensusFullExclusion) # 74 triads
-n_NT <- sum(communities_network_exclusion$NTCensusFullExclusion) # Number of nontransitive triad
+sum(communities_network_exclusion$TriadCensusFullExclusion) # 77 fully connected triads in exclusion-only network
+n_triads <- sum(communities_network_exclusion$TriadCensusFullExclusion) # 77 triads
+n_NT <- sum(communities_network_exclusion$NTCensusFullExclusion) # Number of nontransitive triad is 0
 
 set.seed(2)
 N = 10000

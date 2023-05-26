@@ -214,7 +214,17 @@ pairs %>%
     ungroup() %>%
     mutate(Fraction = Count / sum(Count), TotalCount = sum(Count))
 
+# # A tibble: 5 × 4
+# outcome        Count Fraction TotalCount
+# <chr>          <int>    <dbl>      <int>
+# 1 1-exclusion       38   0.264         144
+# 2 2-exclusion       65   0.451         144
+# 3 3-coexistence     21   0.146         144
+# 4 4-coexistence      8   0.0556        144
+# 5 5-inconclusive    12   0.0833        144
 
+(38+65)/144 # all exclusion 103/144=0.715
+(21+8+12)/144 # all non exclusion 41/144=0.285
 
 
 
