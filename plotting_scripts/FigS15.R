@@ -8,6 +8,14 @@ communities <- read_csv(paste0(folder_data, "output/communities_remained.csv"), 
 isolates_growth_syl <- read_csv(paste0(folder_data, "raw/growth_rate/Estrela_2021_isolates_grmax.csv"), col_types = cols()) %>%
     filter(cs == "glucose") %>%
     rename(ID = SangerID)
+#isolates_rank <- read_csv("~/Downloads/isolates_rank.csv")
+
+# isolates %>%
+#     select(ID, Community, Isolate, Rank) %>%
+#     head(20)
+# isolates_rank %>%
+#     select(ID, Community, Isolate, Rank) %>%
+#     head(20)
 
 # Ranked glucose growth rate
 isolates_rank <- isolates %>%
@@ -15,27 +23,14 @@ isolates_rank <- isolates %>%
     group_by(Community) %>%
     # Rank glucose maximum growth rate
     drop_na(gr_max) %>%
-    select(ExpID, Community, Isolate, Family, Genus, Game, Win, Lose, Score, Rank, gr_max) %>%
+    select(Community, Isolate, Rank, gr_max)
+    #select(ExpID, Community, Isolate, Family, Genus, Game, Win, Lose, Score, Rank, gr_max) %>%
     #mutate(Rank_intersect = rank(Rank, ties.method = "average")) %>%
     #mutate(Rank = rank(Rank, ))
-    mutate(rank_gr_max = rank(-gr_max, ties.method = "average")) # Top growth rate is rank 1
+    #mutate(rank_gr_max = rank(-gr_max, ties.method = "average")) # Top growth rate is rank 1
 
 nrow(isolates_rank) # 56 strains have growth rate data
-
-# Growth vs. rank, normalized within community
-# isolates_norm <- isolates_rank %>%
-#     group_by(Community) %>%
-#     mutate(RankNorm = Rank_intersect / n(), rank_gr_max_norm = rank_gr_max / n(), nn = n())
-# p <- isolates_norm %>%
-#     ggplot(aes(x = rank_gr_max_norm, y = RankNorm)) +
-#     geom_abline(slope = 1, intercept = 0, color = "red", linetype = 2) +
-#     geom_point(shape = 21, size = 2, stroke = 1) +
-#     scale_x_continuous(limits = c(0,1)) +
-#     scale_y_continuous(limits = c(0,1)) +
-#     theme_classic() +
-#     theme() +
-#     guides() +
-#     labs(x = "ranked growth rate (normalized)", y = "competition rank (normalized)")
+cor.test(isolates_rank$Rank, -isolates_rank$gr_max, method = "pearson", alternative = "two.sided", exact = F)
 
 # growth rate
 p1 <- isolates_rank %>%
@@ -77,7 +72,8 @@ isolates_rank %>%
 
 # THe rest 6 strains without growth rate data
 isolates %>%
-    anti_join(isolates_growth_syl)
+    anti_join(isolates_growth_syl) %>%
+    view
 
 isolates_rank %>%
     ggplot() +
