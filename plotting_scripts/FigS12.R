@@ -64,12 +64,19 @@ p <- plot_grid(p1, p2, nrow = 1, axis = "tblr", align = "h", scale = .9, labels 
 
 ggsave(here::here("plots/FigS12.png"), p, width = 8, height = 4)
 
-# R-squared
-pairs_freq_machine_human_cleaned %>%
+# statistics
+## colony count
+model <- pairs_freq_machine_human_cleaned %>%
     filter(!is.na(Isolate1Count_human)) %>%
-    lm(TotalCount_human ~ TotalCount_machine, data = .) %>%
-    summary() # adjusted R-squared:  0.851
-pairs_freq_machine_human_cleaned %>%
+    lm(TotalCount_human ~ TotalCount_machine, data = .)
+summary(model)$r.squared # R2 = 0.85
+sqrt(mean(model$residuals^2)) # RMSE=17.67
+
+## frequency
+model <- pairs_freq_machine_human_cleaned %>%
     filter(!is.na(Isolate1Count_human)) %>%
-    lm(Isolate1CFUFreq_human ~ Isolate1CFUFreq_machine, data = .) %>%
-    summary() # adjusted R-squared:  0.8669
+    lm(Isolate1CFUFreq_human ~ Isolate1CFUFreq_machine, data = .)
+summary(model)$r.squared # R2 = 0.87
+sqrt(mean(model$residuals^2)) # RMSE=0.17
+
+
