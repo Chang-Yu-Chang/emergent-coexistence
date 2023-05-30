@@ -146,6 +146,7 @@ n_ESVs <- communities_abundance %>%
     filter(Community %in% communities_remained$Community, Transfer == 12) %>%
     group_by(Community) %>%
     count(name = "ESVRichness")
+range(n_ESVs$ESVRichness) # THe number of ESVs in the 12 chosen communities is 5-12
 
 communities_remained <- left_join(communities_remained, n_ESVs)
 

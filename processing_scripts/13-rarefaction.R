@@ -54,7 +54,7 @@ Taxonomy_Data = fread(paste0(folder_data, 'raw/community_ESV/taxonomy.csv'))
 Abundance_Data = fread(paste0(folder_data, 'raw/community_ESV/otu_table.csv')) #Data is actually at an ESV level
 Abundance_Data = as.matrix(Abundance_Data[,2:ncol(Abundance_Data)])
 Abundance_Data = data.table(Abundance_Data)
-min(colSums(Abundance_Data))
+min(colSums(Abundance_Data)) # the minimum number of reads across all samples is N=4397
 Abundance_Data = rarefy(Abundance_Data)
 
 Taxonomy_Data = assign_taxonomy_id(Taxonomy_Data) #Assign Taxonomy ID
@@ -88,7 +88,7 @@ merged_data = merge(Taxonomy_Data,Abundance_Data)
 fwrite(merged_data, paste0(folder_data, 'temp/13-emergent_communities.csv')) # This file should be identical to Emergent_Comunity_Data.csv from Vila et al 2020
 
 # 2. Rarefaction for T0 only, use a sample of up to 10000 reads -----
-#' For each sampling size, repeat for 100 subsamples
+#' Repeat 100 subsamples for each sampling size (10, 20, 30, ... 100, 200, 300, ..., 1000, 2000, 3000, ... 10000)
 communities_rarefaction <- tibble(SamplingSize = c(seq(10, 100, 10), seq(200, 1000, 100), seq(2000, 10000, 1000))) %>%
     mutate(RarefiedSample = NA)
 
@@ -174,7 +174,7 @@ Abundance_Data = Abundance_Data[,aux$ID, with = F]
 Abundance_Data = as.matrix(Abundance_Data[,1:ncol(Abundance_Data)])
 Abundance_Data = data.table(Abundance_Data)
 range(colSums(Abundance_Data)) # Number of reads
-apply(Abundance_Data, 2, function(x) x>0) %>% colSums() # number of unique ESVs
+apply(Abundance_Data, 2, function(x) x>0) %>% colSums() %>% range # number of unique ESVs is 110-1290
 
 
 

@@ -19,7 +19,7 @@ communities_abundance <- read_csv(paste0(folder_data, "temp/14-communities_abund
 # 1. Calculate invasion communities_fitness ----
 communities_abundance_temporal <- communities_abundance %>%
     filter(Transfer != 0) %>%
-    # Filter for those that has temporal data
+    # Filter for those that has temporal data; either from inocula 2 and 6, or replicate 4
     filter(Inoculum %in% c(2,6) | Replicate == 4) %>%
     select(Community, Transfer, ESV_ID, Relative_Abundance) %>%
     arrange(Community, Transfer, ESV_ID)
@@ -29,12 +29,10 @@ communities_abundance_temporal_complete <- communities_abundance_temporal %>%
     distinct(Community, ESV_ID) %>%
     slice(rep(1:n(), each = 12)) %>%
     mutate(Transfer = rep(1:12, n()/12))
-    # slice(rep(1:n(), each = 13)) %>%
-    # mutate(Transfer = rep(1:13, n()/13))
 nrow(distinct(communities_abundance_temporal_complete, Community, ESV_ID)) # 755 unique ESVs
 nrow(communities_abundance_temporal_complete) # 755 ESVs * 12 transfers = 9060 rows
 
-# Calculate communities_fitness
+# Calculate communities_fitness as ln(x_i/x_{i-1})
 communities_fitness <- communities_abundance_temporal %>%
     right_join(communities_abundance_temporal_complete) %>%
     group_by(Community, ESV_ID) %>%
@@ -43,12 +41,12 @@ communities_fitness <- communities_abundance_temporal %>%
 
 
 # 2. Find stable ESVs ----
-# ESVs that have data from T9-12. Three excpetions: C4R4 and C9R4 do not have T11, and C5R4 do not have T9
+# ESVs that have data from the last four transfers T9-12. Three exceptions: C4R4 and C9R4 do not have T11, and C5R4 does not have T9
 ESV_stable <- communities_abundance_temporal %>%
     filter(Transfer %in% c(9:12)) %>%
     pivot_wider(id_cols = c(Community, ESV_ID), names_from = Transfer, names_prefix = "T", values_from = Relative_Abundance) %>%
     filter(
-        # Species with complete presence at T8-12
+        # Species with complete presence at T9-12
         (!is.na(T9) & !is.na(T10) & !is.na(T11) & !is.na(T12) ) |
             # Community C4R4, C9R4 have missing time points at T11. For these communities, add back the species
             (Community %in% c("C4R4", "C9R4") & (!is.na(T9) & !is.na(T10) & !is.na(T12))) |
@@ -57,6 +55,7 @@ ESV_stable <- communities_abundance_temporal %>%
     ) %>%
     distinct(Community, ESV_ID) %>%
     mutate(CommunityESV = paste0(Community, ESV_ID))
+nrow(ESV_stable) # 99 ESVs are considered "stable" ESVs
 
 fitness_stable <- communities_fitness %>%
     drop_na() %>%
@@ -93,14 +92,13 @@ tb_cor_stable %>% filter(Community %in% c("C4R4", "C5R4", "C9R4")) %>% nrow() # 
 
 # Linear model predicted equilibrium frequency
 xintercept_stable <- fitness_stable %>%
-    #filter(CommunityESV %in% ESV_sig_stable$CommunityESV) %>%
     nest(data = c(-Community, -ESV_ID, -CommunityESV)) %>%
     mutate(fit = map(data, ~ lm(Fitness ~ Relative_Abundance, data = .x)),
            tidied = map(fit, tidy)) %>%
     unnest(tidied) %>%
     select(Community, ESV_ID, CommunityESV, term, estimate) %>%
     pivot_wider(names_from = term, values_from = estimate) %>%
-    # X intercept is the predicted eq
+    # X intercept is the predicted equilibrium when fitness=0, meaning -b/a
     mutate(PredictedEqAbundance = -`(Intercept)` / Relative_Abundance) %>%
     select(Community, ESV_ID, CommunityESV, PredictedEqAbundance, Slope = Relative_Abundance)
 
@@ -118,6 +116,7 @@ ESV_transient <- communities_fitness %>%
     filter(n>=5) %>%
     # Remove the artifact C10R4 Stenotrophomonas
     filter(CommunityESV != "C10R4Stenotrophomonas")
+nrow(ESV_transient) # 46 ESVs that are considered "transient"
 
 fitness_transient <- communities_fitness %>%
     drop_na() %>%
@@ -143,14 +142,13 @@ range(ESV_sig_transient$estimate) # range of correlation [-1, -0.714]
 
 # Linear model predicted equilibrium frequency
 xintercept_transient <- fitness_transient %>%
-    #filter(CommunityESV %in% ESV_sig_transient$CommunityESV) %>%
     nest(data = c(-Community, -ESV_ID, -CommunityESV)) %>%
     mutate(fit = map(data, ~ lm(Fitness ~ Relative_Abundance, data = .x)),
            tidied = map(fit, tidy)) %>%
     unnest(tidied) %>%
     select(Community, ESV_ID, CommunityESV, term, estimate) %>%
     pivot_wider(names_from = term, values_from = estimate) %>%
-    # X intercept is the predicted eq
+    # X intercept is the predicted equilibrium when fitness=0, meaning -b/a
     mutate(PredictedEqAbundance = -`(Intercept)` / Relative_Abundance) %>%
     select(Community, ESV_ID, CommunityESV, PredictedEqAbundance, Slope = Relative_Abundance)
 
@@ -190,14 +188,13 @@ range(ESV_sig_transient2$estimate) # range of correlation [-1, -0.714]
 
 # Linear model predicted equilibrium frequency
 xintercept_transient2 <- fitness_transient2 %>%
-    #filter(CommunityESV %in% ESV_sig_transient$CommunityESV) %>%
     nest(data = c(-Community, -ESV_ID, -CommunityESV)) %>%
     mutate(fit = map(data, ~ lm(Fitness ~ Relative_Abundance, data = .x)),
            tidied = map(fit, tidy)) %>%
     unnest(tidied) %>%
     select(Community, ESV_ID, CommunityESV, term, estimate) %>%
     pivot_wider(names_from = term, values_from = estimate) %>%
-    # X intercept
+    # X intercept is the predicted equilibrium when fitness=0, meaning -b/a
     mutate(PredictedEqAbundance = -`(Intercept)` / Relative_Abundance) %>%
     select(Community, ESV_ID, CommunityESV, PredictedEqAbundance, Slope = Relative_Abundance) %>%
     mutate(ESVType = "transient")

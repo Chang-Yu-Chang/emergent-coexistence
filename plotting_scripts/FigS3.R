@@ -28,11 +28,11 @@ p <- fitness_stable %>%
     guides(color = "none") +
     labs(x = expression(x[i]), y = expression("F="~log(x[i]/x[i-1])))
 
-ggsave(here::here("plots/FigS3.png"), p, width = 12, height = 17)
+ggsave(here::here("plots/FigS3.png"), p, width = 12, height = 17, dpi = 500)
 
 
 #
 nrow(eq_freq_stable) # 99 ESVs
 table(eq_freq_stable$Slope < 0) # 95 ESVs with slope <0
 
-table(eq_freq_stable$Significance, useNA = "always") # 52 ESVs have siginificant correlation
+table(eq_freq_stable$Significance, useNA = "always") # 52 ESVs have significant correlation

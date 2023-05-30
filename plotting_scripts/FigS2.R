@@ -108,17 +108,15 @@ ESV_colors <- communities_abundance %>%
     bin_ESV_names() %>%
     clean_ESV_names() %>%
     get_ESV_colors
-
-
 communities_abundance_temporal <- communities_abundance %>%
     distinct(Community, Transfer) %>%
     arrange(Community, Transfer) %>%
-    filter(Transfer == 4)
+    filter(Transfer == 4) # 26 communities
 communities_abundance_temporal_26 <- communities_abundance %>%
     filter(Community %in% communities_abundance_temporal$Community | Transfer == 0) %>%
     filter(!is.na(Community)) %>%
     bin_ESV_names() %>%
-    clean_ESV_names()
+    clean_ESV_names() # ESV abundance of 26 communities
 
 communities_abundance_T0_for_plot <- bind_rows(
     communities_abundance %>% filter(Transfer == 0) %>% mutate(Community = paste0("C", Inoculum, "R4")),
@@ -151,5 +149,17 @@ p <- communities_abundance_temporal_26 %>%
     labs(x = "transfer", y = "relative abundance")
 
 ggsave(here::here("plots/FigS2.png"), p, width = 8, height = 8)
+
+
+#
+communities_abundance %>%
+    filter(Transfer == 12) %>%
+    group_by(Community) %>%
+    count() %>% pull(n) %>%
+    range() # 2-17 ESVs in the 92 final communities
+
+
+
+
 
 

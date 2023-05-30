@@ -26,7 +26,7 @@ eq_freq2 <- bind_rows(eq_freq_stable, eq_freq_transient2)
 nrow(eq_freq2) # 99+110 = 209 rows
 
 fitness_eq_freq2 <- left_join(fitness_mean, eq_freq2)
-fitness_eq_freq2_filtered <- fitness_eq_freq2 %>% filter(Slope < 0)
+fitness_eq_freq2_filtered <- fitness_eq_freq2 %>% filter(Slope < 0) # ESVs with negative slope
 nrow(fitness_eq_freq2_filtered) # 175 ESVs
 table(fitness_eq_freq2_filtered$ESVType) # 95 stable ESVs and 80 transient ESVs
 
@@ -38,7 +38,6 @@ p1 <- fitness_eq_freq2_filtered %>%
     geom_vline(xintercept = 0, linewidth = 0.1, linetype = 2) +
     geom_hline(yintercept = 0, linewidth = 0.1, linetype = 2) +
     geom_point(aes(x = MeanFitness, y = PredictedEqAbundance, color = ESVType), shape = 21, size = 3, stroke = .8) +
-    #geom_segment(aes(x = MeanFitness - 2*SdFitness, xend = MeanFitness + 2*SdFitness, y = Xintercept, yend = Xintercept, color = ESVType)) +
     scale_color_manual(values = c(stable = "firebrick1", transient = grey(0.7)), label = c(stable = "stable ESV", transient = "transient ESV")) +
     theme_classic() +
     theme(
@@ -82,7 +81,6 @@ p2 <- fitness_eq_freq2_filtered %>%
         axis.title.y = element_blank(),
         axis.text.x = element_text(size = 8),
         axis.text.y = element_text(size = 6, hjust = 0)
-        #axis.text.x = element_text(size = 6, angle = 45, hjust = 0)
     ) +
     guides() +
     labs(x = "", y = "invasion fitness")
@@ -93,5 +91,5 @@ p <- plot_grid(
     labels = LETTERS[1:2], scale = c(.95, .95),
     nrow = 1, align = "h", axis = "tb", rel_widths = c(1,1.2)) +
     paint_white_background()
-ggsave(here::here("plots/FigS5.png"), p, width = 10, height = 13)
+ggsave(here::here("plots/FigS5.png"), p, width = 10, height = 13, dpi = 500)
 

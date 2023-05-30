@@ -27,7 +27,7 @@ p <- fitness_transient %>%
     guides(color = "none") +
     labs(x = expression(x[i]), y = expression("F="~log(x[i]/x[i-1])))
 
-ggsave(here::here("plots/FigS4.png"), p, width = 12, height = 10)
+ggsave(here::here("plots/FigS4.png"), p, width = 12, height = 10, dpi = 500)
 
 #
 nrow(eq_freq_transient) # 46 ESVs

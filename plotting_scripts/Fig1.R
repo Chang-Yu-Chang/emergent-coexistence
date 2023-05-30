@@ -115,7 +115,6 @@ pB2 <- isolates_abundance_factor %>%
     geom_col(aes(x = CommunityLabel, y = RelativeAbundance, fill = ESV_ID, group = ESV_ID), position = position_stack(reverse = T)) +
     theme_bw() +
     scale_fill_manual(values = ESV_colors1, breaks = names(ESV_colors1)) +
-    #scale_fill_manual(values = c(RColorBrewer::brewer.pal(8, "Set1"), c(RColorBrewer::brewer.pal(8, "Set2")))) +
     scale_x_continuous(breaks = 1:13, expand = c(0,.3)) +
     scale_y_continuous(breaks = seq(0,1,0.25), expand = c(0,0), limits = c(0, 1)) +
     coord_cartesian(ylim = c(0, 1), clip = "off") +
@@ -168,7 +167,6 @@ pC <- eq_freq_stable_comm_filtered %>%
         panel.border = element_rect(color = 1, fill = NA, linewidth = 1),
         axis.text = element_text(color = 1),
         axis.title = element_text(size = 10),
-        #legend.position = c(0.7, 0.15),
         legend.position = "top",
         legend.title = element_blank(),
         legend.margin = margin(0,3,1,1, unit = "mm"),
@@ -226,7 +224,7 @@ fit <- fitness_stable %>%
            tidied = map(fit, tidy)) %>%
     unnest(tidied) %>%
     filter(Community == "C8R4")
-summary(fit$fit[3][[1]]) # R^2= 0.9212
+summary(fit$fit[3][[1]]) # R^2= 0.9291
 summary(fit$fit[1][[1]]) # R^2 = 0.7089
 
 

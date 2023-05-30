@@ -10,17 +10,17 @@ rarefaction <- read_csv(paste0(folder_data, "temp/13-rarefaction.csv"), show_col
 communities_abundance_T0_order <- communities_abundance_T0 %>%
     group_by(Inoculum, Order) %>%
     summarize(Relative_Abundance = sum(Relative_Abundance)) %>%
-    filter(Relative_Abundance > 0.01) %>%
+    filter(Relative_Abundance > 0.01) %>% # Show Order with relative abundance > 1%
     ungroup() %>%
     distinct(Order) %>%
     arrange(Order)
 
 order_colors <- c(RColorBrewer::brewer.pal(9, "Set1"), RColorBrewer::brewer.pal(8, "Set3"), RColorBrewer::brewer.pal(8, "Dark2"))[1:(length(communities_abundance_T0_order$Order))]
-order_colors <- c(setNames(order_colors, communities_abundance_T0_order$Order), "Others" = "snow")
+order_colors <- c(setNames(order_colors, communities_abundance_T0_order$Order), "Other" = "snow3")
 
 p1 <- communities_abundance_T0 %>%
-    mutate(Order = ifelse(Order %in% communities_abundance_T0_order$Order, Order, "Others")) %>%
-    mutate(Order = factor(Order, c(communities_abundance_T0_order$Order, "Others"))) %>%
+    mutate(Order = ifelse(Order %in% communities_abundance_T0_order$Order, Order, "Other")) %>%
+    mutate(Order = factor(Order, c(communities_abundance_T0_order$Order, "Other"))) %>%
     mutate(Inoculum = factor(Inoculum, c(1:10, 12))) %>%
     ggplot() +
     geom_col(aes(x = Inoculum, y = Relative_Abundance, color = Order, fill = Order), width = .8, linewidth = .05, position = position_stack(reverse = T)) +
@@ -78,7 +78,7 @@ aux = aux %>% filter(Transfer == 0)
 Abundance_Data = Abundance_Data[,aux$ID]
 Abundance_Data = as.matrix(Abundance_Data[,1:ncol(Abundance_Data)])
 range(colSums(Abundance_Data)) # Number of reads
-range(apply(Abundance_Data, 2, function(x) x>0) %>% colSums()) # number of unique ESVs
+range(apply(Abundance_Data, 2, function(x) x>0) %>% colSums()) # number of unique ESVs is 110-1290
 
 
 
