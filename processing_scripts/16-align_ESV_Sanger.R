@@ -1,7 +1,6 @@
 #' This script aligns the isolate Sanger and community ESV
 #'
 #' The alignment is performed within the 12 communities
-#'
 
 library(tidyverse)
 library(cowplot)
@@ -137,13 +136,13 @@ n_align_comm <- n_Sanger_comm %>%
     left_join(n_ESV_comm) %>%
     mutate(n_algn = n_Sanger * n_ESV)
 
-sum(n_align_comm$n_algn) # expected number of alignments
-nrow(sequences_alignment) # actual number of alignments
+sum(n_align_comm$n_algn) # expected number of alignments is 599
+nrow(sequences_alignment) # actual number of alignments is 599
 
 # Check the number of alignments pass the first criteria
 sequences_alignment %>%
     filter(ConsensusLength >= 200, BasePairMismatch <= 4) %>%
-    nrow
+    nrow # 129 alignments pass
 
 
 # The isolates_RDP where its alignments are all dropped because of low-alignment quality
@@ -152,4 +151,4 @@ sequences_alignment %>%
     distinct(Community, ExpID) %>%
     mutate(PassFirstFilter = T) %>%
     right_join(isolates_RDP) %>%
-    filter(is.na(PassFirstFilter))
+    filter(is.na(PassFirstFilter)) # three isolates haave low alignment quality

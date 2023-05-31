@@ -48,7 +48,7 @@ seq_C2R6 <- SangerRead(
     readFileName = paste0(folder_data, "raw/sanger/2.6.A.5-27F.ab1")
 )
 
-iso_c2r6 <- tibble(ID = "2.6.A.5", Sequence = seq_C2R6@primarySeq)
+iso_c2r6 <- tibble(ID = "2.6.A.5", Sequence = as.character(seq_C2R6@primarySeq))
 
 isolates_16S <- bind_rows(df_seq, iso_c2r6)
 

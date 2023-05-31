@@ -13,7 +13,6 @@ library(purrr) # for applying functional programming to transect curve smoothing
 source(here::here("processing_scripts/00-metadata.R"))
 
 list_images <- read_csv(commandArgs(trailingOnly = T)[1], show_col_types = F)
-#list_images <- read_csv("~/Desktop/lab/emergent-coexistence/analysis/00-list_images-D-green.csv", show_col_types = F)
 
 paste_folder_name <- function (image_type = "channel", channel = "green") {
     paste0(list_images[i,paste0("folder_", image_type)], channel, "/")
@@ -254,7 +253,6 @@ for (i in 1:nrow(list_images)) {
         image_watershed2, image_rolled,
         methods.noref = c("computeFeatures.shape"),
         methods.ref = c("computeFeatures.basic", "computeFeatures.moment"),
-        #basic.quantiles = c(0.01, 0.05, seq(0.1, 0.9, by = .1), 0.95, 0.99)
         basic.quantiles = c(0.01, 0.05, c(0.1, 0.2, 0.5, 0.8, 0.9), 0.95, 0.99)
     )
 

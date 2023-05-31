@@ -2,10 +2,9 @@
 
 # 1. Directories
 # This main folder depends on your home directory
-folder_script <- "~/Desktop/lab/emergent-coexistence/processing_scripts/" # Enter the directory of processing scripts
-folder_pipeline <- "~/Dropbox/lab/emergent-coexistence/forDryad/pipeline/" # Enter the directory of image processing pipeline
-folder_data <- "~/Dropbox/lab/emergent-coexistence/forDryad/data/" # Enter the directory of data
-
+folder_script <- "/Users/cychang/Desktop/lab/emergent-coexistence/processing_scripts/" # Enter the directory of processing scripts
+folder_pipeline <- "/Users/cychang/Dropbox/lab/emergent-coexistence/forDryad/pipeline/" # Enter the directory of image processing pipeline
+folder_data <- "/Users/cychang/Dropbox/lab/emergent-coexistence/forDryad/data/" # Enter the directory of data
 
 # 2. For image processing pipeline ----
 list_folders <- c("01-channel", "02-rolled", "03-threshold", "04-round", "05-watershed", "06-transect", "07-feature", "08-random_forest", "09-bootstrap")

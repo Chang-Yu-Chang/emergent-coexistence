@@ -1,6 +1,70 @@
 
 Scripts and data for the manuscript entitled "Emergent coexistence in multispecies microbial communities"
 
+# Environment
+
+The scripts included in this repository have been tested under the following R environment
+
+```
+> sessionInfo()
+R version 4.2.2 (2022-10-31)
+Platform: aarch64-apple-darwin20 (64-bit)
+Running under: macOS Ventura 13.4
+
+Matrix products: default
+LAPACK: /Library/Frameworks/R.framework/Versions/4.2-arm64/Resources/lib/libRlapack.dylib
+
+locale:
+[1] en_US.UTF-8/en_US.UTF-8/en_US.UTF-8/C/en_US.UTF-8/en_US.UTF-8
+
+attached base packages:
+[1] stats     graphics  grDevices utils     datasets  methods   base     
+
+loaded via a namespace (and not attached):
+[1] compiler_4.2.2  tools_4.2.2     rstudioapi_0.14
+```
+
+For various purposes, parts of the following R packages are loaded in the corresponding scripts.
+
+```
+tidyverse_2.0.0             # for general anaylsis
+readr_2.1.4                 # for general anaylsis
+data.table_1.14.8           # for general anaylsis
+broom_1.0.4                 # for tidying the statistic results
+sangeranalyseR_1.8.0        # for aligning Sanger reads
+rRDPData_1.18.0             # for assigning isolate taxonomy
+rRDP_1.32.0                 # for assigning isolate taxonomy
+Biostrings_2.66.0           # for handling DNA string and ESV-Sanger alignment
+EBImage_4.40.0              # for image processing
+EBImageExtra_0.0.0.2        # for image processing
+randomForest_4.7-1.1        # for executing random forest
+caret_6.0-94                # for streamlining the model training
+cowplot_1.1.1               # for assembling figures
+magick_2.7.4                # for merging png from a folder into a single pdf
+igraph_1.4.1                # for computing network motifs
+ggraph_2.1.0                # for visualizing networks
+tidygraph_1.2.3             # for handling network data
+grid                        # based R package for drawing polygons
+ggstats_0.2.1               # for extension to ggplot2 for plotting stats
+officer_0.6.2               # for handling tables
+flextable_0.9.0             # for handling tables
+```
+
+The python scripts have been tested under the python version
+
+```
+❯ python --version
+Python 3.11.3
+```
+
+The version of the python packages used 
+
+```
+numpy           1.24.3
+pandas          2.0.2
+scikit-image    0.20.0
+```
+
 # Data
 
 `pipeline/` stores the original colony plate images (TIFF), the processed images (i.e., grey-scaled images, background subtracted images, segmented images), object features (CSV), random forest results (CSV)
