@@ -4,16 +4,13 @@ library(broom)
 source(here::here("processing_scripts/00-metadata.R"))
 
 isolates <- read_csv(paste0(folder_data, "output/isolates_remained.csv"), show_col_types = F)
-#isolates_rank <- read_csv("~/Downloads/isolates_rank.csv")
 
 k1 <- isolates %>% filter(Fermenter) %>% pull(Rank)
 mean(k1) # 2.54
 k2 <- isolates %>% filter(!Fermenter) %>% pull(Rank)
 mean(k2) # 4.72
 
-# k2 <- isolates_rank %>% filter(!Fermenter) %>% pull(Rank)
-# mean(k2) # 4.36
-
+# Wilcoxon rank sum test
 isolates %>%
     mutate(Rank_Abundance = rank(-RelativeAbundance, ties.method = "average")) %>%
     wilcox.test(Rank ~ Fermenter, data = ., exact = F) # p=0.000167
@@ -32,5 +29,5 @@ p <- isolates %>%
 
 ggsave(here::here("plots/FigS16.png"), p, width = 4, height = 4)
 
-table(isolates$Fermenter)
+table(isolates$Fermenter) # 25 respirator, 37 Fermenter. Total 62 strains
 

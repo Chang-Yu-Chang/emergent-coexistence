@@ -27,6 +27,7 @@ p1 <- tibble(rho = list_rho, BootStrapID = 1:1000) %>%
     theme() +
     guides() +
     labs(x = expression(rho), y = "count (# of bootstrap samples)")
+range(list_rho) # rho = [0.32, 0.52]
 
 # all 62 isolates
 isol <- isolates_rank %>% mutate(Rank_Abundance = rank(-RelativeAbundance, ties.method = "average"))
@@ -57,7 +58,7 @@ p3 <- isol1 %>%
 
 count(isol1)
 cor.test(isol1$Rank_Abundance, isol1$Rank, method = "spearman", alternative = "two.sided", exact = FALSE) %>%
-    tidy() # rho = 0.316; p = 0.0392
+    tidy() # rho = 0.326; p = 0.0331
 nrow(isol1) # 43
 
 # Large communities (n= 9, 10)
@@ -79,9 +80,6 @@ nrow(isol2) # 19
 p <- plot_grid(p1, p2, p3, p4, nrow = 2, scale = 0.9, labels = LETTERS[1:4]) + paint_white_background()
 ggsave(here::here("plots/FigS14.png"), p, width = 6, height = 6)
 
-
-# Range of rho
-range(list_rho)
 
 # Number of strains that match to the same ESV
 isolates_rank %>%

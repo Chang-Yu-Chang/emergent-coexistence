@@ -13,7 +13,7 @@ list_image_mapping_folder_master <- read_csv(here::here("image_scripts/mapping_f
 pairs_mismatch <- read_csv(paste0(folder_data, "temp/22-pairs_mismatch.csv"), show_col_types = F)
 
 ## Same-bug pairs
-pairs_samebug <- pairs_mismatch %>%
+pairs_mismatch %>%
     filter(Mismatch == 0) %>%
     mutate(PairSameBug = T)
 isolates_duplicate <- tibble(ID = as.character(c(462, 355, 356, 461, 452, 446, 305, 435, 444, 348, 460, 454)), Duplicated = T)
@@ -40,7 +40,6 @@ for (j in 1:length(batch_names)) {
     }
 
     temp[[j]] <- bind_rows(accuracy_validation) %>%
-        #rename(image_name_pair = image_name) %>%
         left_join(list_image_mapping_folder, by = "image_name_pair") %>%
         select(-starts_with("folder_"))
 }
@@ -75,10 +74,11 @@ accuracy <- accuracy_validation_batch %>%
         Accuracy >= 0.9 ~ T,
         Accuracy < 0.9 ~ F
     )) %>%
-    # Correct the isolate order
     rename(Isolate1InitialODFreq = Freq1, Isolate2InitialODFreq = Freq2) %>%
+    # Remove pairs that have cocultures with no colony
     filter(!(paste0(Community, "_", Isolate1, "_", Isolate2) %in% pairs_no_colony),
            !(paste0(Community, "_", Isolate2, "_", Isolate1) %in% pairs_no_colony)) %>%
+    # Correct the isolate order
     rowwise() %>%
     mutate(Isolate1InitialODFreq = ifelse(Isolate1 > Isolate2, 5, Isolate1InitialODFreq),
            Isolate2InitialODFreq = ifelse(Isolate1 > Isolate2, 95, Isolate2InitialODFreq),
@@ -93,7 +93,7 @@ accuracy <- accuracy_validation_batch %>%
     select(image_name_pair, Community, Isolate1, Isolate2, Isolate1InitialODFreq,
            Accuracy, AccuracyPassThreshold, PairType)
 
-
+nrow(accuracy) # 459
 
 
 ## How many of the clean pairs have accuracy lower than 0.9?
@@ -103,9 +103,9 @@ accuracy %>%
     group_by(PairType) %>%
     mutate(Fraction = Count / sum(Count))
 
-# PairType       AccuracyPassThreshold Count Fraction
-# <fct>          <lgl>                 <int>    <dbl>
-#     1 clean          TRUE                    288    1
+# PairType         AccuracyPassThreshold Count Fraction
+# <fct>            <lgl>                 <int>    <dbl>
+# 1 clean          TRUE                    288    1
 # 2 one duplicate  FALSE                    24    0.16
 # 3 one duplicate  TRUE                    126    0.84
 # 4 both duplicate FALSE                     3    0.143
@@ -113,9 +113,7 @@ accuracy %>%
 
 
 pairs_accuracy <- accuracy %>%
-    # Remove pairs that have cocultures with no colony
     unite(col = "Pair", Community, Isolate1, Isolate2, sep = "_", remove = F) %>%
-    filter(!(Pair %in% pairs_no_colony)) %>%
     group_by(Community, Isolate1, Isolate2) %>%
     summarize(AccuracyMean = mean(Accuracy), AccuracySd = sd(Accuracy))
 

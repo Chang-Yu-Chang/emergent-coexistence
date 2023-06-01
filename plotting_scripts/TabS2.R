@@ -6,7 +6,8 @@ source(here::here("processing_scripts/00-metadata.R"))
 
 # Table S2 community overview and labels ----
 isolates <- read_csv(paste0(folder_data, "output/isolates_remained.csv"), show_col_types = F)
-pairs <- read_csv(paste0(folder_data, "output/pairs_remained.csv"), show_col_types = F)
+pairs <- read_csv(paste0(folder_data, "output/pairs.csv"), show_col_types = F)
+pairs_remained <- read_csv(paste0(folder_data, "output/pairs_remained.csv"), show_col_types = F)
 communities <- read_csv(paste0(folder_data, "output/communities_remained.csv"), show_col_types = F)
 
 temp1 <- isolates %>%
@@ -15,17 +16,23 @@ temp1 <- isolates %>%
     rows_update(tibble(Community = "C11R1", Batch = "B2 and C"), by = "Community")
 temp2 <- pairs %>%
     group_by(Community) %>%
-    filter(!is.na(outcome)) %>%
-    filter(AccuracyMean > 0.9) %>%
-    count(name = "ActualPairs") %>%
+    count(name = "TotalPairs") %>%
     ungroup()
+temp3 <- pairs_remained %>%
+    group_by(Community) %>%
+    count(name = "TestedPairs") %>%
+    ungroup()
+
 ft <- communities %>%
     left_join(temp1, by = "Community") %>%
     left_join(temp2, by = "Community") %>%
-    select(CommunityLabel, Community, Batch, CommunitySize, CommunityPairSize, ActualPairs) %>%
+    left_join(temp3, by = "Community") %>%
+    select(CommunityLabel, Community, Batch, CommunitySize, TotalPairs, TestedPairs) %>%
     mutate(CommunityLabel = as.character(CommunityLabel)) %>%
-    rename(` ` = CommunityLabel, `Community` = Community, `Number of isolates` = CommunitySize,
-           `Number of tested pairs` = CommunityPairSize, `Number of applicable pairs` = ActualPairs) %>%
+    rename(` ` = CommunityLabel, `Community` = Community,
+           `Number of isolates` = CommunitySize,
+           `Number of total pairs` = TotalPairs,
+           `Number of tested pairs` = TestedPairs) %>%
     janitor::adorn_totals() %>%
     flextable() %>%
     width(j = 1:2, width = 1.1) %>%

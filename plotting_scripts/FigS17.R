@@ -4,11 +4,9 @@ library(data.table)
 source(here::here("processing_scripts/00-metadata.R"))
 
 # ESVs
-#pairs <- fread('pairs_remained.csv')
 pairs <- fread(paste0(folder_data, "output/pairs_remained.csv"))
 pairs <- pairs[,c(1:4, 9, 11, 12, 17, 19, 20, 23, 24, 25)]
 
-#outc <- fread('pairs_outcome.csv')
 outc <- fread(paste0(folder_data, 'temp/26-pairs_outcome.csv'))
 
 pairs <- merge(outc, pairs, all.x=TRUE)
@@ -24,5 +22,6 @@ p <- ggplot(pairs[out!='inconclusive'], aes(x = Mismatch, fill=out)) +
 
 ggsave(here::here('plots/FigS17.png'), p, width = 6, height = 4)
 
-with(pairs[out!='inconclusive'], wilcox.test(Mismatch~out))
+# Wilcoxon rank sum test
+with(pairs[out!='inconclusive'], wilcox.test(Mismatch~out)) # P=0.137
 

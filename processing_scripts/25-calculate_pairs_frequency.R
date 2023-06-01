@@ -10,9 +10,6 @@ pairs_freq_ID <- read_csv(paste0(folder_data, "temp/00c-pairs_freq_ID.csv"), sho
     mutate(PairFreqID = 1:n()) %>%
     select(PairFreqID, Community, Isolate1, Isolate2, Isolate1InitialODFreq)
 pairs_boots <- read_csv(paste0(folder_data, "temp/07-pairs_boots.csv"), show_col_types = F)
-# pairs_T0_boots <- read_csv(paste0(folder_data, "temp/07-pairs_T0_boots.csv"), show_col_types = F)
-# pairs_T8_boots <- read_csv(paste0(folder_data, "temp/07-pairs_T8_boots.csv"), show_col_types = F)
-# pairs_boots <- bind_rows(pairs_T0_boots, pairs_T8_boots)
 
 # Find 5% and 95%
 pairs_boots_percentile <- pairs_boots %>%
@@ -39,15 +36,7 @@ pairs_freq <- left_join(pairs_boots_mean, pairs_boots_percentile) %>%
     left_join(pairs_ID) %>%
     left_join(pairs_freq_ID) %>%
     arrange(PairFreqID, PairID, Isolate1InitialODFreq) %>%
-    #mutate(PairFreqID = 1:n()) %>%
     select(PairFreqID, Batch, PairID, everything())
-
-pairs_freq <- pairs_freq %>%
-    filter(Community != "C10R2") %>%
-    filter(!(Community == "C2R6" & Isolate2 == 4)) %>%
-    filter(!(Community == "C11R2" & Isolate1 == 9) & !(Community == "C11R2" & Isolate2 == 9)) %>%
-    filter(!(Community == "C11R2" & Isolate1 == 11) & !(Community == "C11R2" & Isolate2 == 11)) %>%
-    filter(!(paste0(Community, Isolate1, Isolate2) == pairs_no_colony))
 
 nrow(pairs_freq) # 936 coclutures. 477 at T0 and 459 at T8
 write_csv(pairs_freq, paste0(folder_data, "temp/25-pairs_freq.csv"))

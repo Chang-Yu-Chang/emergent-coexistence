@@ -18,7 +18,7 @@ features <- tibble(Feature = names(features_example)) %>%
                c("area size (in pixels)",
                  "perimeter (in pixels)",
                  "mean radius (in pixels)",
-                 "standard deviation of the mean radius (in pixels)",
+                 "standard deviation of the radius (in pixels)",
                  "min radius (in pixels)",
                  "max radius (in pixels)",
                  "center of mass x (in pixels)",

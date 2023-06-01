@@ -60,9 +60,10 @@ Python 3.11.3
 The version of the python packages used 
 
 ```
-numpy           1.24.3
-pandas          2.0.2
-scikit-image    0.20.0
+numpy           1.24.3      # for general analysis
+pandas          2.0.2       # for general analysis
+scikit-image    0.20.0      # for rolling ball algorithm (removing image background)
+biopython       1.81        # for merging paired sequences
 ```
 
 # Data

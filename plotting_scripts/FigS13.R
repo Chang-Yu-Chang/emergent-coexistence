@@ -12,7 +12,7 @@ communities_abundance_T12 <- read_csv(paste0(folder_data, "temp/14-communities_a
 
 #
 isolates_abundant <- isolates %>% filter(RelativeAbundance > 0.05)
-nrow(isolates_abundant) # 49 isolates matched to abundant ESVs
+nrow(isolates_abundant) # 49 isolates matched to abundant ESVs (adundance>5%)
 
 isolates_abundant_richness <- isolates_abundant %>%
     group_by(Community) %>%
@@ -51,7 +51,6 @@ p <- pairs_abundant %>%
     # Total count
     group_by(Community) %>% mutate(Fraction = Count / sum(Count), TotalCount = sum(Count)) %>%
     left_join(communities, by = "Community") %>%
-    #mutate(outcome = factor(outcome, c("5-inconclusive", "1-exclusion", "2-exclusion", "3-coexistence", "4-coexistence"))) %>%
     ungroup() %>%
     ggplot() +
     geom_col(aes(x = CommunityLabel, fill = outcome, y = Fraction), width = .8, linewidth = .5, position = position_stack(reverse = T)) +
@@ -84,7 +83,6 @@ p <- pairs_abundant %>%
         axis.title = element_text(color = 1, size = 12),
         plot.margin = unit(c(35, 15, 5, 5), "mm")
     ) +
-    #guides(fill = guide_legend(byrow = T, ncol = 2)) +
     guides(fill = guide_legend(byrow = T, ncol = 1)) +
     labs(x = "community", y = "fraction")
 
@@ -92,7 +90,7 @@ ggsave(here::here("plots/FigS13.png"), p, width = 10, height = 5)
 
 
 # Stats
-nrow(pairs_abundant)
+nrow(pairs_abundant) # 84 pairs
 pairs_abundant %>%
     group_by(outcome) %>%
     count(name = "Count") %>%

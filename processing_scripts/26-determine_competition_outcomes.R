@@ -5,7 +5,6 @@ source(here::here("processing_scripts/00-metadata.R"))
 
 pairs_ID <- read_csv(paste0(folder_data, "temp/00c-pairs_ID.csv"), show_col_types = F)
 pairs_boots <- read_csv(paste0(folder_data, "temp/07-pairs_boots.csv"), show_col_types = F)
-
 pairs_freq <- read_csv(paste0(folder_data, "temp/25-pairs_freq.csv"), show_col_types = F)
 
 boots_T0 <- pairs_boots %>% filter(Time == "T0") %>% as.data.table
@@ -142,5 +141,5 @@ pairs_outcome <- pairs_outcome %>%
 
 pairs_outcome <- pairs_outcome %>%
     drop_na(outcome)
-
+#table(pairs_outcome$outcome)
 write_csv(pairs_outcome, paste0(folder_data, "temp/26-pairs_outcome.csv"))

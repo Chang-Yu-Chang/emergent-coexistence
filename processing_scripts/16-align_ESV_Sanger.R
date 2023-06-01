@@ -121,6 +121,7 @@ table(algn_Sanger_ESV$BasePairMismatch)
 # 0  1  2  3  4
 # 40 11  6  2  3
 
+# Save the isolates with its abundance
 isolates_abundance <- algn_Sanger_ESV %>%
     select(Community, RelativeAbundance, CommunityESVID, ESV, ESVFamily, ESVGenus, ExpID, ID, Isolate, Family, Genus, Sequence, AlignmentType, ConsensusLength, BasePairGap, BasePairMismatch, AlignmentScore)
 write_csv(isolates_abundance, paste0(folder_data, "temp/16-isolates_abundance.csv"))

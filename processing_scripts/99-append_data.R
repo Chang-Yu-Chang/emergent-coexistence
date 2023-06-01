@@ -14,14 +14,13 @@ communities <- read_csv(paste0(folder_data, "temp/00c-communities.csv"), show_co
 
 # 1. Isolate metadata ----
 isolates_ID <- read_csv(paste0(folder_data, "temp/00c-isolates_ID.csv"), show_col_types = F)
-isolates_RDP <- read_csv(paste0(folder_data, "temp/12-isolates_RDP.csv"), show_col_types = F)
 isolates_epsilon <- read_csv(paste0(folder_data, "temp/06-isolates_epsilon.csv"), show_col_types = F)
+isolates_RDP <- read_csv(paste0(folder_data, "temp/12-isolates_RDP.csv"), show_col_types = F)
 isolates_abundance <- read_csv(paste0(folder_data, "temp/16-isolates_abundance.csv"), show_col_types = F)
 
 isolates <- isolates_ID %>%
     left_join(select(isolates_RDP, -ID), by = c("ExpID", "Community", "Isolate")) %>%
     left_join(isolates_epsilon, by = c("Community", "Isolate")) %>%
-    #left_join(isolates_tournament, by = c("Community", "Isolate")) %>%
     left_join(mutate(isolates_abundance, ID = as.character(ID))) %>%
     mutate(Community = ordered(Community, levels = communities$Community))
 nrow(isolates) # 65 isolates
@@ -63,7 +62,6 @@ pairs_remained <- pairs_remained %>%
 nrow(pairs_remained) # 144 pairs
 table(pairs_remained$outcome)
 write_csv(pairs_remained, paste0(folder_data, "output/pairs_remained.csv"))
-
 
 # Remove the four isolates with bad sanger alignment  ----
 tournament_rank <- function(pairs_comm) {
