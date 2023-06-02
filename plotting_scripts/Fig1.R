@@ -13,7 +13,6 @@ fitness_stable <- read_csv(paste0(folder_data, "temp/15-fitness_stable.csv"), sh
 
 comm = "C8R4"
 
-# Shared color palette for inset 1 and 2 ----
 communities_abundance_comm <- communities_abundance %>%
     filter(Community == comm) %>%
     bind_rows(filter(communities_abundance, Inoculum == str_sub(comm, 2, 2), Transfer == 0)) %>%
@@ -24,54 +23,27 @@ isolates_abundance_factor <- isolates %>%
     drop_na() %>%
     rename(ESV_ID = CommunityESVID)
 ESV_comm <- bind_rows(
-    communities_abundance_comm %>% filter(Relative_Abundance > 0.01) %>% distinct(Family, ESV_ID), # 1% threshold for ESV abundance
+    communities_abundance_comm %>% filter(Relative_Abundance > 0.02) %>% distinct(Family, ESV_ID),
     distinct(isolates_abundance_factor, Family, ESV_ID)
 ) %>%
     mutate(Family = factor(Family, c("Enterobacteriaceae", "Pseudomonadaceae", "Comamonadaceae", "Aeromonadaceae", "Moraxellaceae", "Alcaligenaceae"))) %>%
     arrange(Family, ESV_ID) %>%
     drop_na() %>%
     distinct(Family, ESV_ID) %>%
-    mutate(ESV_colors = c(rev(RColorBrewer::brewer.pal(9, "YlGnBu")),
-                          rev(RColorBrewer::brewer.pal(9, "OrRd")), "maroon",
-                          rev(RColorBrewer::brewer.pal(6, "Purples")),
-                          "gold2","forestgreen", "hotpink2", "hotpink4", "salmon4")
+    mutate(ESV_colors = c(rev(RColorBrewer::brewer.pal(8, "YlGnBu")),
+                          rev(RColorBrewer::brewer.pal(8, "OrRd")),
+                          rev(RColorBrewer::brewer.pal(5, "Purples")),
+                          "gold2","forestgreen", "hotpink2", "salmon4")
     )
 
 ESV_colors1 <- ESV_comm$ESV_colors %>% setNames(ESV_comm$ESV_ID)
 ESV_colors1 <- c(ESV_colors1, Other = "snow", `Not isolated` = "#999998")
-
-# communities_abundance_comm <- communities_abundance %>%
-#     filter(Community == comm) %>%
-#     bind_rows(filter(communities_abundance, Inoculum == str_sub(comm, 2, 2), Transfer == 0)) %>%
-#     select(Transfer, Family, ESV_ID, Relative_Abundance) %>%
-#     arrange(Transfer, Family, ESV_ID)
-# isolates_abundance_factor <- isolates %>%
-#     distinct(Community, CommunityESVID, .keep_all = T) %>%
-#     drop_na() %>%
-#     rename(ESV_ID = CommunityESVID)
-# ESV_comm <- bind_rows(
-#     communities_abundance_comm %>% filter(Relative_Abundance > 0.02) %>% distinct(Family, ESV_ID),
-#     distinct(isolates_abundance_factor, Family, ESV_ID)
-# ) %>%
-#     mutate(Family = factor(Family, c("Enterobacteriaceae", "Pseudomonadaceae", "Comamonadaceae", "Aeromonadaceae", "Moraxellaceae", "Alcaligenaceae"))) %>%
-#     arrange(Family, ESV_ID) %>%
-#     drop_na() %>%
-#     distinct(Family, ESV_ID) %>%
-#     mutate(ESV_colors = c(rev(RColorBrewer::brewer.pal(8, "YlGnBu")),
-#                           rev(RColorBrewer::brewer.pal(8, "OrRd")),
-#                           rev(RColorBrewer::brewer.pal(5, "Purples")),
-#                           "gold2","forestgreen", "hotpink2", "salmon4")
-#     )
-#
-# ESV_colors1 <- ESV_comm$ESV_colors %>% setNames(ESV_comm$ESV_ID)
-# ESV_colors1 <- c(ESV_colors1, Other = "snow", `Not isolated` = "#999998")
 
 
 # Panel B Inset 1: temporal dynamics of C8R4 ----
 pB1 <- communities_abundance_comm %>%
     mutate(ESV_ID = ifelse(ESV_ID %in% names(ESV_colors1), ESV_ID, "Other")) %>%
     mutate(ESV_ID = factor(ESV_ID, names(ESV_colors1))) %>%
-    #drop_na() %>%
     ggplot() +
     geom_col(aes(x = Transfer, y = Relative_Abundance, fill = ESV_ID, color = ESV_ID), linewidth = .3, position = position_stack(reverse = T)) +
     annotate("text", x = 0, y = -0.1, label = "inoculum", size = 4, angle = 20, hjust = 0.9, vjust = -0.5) +
@@ -191,6 +163,13 @@ sqrt(mean(model$residuals^2)) # RMSD=0.089
 
 
 # Panel D: Negative frequency dependent selection of 2 ESVs from C8R4 ----
+eq_comm <- eq_freq_stable %>%
+    filter(Community == "C8R4") %>%
+    mutate(ESV_ID = factor(ESV_ID, c("Pseudomonas.10", "Klebsiella"))) %>%
+    mutate(hjust = c(1.1,-0.1))
+eq_comm$PredictedEqAbundance[eq_comm$ESV_ID == "Pseudomonas.10"] # predicted eq abundance Pseudo x*=0.173
+eq_comm$PredictedEqAbundance[eq_comm$ESV_ID == "Klebsiella"] # predicted eq abundance Klebs x*=0.762
+
 pD <- fitness_stable %>%
     filter(Community == "C8R4") %>%
     mutate(ESV_ID = factor(ESV_ID, c("Pseudomonas.10", "Klebsiella"))) %>%
@@ -199,6 +178,8 @@ pD <- fitness_stable %>%
     geom_smooth(aes(x = Relative_Abundance, y = Fitness), method = stats::lm, formula = y ~ x, se = T, color = "gold2") +
     geom_point(aes(x = Relative_Abundance, y = Fitness), shape = 21, stroke = 1, size = 2) +
     geom_hline(yintercept = 0, linetype = 2) +
+    geom_vline(data = eq_comm, aes(xintercept = PredictedEqAbundance), linetype = 2) +
+    geom_text(data = eq_comm, aes(x = PredictedEqAbundance, y = Inf, label = paste0("x*=", round(PredictedEqAbundance,3)), hjust = hjust), vjust = 2) +
     scale_fill_manual(values = ESV_colors1) +
     scale_x_continuous(limits = c(0,1), breaks = seq(0,1,0.25)) +
     scale_y_continuous(breaks = scales::pretty_breaks(n = 3)) +

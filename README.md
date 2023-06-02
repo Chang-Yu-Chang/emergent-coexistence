@@ -221,7 +221,7 @@ Rscript 05-random_forest.R mapping_files/00-list_images-B2-green.csv mapping_fil
 
 Below is the overview for the image processing pipeline. The resulting dataset such as the object features are stored in `BATCH-07-feature/` and the random forest results are stored in `BATCH-08-random_forest/`. These csv are later aggregated using the scripts below.
 
-![](plots/cartoons/image_processing.png)
+![](plots/FigS8.png)
 
 
 

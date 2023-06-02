@@ -20,7 +20,7 @@ p <- isolates %>%
     mutate(Fermenter = factor(Fermenter, c("respiro-fermenter", "respirator"))) %>%
     ggplot() +
     geom_boxplot(aes(x = Fermenter, y = Rank), outlier.shape = NA) +
-    geom_jitter(aes(x = Fermenter, y = Rank), width = 0.3, shape = 21, size = 2) +
+    geom_jitter(aes(x = Fermenter, y = Rank), width = 0.3, shape = 21, size = 2, height = 0) +
     scale_y_continuous(breaks = 1:10) +
     theme_classic() +
     theme() +
