@@ -5,32 +5,39 @@ source(here::here("processing_scripts/00-metadata.R"))
 
 isolates <- read_csv(paste0(folder_data, "output/isolates_remained.csv"), show_col_types = F)
 communities <- read_csv(paste0(folder_data, "output/communities_remained.csv"), show_col_types = F)
-isolates_growth_syl <- read_csv(paste0(folder_data, "raw/growth_rate/Estrela_2021_isolates_grmax.csv"), col_types = cols()) %>%
-    filter(cs == "glucose") %>%
-    rename(ID = SangerID)
+# isolates_growth_syl <- read_csv(paste0(folder_data, "raw/growth_rate/Estrela_2021_isolates_grmax.csv"), col_types = cols()) %>%
+#     filter(cs == "glucose") %>%
+#     rename(ID = SangerID)
 
+isolates_growth_dj <- read_csv(paste0(folder_data, "raw/growth_rate/growth_rates_20180726.csv"), col_types = cols()) %>%
+    #filter(cs == "glucose") %>%
+    select(isolate, r) %>%
+    rename(ID = isolate, gr_max = r)
 
 # Ranked glucose growth rate
 isolates_rank <- isolates %>%
-    left_join(isolates_growth_syl) %>%
+    #left_join(isolates_growth_syl) %>%
+    left_join(isolates_growth_dj) %>%
     group_by(Community) %>%
     # Remove isolates that do not have growth rate data
     drop_na(gr_max) %>%
     select(ID, Community, Isolate, Rank, gr_max)
 
-nrow(isolates_rank) # 56 strains have growth rate data
+#nrow(isolates_rank) # 56 strains have growth rate data
 
-# Six strains without growth rate data
-isolates %>%
-    left_join(isolates_growth_syl) %>%
-    group_by(Community) %>%
-    filter(is.na(gr_max)) %>%
-    select(ExpID, ID, Community, Isolate, Family, Genus)
+# # Six strains without growth rate data
+# isolates %>%
+#     left_join(isolates_growth_syl) %>%
+#     group_by(Community) %>%
+#     filter(is.na(gr_max)) %>%
+#     select(ExpID, ID, Community, Isolate, Family, Genus)
 
 # growth rate
 p1 <- isolates_rank %>%
     ggplot(aes(x = gr_max)) +
     geom_histogram(color = "black", fill = "white", binwidth = 0.1) +
+    scale_x_continuous(breaks = seq(0,1.2,0.4), limits = c(-0.05, 1.25)) +
+    scale_y_continuous(breaks = 1:12, limits = c(0, 13)) +
     theme_classic() +
     theme() +
     guides() +
@@ -50,6 +57,7 @@ p2 <- isolates_rank %>%
 
 p <- plot_grid(p1, p2, nrow = 1, scale = 0.9, labels = LETTERS[1:2]) + paint_white_background()
 ggsave(here::here("plots/FigS15.png"), p, width = 8, height = 4)
-cor.test(isolates_rank$Rank, isolates_rank$gr_max, method = "pearson", alternative = "two.sided", exact = F) %>% tidy() #  r = -0.320  P=0.016
-lm(Rank ~ gr_max, data = isolates_rank) # y = -3.25x + 5.43
+cor.test(isolates_rank$Rank, isolates_rank$gr_max, method = "pearson", alternative = "two.sided", exact = F) %>%
+    tidy() #  r = -0.2970  P=0.019
+lm(Rank ~ gr_max, data = isolates_rank) # y = -3.127x + 5.375
 
