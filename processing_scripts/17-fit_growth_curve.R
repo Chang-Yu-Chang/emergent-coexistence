@@ -1,15 +1,10 @@
-#' This script fits the growth curve and extract isolate data
-#'
+#' This script fits the growth curve to generalized additive model and compute growth rate
 
 library(tidyverse)
-library(cowplot)
-source(here::here("processing_scripts/00-metadata.R"))
-
-require(tidyverse)
-require(viridis)
 require(data.table)
 require(mgcv)
-require(egg)
+source(here::here("processing_scripts/00-metadata.R"))
+
 
 compute.gam <- function(x)
 {

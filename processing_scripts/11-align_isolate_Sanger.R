@@ -1,10 +1,5 @@
 #' This scripts reads and aligns raw sanger sequences from Genewiz
 
-if (FALSE) {
-    install.packages("BiocManager") # Package for managing and installing Bioconductor packages
-    BiocManager::install("sangeranalyseR")
-}
-
 library(tidyverse)
 library(sangeranalyseR)
 source(here::here("processing_scripts/00-metadata.R"))

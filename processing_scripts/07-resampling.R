@@ -1,6 +1,6 @@
-#' This script reads the measured T0 and T8 pairwise data and bootstrap it
-#' 1. Bootstrap T0 CFU frequency. Output temp/07-pairs_T0_boots.csv
-#' 2. Bootstrap T8 CFU frequencies. Output temp/07-pairs_T8_boots.csv
+#' This script reads the measured T0 and T8 pairwise data and resample it
+#' 1. Resampling T0 CFU frequency. Output temp/07-pairs_T0_boots.csv
+#' 2. Resampling T8 CFU frequencies. Output temp/07-pairs_T8_boots.csv
 
 library(tidyverse)
 library(cowplot)
@@ -9,7 +9,7 @@ source(here::here("processing_scripts/00-metadata.R"))
 pairs_T0 <- read_csv(paste0(folder_data, "temp/06-pairs_T0.csv"), show_col_types = F)
 pairs_T8 <- read_csv(paste0(folder_data, "temp/06-pairs_T8.csv"), show_col_types = F)
 
-# 1. Bootstrap T0 freq_A from Poisson ----
+# 1. Resampling T0 freq_A from Poisson ----
 n_bootstraps = 1000
 set.seed(9)
 pairs_T0_boots <- pairs_T0 %>%
@@ -27,7 +27,7 @@ pairs_T0_boots <- pairs_T0 %>%
            Time, RawDataType, BootstrapID, Isolate1CFUFreq)
 
 
-# 2. Bootstrap T8 freq_A from Poisson -----
+# 2. Resampling T8 freq_A from Poisson -----
 pairs_T8_boots <- pairs_T8 %>%
     mutate(Isolate2Count = TotalCount - Isolate1Count) %>%
     select(Batch, Community, Isolate1, Isolate2, Isolate1InitialODFreq, Isolate1Count, Isolate2Count) %>%

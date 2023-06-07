@@ -11,7 +11,7 @@ source(here::here("processing_scripts/00-metadata.R"))
 
 folder_mapping_files <- "mapping_files/"
 # 1. Append the master mapping file with the file directory ----
-list_image_mapping_master <- read_csv(paste0(folder_script, folder_mapping_files, "00-list_image_mapping_folder_master.csv"), show_col_types = F) %>%
+list_image_mapping_master <- read_csv(paste0(folder_script, "../image_scripts/mapping_files/00-list_image_mapping_folder_master.csv"), show_col_types = F) %>%
     # Correct the isolate order
     rename(Isolate1InitialODFreq = Freq1, Isolate2InitialODFreq = Freq2) %>%
     rowwise() %>%

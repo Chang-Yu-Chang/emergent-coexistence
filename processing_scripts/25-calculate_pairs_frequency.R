@@ -1,4 +1,4 @@
-#' This script reads the bootstrapped pairs T0 and T8 results into a pairs_freq table
+#' This script reads the resampled pairs T0 and T8 results into a pairs_freq table
 #' and calculate the mean, 5th and 95th percentile of the pairwise data
 
 library(tidyverse)
@@ -42,7 +42,7 @@ nrow(pairs_freq) # 936 coclutures. 477 at T0 and 459 at T8
 write_csv(pairs_freq, paste0(folder_data, "temp/25-pairs_freq.csv"))
 
 
-# Find CIs and menas for means of equilibrium frequencies ----
+# Find CIs and means for means of equilibrium frequencies ----
 pairs_mean_eq <- pairs_boots %>%
     filter(Time == "T8") %>%
     group_by(Community, Isolate1, Isolate2, BootstrapID) %>%

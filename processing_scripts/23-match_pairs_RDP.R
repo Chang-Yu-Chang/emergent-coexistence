@@ -1,4 +1,4 @@
-#' This script match the isolates' 16S and RDP to pairs
+#' This script match the isolates' 16S and RDP to pairwise data
 
 library(tidyverse)
 source(here::here("processing_scripts/00-metadata.R"))

@@ -30,9 +30,6 @@ make_network_for_plotting <- function(isolates, pairs) {
 
     # Network
     graph <- tbl_graph(nodes = nodes, edges = edges, directed = T)
-    # # Drop the dummy isolates
-    # activate(nodes) %>%
-    # filter(!is.na(Community))
 
     return(graph)
 }

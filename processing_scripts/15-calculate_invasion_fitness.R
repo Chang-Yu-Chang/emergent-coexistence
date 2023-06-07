@@ -5,8 +5,9 @@
 #' 3. find the transient ESVs with >=5 data points
 #' 4. find the traients ESVs with >=3 data points
 #' 4. bind the fitness files. Output:
-#'  temp/15-ESV_eq_freq.csv. 145 rows (99 stable ESVs + 46 transient ESVs)
-#'  temp/15-fitness.csv. complete fitness for both stable and transient ESVs at different transfers
+#'  temp/15-eq_freq_stable.csv. 99 stable ESVs
+#'  temp/15-eq_freq_transient.csv. 46 transient ESVs with >=5 data points
+#'  temp/15-eq_freq_transient2.csv. 110 transient ESVs with >=3 data points
 
 library(tidyverse)
 library(cowplot)

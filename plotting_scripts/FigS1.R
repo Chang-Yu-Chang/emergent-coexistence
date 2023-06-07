@@ -24,7 +24,6 @@ p1 <- communities_abundance_T0 %>%
     mutate(Inoculum = factor(Inoculum, c(1:10, 12))) %>%
     ggplot() +
     geom_col(aes(x = Inoculum, y = Relative_Abundance, color = Order, fill = Order), width = .8, linewidth = .05, position = position_stack(reverse = T)) +
-    #scale_x_continuous(breaks = c(1:10, 12), expand = c(0,0.1)) +
     scale_y_continuous(breaks = seq(0, 1, 0.2), limits = c(0,1), expand = c(0,0)) +
     scale_fill_manual(values = order_colors) +
     scale_color_manual(values = order_colors) +

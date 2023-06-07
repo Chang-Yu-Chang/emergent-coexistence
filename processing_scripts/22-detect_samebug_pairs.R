@@ -1,4 +1,4 @@
-#' This script takes the outcome from 21-pairwsie_16s_mismatch.R and identifies pairs of isolates
+#' This script takes the outcome from 21-pairwsie_16s_mismatch.py and identifies pairs of isolates
 #' with 0 mismatch and removes them from the list of pairs
 
 library(tidyverse)
@@ -6,12 +6,12 @@ source(here::here("processing_scripts/00-metadata.R"))
 
 # 1. Run jean's python script to obtain the mismatch matrix ----
 #' I modified the script so that it only takes the folder I created in the previous step
-#' in commandline where 00-16s_mismatch.py is stored, execute `python 21-pairwise_16s_mismatch.py PATH_TO_DATA/`
+#' in commandline where 21-16s_mismatch.py is stored, execute `python 21-pairwise_16s_mismatch.py PATH_TO_DATA/`
 #' the output matrix is saved as `PATH_TO_DATA/temp/21-mismatch_matrix_communities.csv`
 #' where the column and row names are the Sanger ID
 
 
-# 2. Match the mismatch matrix to my internal ID for isoaltes
+# 2. Match the mismatch matrix to my internal ID for isolates
 mismatch_matrix <- read_csv(paste0(folder_data, "temp/21-mismatch_matrix_communities.csv"), show_col_types = F) %>%
     pivot_longer(cols = -`...1`) %>%
     rename(ID_row = `...1`, ID_col = name, Mismatch = value) %>%

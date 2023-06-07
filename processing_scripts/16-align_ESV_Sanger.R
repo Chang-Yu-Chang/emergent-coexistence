@@ -1,6 +1,6 @@
 #' This script aligns the isolate Sanger and community ESV
 #'
-#' The alignment is performed within the 12 communities
+#' The alignment is performed within each of the 12 communities
 
 library(tidyverse)
 library(cowplot)

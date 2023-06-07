@@ -331,14 +331,10 @@ for (i in 1:nrow(list_image_mapping_folder)) {
         bind_cols(object_feature_plot) %>%
         arrange(ColorLabel) %>%
         ggplot() +
-        # Draw directions of axis
-        #geom_segment(data = pca_coord$df.v, aes(x = 0, y = 0, xend = xvar, yend = yvar), arrow = arrow(length = unit(1/2, 'picas')), color = scales::muted('red')) +
         # Draw scores
         geom_point(aes(x = xvar, y = yvar,
                        color = ColorLabel, fill = FillLabel, shape = ShapeLabel, alpha = AlphaLabel),
                    size = 2, stroke = .8) +
-        # Label the variable axes
-        #geom_text(data = pca_coord$df.v, aes(label = varname, x = xvar, y = yvar, angle = angle, hjust = hjust), color = 'blue', size = 3) +
         scale_color_manual(values = color_names, name = "", label = names(color_names)) +
         scale_fill_manual(values = fill_names, name = "", label = names(color_names)) +
         scale_shape_manual(values = shape_names, name = "", label = names(color_names)) +

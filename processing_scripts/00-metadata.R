@@ -1,4 +1,4 @@
-# This script stores the metadata shared by all scripts
+#' This script stores the metadata shared by all scripts
 
 # 1. Directories
 # This main folder depends on your home directory

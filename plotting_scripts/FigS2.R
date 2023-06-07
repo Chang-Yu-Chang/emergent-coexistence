@@ -18,7 +18,6 @@ curate_abundant_genus <- function () {
 abundant_genus <- curate_abundant_genus()
 bin_ESV_names <- function (comm_abundance) {
     comm_abundance %>%
-        #mutate(ESV_ID = str_replace(ESV_ID, "Enterobacteriaceae", "Enterobacter")) %>%
         mutate(ESV_ID = case_when(
             str_detect(ESV_ID, "Enterobacteriaceae") ~ str_replace(ESV_ID, "\\.\\d+", ""),
             str_detect(ESV_ID, "Pantoea") ~ str_replace(ESV_ID, "\\.\\d+", ""),
@@ -28,7 +27,6 @@ bin_ESV_names <- function (comm_abundance) {
             str_detect(ESV_ID, "Enterobacter") ~ str_replace(ESV_ID, "\\.\\d+", ""),
             str_detect(ESV_ID, "Klebsiella") ~ str_replace(ESV_ID, "\\.\\d+", ""),
             str_detect(ESV_ID, "Acinetobacter") ~ str_replace(ESV_ID, ".\\d+", ""),
-            #str_detect(ESV_ID, "Pseudomonadaceae") ~ str_replace(ESV_ID, "Pseudomonadaceae", "Pseudomonadas"),
             str_detect(ESV_ID, "Pseudomonadaceae") ~ str_replace(ESV_ID, "\\.\\d+", ""),
             str_detect(ESV_ID, "Pseudomonas.1\\d+") ~ str_replace(ESV_ID, "\\.1\\d+", "\\.1"),
             str_detect(ESV_ID, "Pseudomonas.2\\d+") ~ str_replace(ESV_ID, "\\.2\\d+", "\\.2"),
@@ -59,8 +57,6 @@ get_ESV_colors <- function (comm_abundance) {
     temp1 <- communities_abundance_ESV_ID %>%
         filter(Family %in% c("Enterobacteriaceae")) %>%
         drop_na() %>%
-        #mutate(ESV_color = viridis::viridis_pal(option = "viridis")(n())) %>%
-        #mutate(ESV_color = scales::div_gradient_pal(low = "#313797", mid = "#ffffbf", high = "#a50026", space = "Lab")(seq(0, 1, length.out = n()))) %>%
         filter(ESV_ID != "Other")
 
     if (nrow(temp1) >= 12) {
@@ -75,8 +71,6 @@ get_ESV_colors <- function (comm_abundance) {
     temp2 <- communities_abundance_ESV_ID %>%
         filter(Family == c("Pseudomonadaceae")) %>%
         drop_na() %>%
-        #mutate(ESV_color = scales::seq_gradient_pal(low = "#d73027", high = "#fef1e7", space = "Lab")(seq(0, 1, length.out = n()))) %>%
-        #mutate(ESV_color = scales::div_gradient_pal(low = "#00451a", mid = "#f6f6f7", high = "#41004a", space = "Lab")(seq(0, 1, length.out = n()))) %>%
         filter(ESV_ID != "Other")
 
     if (nrow(temp2) >= 12) {

@@ -1,10 +1,5 @@
 #' This scripts reads isolate 16S sequences and assigns taxonomy using RDP
 
-if (FALSE) {
-    BiocManager::install("rRDPData")
-    BiocManager::install("rRDP")
-}
-
 library(tidyverse)
 library(rRDPData)
 library(rRDP)

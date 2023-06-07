@@ -46,6 +46,7 @@ ggraph_2.1.0                # for visualizing networks
 tidygraph_1.2.3             # for handling network data
 grid                        # based R package for drawing polygons
 ggstats_0.2.1               # for extension to ggplot2 for plotting stats
+mgcv_1.8-42                 # for fitting generalized additive (mixed) models
 officer_0.6.2               # for handling tables
 flextable_0.9.0             # for handling tables
 ```
@@ -76,17 +77,17 @@ biopython       1.81        # for merging paired sequences
     - `isolates1.csv` is the mapping file for 65 isolates
     - `pairs_freq_human.csv` is the human count result of the coculture images
     - `community_ESV/` contains the otu table, metadata, and ESV taxonomy originally published in Goldford et al 2018 (DOI: 10.1126/science.aat1168) and curated in Vila et al 2020 (DOI: 10.1038/s41396-020-0702-7), retrieved from Zenodo (DOI: 10.5281/zenodo.3817698)
-    - `growth_rate/` contains the monoculture growth rate data  published in ref Estrela et al 2022 (DOI: 10.1016/j.cels.2021.09.011) and retrieved from Zenodo (DOI: 10.5281/zenodo.5510318)
+    - `growth_rate/raw_data_growth_curves` contains the monoculture growth curve data partially published in ref Estrela et al 2022 (DOI: 10.1016/j.cels.2021.09.011) and retrieved from Zenodo (DOI: 10.5281/zenodo.5510318). A total of 132 strains was measured
     - `OD/` contains the OD data measured in the pairwise competition experiments, including the OD of both monocultures and cocultures
     - `sanger/` contains the raw 16S rRNA Sanger sequences of isolates
-- `temp`: includes processed CSV. The file name is numbered corresponding to the script that generates it. 
+- `temp`: includes processed tabular data in CSV. The file name is numbered corresponding to the script that generates it
     - `00c-communities.csv` is the mapping file for 12 communities
     - `00c-isolates_ID.csv` is the mapping file for 65 isolates
     - `00c-pairs_freq_ID.csv` is the mapping file for 477 pairwise competition experiments
     - `06-isolates_epsilon.csv` contains the OD, CFU, epsilon of 65 isolates
     - `06-pairs_T0.csv` contains OD-to-CFU at T0 for 477 cocultures
     - `06-pairs_T8.csv` contains CFU counts at T8 for 459 cocultures
-    - `07-pairs_boots.csv` is the bootstrapped the T0 and T8 pairwise data
+    - `07-pairs_boots.csv` is the resampled T0 and T8 pairwise data
     - `11-isolates_16S.csv` includes the Sanger sequences of 65 strains
     - `12-isolates_RDP.csv` includes the RDP taxonomy of 65 strains
     - `13-communities_abundance_T0.csv` is the community composition of T0 environmental samples. It is used to generate FigS1A
@@ -101,6 +102,7 @@ biopython       1.81        # for merging paired sequences
     - `15-fitness_transient2.csv` contains the invasion fitness of 110 transient ESVs that have >= 3 data points at different transfers
     - `16-sequences_alignment.csv` has all 599 possible alignments between ESV and Sanger within the 12 communities
     - `16-isolates_abundance.csv` has the 62 isolates each with matched ESV abundance
+    - `17-growth_rates.csv` has the 132 monoculture growth curves
     - `21-mismatch_matrix_communities.csv` has the matrix of pairwise mismatch between isolate Sangers
     - `22-pairs_mismatch.csv` is the long format of `21-mismatch_matrix_communities.csv`
     - `23-pairs_RDP.csv` contains the RDP taxonomy of isolates specified for 159 pairs
@@ -141,13 +143,14 @@ This repository includes three types of scripts:
     - `00d-assemble_colony_images.R` reads the colony position from feature/ and crop one colony out from the original images. The cropped images are later assembled into Fig S6 using Illustrator
     - `00e-combine_image_and_random_forest.R` combines the plate images with the random forest results. The resulting is `pipeline/random_forest/`
     - `06-aggregate_T0_T8_data.R` converts the T0 OD to CFU using monoculture data (OD and machine count CFU) and aggregates the machine counts of T8 cocultures
-    - `07-bootstrapping.R` bootstraps T0 and T8 pairwise data
+    - `07-resampling.R` resample T0 and T8 pairwise data from poisson distribution
     - `11-align_isolate_Sanger.R` aligns raw Sanger sequences of isolates
     - `12-assign_isolate_RDP.R` reads isolate 16S sequences and assigns taxonomy using RDP
     - `13-rarefaction.R` performs rarefaction. The script is adapted from the rarefaction script in Vila et al 2020
     - `14-filter_community_abundance.R` subsets only the glucose communities which are relevant to the current study
     - `15-calculate_invasion_fitness.R` calculates the invasion fitness for ESVs from the 26 glucose communities that have temporal data
     - `16-align_ESV_Sanger.R` aligns the isolate Sanger and community ESV within the 12 communities
+    - `17-fit_growth_curve.R` fit a generalized additive model to monoculture growth curves
     - `21-pairwise_16s_mismatch.py` runs merging paired sequences from Genewiz 
     - `22-detect_samebug_pairs.R` makes a long format of pairwise mismatch between pairs of isolate sanger sequences
     - `23-match_pairs_RDP.R` matches the isolates' 16S and RDP to pairs
@@ -158,7 +161,7 @@ This repository includes three types of scripts:
     - `28-combine_images_and_random_forest.R` combines the images and random forest result for cocultures in `pipeline/random_forest/`
     - `99-append_data.R` appends all isolate and pair data and store in `data/output/`
 
-3. `plotting_scripts/`: generates the figures for main text and supplements. The resulting figures are stored in `plots/`. The main figures have both PNG and PDF with final touch in Illustrator. Fig1 cartoon, Fig2A, Figs S6, S8, and S9 were generated completely in Illustrator.
+3. `plotting_scripts/`: generates the main figures, supplementary figures, and supplementary tables. The resulting figures and tables are stored in `plots/`. The main figures have both PNG and PDF with final touch in Adobe Illustrator. Fig1AB cartoons, Fig2A cartoon, Figs S8, and S9 were generated completely in Adobe Illustrator. The colony images in Fig S6 were cropped using `00d-crop_colony_images.R` and then assembled in Adobe Illustrator
 
 
 

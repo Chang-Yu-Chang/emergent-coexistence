@@ -5,7 +5,7 @@ source(here::here("processing_scripts/00-metadata.R"))
 isolates <- read_csv(paste0(folder_data, "output/isolates.csv"), show_col_types = F) # 65 isolates
 accuracy <- read_csv(paste0(folder_data, "temp/24-accuracy.csv"), show_col_types = F) # 153*3=459 coculture pairs
 
-nrow(accuracy) # 153*3=459 cocltures
+nrow(accuracy) # 153*3=459 cocultures
 
 p1 <- accuracy %>%
     ggplot() +

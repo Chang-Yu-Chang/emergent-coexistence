@@ -1,3 +1,5 @@
+#' This script determines the pairwise competiton outcome based on frequency changes in coculture experiments
+
 library(data.table)
 library(tidyverse)
 library(cowplot)

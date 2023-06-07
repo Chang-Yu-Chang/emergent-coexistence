@@ -1,5 +1,5 @@
 #' This script is adapted from the rarefaction script in Vila et al 2020
-#' 1. Perform rarefaction on the raw otu table using N = 4397. Output temp13-communities_abundance.csv is identical to Emergent_Comunity_Data.csv from Vila et al 2020
+#' 1. Perform rarefaction on the raw otu table using N = 4397. Output temp/13-communities_abundance.csv is identical to Emergent_Comunity_Data.csv from Vila et al 2020
 #' 2. Perform N=10-10000 rarefaction as reported in Goldford et al 2018 Fig. S1.
 #'          Output for panel A: temp/13-communities_abundance_T0.csv
 #'          Output for panel B: temp/13-rarefaction.csv
@@ -14,7 +14,6 @@ library(data.table)
 library(readr)
 source(here::here("processing_scripts/00-metadata.R"))
 
-#Script 1 for Extract data  from DADA2 output and rarefies to constant read depth.
 # Stores into a melted data.frame with standardized columns for subsequent analysis.
 
 rarefy <- function(dat,n =min(colSums(dat))){

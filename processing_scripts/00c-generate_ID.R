@@ -1,7 +1,4 @@
 #' This script generates the list of pairs and frequency and their ID
-#'
-#' For the image processing pipeline, I processed all coculture images I have, including
-#' those that may be contamination
 
 library(tidyverse)
 source(here::here("processing_scripts/00-metadata.R"))
